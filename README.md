@@ -335,7 +335,7 @@ Here's a rough breakdown:
 
 Limitations: This regex is not a full C# parser obviously. It might get confused by complex generic constraints, nested types defined weirdly, or code inside comments/strings that happens to look like a declaration. However, it works reasonably well for common declaration patterns. The script then does some basic cleanup to remove the <...> part if captured.
 
-##TODO & Roadmap
+## TODO & Roadmap
 
 This script could be useful as its flushed out and hardened, maybe a lot we could build here. Some ideas for the future:
 
