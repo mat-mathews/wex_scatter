@@ -349,3 +349,4 @@ This script could be useful as it's flushed out and hardened, maybe a lot we cou
 - Transitive Dependency Analysis: Find not just direct consumers, but consumers-of-consumers, up to a specified depth.
 - Exclude Directories: Allow specifying directories (like tests, bin, obj) to ignore during the consumer search, speeding up analysis and reducing noise.
 - Flexible Git Commit Specification: Allow comparing arbitrary commits/tags instead of only branches based on merge-base.
+
