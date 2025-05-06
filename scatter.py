@@ -341,10 +341,7 @@ def summarize_csharp_file_with_gemini(csharp_code: str, file_path_for_log: str) 
         logging.info(f"Requesting summary for {file_path_for_log} from Gemini API...")
         # dont know if this makes a big difference when dealing with code, but still
         safety_settings = [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"}
         ]
         response = gemini_model.generate_content(prompt, safety_settings=safety_settings)
         logging.debug(f"Received Gemini response for {file_path_for_log}.")
