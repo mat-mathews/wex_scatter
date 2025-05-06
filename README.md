@@ -283,7 +283,7 @@ These can be used with either `--target-project` or `--branch-name`:
         python your_script_name.py --branch-name my-feature --summarize-consumers --gemini-model gemini-pro
         ```
 
-# Mock Example:
+## Mock Example:
 
 ```bash
 python scatter.py --target-project .\MyDotNetApp\MyDotNetApp.csproj --search-scope . --summarize-consumers --google-api-key AIza.... --output output.csv
