@@ -341,6 +341,7 @@ This script could be useful as it's flushed out and hardened, maybe a lot we cou
 
 - Real LLM Integration or an actual data pipeline - Diff Summaries: When running in Git Branch mode, use an LLM to summarize the specific changes made within the affected files on the branch, giving more context than just listing the changed files.
 - Vector Embeddings: Explore creating a vector database for the content of discovered related C# files and potentially their project contexts. This could enable more advanced semantic searching like "find code that does something similar to this changed class".
+- Refactor POC script into a proper module.
 - Refactor to use a factory pattern for input and discovery of projects for extensibility.
 - Performance Boost: Implement multiprocessing or threading to parallelize the analysis (especially consumer finding across multiple projects) for significant speed improvements in large codebases. Also potentially optimize file reading/caching.
 - Configuration File: Add support for loading settings from a config file (like .ini or pyproject.toml). This would let users define multiple search scopes, target directories, pipeline mappings, and potentially pre-set branch names for easier execution of common scenarios.

@@ -278,10 +278,10 @@ gemini_model = None
 def configure_gemini(api_key: Optional[str] = None, model_name: str = "gemini-1.5-flash") -> bool:
     """Configures the Gemini client. Returns True on success, False on failure."""
     global gemini_model
-    if gemini_model: # Already configured
+    if gemini_model:
         return True
 
-    resolved_api_key = api_key # Use provided key first
+    resolved_api_key = api_key
     if not resolved_api_key:
         resolved_api_key = os.getenv("GOOGLE_API_KEY")
 
@@ -299,7 +299,7 @@ def configure_gemini(api_key: Optional[str] = None, model_name: str = "gemini-1.
     except (ValueError, Exception) as e:
         logging.error(f"Error configuring Generative AI: {e}")
         logging.error("Ensure the API key is valid and has permissions for the Gemini API.")
-        gemini_model = None # Ensure model is None on failure
+        gemini_model = None
         return False
 
 
@@ -494,7 +494,7 @@ def find_consumers(
         logging.debug(f"Found {len(namespace_consumers)} consumer(s) using namespace '{target_namespace}'.")
 
 
-    # --- start: helper to format results ---
+    # --- helper to format results ---
     def format_results(consumer_dict: Dict[Path, Dict[str, Union[str, List[Path]]]]) -> List[Dict[str, Union[Path, str, List[Path]]]]:
         """Adds the consumer_path key to each dictionary in the list."""
         results = []
@@ -570,7 +570,7 @@ def find_consumers(
         logging.info(f"No consuming projects potentially calling method '{method_name}' were found.")
         return []
 
-    return format_results(method_consumers) # Use helper
+    return format_results(method_consumers)
 
 #
 #
@@ -665,7 +665,7 @@ if __name__ == "__main__":
         gemini_configured_successfully = configure_gemini(args.google_api_key, args.gemini_model)
         if not gemini_configured_successfully:
             logging.error("Gemini configuration failed. Summarization will be disabled.")
-            args.summarize_consumers = False # Disable if config failed
+            args.summarize_consumers = False
 
     is_git_mode = args.branch_name is not None
     is_target_mode = args.target_project is not None
@@ -762,7 +762,7 @@ if __name__ == "__main__":
 
 
     # --- main logic ---
-    all_results: List[Dict[str, Union[str, Dict]]] = [] # Stores final report data, may include summary dict
+    all_results: List[Dict[str, Union[str, Dict]]] = [] # stores final report data, may include summary dict
 
     # == GIT BRANCH ANALYSIS MODE ==
     if is_git_mode:
@@ -1030,7 +1030,7 @@ if __name__ == "__main__":
         logging.info(f"Overall analysis complete. Found {len(all_results)} consuming relationship(s) matching the criteria.")
         all_results.sort(key=lambda x: (x['TargetProjectName'], x['TriggeringType'], x['ConsumerProjectName']))
 
-    # --- start: updated reporting ---
+    # --- updated reporting ---
     # define headers for the report
     # adding 'consumerfilesummaries' - note this will be a json string in csv
     report_fieldnames = ['TargetProjectName', 'TargetProjectPath', 'TriggeringType', 'ConsumerProjectName', 'ConsumerProjectPath', 'PipelineName', 'ConsumerFileSummaries']
