@@ -1,0 +1,160 @@
+# ----------------------------------------
+# macOS
+# ----------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.Spotlight-V100
+.Trashes
+
+# macOS extended attributes
+*.icloud
+*.AppleDB
+*.AppleDesktop
+
+
+# ----------------------------------------
+# Python
+# ----------------------------------------
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+eggs/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+wheels/
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+ENV/
+env.bak/
+venv.bak/
+
+# pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+
+# Coverage
+.coverage
+htmlcov/
+.coverage.*
+.cache
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+coverage.xml
+*,cover
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Pyre type checker
+.pyre/
+
+
+# ----------------------------------------
+# Visual Studio / .NET Core
+# ----------------------------------------
+## User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Auto-generated files
+*.Generated.cs
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.obj
+*.pch
+*.pdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*.log
+
+## Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## Rider
+.idea/
+
+# Visual Studio
+.vs/
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# NuGet
+*.nupkg
+# The packages folder can be ignored because of Package Restore
+**/[Pp]ackages/*
+# except build/, which is used as an MSBuild target.
+!**/[Pp]ackages/build/
+# Uncomment if necessary however generally it should be included in source control
+#!**/[Pp]ackages/repositories.config
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
