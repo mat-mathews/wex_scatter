@@ -335,11 +335,11 @@ Here's a rough breakdown:
 
 Limitations: This regex is not a full C# parser obviously. It might get confused by complex generic constraints, nested types defined weirdly, or code inside comments/strings that happens to look like a declaration. However, it works reasonably well for common declaration patterns. The script then does some basic cleanup to remove the <...> part if captured.
 
-##TODO & Roadmap
+## TODO & Roadmap
 
-This script could be useful as its flushed out and hardened, maybe a lot we could build here. Some ideas for the future:
+This script could be useful as it's flushed out and hardened, maybe a lot we could build here. Some ideas for the future:
 
-- RealLLM Integration or an actually data pipeline - Diff Summaries: When running in Git Branch mode, use an LLM to summarize the specific changes made within the affected files on the branch, giving more context than just listing the changed files.
+- Real LLM Integration or an actual data pipeline - Diff Summaries: When running in Git Branch mode, use an LLM to summarize the specific changes made within the affected files on the branch, giving more context than just listing the changed files.
 - Vector Embeddings: Explore creating a vector database for the content of discovered related C# files and potentially their project contexts. This could enable more advanced semantic searching like "find code that does something similar to this changed class".
 - Refactor to use a factory pattern for input and discovery of projects for extensibility.
 - Performance Boost: Implement multiprocessing or threading to parallelize the analysis (especially consumer finding across multiple projects) for significant speed improvements in large codebases. Also potentially optimize file reading/caching.
