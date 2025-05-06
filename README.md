@@ -34,9 +34,7 @@ These instructions will guide you through setting up the necessary environment t
 
 1.  **Install Python:**
     * **Check if installed:** Open PowerShell and run `py --version` or `python --version`. If you see a Python 3.x version (e.g., `Python 3.10.7`), you can skip this step.
-    * **Install if needed:**
-        * **(Recommended Method):** Install Python from the Microsoft Store. Search for "Python 3.1x" (e.g., Python 3.11 or 3.12) and install it. This method usually handles PATH setup automatically.
-        * **(Alternative Method):** Download the official Windows installer from [https://www.python.org/downloads/windows/](https://www.python.org/downloads/windows/). **Crucially**, during installation, make sure to check the box that says **"Add Python 3.x to PATH"**.
+    * **Install if needed:** Download the official Windows installer from [https://www.python.org/downloads/windows/](https://www.python.org/downloads/windows/). **Crucially**, during installation, make sure to check the box that says **"Add Python 3.x to PATH"**.
     * **Verify:** Close and reopen PowerShell. Run `py --version` or `python --version` again to confirm the installation.
 
 2.  **Clone the Repository:**
@@ -74,22 +72,15 @@ These instructions will guide you through setting up the necessary environment t
         google-generativeai
         GitPython
         ```
-    * Ensure your virtual environment is still active (you should see `(.venv)` at the start of your PowerShell prompt). Install the required packages using `pip`:
+    * Ensure your virtual environment is still active. Install the required packages using `pip`:
         ```powershell
         pip install -r requirements.txt
         ```
         This command reads the `requirements.txt` file and installs the specified libraries into your virtual environment.
 
-5.  **(Optional) Verify Installation:**
-    * Run the script with the `--help` flag to ensure it starts correctly and can parse arguments (replace `your_script_name.py` with the actual name of your Python script file):
-        ```powershell
-        python your_script_name.py --help
-        ```
-    * You should see the script's help message outlining the available command-line arguments.
-
 ### Configuration (Google API Key)
 
-This script uses the Google Gemini API for summarizing code (`--summarize-consumers` option). To use this, you need a Google API Key.
+This script uses the Google Gemini API for summarizing (`--summarize-consumers` option). You will need a Google API Key if you want to try this.
 
 1.  **Get an API Key**
 2.  **Use the Key:**
@@ -124,7 +115,7 @@ Let's break down the process depending on the mode.
 2.  **Determine Namespace**: It tries to parse the `.csproj` file to find the `<RootNamespace>` or `<AssemblyName>`. If it can't find either, it falls back to using the project file's name (e.g., `MyLibrary.csproj` -> `MyLibrary`) as the namespace. You can also override this with the `--target-namespace` argument.
 3.  **Find Consumers**: It triggers the consumer analysis logic (described next) using the target project and its determined namespace, applying any `--class-name` or `--method-name` filters you provided.
 
-### Finding Consumers (The Core Stuff)
+### Finding Consumers
 
 This is the heart of the analysis, used by both modes. When looking for consumers of a specific "target" project:
 
@@ -141,11 +132,9 @@ The projects that make it through all applicable filters are reported as the fin
 If the `--summarize-consumers` flag is used:
 
 1.  **Identify Relevant Files:** After the filtering steps above, the script knows which specific `.cs` file(s) in each consuming project were responsible for it matching the criteria (e.g., the file containing the specific class name or method call).
-2.  **Call Gemini API:** For each of these relevant files, the script reads its content and sends it to the configured Google Gemini model (e.g., `gemini-1.5-flash`).
+2.  **Call Gemini:** For each of these relevant files, the script reads its content and sends it to the configured Google Gemini model (e.g., `gemini-1.5-flash`).
 3.  **Generate Summary:** The prompt asks the API for a concise summary (2-3 sentences) of the file's primary purpose.
 4.  **Store Result:** The summary text (or an error message if generation fails) is stored alongside the consumer information.
-
-*Note: Using this involves making API calls to Google Cloud.*
 
 ## Pipeline Mapping
 
@@ -304,6 +293,12 @@ These can be used with either `--target-project` or `--branch-name`:
         python your_script_name.py --branch-name my-feature --summarize-consumers --gemini-model gemini-pro
         ```
 
+# Mock Example:
+
+```bash
+python scatter.py --target-project .\MyDotNetApp\MyDotNetApp.csproj --search-scope . --summarize-consumers --google-api-key AIza.... --output output.csv
+````
+
 ## Understanding the Output
 
 * **Console Output:** When printing to the console, the script lists each target project and the type/level that triggered the analysis. Underneath, it lists the consuming projects found. If `--summarize-consumers` is enabled, it will print the relative path and the Gemini-generated summary for each relevant file within that consumer, indented below the consumer project line.
@@ -337,7 +332,7 @@ Limitations: This regex is not a full C# parser obviously. It might get confused
 
 ## TODO & Roadmap
 
-This script could be useful as it's flushed out and hardened, maybe a lot we could build here. Some ideas for the future:
+This script could be useful if it's flushed out and hardened, maybe a lot we could build here. Some ideas for the future:
 
 - Real LLM Integration or an actual data pipeline - Diff Summaries: When running in Git Branch mode, use an LLM to summarize the specific changes made within the affected files on the branch, giving more context than just listing the changed files.
 - Vector Embeddings: Explore creating a vector database for the content of discovered related C# files and potentially their project contexts. This could enable more advanced semantic searching like "find code that does something similar to this changed class".
