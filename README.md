@@ -3,7 +3,7 @@
 
 Question: "If I change this class in `MyCoreLibrary`, which other projects are actually using it?" Or maybe, "What's the potential blast radius if I merge this feature branch?". This isn't a full-blown Roslyn type tool, but this POC tries to help figure out dependent projects, which could help find a mapped pipeline for CI/CD.
 
-Scatter is a utility to dig through the codebase to find potential "consumers" of code changes. **It can optionally use the Google Gemini API to summarize the relevant C# files found in those consuming projects.** It works in two main ways:
+Scatter is a utility to dig through the codebase to find potential "consumers" of code changes. If pipline data is provided it will attempt to map these consuming projects to their respective pipeline in the output. **It can optionally use the Google Gemini API to summarize the relevant C# files found in those projects.** It works in two main ways:
 
 * **Git Branch Analysis**: You give it a feature branch and a base branch (like `main`), and it analyzes the `.cs` files changed on your feature branch. It figures out which projects those files belong to, identifies the types (`class`, `struct`, `interface`, `enum`) declared within them, and then searches the rest of your codebase for projects that might be using those specific types.
 * **Target Project Analysis**: You point it directly at a specific `.csproj` file (or the directory containing it). It then searches the rest of your codebase for projects that reference this target project and potentially use its namespace, classes, or methods (if you specify filters).
