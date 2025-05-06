@@ -60,11 +60,6 @@ These instructions will guide you through setting up the necessary environment t
         ```powershell
         .\.venv\Scripts\Activate.ps1
         ```
-    * **Troubleshooting Activation:** If you get an error about script execution being disabled, you might need to adjust PowerShell's execution policy for the current user or process. You can temporarily allow scripts for the current session by running:
-        ```powershell
-        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
-        ```
-        Then try activating the environment again. *Note: Be cautious about changing execution policies.*
 
 4.  **Install Dependencies:**
     * Create a file named `requirements.txt` in the root of the project directory with the following content:
