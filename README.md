@@ -62,16 +62,11 @@ These instructions will guide you through setting up the necessary environment t
         ```
 
 4.  **Install Dependencies:**
-    * Create a file named `requirements.txt` in the root of the project directory with the following content:
-        ```txt
-        google-generativeai
-        GitPython
-        ```
     * Ensure your virtual environment is still active. Install the required packages using `pip`:
         ```powershell
         pip install -r requirements.txt
         ```
-        This command reads the `requirements.txt` file and installs the specified libraries into your virtual environment.
+        This reads the `requirements.txt` file and installs the specified libraries into your virt env.
 
 ### Configuration (Google API Key)
 
