@@ -1436,3 +1436,4 @@ if __name__ == "__main__":
         print(f"\n--- Total Consuming Relationships Found: {len(all_results)} ---")
 
     sys.exit(0)
+
