@@ -36,7 +36,7 @@ TYPE_DECLARATION_PATTERN = re.compile(
 # --- helper for type extraction ---
 def extract_type_names_from_content(content: str) -> Set[str]:
     """
-    Extracts declared type names (class, struct, interface, enum) from C# file content.
+    extracts declared type names (class, struct, interface, enum) from c# file content.
     """
     found_types = set()
     try:
@@ -52,7 +52,7 @@ def extract_type_names_from_content(content: str) -> Set[str]:
     return found_types
 
 
-# --- find_project_file Function ---
+# --- find_project_file  ---
 def find_project_file(repo: git.Repo, commit: git.Commit, cs_file_relative_path_str: str) -> Optional[str]:
     cs_file_rel_path = Path(cs_file_relative_path_str)
     current_path = cs_file_rel_path.parent
@@ -157,7 +157,37 @@ def find_project_file(repo: git.Repo, commit: git.Commit, cs_file_relative_path_
     return None
 
 
-# --- analyze_branch_changes Function ---
+# --- find_project_file_on_disk ---
+def find_project_file_on_disk(cs_file_abs_path: Path) -> Optional[Path]:
+    """
+    Finds the .csproj file corresponding to a given C# file by searching upwards
+    in the directory tree from the C# file's location.
+    Returns the absolute path to the first .csproj found, or None.
+    """
+    logging.debug(f"Attempting to find project on disk for: {cs_file_abs_path}")
+    current_path = cs_file_abs_path.parent
+    while True:
+        try:
+            csproj_files = list(current_path.glob('*.csproj'))
+            if csproj_files:
+                project_file = csproj_files[0].resolve()
+                logging.debug(f"Found project file '{project_file.name}' in '{current_path}' for C# file '{cs_file_abs_path.name}'")
+                return project_file
+        except Exception as e:
+            # This might occur due to permission issues or other OS errors during glob
+            logging.warning(f"Error searching for .csproj in '{current_path}' for '{cs_file_abs_path.name}': {e}")
+            return None # Stop on error in a directory for safety
+
+        if current_path == current_path.parent: # Reached filesystem root
+            logging.debug(f"Reached filesystem root without finding .csproj for '{cs_file_abs_path.name}'")
+            break
+        current_path = current_path.parent
+
+    logging.warning(f"No .csproj file found upwards from C# file '{cs_file_abs_path.name}' in its directory tree.")
+    return None
+
+
+# --- analyze_branch_changes ---
 def analyze_branch_changes(repo_path: str, feature_branch_name: str, base_branch_name: str = 'main') -> Dict[str, List[str]]:
     """ Analyzes git changes, returns {proj_rel_path_str: [cs_rel_path_str,...]} using POSIX paths"""
     project_changes = defaultdict(list)
@@ -303,31 +333,111 @@ def configure_gemini(api_key: Optional[str] = None, model_name: str = "gemini-1.
         return False
 
 
-def summarize_csharp_file_with_gemini(csharp_code: str, file_path_for_log: str) -> Optional[str]:
+def _process_consumer_summaries_and_append_results(
+    target_project_name: str,
+    target_project_rel_path_str: str,
+    triggering_info: str,
+    final_consumers_data: List[Dict[str, Union[Path, str, List[Path]]]],
+    all_results_list: List[Dict[str, Union[str, Dict]]],
+    pipeline_map_dict: Dict[str, str],
+    search_scope_path_abs: Path,
+    summarize_flag: bool,
+    gemini_is_configured: bool,
+    gemini_model_instance, # Pass the actual model
+    current_gemini_model_name: str) -> None:
     """
-    Uses the configured Gemini API to summarize a C# file's content.
-
-    Args:
-        csharp_code: A string containing the C# code from the file.
-        file_path_for_log: The path of the file being summarized (for logging).
-
-    Returns:
-        A string containing the summary from the Gemini API, or None if an error occurs
-        or Gemini is not configured.
+    helper to process summaries for consumer files and append to the main results list.
     """
-    global gemini_model #yuck
-    if not gemini_model:
-        logging.error("Gemini model not configured. Cannot summarize.")
+    if not final_consumers_data:
+        logging.info(f"    No consumers found for target '{target_project_name}' triggered by '{triggering_info}'.")
+        return
+
+    logging.info(f"    Found {len(final_consumers_data)} consumer(s) for target '{target_project_name}' triggered by '{triggering_info}'.")
+    summaries_for_this_target: Dict[str, Dict[str, str]] = defaultdict(dict) # consumer_rel_path -> {file_rel_path: summary}
+
+    if summarize_flag and gemini_is_configured and gemini_model_instance:
+        logging.info(f"      Attempting to summarize relevant files for {len(final_consumers_data)} consumer(s) using '{current_gemini_model_name}'...")
+        consumer_index = 0
+        for consumer_info in final_consumers_data:
+            consumer_index += 1
+            consumer_abs_path = consumer_info['consumer_path']
+            # Ensure consumer_rel_path_str is relative to search_scope_path_abs
+            try:
+                consumer_rel_path_str = consumer_abs_path.relative_to(search_scope_path_abs).as_posix()
+            except ValueError:
+                consumer_rel_path_str = consumer_abs_path.as_posix() # Fallback if not relative
+
+            relevant_files_abs = consumer_info.get('relevant_files', [])
+            if not isinstance(relevant_files_abs, list): # Ensure it's a list
+                relevant_files_abs = []
+
+            logging.debug(f"        Summarizing files for consumer {consumer_index}/{len(final_consumers_data)}: {consumer_info['consumer_name']} ({len(relevant_files_abs)} relevant files)")
+
+            file_index = 0
+            for file_abs_path in relevant_files_abs:
+                if not isinstance(file_abs_path, Path): # Ensure it's a Path object
+                    logging.warning(f"          Skipping non-Path object in relevant_files: {file_abs_path}")
+                    continue
+                file_index += 1
+                # Ensure file_rel_path_str is relative to search_scope_path_abs
+                try:
+                    file_rel_path_str = file_abs_path.relative_to(search_scope_path_abs).as_posix()
+                except ValueError:
+                    file_rel_path_str = file_abs_path.as_posix() # Fallback
+
+                logging.debug(f"          Summarizing file {file_index}/{len(relevant_files_abs)}: {file_rel_path_str}")
+                try:
+                    content = file_abs_path.read_text(encoding='utf-8', errors='ignore')
+                    # Pass the actual model instance to summarize_csharp_file_with_gemini
+                    summary = summarize_csharp_file_with_gemini(gemini_model_instance, content, str(file_abs_path))
+                    summaries_for_this_target[consumer_rel_path_str][file_rel_path_str] = summary or "[Summarization Failed or Disabled]"
+                except OSError as e:
+                    logging.warning(f"Could not read file {file_abs_path} for summarization: {e}")
+                    summaries_for_this_target[consumer_rel_path_str][file_rel_path_str] = "[Error Reading File]"
+                except Exception as e:
+                    logging.error(f"Unexpected error summarizing {file_abs_path}: {e}")
+                    summaries_for_this_target[consumer_rel_path_str][file_rel_path_str] = "[Unexpected Summarization Error]"
+    elif summarize_flag:
+        logging.warning("Summarization enabled but Gemini is not configured or model not available. Skipping summaries.")
+
+
+    for consumer_info in final_consumers_data:
+        consumer_abs_path = consumer_info['consumer_path']
+        consumer_name_stem = consumer_info['consumer_name']
+        try:
+            consumer_rel_path_str = consumer_abs_path.relative_to(search_scope_path_abs).as_posix()
+        except ValueError:
+            consumer_rel_path_str = consumer_abs_path.as_posix()
+
+        pipeline_name = pipeline_map_dict.get(consumer_name_stem, '')
+        consumer_summaries_dict = summaries_for_this_target.get(consumer_rel_path_str, {})
+
+        all_results_list.append({
+            'TargetProjectName': target_project_name,
+            'TargetProjectPath': target_project_rel_path_str,
+            'TriggeringType': triggering_info,
+            'ConsumerProjectName': consumer_name_stem,
+            'ConsumerProjectPath': consumer_rel_path_str,
+            'PipelineName': pipeline_name,
+            'ConsumerFileSummaries': consumer_summaries_dict
+        })
+
+# summarize_csharp_file_with_gemini to accept the model instance
+def summarize_csharp_file_with_gemini(model_instance, csharp_code: str, file_path_for_log: str) -> Optional[str]:
+    """
+    Uses the provided Gemini API model instance to summarize a C# file's content.
+    """
+    # global gemini_model
+    if not model_instance: # Check the passed instance
+        logging.error("Gemini model instance not provided. Cannot summarize.")
         return None
-
+    # Example change:
+    # response = model_instance.generate_content(prompt, safety_settings=safety_settings)
     if not csharp_code.strip():
         logging.warning(f"Skipping summarization for empty or whitespace-only file: {file_path_for_log}")
         return "[File is empty or contains only whitespace]"
 
     try:
-        # construct the prompt for the gemini api
-        # this should all be a factory for LLMs, just shoving this here for the POC
-
         prompt = f"""
         Analyze the following C# code from the file '{Path(file_path_for_log).name}':
 
@@ -339,18 +449,16 @@ def summarize_csharp_file_with_gemini(csharp_code: str, file_path_for_log: str) 
         """
 
         logging.info(f"Requesting summary for {file_path_for_log} from Gemini API...")
-        # dont know if this makes a big difference when dealing with code, but still
         safety_settings = [
             {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"}
         ]
-        response = gemini_model.generate_content(prompt, safety_settings=safety_settings)
+        response = model_instance.generate_content(prompt, safety_settings=safety_settings) # Use model_instance
         logging.debug(f"Received Gemini response for {file_path_for_log}.")
 
         if not response.parts:
-             logging.warning(f"Gemini response for {file_path_for_log} was empty or blocked. Safety ratings: {response.prompt_feedback}")
-             return "[Summary generation blocked or failed]"
+            logging.warning(f"Gemini response for {file_path_for_log} was empty or blocked. Safety ratings: {response.prompt_feedback}")
+            return "[Summary generation blocked or failed]"
 
-        # return the text part of the response
         summary = response.text.strip()
         return summary if summary else "[No summary generated]"
 
@@ -376,7 +484,7 @@ def find_consumers(
     Returns:
         A list of dictionaries, where each dictionary represents a consumer and
         contains:
-        - 'consumer_path': Absolute Path to the consumer .csproj file. <--- NOW INCLUDED
+        - 'consumer_path': Absolute Path to the consumer .csproj file.
         - 'consumer_name': The consumer project's name stem.
         - 'relevant_files': List of absolute Paths to .cs files within the consumer
                            that satisfied the deepest applied filter level.
@@ -569,6 +677,170 @@ def find_consumers(
 
     return format_results(method_consumers)
 
+
+# --- find_cs_files_referencing_sproc ---
+def find_cs_files_referencing_sproc(
+    sproc_name_input: str,
+    search_path: Path,
+    custom_sproc_regex_pattern: Optional[str] = None
+) -> Dict[Path, Dict[str, Set[Path]]]: 
+    """
+    Scans all .cs files within the search_path for the given stored procedure name
+    and identifies the containing class.
+
+    Args:
+        sproc_name_input: The name of the stored procedure.
+        search_path: The root directory Path to search for .cs files.
+        custom_sproc_regex_pattern: Optional custom regex pattern.
+
+    Returns:
+        A dictionary where keys are absolute Path objects to .csproj files,
+        and values are dictionaries mapping class names (str) found containing the sproc
+        reference to sets of absolute Path objects of the C# files where that class+sproc
+        combination was found.
+        Example: {csproj_path: {"MyDataAccessClass": {cs_file_path1, cs_file_path2}}}
+    """
+    # Structure to hold: project_path -> {class_name -> {set_of_cs_file_paths}}
+    projects_classes_sproc_refs: Dict[Path, Dict[str, Set[Path]]] = defaultdict(lambda: defaultdict(set))
+    base_sproc_name = sproc_name_input.split('.')[-1] # Get "SprocName" from "dbo.SprocName" or just "SprocName"
+    escaped_base_sproc_name = re.escape(base_sproc_name)
+
+    # --- Regex pattern setup ---
+    if custom_sproc_regex_pattern:
+        if "{sproc_name_placeholder}" not in custom_sproc_regex_pattern:
+            logging.error("Custom sproc regex pattern must contain '{sproc_name_placeholder}'. Using default pattern.")
+            sproc_pattern_str = r'["\'](?:[a-zA-Z0-9_]+\.)?' + escaped_base_sproc_name + r'["\']'
+        else:
+            sproc_pattern_str = custom_sproc_regex_pattern.replace("{sproc_name_placeholder}", escaped_base_sproc_name)
+    else:
+        # Default pattern: looks for optional schema, then the sproc base name, inside single or double quotes.
+        sproc_pattern_str = r'["\'](?:[a-zA-Z_][a-zA-Z0-9_]*\.)?' + escaped_base_sproc_name + r'["\']'
+
+    try:
+        sproc_pattern = re.compile(sproc_pattern_str, re.IGNORECASE)
+        logging.debug(f"Using sproc search pattern: {sproc_pattern.pattern}")
+    except re.error as e:
+        logging.error(f"Invalid regex pattern for sproc search ('{sproc_pattern_str}'): {e}. Aborting sproc search.")
+        return {}
+
+    # --- File scanning setup ---
+    try:
+        cs_files_to_scan = list(search_path.rglob('*.cs'))
+    except OSError as e:
+        logging.error(f"Error scanning for .cs files in '{search_path}': {e}")
+        return {}
+
+    logging.info(f"Scanning {len(cs_files_to_scan)} C# files in '{search_path}' for references to sproc '{sproc_name_input}'.")
+    files_with_ref_count = 0
+    projects_found_count = 0
+    classes_found_count = 0 # Count unique classes found across all projects
+
+    # --- File scanning loop ---
+    for cs_file_abs in cs_files_to_scan:
+        try:
+            content = cs_file_abs.read_text(encoding='utf-8', errors='ignore')
+            # Find all occurrences of the sproc in the file
+            matches = list(sproc_pattern.finditer(content))
+
+            if matches:
+                files_with_ref_count += 1
+                logging.debug(f"  Potential reference(s) to sproc '{sproc_name_input}' found in: {cs_file_abs.relative_to(search_path) if search_path in cs_file_abs.parents else cs_file_abs.name}")
+
+                # Find the project ONCE per file containing matches
+                project_file_abs = find_project_file_on_disk(cs_file_abs)
+                if not project_file_abs:
+                     logging.warning(f"  Could not map C# file '{cs_file_abs.name}' (with sproc ref) to a project.")
+                     continue # Skip this file if project not found
+
+                # Flag to track if we found the project before this file
+                is_new_project = project_file_abs not in projects_classes_sproc_refs
+
+                # Find the enclosing class for *each* match (more robust if sproc used in multiple classes in one file)
+                # But for simplicity, let's stick to finding it once based on the first match,
+                # assuming a file usually relates to one primary class context for data access.
+                first_match_index = matches[0].start()
+                enclosing_class = find_enclosing_type_name(content, first_match_index)
+
+                if enclosing_class:
+                    # Store: project -> class -> file
+                    is_new_class_for_project = enclosing_class not in projects_classes_sproc_refs[project_file_abs]
+
+                    # Add the file to the set for this project/class combination
+                    projects_classes_sproc_refs[project_file_abs][enclosing_class].add(cs_file_abs)
+
+                    # Update counts only if it's the first time seeing this project/class
+                    if is_new_project:
+                        projects_found_count += 1
+                    if is_new_class_for_project:
+                        classes_found_count += 1 # Increment total unique classes found
+
+                    logging.debug(f"    Mapped sproc ref in '{cs_file_abs.name}' to Project '{project_file_abs.name}' and Class '{enclosing_class}'")
+                else:
+                     logging.warning(f"    Could not determine enclosing class for sproc ref near index {first_match_index} in '{cs_file_abs.name}' (Project: {project_file_abs.name}). Skipping this reference for class-based consumer analysis.")
+
+        except OSError as e:
+            logging.warning(f"Could not read file {cs_file_abs.name} during sproc search: {e}")
+        except Exception as e:
+            # Log less verbosely by default unless debugging
+            log_level_detail = logging.DEBUG if logging.getLogger().level == logging.DEBUG else logging.WARNING
+            logging.log(log_level_detail, f"Unexpected error processing file {cs_file_abs.name} for sproc search: {e}", exc_info=(log_level_detail == logging.DEBUG))
+
+
+    # --- logging summary ---
+    if files_with_ref_count == 0:
+        logging.info(f"No C# files found directly referencing sproc '{sproc_name_input}' with the pattern.")
+    else:
+        log_msg = f"Found {files_with_ref_count} C# file(s) with potential sproc references. "
+        # Use the counted unique classes/projects for the log message
+        log_msg += f"Mapped references to {classes_found_count} unique class(es) across {projects_found_count} project(s)."
+        logging.info(log_msg)
+
+    # convert inner defaultdicts to dicts for cleaner return (optional but good practice)
+    final_result = {proj: dict(classes) for proj, classes in projects_classes_sproc_refs.items()}
+    return final_result
+
+# --- helper function: find enclosing type name ---
+def find_enclosing_type_name(content: str, match_start_index: int) -> Optional[str]:
+    """
+    Tries to find the name of the immediately enclosing type (class, struct, interface, enum)
+    for a given position within the code content by searching backwards using regex.
+    """
+    # Search backwards from the match index for the start of a type declaration
+    # Pattern looks for optional modifiers, type keyword, and captures the name.
+    enclosing_type_pattern = re.compile(
+        r"^\s*(?:(?:public|internal|private|protected)\s+)?(?:(?:static|abstract|sealed|partial)\s+)*"
+        r"(class|struct|interface|enum)\s+([A-Za-z_][A-Za-z0-9_<>,\s]*)", # Greedy name
+        re.MULTILINE
+    )
+
+    last_found_type_name: Optional[str] = None
+    last_match_start = -1
+
+    # iterate through all matches *before* the sproc match index
+    try:
+        for match in enclosing_type_pattern.finditer(content, 0, match_start_index):
+            # Keep track of the last match found before the index
+            if match.start() > last_match_start:
+                 last_match_start = match.start()
+                 type_name_full = match.group(2).strip() # Group 2 is the name
+                 # Basic handling for generics in the found name
+                 type_name_base = re.sub(r'<.*', '', type_name_full).strip()
+                 type_name_base = type_name_base.split(',')[0].strip()
+                 if type_name_base:
+                     last_found_type_name = type_name_base
+                     logging.debug(f"  Found potential enclosing type '{last_found_type_name}' at index {match.start()} before index {match_start_index}")
+
+    except Exception as e:
+         logging.warning(f"Regex error during enclosing type search: {e}")
+         return None # Error during search
+
+    if last_found_type_name:
+        logging.debug(f"  Determined closest enclosing type name: {last_found_type_name}")
+        return last_found_type_name
+    else:
+        logging.warning(f"  Could not determine enclosing type name near index {match_start_index}")
+        return None
+
 #
 #
 #
@@ -587,6 +859,20 @@ if __name__ == "__main__":
     mode_group.add_argument(
         "--branch-name",
         help="MODE: Git Branch Analysis. Name of the feature branch to analyze changes on."
+    )
+
+    mode_group.add_argument(
+        "--stored-procedure",
+        metavar="SPROC_NAME",
+        help="MODE: Stored Procedure Analysis. Name of the stored procedure to find references to (e.g., 'usp_MyProcedure' or 'dbo.usp_MyProcedure'). Requires --search-scope."
+    )
+
+    #--- sproc group ---
+    sproc_group = parser.add_argument_group('Stored Procedure Analysis Options (Requires --stored-procedure)')
+    sproc_group.add_argument(
+        "--sproc-regex-pattern",
+        default=None,
+        help="(Optional) Custom Python regex pattern to find stored procedure names in C# files. If not provided, a default pattern is used. Example: \"MyCustomPatternFor_(?P<sproc>{sproc_name_placeholder})\" where {sproc_name_placeholder} will be replaced by the escaped sproc name."
     )
 
     # --- git mode specific arguments ---
@@ -666,6 +952,8 @@ if __name__ == "__main__":
 
     is_git_mode = args.branch_name is not None
     is_target_mode = args.target_project is not None
+    is_sproc_mode = args.stored_procedure is not None # New mode flag
+
 
     repo_path_abs: Optional[Path] = None
     search_scope_abs: Optional[Path] = None
@@ -680,8 +968,18 @@ if __name__ == "__main__":
             repo_path_abs = Path(args.repo_path).resolve(strict=True)
             search_scope_abs = repo_path_abs
             logging.info(f"Using repository path as search scope: {search_scope_abs}")
-        else:
-            parser.error("--search-scope is required when using --target-project mode.")
+        elif is_sproc_mode: # Sproc mode requires search scope
+            parser.error("--search-scope is required when using --stored-procedure mode.")
+        elif is_target_mode: # Target mode also requires search scope if not defaulting from repo path (which it doesn't here)
+             parser.error("--search-scope is required when using --target-project mode.")
+        else: # Should not happen if modes are mutually exclusive and one is required
+            parser.error("A mode (--branch-name, --target-project, or --stored-procedure) must be selected.")
+
+        # Validate incompatible arguments for sproc mode
+        if is_sproc_mode:
+            if args.repo_path != "." or args.base_branch != "main": # Check if they were explicitly set from default
+                 if args.repo_path != Path(args.search_scope).resolve(strict=True).as_posix() and args.branch_name is None: # allow repo_path if it's the same as search_scope and not in git mode
+                    logging.warning("Arguments --repo-path and --base-branch are not applicable in --stored-procedure mode and will be ignored.")
 
         # validate git mode paths
         if is_git_mode:
@@ -713,6 +1011,10 @@ if __name__ == "__main__":
 
         if search_scope_abs is None:
              raise ValueError("Search scope could not be determined.")
+
+        if search_scope_abs is None and (is_target_mode or is_sproc_mode) : # Double check search_scope_abs for new modes
+            # This condition might be redundant if the above error checks are sufficient
+            raise ValueError("Search scope could not be determined and is required for the selected mode.")
 
     except (FileNotFoundError, ValueError, git.InvalidGitRepositoryError, git.NoSuchPathError) as e:
         logging.error(f"Input validation failed: {e}")
@@ -863,62 +1165,26 @@ if __name__ == "__main__":
                         )
 
                         if final_consumers_data:
-                            logging.info(f"     Found {len(final_consumers_data)} consumer(s) for type '{type_name_to_check}'.")
-                            summaries_for_this_target_type: Dict[str, Dict[str, str]] = defaultdict(dict) # consumer_rel_path -> {file_rel_path: summary}
-                            if args.summarize_consumers and gemini_configured_successfully:
-                                logging.info(f"       Attempting to summarize relevant files for {len(final_consumers_data)} consumer(s)...")
-                                consumer_index = 0
-                                for consumer_info in final_consumers_data:
-                                    consumer_index+=1
-                                    consumer_abs_path = consumer_info['consumer_path']
-                                    consumer_rel_path_str = consumer_abs_path.relative_to(search_scope_abs).as_posix() if search_scope_abs else consumer_abs_path.as_posix()
-                                    relevant_files_abs = consumer_info['relevant_files']
-                                    logging.debug(f"         Summarizing files for consumer {consumer_index}/{len(final_consumers_data)}: {consumer_info['consumer_name']} ({len(relevant_files_abs)} relevant files)")
+                            try:
+                                target_proj_rel_for_git_report = target_csproj_abs_git_mode.relative_to(repo_path_abs).as_posix()
+                            except ValueError:
+                                target_proj_rel_for_git_report = target_csproj_abs_git_mode.as_posix()
 
-                                    file_index = 0
-                                    for file_abs_path in relevant_files_abs:
-                                        file_index+=1
-                                        file_rel_path_str = file_abs_path.relative_to(search_scope_abs).as_posix() if search_scope_abs else file_abs_path.as_posix()
-                                        logging.debug(f"           Summarizing file {file_index}/{len(relevant_files_abs)}: {file_rel_path_str}")
-                                        try:
-                                            content = file_abs_path.read_text(encoding='utf-8', errors='ignore')
-                                            summary = summarize_csharp_file_with_gemini(content, str(file_abs_path))
-                                            if summary:
-                                                summaries_for_this_target_type[consumer_rel_path_str][file_rel_path_str] = summary
-                                            else:
-                                                 summaries_for_this_target_type[consumer_rel_path_str][file_rel_path_str] = "[Summarization Failed or Disabled]"
-                                        except OSError as e:
-                                            logging.warning(f"Could not read file {file_abs_path} for summarization: {e}")
-                                            summaries_for_this_target_type[consumer_rel_path_str][file_rel_path_str] = "[Error Reading File]"
-                                        except Exception as e:
-                                             logging.error(f"Unexpected error summarizing {file_abs_path}: {e}")
-                                             summaries_for_this_target_type[consumer_rel_path_str][file_rel_path_str] = "[Unexpected Summarization Error]"
+                            _process_consumer_summaries_and_append_results(
+                                target_project_name=target_project_name_git_mode,
+                                target_project_rel_path_str=target_proj_rel_for_git_report,
+                                triggering_info=type_name_to_check,
+                                final_consumers_data=final_consumers_data,
+                                all_results_list=all_results,
+                                pipeline_map_dict=pipeline_map,
+                                search_scope_path_abs=search_scope_abs, # search_scope_abs is correct here for consumers
+                                summarize_flag=args.summarize_consumers,
+                                gemini_is_configured=gemini_configured_successfully,
+                                gemini_model_instance=gemini_model,
+                                current_gemini_model_name=args.gemini_model)
 
-                            for consumer_info in final_consumers_data:
-                                consumer_abs_path = consumer_info['consumer_path']
-                                consumer_name_stem = consumer_info['consumer_name']
-                                consumer_rel_path_str = "N/A"
-                                try:
-                                    consumer_rel_path = consumer_abs_path.relative_to(search_scope_abs) # search_scope_abs validated non-None
-                                    consumer_rel_path_str = consumer_rel_path.as_posix()
-                                except ValueError:
-                                    consumer_rel_path_str = consumer_abs_path.as_posix() # Fallback
-
-                                pipeline_name = pipeline_map.get(consumer_name_stem, '')
-
-                                consumer_summaries = summaries_for_this_target_type.get(consumer_rel_path_str, {})
-
-                                all_results.append({
-                                    'TargetProjectName': target_project_name_git_mode,
-                                    'TargetProjectPath': target_project_rel_path_str, # keep repo-relative path for target
-                                    'TriggeringType': type_name_to_check,
-                                    'ConsumerProjectName': consumer_name_stem,
-                                    'ConsumerProjectPath': consumer_rel_path_str,
-                                    'PipelineName': pipeline_name,
-                                    'ConsumerFileSummaries': consumer_summaries # add summaries dict
-                                })
                         else:
-                            logging.info(f"     No consumers found for type '{type_name_to_check}'.")
+                            logging.info(f"      No consumers found for type '{type_name_to_check}' in project '{target_project_name_git_mode}'.")
 
 
     # == TARGET PROJECT ANALYSIS MODE ==
@@ -951,73 +1217,128 @@ if __name__ == "__main__":
         )
 
         if final_consumers_data:
-            logging.info(f"Found {len(final_consumers_data)} consumer(s) matching criteria.")
+            logging.info(f"Found {len(final_consumers_data)} consumer(s) matching criteria for target '{target_project_name}'.")
+            trigger_level = 'N/A (Project Reference)'
+            if args.method_name and args.class_name: trigger_level = f"{args.class_name}.{args.method_name}"
+            elif args.class_name: trigger_level = args.class_name
 
-            summaries_for_this_target: Dict[str, Dict[str, str]] = defaultdict(dict) # consumer_rel_path -> {file_rel_path: summary}
-            if args.summarize_consumers and gemini_configured_successfully:
-                logging.info(f"   Attempting to summarize relevant files for {len(final_consumers_data)} consumer(s)...")
-                consumer_index = 0
-                for consumer_info in final_consumers_data:
-                    consumer_index+=1
-                    consumer_abs_path = consumer_info['consumer_path']
-                    consumer_rel_path_str = consumer_abs_path.relative_to(search_scope_abs).as_posix() if search_scope_abs else consumer_abs_path.as_posix()
-                    relevant_files_abs = consumer_info['relevant_files']
-                    logging.debug(f"     Summarizing files for consumer {consumer_index}/{len(final_consumers_data)}: {consumer_info['consumer_name']} ({len(relevant_files_abs)} relevant files)")
+            try:
+                target_rel_path_for_report = target_csproj_abs_path.relative_to(search_scope_abs).as_posix()
+            except ValueError:
+                target_rel_path_for_report = target_csproj_abs_path.as_posix()
 
-                    file_index = 0
-                    for file_abs_path in relevant_files_abs:
-                        file_index+=1
-                        file_rel_path_str = file_abs_path.relative_to(search_scope_abs).as_posix() if search_scope_abs else file_abs_path.as_posix()
-                        logging.debug(f"       Summarizing file {file_index}/{len(relevant_files_abs)}: {file_rel_path_str}")
-                        try:
-                            content = file_abs_path.read_text(encoding='utf-8', errors='ignore')
-                            summary = summarize_csharp_file_with_gemini(content, str(file_abs_path))
-                            if summary:
-                                summaries_for_this_target[consumer_rel_path_str][file_rel_path_str] = summary
-                            else:
-                                summaries_for_this_target[consumer_rel_path_str][file_rel_path_str] = "[Summarization Failed or Disabled]"
-                        except OSError as e:
-                            logging.warning(f"Could not read file {file_abs_path} for summarization: {e}")
-                            summaries_for_this_target[consumer_rel_path_str][file_rel_path_str] = "[Error Reading File]"
-                        except Exception as e:
-                             logging.error(f"Unexpected error summarizing {file_abs_path}: {e}")
-                             summaries_for_this_target[consumer_rel_path_str][file_rel_path_str] = "[Unexpected Summarization Error]"
-
-            for consumer_info in final_consumers_data:
-                consumer_abs_path = consumer_info['consumer_path']
-                consumer_name_stem = consumer_info['consumer_name']
-
-                try:
-                    target_rel_path = target_csproj_abs_path.relative_to(search_scope_abs)
-                    target_rel_path_str = target_rel_path.as_posix()
-                except ValueError:
-                    target_rel_path_str = target_csproj_abs_path.as_posix()
-
-                try:
-                    consumer_rel_path = consumer_abs_path.relative_to(search_scope_abs)
-                    consumer_rel_path_str = consumer_rel_path.as_posix()
-                except ValueError:
-                    consumer_rel_path_str = consumer_abs_path.as_posix()
-
-                pipeline_name = pipeline_map.get(consumer_name_stem, '')
-                trigger_level = 'N/A (Project Reference)'
-                if args.method_name and args.class_name: trigger_level = f"{args.class_name}.{args.method_name}"
-                elif args.class_name: trigger_level = args.class_name
-
-                consumer_summaries = summaries_for_this_target.get(consumer_rel_path_str, {})
-
-                all_results.append({
-                    'TargetProjectName': target_project_name,
-                    'TargetProjectPath': target_rel_path_str,
-                    'TriggeringType': trigger_level, # More descriptive for target mode
-                    'ConsumerProjectName': consumer_name_stem,
-                    'ConsumerProjectPath': consumer_rel_path_str,
-                    'PipelineName': pipeline_name,
-                    'ConsumerFileSummaries': consumer_summaries # Add summaries dict
-                })
+            _process_consumer_summaries_and_append_results(
+                target_project_name=target_project_name,
+                target_project_rel_path_str=target_rel_path_for_report,
+                triggering_info=trigger_level,
+                final_consumers_data=final_consumers_data,
+                all_results_list=all_results,
+                pipeline_map_dict=pipeline_map,
+                search_scope_path_abs=search_scope_abs,
+                summarize_flag=args.summarize_consumers,
+                gemini_is_configured=gemini_configured_successfully,
+                gemini_model_instance=gemini_model,
+                current_gemini_model_name=args.gemini_model
+            )
         else:
-            logging.info("No consuming projects matching the criteria were found.")
+            logging.info(f"No consuming projects matching the criteria were found for target '{target_project_name}'.")
 
+    # == STORED PROCEDURE ANALYSIS MODE ==
+    elif is_sproc_mode:
+        assert search_scope_abs is not None # Already validated
+        logging.info(f"\n--- Running Stored Procedure Analysis Mode ---")
+        sproc_name_arg = args.stored_procedure
+        logging.info(f"Identifying projects/classes referencing stored procedure: '{sproc_name_arg}' within scope '{search_scope_abs}'")
+        logging.info(f"Using custom SProc regex pattern: {args.sproc_regex_pattern}" if args.sproc_regex_pattern else "Using default SProc regex pattern.")
+
+        # Step A: Find projects, classes, and C# files referencing the sproc
+        # Structure: Dict[Path_csproj, Dict[str_classname, Set[Path_cs]]]
+        project_class_sproc_map = find_cs_files_referencing_sproc(
+            sproc_name_arg,
+            search_scope_abs,
+            args.sproc_regex_pattern
+        )
+
+        if not project_class_sproc_map:
+            logging.info(f"No projects/classes found referencing stored procedure '{sproc_name_arg}'. Exiting.")
+            sys.exit(0)
+
+        total_classes_found = sum(len(classes) for classes in project_class_sproc_map.values())
+        logging.info(f"Found {total_classes_found} class(es) across {len(project_class_sproc_map)} project(s) referencing sproc '{sproc_name_arg}'.")
+
+
+        processed_targets_count = 0 # Count class targets processed
+
+        # Step B: For each project/class combination found, treat the class as the "target" and find its consumers
+        for target_csproj_abs, classes_dict in project_class_sproc_map.items():
+            target_project_name_sproc_mode = target_csproj_abs.stem
+            try:
+                target_project_rel_path_str = target_csproj_abs.relative_to(search_scope_abs).as_posix()
+            except ValueError: # If search_scope_abs is not a parent
+                target_project_rel_path_str = target_csproj_abs.as_posix()
+
+            # Derive namespace *once* per project that contains relevant classes
+            target_namespace_str_sproc_mode = args.target_namespace or derive_namespace(target_csproj_abs)
+            if not target_namespace_str_sproc_mode:
+                logging.warning(f"Could not derive namespace for {target_project_name_sproc_mode}. Consumer analysis for classes within it may be incomplete/less accurate.")
+                # Allow proceeding but namespace checks might fail in find_consumers
+                target_namespace_str_sproc_mode = f"NAMESPACE_ERROR_{target_project_name_sproc_mode}"
+
+            # Iterate through classes found *within this project* that reference the sproc
+            for class_containing_sproc, cs_files_with_sproc_call in classes_dict.items():
+                processed_targets_count += 1
+
+                # --- Filtering Logic: Should we process this specific class? ---
+                class_filter_user = args.class_name
+                # Apply user's class filter: only proceed if user didn't specify a class OR if the found class matches the user's spec
+                if class_filter_user and class_filter_user != class_containing_sproc:
+                    logging.debug(f"Skipping analysis for class '{class_containing_sproc}' in project '{target_project_name_sproc_mode}' because it doesn't match the user-provided --class-name '{class_filter_user}'.")
+                    continue # Skip to the next class found in this project
+
+                # --- Determine Method Filter ---
+                # Apply user's method filter *only* if user provided --class-name AND it matches the current class we are analyzing
+                method_filter_sproc = args.method_name if class_filter_user and class_filter_user == class_containing_sproc else None
+
+                # --- Start analysis for this class ---
+                logging.info(f"\n--- Analyzing Consumers for Class {processed_targets_count}/{total_classes_found}: '{class_containing_sproc}' in Project: {target_project_name_sproc_mode} ({target_project_rel_path_str}) ---")
+                logging.debug(f"  (Class identified via sproc '{sproc_name_arg}' ref in files: {[f.name for f in cs_files_with_sproc_call]})")
+                if class_filter_user and class_filter_user == class_containing_sproc:
+                     logging.info(f"  (Class matches user filter '--class-name {class_filter_user}')")
+                if method_filter_sproc:
+                     logging.info(f"  (Applying user method filter: '--method-name {method_filter_sproc}')")
+
+                # --- Define Trigger Info for Report ---
+                # The core target for consumption is the CLASS.
+                report_trigger_info = f"{class_containing_sproc} (found via Sproc: {sproc_name_arg})"
+                # If method filter applied, be more specific
+                if method_filter_sproc:
+                    report_trigger_info = f"{class_containing_sproc}.{method_filter_sproc} (found via Sproc: {sproc_name_arg})"
+
+                # --- Find Consumers of this specific class ---
+                logging.info(f"  Finding consumers for class '{class_containing_sproc}' (Namespace: '{target_namespace_str_sproc_mode}')")
+                final_consumers_data = find_consumers(
+                    target_csproj_path=target_csproj_abs, # The project context is still needed for reference checks
+                    search_scope_path=search_scope_abs,
+                    target_namespace=target_namespace_str_sproc_mode,
+                    class_name=class_containing_sproc, # *** Use the specific class found via sproc ***
+                    method_name=method_filter_sproc # Apply method filter if determined above
+                )
+
+                # --- Process Summaries and Append Results ---
+                # Call the refactored summarization/reporting helper
+                _process_consumer_summaries_and_append_results(
+                    target_project_name=target_project_name_sproc_mode, # Report the project name
+                    target_project_rel_path_str=target_project_rel_path_str, # Report project path
+                    triggering_info=report_trigger_info, # Report the class/method found via sproc
+                    final_consumers_data=final_consumers_data,
+                    all_results_list=all_results,
+                    pipeline_map_dict=pipeline_map,
+                    search_scope_path_abs=search_scope_abs,
+                    summarize_flag=args.summarize_consumers,
+                    gemini_is_configured=gemini_configured_successfully,
+                    gemini_model_instance=gemini_model,
+                    current_gemini_model_name=args.gemini_model
+                )
 
     # --- step: output combined results ---
     logging.info(f"\n--- Consolidating and reporting results ---")
@@ -1057,6 +1378,12 @@ if __name__ == "__main__":
     else:
         # print to console
         print("\n--- Combined Consumer Analysis Report ---")
+
+        if is_sproc_mode:
+            print(f"Mode: Stored Procedure Analysis")
+            print(f"Stored Procedure Searched: '{args.stored_procedure}'")
+            if args.sproc_regex_pattern:
+                print(f"Custom SProc Regex: '{args.sproc_regex_pattern}'")
 
         if is_git_mode:
             assert repo_path_abs is not None
@@ -1109,7 +1436,3 @@ if __name__ == "__main__":
         print(f"\n--- Total Consuming Relationships Found: {len(all_results)} ---")
 
     sys.exit(0)
-
-
-
-
