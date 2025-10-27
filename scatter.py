@@ -52,30 +52,127 @@ def find_files_with_pattern_chunk(args: Tuple[Path, str, List[Path]]) -> List[Pa
             logging.debug(f"Error scanning directory {directory}: {e}")
     return results
 
+def estimate_file_count(search_path: Path, pattern: str, sample_dirs: int = 5) -> int:
+    """
+    Estimate total file count by sampling a few directories.
+    
+    Args:
+        search_path: Root directory to search
+        pattern: File pattern to match
+        sample_dirs: Number of directories to sample for estimation
+        
+    Returns:
+        Estimated total file count
+    """
+    try:
+        # Get first few directories for sampling
+        dirs_to_sample = []
+        dirs_to_sample.append(search_path)
+        
+        # Add a few subdirectories for sampling
+        for subdir in search_path.rglob('*'):
+            if subdir.is_dir() and len(dirs_to_sample) < sample_dirs:
+                dirs_to_sample.append(subdir)
+            if len(dirs_to_sample) >= sample_dirs:
+                break
+        
+        # Count files in sample directories
+        total_files_sampled = 0
+        total_dirs_sampled = len(dirs_to_sample)
+        
+        for sample_dir in dirs_to_sample:
+            files_in_dir = len(list(sample_dir.glob(pattern)))
+            total_files_sampled += files_in_dir
+        
+        if total_dirs_sampled == 0:
+            return 0
+            
+        # Estimate total directories (rough approximation)
+        # This is much faster than enumerating all directories
+        if total_dirs_sampled >= sample_dirs:
+            # Estimate based on depth and breadth observed
+            avg_files_per_dir = total_files_sampled / total_dirs_sampled
+            estimated_total_dirs = max(total_dirs_sampled * 2, 10)  # Conservative estimate
+            estimated_files = int(avg_files_per_dir * estimated_total_dirs)
+        else:
+            # Small directory structure, likely accurate count
+            estimated_files = total_files_sampled
+            
+        logging.debug(f"File estimation: {total_files_sampled} files in {total_dirs_sampled} sampled dirs, "
+                     f"estimated total: {estimated_files}")
+        
+        return estimated_files
+        
+    except Exception as e:
+        logging.debug(f"File estimation failed: {e}, defaulting to 0")
+        return 0
+
+
 def find_files_with_pattern_parallel(search_path: Path, pattern: str, max_workers: int = DEFAULT_MAX_WORKERS, 
-                                   chunk_size: int = DEFAULT_CHUNK_SIZE, disable_multiprocessing: bool = False) -> List[Path]:
-    """Find files matching a pattern in parallel across subdirectories."""
+                                   chunk_size: int = DEFAULT_CHUNK_SIZE, disable_multiprocessing: bool = False,
+                                   parallel_threshold: int = 50) -> List[Path]:
+    """
+    Optimized parallel file discovery with intelligent threshold detection.
+    
+    Key improvements:
+    1. Uses file count estimation instead of directory enumeration
+    2. Adaptive worker scaling based on estimated work
+    3. Avoids unnecessary overhead for small file counts
+    4. Falls back gracefully to sequential for small tasks
+    
+    Args:
+        search_path: Directory to search
+        pattern: File pattern to match  
+        max_workers: Maximum number of workers (auto-scaled)
+        chunk_size: Directories per worker chunk
+        disable_multiprocessing: Force sequential processing
+        parallel_threshold: Minimum estimated files to use parallel processing
+        
+    Returns:
+        List of matching file paths
+    """
+    # Force sequential if disabled
     if disable_multiprocessing or not MULTIPROCESSING_ENABLED:
-        logging.debug(f"Using sequential file discovery for pattern '{pattern}'")
+        logging.debug(f"Using sequential file discovery for pattern '{pattern}' (disabled)")
         return list(search_path.rglob(pattern))
     
+    # Estimate file count efficiently 
+    estimated_files = estimate_file_count(search_path, pattern)
+    
+    # Use sequential for small file counts (avoid overhead)
+    if estimated_files < parallel_threshold:
+        logging.debug(f"Using sequential file discovery for pattern '{pattern}' - "
+                     f"estimated {estimated_files} files < {parallel_threshold} threshold")
+        return list(search_path.rglob(pattern))
+    
+    # For larger file counts, use intelligent parallel processing
+    logging.debug(f"Using parallel file discovery for pattern '{pattern}' - "
+                 f"estimated {estimated_files} files >= {parallel_threshold} threshold")
+    
     try:
-        # Get all subdirectories to parallelize across
+        # NOW enumerate directories (only when we know we'll use parallel)
         all_dirs = [search_path] + [d for d in search_path.rglob('*') if d.is_dir()]
         
-        if len(all_dirs) < chunk_size:
-            # Not enough directories to benefit from parallelization
-            logging.debug(f"Using sequential file discovery for pattern '{pattern}' - not enough directories ({len(all_dirs)} < {chunk_size})")
-            return list(search_path.rglob(pattern))
-        
-        logging.debug(f"Using parallel file discovery for pattern '{pattern}' with {max_workers} workers across {len(all_dirs)} directories")
+        # Adaptive worker scaling based on work size
+        if estimated_files < 200:
+            # Small-medium: Use fewer workers to reduce overhead
+            scaled_workers = min(max_workers, 4)
+        elif estimated_files < 1000:
+            # Medium: Use moderate worker count
+            scaled_workers = min(max_workers, 8)
+        else:
+            # Large: Use full worker count
+            scaled_workers = max_workers
+            
+        logging.debug(f"Parallel processing: {len(all_dirs)} directories, "
+                     f"{scaled_workers} workers, {estimated_files} estimated files")
         
         # Chunk the directories
         dir_chunks = chunk_list(all_dirs, chunk_size)
         all_results = []
         completed_chunks = 0
         
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        with ProcessPoolExecutor(max_workers=scaled_workers) as executor:
             # Submit all chunks
             future_to_chunk = {
                 executor.submit(find_files_with_pattern_chunk, (search_path, pattern, chunk)): chunk 
@@ -89,7 +186,7 @@ def find_files_with_pattern_parallel(search_path: Path, pattern: str, max_worker
                     all_results.extend(chunk_results)
                     completed_chunks += 1
                     
-                    # Progress reporting every 10 chunks
+                    # Progress reporting every 10 chunks or at completion
                     if completed_chunks % 10 == 0 or completed_chunks == len(dir_chunks):
                         logging.debug(f"File discovery progress: {completed_chunks}/{len(dir_chunks)} chunks completed")
                         
