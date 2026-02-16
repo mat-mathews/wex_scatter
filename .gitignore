@@ -57,6 +57,9 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 
+# Temporary test data
+temp_test_data/
+
 # Coverage
 .coverage
 htmlcov/

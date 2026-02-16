@@ -1,0 +1,4 @@
+function_name,test_scenario,sequential_time,parallel_time,speedup_factor,performance_improvement_percentage,files_found_sequential,files_found_parallel,results_match
+find_files_with_pattern_parallel,Mock Projects - .csproj files,0.005363958344484369,0.005130152994145949,1.0455747324895022,4.3588211414586455,26,26,True
+find_files_with_pattern_parallel,Generated Test - 20 projects,0.0019667079905048013,0.002069666331711536,0.950253652180933,-5.235059892155514,140,140,True
+find_files_with_pattern_parallel,"Large Test - 100 projects, 2000 files",0.015484499997304132,0.01571026399809246,0.9856295221508855,-1.4579999407642161,1500,1500,True

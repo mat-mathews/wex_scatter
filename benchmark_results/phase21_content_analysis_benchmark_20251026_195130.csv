@@ -1,0 +1,2 @@
+test_type,target_namespace,file_count,sequential_times,parallel_times,sequential_results,parallel_results,avg_sequential_time,avg_parallel_time,speedup_factor,performance_improvement_percentage,results_match
+namespace_scanning,GalaxyWorks.Data,1655,"[0.032037973403930664, 0.031494140625, 0.02925705909729004]","[1.0574426651000977, 0.9953899383544922, 0.965275764465332]",5,5,0.030929724375406902,1.0060361226399739,0.030744148922051778,-96.92558510779482,True

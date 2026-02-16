@@ -52,6 +52,159 @@ def find_files_with_pattern_chunk(args: Tuple[Path, str, List[Path]]) -> List[Pa
             logging.debug(f"Error scanning directory {directory}: {e}")
     return results
 
+
+def analyze_cs_files_batch(args: Tuple[List[Path], Dict[str, any]]) -> Dict[Path, Dict[str, any]]:
+    """
+    Worker function to analyze a batch of .cs files for various patterns.
+    
+    Args:
+        args: Tuple containing:
+            - files_batch: List of .cs file paths to analyze
+            - analysis_config: Dictionary containing:
+                - 'analysis_type': 'namespace', 'class', or 'sproc'
+                - 'target_namespace': For namespace analysis
+                - 'class_name': For class usage analysis
+                - 'sproc_pattern': Compiled regex pattern for sproc analysis
+                - 'using_pattern': Compiled regex pattern for namespace analysis
+                - 'class_pattern': Compiled regex pattern for class analysis
+                
+    Returns:
+        Dictionary mapping file paths to analysis results:
+        {
+            file_path: {
+                'matches': List of match objects or boolean,
+                'has_match': boolean,
+                'error': str or None,
+                'content_preview': str (first 200 chars for debugging)
+            }
+        }
+    """
+    files_batch, analysis_config = args
+    results = {}
+    analysis_type = analysis_config.get('analysis_type', 'unknown')
+    
+    for cs_file_path in files_batch:
+        file_result = {
+            'matches': [],
+            'has_match': False,
+            'error': None,
+            'content_preview': ''
+        }
+        
+        try:
+            # Read file content
+            content = cs_file_path.read_text(encoding='utf-8', errors='ignore')
+            file_result['content_preview'] = content[:200].replace('\n', ' ')
+            
+            # Perform analysis based on type
+            if analysis_type == 'namespace':
+                using_pattern = analysis_config.get('using_pattern')
+                if using_pattern:
+                    matches = list(using_pattern.finditer(content))
+                    file_result['matches'] = [match.group() for match in matches]
+                    file_result['has_match'] = len(matches) > 0
+                    
+            elif analysis_type == 'class':
+                class_pattern = analysis_config.get('class_pattern')
+                if class_pattern:
+                    matches = list(class_pattern.finditer(content))
+                    file_result['matches'] = [match.group() for match in matches]
+                    file_result['has_match'] = len(matches) > 0
+                    
+            elif analysis_type == 'sproc':
+                sproc_pattern = analysis_config.get('sproc_pattern')
+                if sproc_pattern:
+                    matches = list(sproc_pattern.finditer(content))
+                    file_result['matches'] = [(match.group(), match.start()) for match in matches]
+                    file_result['has_match'] = len(matches) > 0
+                    
+            else:
+                file_result['error'] = f"Unknown analysis type: {analysis_type}"
+                
+        except (OSError, UnicodeDecodeError) as e:
+            file_result['error'] = f"File read error: {str(e)}"
+        except Exception as e:
+            file_result['error'] = f"Analysis error: {str(e)}"
+            
+        results[cs_file_path] = file_result
+    
+    return results
+
+
+def analyze_cs_files_parallel(cs_files: List[Path], 
+                             analysis_config: Dict[str, any],
+                             max_workers: int = DEFAULT_MAX_WORKERS,
+                             cs_analysis_chunk_size: int = 50,
+                             disable_multiprocessing: bool = False) -> Dict[Path, Dict[str, any]]:
+    """
+    Analyze a list of .cs files in parallel for specific patterns.
+    
+    Args:
+        cs_files: List of .cs file paths to analyze
+        analysis_config: Configuration for analysis (patterns, type, etc.)
+        max_workers: Maximum number of worker processes
+        cs_analysis_chunk_size: Number of files per worker batch
+        disable_multiprocessing: Force sequential processing
+        
+    Returns:
+        Dictionary mapping file paths to analysis results
+    """
+    analysis_type = analysis_config.get('analysis_type', 'unknown')
+    
+    # Force sequential if disabled or few files
+    if disable_multiprocessing or not MULTIPROCESSING_ENABLED or len(cs_files) < cs_analysis_chunk_size:
+        logging.debug(f"Using sequential {analysis_type} analysis for {len(cs_files)} files")
+        # Process all files in a single batch
+        return analyze_cs_files_batch((cs_files, analysis_config))
+    
+    logging.debug(f"Using parallel {analysis_type} analysis for {len(cs_files)} files with {max_workers} workers")
+    
+    try:
+        # Split files into chunks
+        file_chunks = chunk_list(cs_files, cs_analysis_chunk_size)
+        all_results = {}
+        completed_chunks = 0
+        
+        # Adaptive worker scaling based on file count
+        if len(cs_files) < 200:
+            scaled_workers = min(max_workers, 4)
+        elif len(cs_files) < 1000:
+            scaled_workers = min(max_workers, 8)
+        else:
+            scaled_workers = max_workers
+            
+        logging.debug(f"Processing {len(file_chunks)} chunks with {scaled_workers} workers")
+        
+        with ProcessPoolExecutor(max_workers=scaled_workers) as executor:
+            # Submit all chunks
+            future_to_chunk = {
+                executor.submit(analyze_cs_files_batch, (chunk, analysis_config)): chunk
+                for chunk in file_chunks
+            }
+            
+            # Collect results as they complete
+            for future in as_completed(future_to_chunk):
+                try:
+                    chunk_results = future.result(timeout=300)
+                    all_results.update(chunk_results)
+                    completed_chunks += 1
+                    
+                    # Progress reporting
+                    if completed_chunks % 5 == 0 or completed_chunks == len(file_chunks):
+                        logging.debug(f"{analysis_type} analysis progress: {completed_chunks}/{len(file_chunks)} chunks completed")
+                        
+                except Exception as e:
+                    logging.warning(f"Error processing {analysis_type} analysis chunk: {e}")
+                    completed_chunks += 1
+        
+        logging.debug(f"Parallel {analysis_type} analysis completed: {len(all_results)} files analyzed")
+        return all_results
+        
+    except Exception as e:
+        logging.warning(f"Parallel {analysis_type} analysis failed: {e}. Falling back to sequential.")
+        return analyze_cs_files_batch((cs_files, analysis_config))
+
+
 def estimate_file_count(search_path: Path, pattern: str, sample_dirs: int = 5) -> int:
     """
     Estimate total file count by sampling a few directories.
@@ -658,7 +811,8 @@ def find_consumers(
     method_name: Optional[str],
     max_workers: int = DEFAULT_MAX_WORKERS,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
-    disable_multiprocessing: bool = False
+    disable_multiprocessing: bool = False,
+    cs_analysis_chunk_size: int = 50  # New parameter for Phase 2.1
 ) -> List[Dict[str, Union[Path, str, List[Path]]]]: 
     """
     Finds consuming projects based on ProjectReference, namespace usage,
@@ -751,9 +905,12 @@ def find_consumers(
         logging.debug(f"Checking {len(direct_consumers)} direct consumers for 'using {target_namespace};' statements...")
         using_pattern = re.compile(rf"(?:^|;|\{{)\s*(?:global\s+)?using\s+{re.escape(target_namespace)}(?:\.[A-Za-z0-9_.]+)?\s*;", re.MULTILINE)
 
+        # Collect all .cs files from all consumer projects for parallel analysis
+        all_cs_files_for_analysis = []
+        consumer_to_files_map = {}
+        
         for consumer_path_abs, consumer_data in direct_consumers.items():
             consumer_dir_abs = consumer_path_abs.parent
-            namespace_match_files = []
 
             if consumer_dir_abs not in cs_file_cache:
                 try:
@@ -768,18 +925,43 @@ def find_consumers(
                     logging.warning(f"Could not list .cs files in {consumer_dir_abs} for project {consumer_data['consumer_name']}: {e}")
                     cs_file_cache[consumer_dir_abs] = []
 
-            for cs_file_abs in cs_file_cache[consumer_dir_abs]:
-                try:
-                    content = cs_file_abs.read_text(encoding='utf-8', errors='ignore')
-                    if using_pattern.search(content):
-                        namespace_match_files.append(cs_file_abs)
-                except (OSError, Exception) as e:
-                    logging.warning(f"Could not read {cs_file_abs.name} in {consumer_data['consumer_name']} for namespace check: {e}")
+            # Map files to their consumer project for result processing
+            consumer_files = cs_file_cache[consumer_dir_abs]
+            consumer_to_files_map[consumer_path_abs] = consumer_files
+            all_cs_files_for_analysis.extend(consumer_files)
 
-            if namespace_match_files:
-                consumer_data['relevant_files'] = namespace_match_files
-                namespace_consumers[consumer_path_abs] = consumer_data
-                logging.debug(f"  Namespace used in {consumer_data['consumer_name']} (Files: {[f.name for f in namespace_match_files]})")
+        # Parallel namespace analysis for all files
+        if all_cs_files_for_analysis:
+            analysis_config = {
+                'analysis_type': 'namespace',
+                'target_namespace': target_namespace,
+                'using_pattern': using_pattern
+            }
+            
+            analysis_results = analyze_cs_files_parallel(
+                all_cs_files_for_analysis,
+                analysis_config,
+                max_workers=max_workers,
+                cs_analysis_chunk_size=cs_analysis_chunk_size,
+                disable_multiprocessing=disable_multiprocessing
+            )
+            
+            # Process results to match original logic
+            for consumer_path_abs, consumer_data in direct_consumers.items():
+                namespace_match_files = []
+                
+                for cs_file_path in consumer_to_files_map.get(consumer_path_abs, []):
+                    file_result = analysis_results.get(cs_file_path)
+                    if file_result:
+                        if file_result.get('error'):
+                            logging.warning(f"Could not read {cs_file_path.name} in {consumer_data['consumer_name']} for namespace check: {file_result['error']}")
+                        elif file_result.get('has_match'):
+                            namespace_match_files.append(cs_file_path)
+
+                if namespace_match_files:
+                    consumer_data['relevant_files'] = namespace_match_files
+                    namespace_consumers[consumer_path_abs] = consumer_data
+                    logging.debug(f"  Namespace used in {consumer_data['consumer_name']} (Files: {[f.name for f in namespace_match_files]})")
 
         logging.debug(f"Found {len(namespace_consumers)} consumer(s) using namespace '{target_namespace}'.")
 
@@ -805,24 +987,49 @@ def find_consumers(
     logging.debug(f"Checking {len(namespace_consumers)} namespace consumers for usage of type '{class_name}'...")
 
     class_pattern = re.compile(rf"\b{re.escape(class_name)}\b")
+    
+    # Collect all relevant files for parallel analysis
+    all_relevant_files = []
+    consumer_to_relevant_files_map = {}
+    
     for consumer_path_abs, consumer_data in namespace_consumers.items():
-        consumer_dir_abs = consumer_path_abs.parent
-        class_match_files = []
         files_to_check = consumer_data['relevant_files']
+        consumer_to_relevant_files_map[consumer_path_abs] = files_to_check
+        all_relevant_files.extend(files_to_check)
         logging.debug(f"  Checking type '{class_name}' in {len(files_to_check)} relevant files for {consumer_data['consumer_name']}...")
 
-        for cs_file_abs in files_to_check:
-            try:
-                content = cs_file_abs.read_text(encoding='utf-8', errors='ignore')
-                if class_pattern.search(content):
-                    class_match_files.append(cs_file_abs)
-            except (OSError, Exception) as e:
-                logging.warning(f"Could not read {cs_file_abs.name} in {consumer_data['consumer_name']} for type check: {e}")
+    # Parallel class analysis for all relevant files
+    if all_relevant_files:
+        analysis_config = {
+            'analysis_type': 'class',
+            'class_name': class_name,
+            'class_pattern': class_pattern
+        }
+        
+        analysis_results = analyze_cs_files_parallel(
+            all_relevant_files,
+            analysis_config,
+            max_workers=max_workers,
+            cs_analysis_chunk_size=cs_analysis_chunk_size,
+            disable_multiprocessing=disable_multiprocessing
+        )
+        
+        # Process results to match original logic
+        for consumer_path_abs, consumer_data in namespace_consumers.items():
+            class_match_files = []
+            
+            for cs_file_path in consumer_to_relevant_files_map.get(consumer_path_abs, []):
+                file_result = analysis_results.get(cs_file_path)
+                if file_result:
+                    if file_result.get('error'):
+                        logging.warning(f"Could not read {cs_file_path.name} in {consumer_data['consumer_name']} for type check: {file_result['error']}")
+                    elif file_result.get('has_match'):
+                        class_match_files.append(cs_file_path)
 
-        if class_match_files:
-            consumer_data['relevant_files'] = class_match_files
-            class_consumers[consumer_path_abs] = consumer_data
-            logging.debug(f"    Type '{class_name}' used in {consumer_data['consumer_name']} (Files: {[f.name for f in class_match_files]})")
+            if class_match_files:
+                consumer_data['relevant_files'] = class_match_files
+                class_consumers[consumer_path_abs] = consumer_data
+                logging.debug(f"    Type '{class_name}' used in {consumer_data['consumer_name']} (Files: {[f.name for f in class_match_files]})")
 
     logging.debug(f"Found {len(class_consumers)} consumer(s) potentially using type '{class_name}'.")
     if not class_consumers:
@@ -869,7 +1076,8 @@ def find_cs_files_referencing_sproc(
     custom_sproc_regex_pattern: Optional[str] = None,
     max_workers: int = DEFAULT_MAX_WORKERS,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
-    disable_multiprocessing: bool = False
+    disable_multiprocessing: bool = False,
+    cs_analysis_chunk_size: int = 50  # New parameter for Phase 2.1
 ) -> Dict[Path, Dict[str, Set[Path]]]: 
     """
     Scans all .cs files within the search_path for the given stored procedure name
@@ -911,42 +1119,66 @@ def find_cs_files_referencing_sproc(
     projects_found_count = 0
     classes_found_count = 0
 
-    for cs_file_abs in cs_files_to_scan:
-        try:
-            content = cs_file_abs.read_text(encoding='utf-8', errors='ignore')
-            matches = list(sproc_pattern.finditer(content))
-
-            if matches:
-                files_with_ref_count += 1
-                logging.debug(f"  Potential reference(s) to sproc '{sproc_name_input}' found in: {cs_file_abs.relative_to(search_path) if search_path in cs_file_abs.parents else cs_file_abs.name}")
-
-                project_file_abs = find_project_file_on_disk(cs_file_abs)
-                if not project_file_abs:
-                    logging.warning(f"  Could not map C# file '{cs_file_abs.name}' (with sproc ref) to a project.")
+    # Parallel sproc analysis for all .cs files
+    if cs_files_to_scan:
+        analysis_config = {
+            'analysis_type': 'sproc',
+            'sproc_name': sproc_name_input,
+            'sproc_pattern': sproc_pattern
+        }
+        
+        analysis_results = analyze_cs_files_parallel(
+            cs_files_to_scan,
+            analysis_config,
+            max_workers=max_workers,
+            cs_analysis_chunk_size=cs_analysis_chunk_size,
+            disable_multiprocessing=disable_multiprocessing
+        )
+        
+        # Process results to match original logic
+        for cs_file_abs, file_result in analysis_results.items():
+            try:
+                if file_result.get('error'):
+                    log_level_detail = logging.DEBUG if logging.getLogger().level == logging.DEBUG else logging.WARNING
+                    logging.log(log_level_detail, f"Error processing file {cs_file_abs.name} for sproc search: {file_result['error']}")
                     continue
+                
+                if file_result.get('has_match'):
+                    files_with_ref_count += 1
+                    logging.debug(f"  Potential reference(s) to sproc '{sproc_name_input}' found in: {cs_file_abs.relative_to(search_path) if search_path in cs_file_abs.parents else cs_file_abs.name}")
 
-                is_new_project = project_file_abs not in projects_classes_sproc_refs
-                first_match_index = matches[0].start()
-                enclosing_class = find_enclosing_type_name(content, first_match_index)
+                    project_file_abs = find_project_file_on_disk(cs_file_abs)
+                    if not project_file_abs:
+                        logging.warning(f"  Could not map C# file '{cs_file_abs.name}' (with sproc ref) to a project.")
+                        continue
 
-                if enclosing_class:
-                    is_new_class_for_project = enclosing_class not in projects_classes_sproc_refs[project_file_abs]
-                    projects_classes_sproc_refs[project_file_abs][enclosing_class].add(cs_file_abs)
+                    is_new_project = project_file_abs not in projects_classes_sproc_refs
+                    
+                    # Get the first match position for enclosing class detection
+                    matches = file_result.get('matches', [])
+                    if matches:
+                        first_match_index = matches[0][1] if isinstance(matches[0], tuple) else 0
+                        
+                        # Re-read content for enclosing class detection (optimization opportunity for later)
+                        content = cs_file_abs.read_text(encoding='utf-8', errors='ignore')
+                        enclosing_class = find_enclosing_type_name(content, first_match_index)
 
-                    if is_new_project:
-                        projects_found_count += 1
-                    if is_new_class_for_project:
-                        classes_found_count += 1
+                        if enclosing_class:
+                            is_new_class_for_project = enclosing_class not in projects_classes_sproc_refs[project_file_abs]
+                            projects_classes_sproc_refs[project_file_abs][enclosing_class].add(cs_file_abs)
 
-                    logging.debug(f"    Mapped sproc ref in '{cs_file_abs.name}' to Project '{project_file_abs.name}' and Class '{enclosing_class}'")
-                else:
-                    logging.warning(f"    Could not determine enclosing class for sproc ref near index {first_match_index} in '{cs_file_abs.name}' (Project: {project_file_abs.name}). Skipping this reference for class-based consumer analysis.")
+                            if is_new_project:
+                                projects_found_count += 1
+                            if is_new_class_for_project:
+                                classes_found_count += 1
 
-        except OSError as e:
-            logging.warning(f"Could not read file {cs_file_abs.name} during sproc search: {e}")
-        except Exception as e:
-            log_level_detail = logging.DEBUG if logging.getLogger().level == logging.DEBUG else logging.WARNING
-            logging.log(log_level_detail, f"Unexpected error processing file {cs_file_abs.name} for sproc search: {e}", exc_info=(log_level_detail == logging.DEBUG))
+                            logging.debug(f"    Mapped sproc ref in '{cs_file_abs.name}' to Project '{project_file_abs.name}' and Class '{enclosing_class}'")
+                        else:
+                            logging.warning(f"    Could not determine enclosing class for sproc ref near index {first_match_index} in '{cs_file_abs.name}' (Project: {project_file_abs.name}). Skipping this reference for class-based consumer analysis.")
+
+            except Exception as e:
+                log_level_detail = logging.DEBUG if logging.getLogger().level == logging.DEBUG else logging.WARNING
+                logging.log(log_level_detail, f"Unexpected error processing results for file {cs_file_abs.name} for sproc search: {e}", exc_info=(log_level_detail == logging.DEBUG))
 
     if files_with_ref_count == 0:
         logging.info(f"No C# files found directly referencing sproc '{sproc_name_input}' with the pattern.")
@@ -1185,6 +1417,10 @@ if __name__ == "__main__":
     multiprocessing_group.add_argument(
         "--chunk-size", type=int, default=DEFAULT_CHUNK_SIZE,
         help=f"Number of directories to process per worker chunk (default: {DEFAULT_CHUNK_SIZE})."
+    )
+    multiprocessing_group.add_argument(
+        "--cs-analysis-chunk-size", type=int, default=50,
+        help="Number of .cs files per worker batch for content analysis (default: 50)."
     )
 
     args = parser.parse_args()
@@ -1435,7 +1671,8 @@ if __name__ == "__main__":
                             method_filter,
                             max_workers=args.max_workers,
                             chunk_size=args.chunk_size,
-                            disable_multiprocessing=args.disable_multiprocessing
+                            disable_multiprocessing=args.disable_multiprocessing,
+                            cs_analysis_chunk_size=args.cs_analysis_chunk_size
                         )
 
                         if final_consumers_data:
@@ -1488,7 +1725,8 @@ if __name__ == "__main__":
             args.method_name,
             max_workers=args.max_workers,
             chunk_size=args.chunk_size,
-            disable_multiprocessing=args.disable_multiprocessing
+            disable_multiprocessing=args.disable_multiprocessing,
+            cs_analysis_chunk_size=args.cs_analysis_chunk_size
         )
 
         if final_consumers_data:
@@ -1533,7 +1771,8 @@ if __name__ == "__main__":
             args.sproc_regex_pattern,
             max_workers=args.max_workers,
             chunk_size=args.chunk_size,
-            disable_multiprocessing=args.disable_multiprocessing
+            disable_multiprocessing=args.disable_multiprocessing,
+            cs_analysis_chunk_size=args.cs_analysis_chunk_size
         )
 
         if not project_class_sproc_map:
@@ -1581,7 +1820,8 @@ if __name__ == "__main__":
                     method_name=method_filter_sproc,
                     max_workers=args.max_workers,
                     chunk_size=args.chunk_size,
-                    disable_multiprocessing=args.disable_multiprocessing
+                    disable_multiprocessing=args.disable_multiprocessing,
+                    cs_analysis_chunk_size=args.cs_analysis_chunk_size
                 )
 
                 _process_consumer_summaries_and_append_results(

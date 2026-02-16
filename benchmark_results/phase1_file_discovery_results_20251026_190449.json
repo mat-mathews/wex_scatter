@@ -1,0 +1,116 @@
+{
+  "system_info": {
+    "cpu_count": 10,
+    "default_max_workers": 14,
+    "default_chunk_size": 75
+  },
+  "benchmark_results": [
+    {
+      "function_name": "find_files_with_pattern_parallel",
+      "test_scenario": "Mock Projects - .csproj files",
+      "execution_time_seconds": 0.005363958344484369,
+      "multiprocessing_enabled": false,
+      "max_workers": 14,
+      "chunk_size": 75,
+      "files_found": 26,
+      "directories_scanned": 0,
+      "error_occurred": false,
+      "error_message": ""
+    },
+    {
+      "function_name": "find_files_with_pattern_parallel",
+      "test_scenario": "Mock Projects - .csproj files",
+      "execution_time_seconds": 0.005130152994145949,
+      "multiprocessing_enabled": true,
+      "max_workers": 14,
+      "chunk_size": 75,
+      "files_found": 26,
+      "directories_scanned": 0,
+      "error_occurred": false,
+      "error_message": ""
+    },
+    {
+      "function_name": "find_files_with_pattern_parallel",
+      "test_scenario": "Generated Test - 20 projects",
+      "execution_time_seconds": 0.0019667079905048013,
+      "multiprocessing_enabled": false,
+      "max_workers": 14,
+      "chunk_size": 75,
+      "files_found": 140,
+      "directories_scanned": 0,
+      "error_occurred": false,
+      "error_message": ""
+    },
+    {
+      "function_name": "find_files_with_pattern_parallel",
+      "test_scenario": "Generated Test - 20 projects",
+      "execution_time_seconds": 0.002069666331711536,
+      "multiprocessing_enabled": true,
+      "max_workers": 14,
+      "chunk_size": 75,
+      "files_found": 140,
+      "directories_scanned": 0,
+      "error_occurred": false,
+      "error_message": ""
+    },
+    {
+      "function_name": "find_files_with_pattern_parallel",
+      "test_scenario": "Large Test - 100 projects, 2000 files",
+      "execution_time_seconds": 0.015484499997304132,
+      "multiprocessing_enabled": false,
+      "max_workers": 14,
+      "chunk_size": 75,
+      "files_found": 1500,
+      "directories_scanned": 0,
+      "error_occurred": false,
+      "error_message": ""
+    },
+    {
+      "function_name": "find_files_with_pattern_parallel",
+      "test_scenario": "Large Test - 100 projects, 2000 files",
+      "execution_time_seconds": 0.01571026399809246,
+      "multiprocessing_enabled": true,
+      "max_workers": 14,
+      "chunk_size": 75,
+      "files_found": 1500,
+      "directories_scanned": 0,
+      "error_occurred": false,
+      "error_message": ""
+    }
+  ],
+  "comparisons": [
+    {
+      "function_name": "find_files_with_pattern_parallel",
+      "test_scenario": "Mock Projects - .csproj files",
+      "sequential_time": 0.005363958344484369,
+      "parallel_time": 0.005130152994145949,
+      "speedup_factor": 1.0455747324895022,
+      "performance_improvement_percentage": 4.3588211414586455,
+      "files_found_sequential": 26,
+      "files_found_parallel": 26,
+      "results_match": true
+    },
+    {
+      "function_name": "find_files_with_pattern_parallel",
+      "test_scenario": "Generated Test - 20 projects",
+      "sequential_time": 0.0019667079905048013,
+      "parallel_time": 0.002069666331711536,
+      "speedup_factor": 0.950253652180933,
+      "performance_improvement_percentage": -5.235059892155514,
+      "files_found_sequential": 140,
+      "files_found_parallel": 140,
+      "results_match": true
+    },
+    {
+      "function_name": "find_files_with_pattern_parallel",
+      "test_scenario": "Large Test - 100 projects, 2000 files",
+      "sequential_time": 0.015484499997304132,
+      "parallel_time": 0.01571026399809246,
+      "speedup_factor": 0.9856295221508855,
+      "performance_improvement_percentage": -1.4579999407642161,
+      "files_found_sequential": 1500,
+      "files_found_parallel": 1500,
+      "results_match": true
+    }
+  ]
+}
