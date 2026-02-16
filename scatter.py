@@ -53,6 +53,144 @@ def find_files_with_pattern_chunk(args: Tuple[Path, str, List[Path]]) -> List[Pa
     return results
 
 
+def parse_csproj_files_batch(args: Tuple[List[Path], Path]) -> Dict[str, Dict]:
+    """
+    Worker function to parse a batch of .csproj files and check for ProjectReference to target.
+
+    Args:
+        args: Tuple containing:
+            - csproj_batch: List of .csproj file paths to check
+            - target_csproj_path: Path to the target .csproj file
+
+    Returns:
+        Dictionary mapping str(csproj_path) to results:
+        {
+            'is_consumer': bool,
+            'consumer_name': str,
+            'error': str or None
+        }
+    """
+    csproj_batch, target_csproj_path = args
+    results = {}
+    consumer_namespaces = {'msb': 'http://schemas.microsoft.com/developer/msbuild/2003'}
+
+    for consumer_csproj_abs in csproj_batch:
+        file_result = {
+            'is_consumer': False,
+            'consumer_name': consumer_csproj_abs.stem,
+            'error': None
+        }
+
+        try:
+            tree = ET.parse(consumer_csproj_abs)
+            root = tree.getroot()
+            refs = root.findall('.//msb:ProjectReference', consumer_namespaces)
+            if not refs:
+                refs = root.findall('.//ProjectReference')
+
+            for ref in refs:
+                include_ = ref.get('Include')
+                if include_:
+                    # normalize paths so we can run on windows and *nix
+                    include_ = include_.replace('\\', '/')
+
+                    # ignore stuff that might not be built yet
+                    if '$(' in include_ and ')' in include_:
+                        logging.debug(f"  Skipping ProjectReference with likely MSBuild property: '{include_}'")
+                        continue
+
+                    try:
+                        ref_path_abs = (consumer_csproj_abs.parent / include_).resolve(strict=False)
+
+                        if ref_path_abs.exists() and target_csproj_path.exists() and ref_path_abs.samefile(target_csproj_path):
+                            file_result['is_consumer'] = True
+                            logging.debug(f"  MATCH: Found direct reference from {consumer_csproj_abs.name}")
+                            break
+                    except OSError as e:
+                        logging.warning(f"Could not resolve or compare reference path '{include_}' in {consumer_csproj_abs.name}: {e}. Skipping reference.")
+                    except Exception as e:
+                        logging.warning(f"Error processing reference path '{include_}' in {consumer_csproj_abs.name}: {e}. Skipping reference.")
+
+        except (ET.ParseError, OSError) as e:
+            file_result['error'] = f"{type(e).__name__} - {e}"
+            logging.warning(f"Skipping reference check for {consumer_csproj_abs.name}: {file_result['error']}")
+        except Exception as e:
+            file_result['error'] = f"Unexpected error: {e}"
+            logging.warning(f"Unexpected error checking references in {consumer_csproj_abs.name}: {e}")
+
+        # Use string key for cross-process serialization
+        results[str(consumer_csproj_abs)] = file_result
+
+    return results
+
+
+def parse_csproj_files_parallel(csproj_files: List[Path],
+                                target_csproj_path: Path,
+                                max_workers: int = DEFAULT_MAX_WORKERS,
+                                csproj_analysis_chunk_size: int = 25,
+                                disable_multiprocessing: bool = False) -> Dict[str, Dict]:
+    """
+    Parse .csproj files in parallel to check for ProjectReference to target.
+
+    Args:
+        csproj_files: List of .csproj file paths to check
+        target_csproj_path: Path to the target .csproj file
+        max_workers: Maximum number of worker processes
+        csproj_analysis_chunk_size: Number of files per worker batch
+        disable_multiprocessing: Force sequential processing
+
+    Returns:
+        Dictionary mapping str(csproj_path) to parse results
+    """
+    # Force sequential if disabled or few files
+    if disable_multiprocessing or not MULTIPROCESSING_ENABLED or len(csproj_files) < csproj_analysis_chunk_size:
+        logging.debug(f"Using sequential csproj parsing for {len(csproj_files)} files")
+        return parse_csproj_files_batch((csproj_files, target_csproj_path))
+
+    logging.debug(f"Using parallel csproj parsing for {len(csproj_files)} files with {max_workers} workers")
+
+    try:
+        file_chunks = chunk_list(csproj_files, csproj_analysis_chunk_size)
+        all_results = {}
+        completed_chunks = 0
+
+        # Adaptive worker scaling based on file count
+        if len(csproj_files) < 200:
+            scaled_workers = min(max_workers, 4)
+        elif len(csproj_files) < 1000:
+            scaled_workers = min(max_workers, 8)
+        else:
+            scaled_workers = max_workers
+
+        logging.debug(f"Processing {len(file_chunks)} csproj chunks with {scaled_workers} workers")
+
+        with ProcessPoolExecutor(max_workers=scaled_workers) as executor:
+            future_to_chunk = {
+                executor.submit(parse_csproj_files_batch, (chunk, target_csproj_path)): chunk
+                for chunk in file_chunks
+            }
+
+            for future in as_completed(future_to_chunk):
+                try:
+                    chunk_results = future.result(timeout=300)
+                    all_results.update(chunk_results)
+                    completed_chunks += 1
+
+                    if completed_chunks % 5 == 0 or completed_chunks == len(file_chunks):
+                        logging.debug(f"csproj parsing progress: {completed_chunks}/{len(file_chunks)} chunks completed")
+
+                except Exception as e:
+                    logging.warning(f"Error processing csproj parsing chunk: {e}")
+                    completed_chunks += 1
+
+        logging.debug(f"Parallel csproj parsing completed: {len(all_results)} files analyzed")
+        return all_results
+
+    except Exception as e:
+        logging.warning(f"Parallel csproj parsing failed: {e}. Falling back to sequential.")
+        return parse_csproj_files_batch((csproj_files, target_csproj_path))
+
+
 def analyze_cs_files_batch(args: Tuple[List[Path], Dict[str, any]]) -> Dict[Path, Dict[str, any]]:
     """
     Worker function to analyze a batch of .cs files for various patterns.
@@ -812,8 +950,9 @@ def find_consumers(
     max_workers: int = DEFAULT_MAX_WORKERS,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     disable_multiprocessing: bool = False,
-    cs_analysis_chunk_size: int = 50  # New parameter for Phase 2.1
-) -> List[Dict[str, Union[Path, str, List[Path]]]]: 
+    cs_analysis_chunk_size: int = 50,  # New parameter for Phase 2.1
+    csproj_analysis_chunk_size: int = 25  # New parameter for Phase 2.2
+) -> List[Dict[str, Union[Path, str, List[Path]]]]:
     """
     Finds consuming projects based on ProjectReference, namespace usage,
     and optional class/method usage checks. Tracks the specific files causing matches.
@@ -847,49 +986,23 @@ def find_consumers(
         logging.error(f"Error scanning search scope '{search_scope_path}': {e}")
         return []
 
-    # --- step 2: identify direct consumers ---
+    # --- step 2: identify direct consumers (parallel csproj parsing) ---
     logging.debug("Checking for direct project references to target...")
-    consumer_namespaces = {'msb': 'http://schemas.microsoft.com/developer/msbuild/2003'}
+    csproj_parse_results = parse_csproj_files_parallel(
+        potential_consumers,
+        target_csproj_path,
+        max_workers=max_workers,
+        csproj_analysis_chunk_size=csproj_analysis_chunk_size,
+        disable_multiprocessing=disable_multiprocessing
+    )
+
     for consumer_csproj_abs in potential_consumers:
-        logging.debug(f'Checking references in: {consumer_csproj_abs.name}')
-        try:
-            tree = ET.parse(consumer_csproj_abs)
-            root = tree.getroot()
-            refs = root.findall('.//msb:ProjectReference', consumer_namespaces)
-            if not refs:
-                refs = root.findall('.//ProjectReference')
-
-            for ref in refs:
-                include_ = ref.get('Include')
-                if include_:
-
-                    # normalize paths so we can run on windows and *nix
-                    include_ = include_.replace('\\', '/')
-
-                    # ignore stuff that might not be built yet
-                    if '$(' in include_ and ')' in include_:
-                        logging.debug(f"  Skipping ProjectReference with likely MSBuild property: '{include_}'")
-                        continue
-
-                    try:
-                        ref_path_abs = (consumer_csproj_abs.parent / include_).resolve(strict=False)
-
-                        if ref_path_abs.exists() and target_csproj_path.exists() and ref_path_abs.samefile(target_csproj_path):
-                            direct_consumers[consumer_csproj_abs] = {
-                                'consumer_name': consumer_csproj_abs.stem,
-                                'relevant_files': []
-                            }
-                            logging.debug(f"  MATCH: Found direct reference from {consumer_csproj_abs.name}")
-                            break
-                    except OSError as e:
-                        logging.warning(f"Could not resolve or compare reference path '{include_}' in {consumer_csproj_abs.name}: {e}. Skipping reference.")
-                    except Exception as e:
-                        logging.warning(f"Error processing reference path '{include_}' in {consumer_csproj_abs.name}: {e}. Skipping reference.")
-
-        except (ET.ParseError, OSError) as e:
-            logging.warning(f"Skipping reference check for {consumer_csproj_abs.name}: {type(e).__name__} - {e}")
-        except Exception as e:
-            logging.warning(f"Unexpected error checking references in {consumer_csproj_abs.name}: {e}")
+        result = csproj_parse_results.get(str(consumer_csproj_abs))
+        if result and result['is_consumer']:
+            direct_consumers[consumer_csproj_abs] = {
+                'consumer_name': result['consumer_name'],
+                'relevant_files': []
+            }
 
     logging.debug(f"Found {len(direct_consumers)} direct consumer(s) via ProjectReference.")
     if not direct_consumers:
@@ -1422,6 +1535,10 @@ if __name__ == "__main__":
         "--cs-analysis-chunk-size", type=int, default=50,
         help="Number of .cs files per worker batch for content analysis (default: 50)."
     )
+    multiprocessing_group.add_argument(
+        "--csproj-analysis-chunk-size", type=int, default=25,
+        help="Number of .csproj files per worker batch for XML parsing (default: 25)."
+    )
 
     args = parser.parse_args()
 
@@ -1672,7 +1789,8 @@ if __name__ == "__main__":
                             max_workers=args.max_workers,
                             chunk_size=args.chunk_size,
                             disable_multiprocessing=args.disable_multiprocessing,
-                            cs_analysis_chunk_size=args.cs_analysis_chunk_size
+                            cs_analysis_chunk_size=args.cs_analysis_chunk_size,
+                            csproj_analysis_chunk_size=args.csproj_analysis_chunk_size
                         )
 
                         if final_consumers_data:
@@ -1726,7 +1844,8 @@ if __name__ == "__main__":
             max_workers=args.max_workers,
             chunk_size=args.chunk_size,
             disable_multiprocessing=args.disable_multiprocessing,
-            cs_analysis_chunk_size=args.cs_analysis_chunk_size
+            cs_analysis_chunk_size=args.cs_analysis_chunk_size,
+            csproj_analysis_chunk_size=args.csproj_analysis_chunk_size
         )
 
         if final_consumers_data:
@@ -1821,7 +1940,8 @@ if __name__ == "__main__":
                     max_workers=args.max_workers,
                     chunk_size=args.chunk_size,
                     disable_multiprocessing=args.disable_multiprocessing,
-                    cs_analysis_chunk_size=args.cs_analysis_chunk_size
+                    cs_analysis_chunk_size=args.cs_analysis_chunk_size,
+                    csproj_analysis_chunk_size=args.csproj_analysis_chunk_size
                 )
 
                 _process_consumer_summaries_and_append_results(
