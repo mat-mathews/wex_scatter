@@ -46,11 +46,13 @@ python scatter.py --target-project .\MyDotNetApp\MyDotNetApp.csproj --search-sco
 1.  [Quick Start Examples](#-quick-start-examples)
 2.  [Installation](#installation)
 3.  [How It Works](#how-it-works)
-4.  [Configuration & Mapping](#configuration--mapping)
-5.  [Command-Line Arguments](#command-line-arguments)
-6.  [Understanding the Output](#understanding-the-output)
-7.  [Technical Details](#technical-details)
-8.  [Roadmap](#roadmap)
+4.  [Parallel Processing](#-parallel-processing)
+5.  [Configuration & Mapping](#configuration--mapping)
+6.  [Command-Line Arguments](#command-line-arguments)
+7.  [Understanding the Output](#understanding-the-output)
+8.  [Testing & Benchmarking](#-testing--benchmarking)
+9.  [Technical Details](#technical-details)
+10. [Roadmap](#roadmap)
 
 ---
 ## Installation
@@ -128,6 +130,66 @@ If `--summarize-consumers` is enabled:
 3.  **Generate & Store Summary**: The API returns a concise, 2-3 sentence summary of the file's primary purpose, which is then included in the final report.
 
 ---
+## 🔀 Parallel Processing
+
+Scatter uses Python's `multiprocessing` module to parallelize CPU-bound and I/O-bound operations across multiple phases of analysis. This is enabled by default and provides significant performance improvements on larger codebases.
+
+### What Gets Parallelized
+
+| Phase | Operation | Worker Function | Default Chunk Size |
+|-------|-----------|-----------------|-------------------|
+| **1 - File Discovery** | Scanning directories for `.cs` and `.csproj` files | `find_files_with_pattern_chunk` | 75 directories |
+| **2.1 - Content Analysis** | Scanning `.cs` files for namespace usage, class references, and sproc patterns | `analyze_cs_files_batch` | 50 files |
+| **2.2 - XML Parsing** | Parsing `.csproj` files to resolve `<ProjectReference>` dependencies | `parse_csproj_files_batch` | 25 files |
+| **2.3 - Project Mapping** | Mapping `.cs` files to their parent `.csproj` by walking up the directory tree | `map_cs_to_projects_batch` | 50 files |
+
+### How It Works
+
+Each phase follows the same pattern:
+
+1. **Chunking**: The input file list is split into batches (chunk size is configurable per phase).
+2. **Adaptive Worker Scaling**: The number of worker processes scales based on the workload:
+   - < 200 files: up to 4 workers
+   - < 1000 files: up to 8 workers
+   - 1000+ files: up to `--max-workers` (default: CPU cores + 4, max 32)
+3. **Parallel Execution**: Chunks are distributed across a `ProcessPoolExecutor` and collected via `as_completed`.
+4. **Automatic Fallback**: If multiprocessing fails or the file count is below the chunk size threshold, processing falls back to sequential mode transparently.
+
+### Key Optimization: Directory-to-Project Caching (Phase 2.3)
+
+When mapping `.cs` files to their `.csproj` projects, each worker maintains a local directory cache. The first file in a project triggers the upward directory walk; subsequent files in the same project (or its subdirectories) resolve instantly from cache. This eliminates redundant filesystem calls when many `.cs` files share the same project hierarchy.
+
+### Multiprocessing CLI Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--disable-multiprocessing` | `false` | Force sequential processing for all operations |
+| `--max-workers N` | CPU cores + 4 (max 32) | Maximum number of worker processes |
+| `--chunk-size N` | 75 | Directories per worker batch (file discovery) |
+| `--cs-analysis-chunk-size N` | 50 | `.cs` files per worker batch (content analysis & project mapping) |
+| `--csproj-analysis-chunk-size N` | 25 | `.csproj` files per worker batch (XML parsing) |
+
+### Example: Tuning for a Large Codebase
+
+```shell
+python scatter.py \
+  --target-project src/MyCoreLib/MyCoreLib.csproj \
+  --search-scope /large/monorepo \
+  --max-workers 16 \
+  --chunk-size 100 \
+  --cs-analysis-chunk-size 75
+```
+
+### Example: Forcing Sequential Mode (Debugging)
+
+```shell
+python scatter.py \
+  --stored-procedure "dbo.sp_GetUser" \
+  --search-scope . \
+  --disable-multiprocessing
+```
+
+---
 ## Configuration & Mapping
 
 ### Google API Key
@@ -178,6 +240,14 @@ If your project follows a convention where batch jobs are defined as subdirector
 * `--google-api-key <KEY>`: Your Google API Key (overrides the environment variable).
 * `--gemini-model <MODEL>`: The Gemini model to use. **Default**: `gemini-1.5-flash`.
 
+### Multiprocessing Options
+
+* `--disable-multiprocessing`: Disables parallel processing; all operations run sequentially.
+* `--max-workers <N>`: Maximum number of worker processes. **Default**: CPU cores + 4 (max 32).
+* `--chunk-size <N>`: Number of directories per worker batch during file discovery. **Default**: `75`.
+* `--cs-analysis-chunk-size <N>`: Number of `.cs` files per worker batch for content analysis and project mapping. **Default**: `50`.
+* `--csproj-analysis-chunk-size <N>`: Number of `.csproj` files per worker batch for XML parsing. **Default**: `25`.
+
 For a full list of arguments and defaults, run `python scatter.py --help`.
 
 ---
@@ -186,6 +256,59 @@ For a full list of arguments and defaults, run `python scatter.py --help`.
 * **Console**: Prints a human-readable report listing each target and its consumers. If summarization is enabled, it includes the AI-generated summaries.
 * **CSV**: Generates a flat file with columns for `TargetProjectName`, `ConsumerProjectName`, `PipelineName`, `BatchJobVerification`, etc. The `ConsumerFileSummaries` column contains a JSON string of file paths mapped to their summaries.
 * **JSON**: Produces a structured JSON file containing a `pipeline_summary` (a list of unique pipelines found) and `all_results` (a detailed list of each dependency relationship). This format is ideal for programmatic use.
+
+---
+## 🧪 Testing & Benchmarking
+
+### Running the Test Suite
+
+```shell
+# Run all tests
+python -m pytest -v
+
+# Run only Phase 2.3 project mapping tests
+python -m pytest test_phase2_3_project_mapping.py -v
+
+# Run only the original multiprocessing tests
+python -m pytest test_multiprocessing_phase1.py -v
+```
+
+### Test Coverage
+
+The test suite currently includes **63 tests** across three test files:
+
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `test_multiprocessing_phase1.py` | 37 | Phase 1 file discovery, consumer analysis, backwards compatibility, target symbol search |
+| `test_phase2_3_project_mapping.py` | 25 | Batch project mapping, parallel orchestrator, sproc integration, cache correctness |
+| `test_realistic_workload.py` | 1 | Scalability benchmarking with synthetic codebases (100 - 5,000 files) |
+
+Key areas covered:
+- **Parallel vs sequential consistency**: Every parallel operation is verified to produce identical results when run sequentially with `--disable-multiprocessing`
+- **Backwards compatibility**: 18 dedicated tests ensure all original function signatures, return types, CLI arguments, and output formats remain unchanged
+- **Edge cases**: Empty inputs, nonexistent paths, permission errors, filesystem root boundaries, chunk size boundaries
+- **Fallback behavior**: ProcessPoolExecutor failures fall back to sequential gracefully
+
+### Benchmarking
+
+The `test_realistic_workload.py` test generates synthetic `.cs` codebases of varying sizes and measures parallel vs sequential performance:
+
+```shell
+# Run the benchmark directly
+python test_realistic_workload.py
+```
+
+This creates temporary directories with 100 to 5,000 realistic `.cs` files and times the parallel file discovery and content analysis operations. Results are printed as a comparison table showing speedup ratios.
+
+You can also benchmark real-world performance on your own codebase by running with `--verbose` and comparing execution times:
+
+```shell
+# Parallel (default)
+time python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope /your/codebase -v
+
+# Sequential
+time python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope /your/codebase --disable-multiprocessing -v
+```
 
 ---
 ## Technical Details
@@ -209,13 +332,21 @@ TYPE_DECLARATION_PATTERN = re.compile(
 ---
 ## Roadmap
 
-This script is a proof-of-concept with potential for growth. Future enhancements could include:
--   **Enhanced AI Integration**: Use an LLM to summarize the *diff* itself in Git mode, providing more context on *what* changed.
--   **Performance Improvements**: Implement multiprocessing to parallelize analysis, especially consumer finding in large codebases.
--   **Configuration File**: Support a `config.ini` or `pyproject.toml` file to pre-set common search scopes, repo paths, and other options.
--   **Improved Accuracy**: Integrate with more robust C# parsing tools to reduce false positives from the text-based search.
--   **Transitive Dependency Analysis**: Find not just direct consumers, but consumers-of-consumers, up to a specified depth.
--   **Flexible Git Commits**: Allow comparing arbitrary commit hashes or tags, not just branches.
+### Completed
+- ✅ **Multiprocessing Phase 1**: Parallel file discovery with adaptive worker scaling and intelligent chunking
+- ✅ **Multiprocessing Phase 2**: Parallel consumer analysis — content scanning (2.1), XML parsing of `.csproj` files (2.2), and batch `.cs`-to-`.csproj` project mapping with directory caching (2.3)
+- ✅ **Benchmarking framework**: Synthetic codebase generator and performance comparison tooling
+- ✅ **Full backwards compatibility**: All original CLI arguments, function signatures, and output formats preserved
+
+### Planned
+-   **Multiprocessing Phase 3**: Parallel reference analysis — batch `<ProjectReference>` checking, parallel namespace resolution
+-   **Multiprocessing Phase 4**: Parallel content analysis — chunked class/method usage scanning, parallel type declaration extraction
+-   **Multiprocessing Phase 5**: Optimization — process pool reuse, memory optimization, adaptive scaling based on system resources
+-   **Hybrid Git Analysis**: Use an LLM to identify affected symbols from git diffs, reducing false positives in branch analysis
+-   **Configuration File**: Support a `config.ini` or `pyproject.toml` file to pre-set common search scopes, repo paths, and other options
+-   **Improved Accuracy**: Integrate with more robust C# parsing tools to reduce false positives from the text-based search
+-   **Transitive Dependency Analysis**: Find not just direct consumers, but consumers-of-consumers, up to a specified depth
+-   **Flexible Git Commits**: Allow comparing arbitrary commit hashes or tags, not just branches
 
 ---
 ## Example commands
