@@ -53,6 +53,67 @@ def find_files_with_pattern_chunk(args: Tuple[Path, str, List[Path]]) -> List[Pa
     return results
 
 
+def map_cs_to_projects_batch(args: Tuple[List[str]]) -> Dict[str, Optional[str]]:
+    """
+    Worker function to map a batch of .cs files to their parent .csproj files.
+
+    Walks upward from each file's directory, caching directory-to-csproj results
+    so multiple .cs files in the same project resolve without redundant filesystem walks.
+
+    Args:
+        args: Tuple containing:
+            - cs_file_paths: List of .cs file absolute paths as strings
+
+    Returns:
+        Dictionary mapping str(cs_file_path) to str(csproj_path) or None
+    """
+    (cs_file_paths,) = args
+    results = {}
+    dir_to_csproj = {}  # Cache: str(directory) -> Optional[str(csproj_path)]
+
+    for cs_file_str in cs_file_paths:
+        try:
+            cs_file = Path(cs_file_str)
+            current_path = cs_file.parent
+
+            found_csproj = None
+            dirs_walked = []
+
+            while True:
+                dir_key = str(current_path)
+
+                if dir_key in dir_to_csproj:
+                    found_csproj = dir_to_csproj[dir_key]
+                    break
+
+                dirs_walked.append(dir_key)
+
+                try:
+                    csproj_files = list(current_path.glob('*.csproj'))
+                    if csproj_files:
+                        found_csproj = str(csproj_files[0].resolve())
+                        break
+                except Exception as e:
+                    logging.warning(f"Error searching for .csproj in '{current_path}' for '{cs_file.name}': {e}")
+                    break
+
+                if current_path == current_path.parent:
+                    break
+                current_path = current_path.parent
+
+            # Cache all walked directories with the result
+            for d in dirs_walked:
+                dir_to_csproj[d] = found_csproj
+
+            results[cs_file_str] = found_csproj
+
+        except Exception as e:
+            logging.warning(f"Error mapping .cs file '{cs_file_str}' to project: {e}")
+            results[cs_file_str] = None
+
+    return results
+
+
 def parse_csproj_files_batch(args: Tuple[List[Path], Path]) -> Dict[str, Dict]:
     """
     Worker function to parse a batch of .csproj files and check for ProjectReference to target.
@@ -189,6 +250,73 @@ def parse_csproj_files_parallel(csproj_files: List[Path],
     except Exception as e:
         logging.warning(f"Parallel csproj parsing failed: {e}. Falling back to sequential.")
         return parse_csproj_files_batch((csproj_files, target_csproj_path))
+
+
+def map_cs_to_projects_parallel(cs_files: List[Path],
+                                max_workers: int = DEFAULT_MAX_WORKERS,
+                                cs_analysis_chunk_size: int = 50,
+                                disable_multiprocessing: bool = False) -> Dict[str, Optional[str]]:
+    """
+    Map .cs files to their parent .csproj files in parallel.
+
+    Args:
+        cs_files: List of .cs file paths to map
+        max_workers: Maximum number of worker processes
+        cs_analysis_chunk_size: Number of files per worker batch
+        disable_multiprocessing: Force sequential processing
+
+    Returns:
+        Dictionary mapping str(cs_file_path) to str(csproj_path) or None
+    """
+    cs_file_strs = [str(f) for f in cs_files]
+
+    # Force sequential if disabled or few files
+    if disable_multiprocessing or not MULTIPROCESSING_ENABLED or len(cs_files) < cs_analysis_chunk_size:
+        logging.debug(f"Using sequential project mapping for {len(cs_files)} files")
+        return map_cs_to_projects_batch((cs_file_strs,))
+
+    logging.debug(f"Using parallel project mapping for {len(cs_files)} files with {max_workers} workers")
+
+    try:
+        file_chunks = chunk_list(cs_file_strs, cs_analysis_chunk_size)
+        all_results = {}
+        completed_chunks = 0
+
+        # Adaptive worker scaling based on file count
+        if len(cs_files) < 200:
+            scaled_workers = min(max_workers, 4)
+        elif len(cs_files) < 1000:
+            scaled_workers = min(max_workers, 8)
+        else:
+            scaled_workers = max_workers
+
+        logging.debug(f"Processing {len(file_chunks)} project mapping chunks with {scaled_workers} workers")
+
+        with ProcessPoolExecutor(max_workers=scaled_workers) as executor:
+            future_to_chunk = {
+                executor.submit(map_cs_to_projects_batch, (chunk,)): chunk
+                for chunk in file_chunks
+            }
+
+            for future in as_completed(future_to_chunk):
+                try:
+                    chunk_results = future.result(timeout=300)
+                    all_results.update(chunk_results)
+                    completed_chunks += 1
+
+                    if completed_chunks % 5 == 0 or completed_chunks == len(file_chunks):
+                        logging.debug(f"Project mapping progress: {completed_chunks}/{len(file_chunks)} chunks completed")
+
+                except Exception as e:
+                    logging.warning(f"Error processing project mapping chunk: {e}")
+                    completed_chunks += 1
+
+        logging.debug(f"Parallel project mapping completed: {len(all_results)} files mapped")
+        return all_results
+
+    except Exception as e:
+        logging.warning(f"Parallel project mapping failed: {e}. Falling back to sequential.")
+        return map_cs_to_projects_batch((cs_file_strs,))
 
 
 def analyze_cs_files_batch(args: Tuple[List[Path], Dict[str, any]]) -> Dict[Path, Dict[str, any]]:
@@ -1248,46 +1376,64 @@ def find_cs_files_referencing_sproc(
             disable_multiprocessing=disable_multiprocessing
         )
         
-        # Process results to match original logic
+        # Collect all matching .cs files for batch project mapping
+        matching_files = []
+        for cs_file_abs, file_result in analysis_results.items():
+            if file_result.get('error'):
+                log_level_detail = logging.DEBUG if logging.getLogger().level == logging.DEBUG else logging.WARNING
+                logging.log(log_level_detail, f"Error processing file {cs_file_abs.name} for sproc search: {file_result['error']}")
+                continue
+            if file_result.get('has_match'):
+                matching_files.append(cs_file_abs)
+
+        # Batch-resolve all matching .cs files to their .csproj files in parallel
+        cs_to_csproj_map = {}
+        if matching_files:
+            cs_to_csproj_map = map_cs_to_projects_parallel(
+                matching_files,
+                max_workers=max_workers,
+                cs_analysis_chunk_size=cs_analysis_chunk_size,
+                disable_multiprocessing=disable_multiprocessing
+            )
+
+        # Process results using pre-computed project mapping
         for cs_file_abs, file_result in analysis_results.items():
             try:
-                if file_result.get('error'):
-                    log_level_detail = logging.DEBUG if logging.getLogger().level == logging.DEBUG else logging.WARNING
-                    logging.log(log_level_detail, f"Error processing file {cs_file_abs.name} for sproc search: {file_result['error']}")
+                if file_result.get('error') or not file_result.get('has_match'):
                     continue
-                
-                if file_result.get('has_match'):
-                    files_with_ref_count += 1
-                    logging.debug(f"  Potential reference(s) to sproc '{sproc_name_input}' found in: {cs_file_abs.relative_to(search_path) if search_path in cs_file_abs.parents else cs_file_abs.name}")
 
-                    project_file_abs = find_project_file_on_disk(cs_file_abs)
-                    if not project_file_abs:
-                        logging.warning(f"  Could not map C# file '{cs_file_abs.name}' (with sproc ref) to a project.")
-                        continue
+                files_with_ref_count += 1
+                logging.debug(f"  Potential reference(s) to sproc '{sproc_name_input}' found in: {cs_file_abs.relative_to(search_path) if search_path in cs_file_abs.parents else cs_file_abs.name}")
 
-                    is_new_project = project_file_abs not in projects_classes_sproc_refs
-                    
-                    # Get the first match position for enclosing class detection
-                    matches = file_result.get('matches', [])
-                    if matches:
-                        first_match_index = matches[0][1] if isinstance(matches[0], tuple) else 0
-                        
-                        # Re-read content for enclosing class detection (optimization opportunity for later)
-                        content = cs_file_abs.read_text(encoding='utf-8', errors='ignore')
-                        enclosing_class = find_enclosing_type_name(content, first_match_index)
+                csproj_str = cs_to_csproj_map.get(str(cs_file_abs))
+                if not csproj_str:
+                    logging.warning(f"  Could not map C# file '{cs_file_abs.name}' (with sproc ref) to a project.")
+                    continue
 
-                        if enclosing_class:
-                            is_new_class_for_project = enclosing_class not in projects_classes_sproc_refs[project_file_abs]
-                            projects_classes_sproc_refs[project_file_abs][enclosing_class].add(cs_file_abs)
+                project_file_abs = Path(csproj_str)
+                is_new_project = project_file_abs not in projects_classes_sproc_refs
 
-                            if is_new_project:
-                                projects_found_count += 1
-                            if is_new_class_for_project:
-                                classes_found_count += 1
+                # Get the first match position for enclosing class detection
+                matches = file_result.get('matches', [])
+                if matches:
+                    first_match_index = matches[0][1] if isinstance(matches[0], tuple) else 0
 
-                            logging.debug(f"    Mapped sproc ref in '{cs_file_abs.name}' to Project '{project_file_abs.name}' and Class '{enclosing_class}'")
-                        else:
-                            logging.warning(f"    Could not determine enclosing class for sproc ref near index {first_match_index} in '{cs_file_abs.name}' (Project: {project_file_abs.name}). Skipping this reference for class-based consumer analysis.")
+                    # Re-read content for enclosing class detection (optimization opportunity for later)
+                    content = cs_file_abs.read_text(encoding='utf-8', errors='ignore')
+                    enclosing_class = find_enclosing_type_name(content, first_match_index)
+
+                    if enclosing_class:
+                        is_new_class_for_project = enclosing_class not in projects_classes_sproc_refs[project_file_abs]
+                        projects_classes_sproc_refs[project_file_abs][enclosing_class].add(cs_file_abs)
+
+                        if is_new_project:
+                            projects_found_count += 1
+                        if is_new_class_for_project:
+                            classes_found_count += 1
+
+                        logging.debug(f"    Mapped sproc ref in '{cs_file_abs.name}' to Project '{project_file_abs.name}' and Class '{enclosing_class}'")
+                    else:
+                        logging.warning(f"    Could not determine enclosing class for sproc ref near index {first_match_index} in '{cs_file_abs.name}' (Project: {project_file_abs.name}). Skipping this reference for class-based consumer analysis.")
 
             except Exception as e:
                 log_level_detail = logging.DEBUG if logging.getLogger().level == logging.DEBUG else logging.WARNING
