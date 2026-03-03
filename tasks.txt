@@ -1,5 +1,6 @@
-Enhanced Code Analysis Tool (scatter.py) - Implementation Tasks
-Based on Project Design Document v1.0 (2025-10-26)
+Scatter - Implementation Tasks
+Based on Product Definition v2.0 (2026-03-03)
+Reference: docs/PRODUCT_DEFINITION.md
 
 ============================================================================
 INITIATIVE 1: MULTIPROCESSING OVERHAUL (Performance Focus)
@@ -38,51 +39,56 @@ Performance Target: 3-8x improvement
 - [x] Add worker-based project reference checking
 - [x] Optimize batch processing of consumer project candidates
 
-BENCHMARKING PHASE 2 (AFTER PHASE 2 IMPLEMENTATION)
-- [ ] Benchmark find_consumers_for_project() performance improvements
-- [ ] Benchmark find_consumers_for_stored_procedure() performance improvements
-- [ ] Measure XML parsing parallelization benefits
+BENCHMARKING PHASE 2 (PARTIALLY COMPLETE)
+Note: Phase 2.1 content analysis benchmarks exist in benchmark_results/.
+Phase 2.2 (XML parsing) and Phase 2.3 (project mapping) benchmarks not yet run.
+- [x] Benchmark Phase 2.1 content analysis (results in benchmark_results/phase21_*)
+- [ ] Benchmark Phase 2.2 XML parsing parallelization
+- [ ] Benchmark Phase 2.3 project mapping parallelization
+- [ ] Benchmark find_consumers() end-to-end (all phases combined)
 - [ ] Validate 3-8x improvement target achievement
 - [ ] Compare Phase 2 performance against Phase 1 baselines
 - [ ] Document Phase 2 performance improvements
 
-PHASE 3: Reference Analysis (MEDIUM PRIORITY)
-Performance Target: 2-5x improvement
-- [ ] Parallelize check_project_references()
-- [ ] Parallelize find_using_statements()
-- [ ] Implement batch processing of .csproj files
-- [ ] Add parallel namespace dependency resolution
-- [ ] Create worker-based solution file parsing
+PHASE 3: Reference Analysis — LARGELY COMPLETED BY PHASE 2 (NEEDS RE-EVALUATION)
+Note: The original Phase 3 tasks referenced functions that don't exist in the codebase.
+The actual implementation folded this work into find_consumers() steps 2-4, which were
+parallelized during Phase 2:
+  - "check_project_references()" → done by parse_csproj_files_parallel() (Phase 2.2)
+  - "find_using_statements()" → done by analyze_cs_files_parallel() with 'namespace' config (Phase 2.1)
+  - "batch processing of .csproj files" → done by parse_csproj_files_batch() (Phase 2.2)
+  - "parallel namespace dependency resolution" → done by analyze_cs_files_parallel() (Phase 2.1)
+The only remaining sequential work in find_consumers() is method filtering (step 5).
 
-BENCHMARKING PHASE 3 (AFTER PHASE 3 IMPLEMENTATION)
-- [ ] Benchmark check_project_references() performance improvements
-- [ ] Benchmark find_using_statements() performance improvements
-- [ ] Measure batch processing efficiency gains
-- [ ] Validate 2-5x improvement target achievement
-- [ ] Document Phase 3 performance improvements
+REMAINING WORK:
+- [ ] Parallelize method filtering in find_consumers() step 5 (currently sequential loop)
+- [ ] Parallelize find_solutions_for_project() if used in hot path
+- [ ] Benchmark find_consumers() end-to-end to verify Phase 2 gains cover Phase 3 targets
 
-PHASE 4: Content Analysis (MEDIUM PRIORITY)
-Performance Target: 2-4x improvement
-- [ ] Parallelize find_class_usage()
-- [ ] Parallelize extract_class_declarations()
-- [ ] Implement chunked processing of source files
-- [ ] Add parallel regex-based type declaration extraction
-- [ ] Optimize method usage analysis with parallel pattern matching
+PHASE 4: Content Analysis — LARGELY COMPLETED BY PHASE 2 (NEEDS RE-EVALUATION)
+Note: The original Phase 4 tasks referenced functions that don't exist in the codebase.
+The actual implementation:
+  - "find_class_usage()" → done by analyze_cs_files_parallel() with 'class' config (Phase 2.1)
+  - "extract_class_declarations()" → extract_type_names_from_content() exists but is a
+    simple regex on individual file content, called once per changed file in git mode.
+    Not a parallelization candidate — it's already fast.
+  - "chunked processing of source files" → done by analyze_cs_files_batch() (Phase 2.1)
+  - "parallel regex-based type declaration extraction" → covered by Phase 2.1 workers
 
-BENCHMARKING PHASE 4 (AFTER PHASE 4 IMPLEMENTATION)
-- [ ] Benchmark find_class_usage() performance improvements
-- [ ] Benchmark extract_class_declarations() performance improvements
-- [ ] Measure chunked processing efficiency gains
-- [ ] Validate 2-4x improvement target achievement
-- [ ] Document Phase 4 performance improvements
+REMAINING WORK:
+- [ ] Profile extract_type_names_from_content() to confirm it's not a bottleneck
+- [ ] Parallelize method usage analysis in find_consumers() step 5 (same as Phase 3 item)
+- [ ] Benchmark content analysis end-to-end to verify Phase 2.1 gains are sufficient
 
 PHASE 5: Optimization (LOW PRIORITY)
 Performance Target: Additional 1.5-2x improvement
+Note: Adaptive worker scaling is partially implemented (estimate_file_count() exists).
+Process pool is created per-call, not reused across calls.
 - [ ] Implement memory usage optimization for large codebases
-- [ ] Add process pool reuse and connection management
+- [ ] Add process pool reuse across multiple parallel calls within find_consumers()
 - [ ] Create caching strategies for repeated analysis operations
 - [ ] Implement performance profiling and bottleneck identification
-- [ ] Add adaptive worker scaling based on system resources
+- [x] Add adaptive worker scaling based on file count (estimate_file_count() implemented)
 
 ============================================================================
 INITIATIVE 2: HYBRID GIT ANALYSIS (Accuracy Focus)
@@ -128,17 +134,19 @@ PHASE 2.3 TESTING ✅ COMPLETED
 
 MULTIPROCESSING TESTING (SEQUENTIAL PRIORITY ORDER)
 IMMEDIATE PRIORITY:
-- [ ] Implement benchmarking harness for performance measurement
-- [ ] Validate Phase 1 performance gains (4-15x improvement target)
-- [ ] Create automated before/after comparison utilities
+- [x] Implement benchmarking harness for performance measurement (benchmark_framework.py)
+- [x] Validate Phase 1 performance gains (benchmark_results/phase1_*)
+- [x] Create automated before/after comparison utilities (benchmark_analysis.py)
 
 AFTER EACH PHASE:
-- [ ] Benchmark Phase 2 performance improvements (3-8x target)
-- [ ] Benchmark Phase 3 performance improvements (2-5x target)
-- [ ] Benchmark Phase 4 performance improvements (2-4x target)
+- [ ] Benchmark Phase 2 end-to-end performance (Phase 2.1 benchmarked, 2.2/2.3 not yet)
+- [ ] Phase 3/4 largely covered by Phase 2 — see notes above, benchmark to confirm
+Note: Phase 3 and 4 tasks referenced functions that were actually parallelized in Phase 2.
+      Remaining work is method filtering (step 5) and profiling to confirm no bottlenecks.
 
 ONGOING:
-- [ ] Add scalability testing across different codebase sizes
+- [x] Add scalability testing across different codebase sizes (test_realistic_workload.py,
+      temp_test_data/ with 20-project and 100-project synthetic codebases)
 - [ ] Implement resource usage monitoring (CPU, memory, I/O)
 - [ ] Create performance regression detection
 
@@ -166,27 +174,504 @@ FUTURE HYBRID GIT CONFIGURATION (PENDING)
 - [ ] Add LLM model selection options
 
 ============================================================================
-PROJECT STATUS SUMMARY
+v1.x STATUS (see bottom of file for full validated summary)
 ============================================================================
 
 COMPLETED:
-✅ Initiative 1 - Phase 1: Complete multiprocessing foundation with optimizations
-✅ CRITICAL: Resolved Phase 1 performance regression (98%+ improvement achieved)
-✅ Comprehensive benchmarking framework infrastructure
-✅ Complete testing framework with 63 unit/integration tests passing
-✅ Full backwards compatibility maintained (100% regression tests pass)
+✅ Phase 1: File discovery parallelization + benchmarking + critical perf fix
+✅ Phase 2: Consumer analysis parallelization (2.1, 2.2, 2.3) + 25 new tests
+✅ Phase 2.1 benchmarking (content analysis)
+✅ 63 tests passing, 100% backward compatibility
 ✅ Configurable multiprocessing control
-✅ Production-ready intelligent file discovery with adaptive thresholds
-✅ Initiative 1 - Phase 2: Consumer analysis parallelization (Phases 2.1, 2.2, 2.3)
-✅ Phase 2.3: Parallel project mapping with directory-to-csproj caching + 25 new tests
+✅ Adaptive worker scaling (estimate_file_count)
 
-NEXT PRIORITIES (Sequential Risk Management Approach):
-📋 1. ✅ COMPLETED: All "BENCHMARKING PHASE 1" tasks with critical optimizations
-📋 2. ✅ COMPLETED: Phase 2 Consumer Analysis implementation (2.1, 2.2, 2.3)
-📋 3. 🚀 CURRENT: Benchmark Phase 2 → Phase 3 → Benchmark Phase 3 → Phase 4 → Benchmark Phase 4
-📋 4. SECONDARY TRACK: Hybrid Git Analysis (after multiprocessing foundation)
+REMAINING v1.x WORK:
+📋 Benchmark Phase 2.2/2.3
+📋 Parallelize method filtering (step 5 in find_consumers — the one remaining sequential piece)
+📋 Profile to confirm no other bottlenecks
+📋 Initiative 2: Hybrid Git Analysis (deferred — can fold into v2.0 modularization)
 
-TOTAL ESTIMATED IMPROVEMENT:
-- Multiprocessing: 4-15x performance improvement when all phases complete
-- Hybrid Git: Dramatic reduction in false positives and analysis scope
-- Combined: Faster, more accurate, and more targeted dependency analysis
+
+============================================================================
+============================================================================
+SCATTER v2.0 ROADMAP
+Source: docs/PRODUCT_DEFINITION.md, Section 12
+============================================================================
+============================================================================
+
+These initiatives represent the v2.0 evolution from single-file CLI tool
+to modular analysis platform with AI integration, impact analysis,
+dependency graphing, interactive reporting, and CI/CD integration.
+
+v1 multiprocessing work (Initiatives 1-2 above) feeds directly into v2.0
+— the parallelism infrastructure carries forward into the modularized
+architecture.
+
+============================================================================
+INITIATIVE 3: MODULARIZATION & AI BACKEND FOUNDATION (v2.0 Phase 1)
+Goal: Split scatter.py into modular package, establish pluggable AI backend.
+Existing v1 functionality must continue to work throughout.
+Ref: PRODUCT_DEFINITION.md Section 12, Phase 1
+============================================================================
+
+MODULE EXTRACTION (HIGH PRIORITY - DO FIRST)
+- [ ] Create scatter/ package directory structure:
+      scatter/__main__.py, scatter/config.py
+      scatter/core/ (graph.py, models.py, parallel.py)
+      scatter/scanners/ (base.py, file_scanner.py, project_scanner.py,
+        namespace_scanner.py, type_scanner.py, sproc_scanner.py, db_scanner.py)
+      scatter/analyzers/ (base.py, consumer_analyzer.py, coupling_analyzer.py,
+        domain_analyzer.py, impact_analyzer.py, health_analyzer.py)
+      scatter/ai/ (base.py, router.py, budget.py, cache.py)
+      scatter/ai/providers/ (wex_platform_provider.py, openai_provider.py,
+        anthropic_provider.py, gemini_provider.py, azure_provider.py,
+        ollama_provider.py)
+      scatter/ai/tasks/ (parse_work_request.py, summarize.py, risk_assess.py,
+        coupling_narrative.py, impact_narrative.py, migration_strategy.py,
+        complexity_estimate.py, progress_narrative.py, code_explain.py,
+        contract_gen.py)
+      scatter/reports/ (base.py, console_reporter.py, json_reporter.py,
+        csv_reporter.py, html_reporter.py, mermaid_reporter.py)
+      scatter/store/ (graph_cache.py, baseline.py, run_history.py)
+      scatter/compat/v1_bridge.py
+- [ ] Extract file discovery logic into scatter/scanners/file_scanner.py
+- [ ] Extract .csproj parsing logic into scatter/scanners/project_scanner.py
+- [ ] Extract namespace analysis into scatter/scanners/namespace_scanner.py
+- [ ] Extract type declaration extraction into scatter/scanners/type_scanner.py
+- [ ] Extract sproc detection into scatter/scanners/sproc_scanner.py
+- [ ] Extract consumer analysis pipeline into scatter/analyzers/consumer_analyzer.py
+- [ ] Move multiprocessing infrastructure into scatter/core/parallel.py
+- [ ] Define shared data models in scatter/core/models.py (Project, Dependency, etc.)
+- [ ] Move console output into scatter/reports/console_reporter.py
+- [ ] Move JSON output into scatter/reports/json_reporter.py
+- [ ] Move CSV output into scatter/reports/csv_reporter.py
+
+BACKWARD COMPATIBILITY (HIGH PRIORITY - ALONGSIDE MODULE EXTRACTION)
+- [ ] Create scatter/compat/v1_bridge.py that maps old CLI args to new modules
+- [ ] Preserve scatter.py as thin entry point that delegates to scatter/__main__.py
+- [ ] Verify all existing CLI flags work identically after modularization
+- [ ] Run full existing test suite (63 tests) against modularized code — 100% pass
+
+AI PROVIDER PROTOCOL (HIGH PRIORITY)
+- [ ] Define AIProvider protocol/interface in scatter/ai/base.py:
+      analyze(prompt, context, task_type) -> AnalysisResult
+      supports(task_type) -> bool
+      estimate_tokens(context) -> int
+      max_context_size -> int
+      stream(prompt, context) -> Iterator
+- [ ] Define AnalysisResult model (response, confidence, token_usage, cost_estimate)
+- [ ] Define AI task type enum (summarization, risk_assessment, coupling_narrative,
+      impact_narrative, migration_strategy, complexity_estimate, etc.)
+
+AI TASK ROUTER (HIGH PRIORITY)
+- [ ] Implement scatter/ai/router.py — provider selection based on task type + config
+- [ ] Implement fallback logic (try preferred provider, fall back to default)
+- [ ] Implement task-to-provider mapping from config
+
+AI PROVIDERS (MEDIUM PRIORITY — implement in order)
+- [ ] Migrate existing Gemini code into scatter/ai/providers/gemini_provider.py
+- [ ] Implement WEX AI Platform provider (scatter/ai/providers/wex_platform_provider.py)
+      — default, no auth required, uses WEX internal AI infrastructure
+- [ ] Implement Anthropic provider (Claude Opus/Sonnet/Haiku) — requires authorization
+- [ ] Implement OpenAI provider (GPT-4o, GPT-4.1) — requires authorization
+- [ ] Implement Azure OpenAI provider — requires authorization
+- [ ] Implement Ollama provider (local models) — requires authorization
+
+AI RESPONSE CACHING (MEDIUM PRIORITY)
+- [ ] Implement scatter/ai/cache.py — file-based cache with configurable TTL
+- [ ] Cache key based on: code content hash + task type + provider
+- [ ] Invalidate cache entries when source files change (via mtime or git status)
+
+TOKEN BUDGET MANAGER (MEDIUM PRIORITY)
+- [ ] Implement scatter/ai/budget.py — context chunking when input exceeds model window
+- [ ] Smart context selection: send relevant files/excerpts, not entire projects
+- [ ] Pre-call token estimation and cost logging
+- [ ] Configurable per-run token cap (default: 100,000)
+- [ ] Warning threshold before proceeding (default: 50,000 tokens)
+
+CONFIGURATION SYSTEM (MEDIUM PRIORITY)
+- [ ] Implement scatter/config.py — loads from .scatter.yaml, env vars, CLI flags
+- [ ] Support repo-level config (.scatter.yaml in repo root)
+- [ ] Support user-level config (~/.scatter/config.yaml)
+- [ ] CLI flags override config file values
+- [ ] AI provider config: default_provider, task_overrides, provider credentials
+- [ ] Budget config: max_tokens_per_run, warn_at_tokens, cache_ttl_hours
+
+PHASE 1 TESTING
+- [ ] Unit tests for each scanner module (file, project, namespace, type, sproc)
+- [ ] Unit tests for AI provider protocol compliance (mock providers)
+- [ ] Unit tests for AI task router (provider selection, fallback logic)
+- [ ] Unit tests for token budget manager (chunking, estimation)
+- [ ] Unit tests for AI response cache (TTL, invalidation)
+- [ ] Unit tests for config system (yaml loading, env var override, CLI override)
+- [ ] Integration test: full v1 workflow through modularized code
+- [ ] Integration test: AI summarization through new provider system
+- [ ] Backward compatibility: all 63 existing tests pass without modification
+
+============================================================================
+INITIATIVE 4: CSE IMPACT ANALYSIS & AI ENRICHMENT (v2.0 Phase 2)
+Goal: Work request in, impact analysis out, with AI enrichment.
+Depends on: Initiative 3 (modularization + AI backend)
+Ref: PRODUCT_DEFINITION.md Section 12, Phase 2
+============================================================================
+
+IMPACT ANALYSIS MODE (HIGH PRIORITY)
+- [ ] Implement `scatter impact` CLI command
+- [ ] Accept --sow "free text description" for inline work requests
+- [ ] Accept --sow-file path/to/file.txt for full SOW/CSE documents
+- [ ] Accept --scope to specify codebase search directory
+- [ ] Wire impact mode into the analysis pipeline (scanners + analyzers)
+
+AI WORK REQUEST PARSING (HIGH PRIORITY)
+- [ ] Implement scatter/ai/tasks/parse_work_request.py
+- [ ] AI extracts analysis targets from natural language:
+      project names, sproc names, class names, method names
+- [ ] Map extracted targets to appropriate analysis modes
+      (target-project, sproc tracing, or both)
+- [ ] Handle ambiguous input gracefully — ask for clarification or run broad scan
+
+AI RISK ASSESSMENT (HIGH PRIORITY)
+- [ ] Implement scatter/ai/tasks/risk_assess.py
+- [ ] Produce risk rating: Low / Medium / High / Critical
+- [ ] Generate natural language justification for the rating
+- [ ] Identify specific concerns (e.g., "retry loop with no parameter validation")
+- [ ] Suggest mitigations for each identified risk
+
+AI COUPLING NARRATIVE (MEDIUM PRIORITY)
+- [ ] Implement scatter/ai/tasks/coupling_narrative.py
+- [ ] Explain why dependencies exist (not just that they exist)
+- [ ] Identify primary coupling vectors (specific classes, sprocs, shared models)
+- [ ] Recommend decoupling actions where applicable
+
+AI IMPACT NARRATIVE (MEDIUM PRIORITY)
+- [ ] Implement scatter/ai/tasks/impact_narrative.py
+- [ ] Generate natural language impact summary suitable for non-developers
+- [ ] Include: affected projects, pipelines, risk level, recommended testing
+- [ ] Output should be directly shareable (e.g., pasteable into an email or ticket)
+
+ENHANCED BLAST RADIUS (MEDIUM PRIORITY)
+- [ ] Implement transitive impact tracing — consumers of consumers, up to N hops
+- [ ] Add confidence scoring per consumer:
+      HIGH = directly uses changed types
+      MEDIUM = references the project but may not use the changed code
+      LOW = transitive consumer, multiple hops away
+- [ ] Add depth tracking — show hop distance for each affected project
+
+AI COMPLEXITY ESTIMATE (MEDIUM PRIORITY)
+- [ ] Implement scatter/ai/tasks/complexity_estimate.py
+- [ ] Produce complexity rating: Low / Medium / High / Critical
+- [ ] Base on: consumer count, API surface size, data entanglement, code complexity
+- [ ] Include effort estimate range (e.g., "3-5 developer-days")
+- [ ] Output feeds directly into CSE scoping
+
+PHASE 2 TESTING
+- [ ] Unit tests for work request parsing (various input formats)
+- [ ] Unit tests for risk assessment (known risk patterns)
+- [ ] Unit tests for confidence scoring logic
+- [ ] Unit tests for transitive impact tracing (depth limits, cycle handling)
+- [ ] Integration test: end-to-end `scatter impact --sow "..." --scope .`
+- [ ] Integration test: AI enrichment with mock provider
+- [ ] Acceptance test: compare impact analysis output against manually-verified results
+
+============================================================================
+INITIATIVE 5: DEPENDENCY GRAPH, METRICS & DOMAIN ANALYSIS (v2.0 Phase 3)
+Goal: Full dependency graph with persistence, coupling metrics, domain detection.
+Depends on: Initiative 3 (modularization), Initiative 4 (impact analysis)
+Ref: PRODUCT_DEFINITION.md Section 12, Phase 3
+============================================================================
+
+DEPENDENCY GRAPH MODEL (HIGH PRIORITY)
+- [ ] Implement scatter/core/graph.py — DependencyGraph data structure
+- [ ] Nodes: Dict[str, Project] — keyed by project name
+- [ ] Edges: List[DependencyEdge] — (source, target, type, weight)
+      Edge types: project_reference, namespace_usage, type_usage, sproc_shared
+- [ ] get_consumers(project, depth=1) -> List[Project]
+- [ ] get_dependencies(project) -> List[Project]
+- [ ] get_transitive_closure(project, max_depth) -> List[(Project, depth)]
+- [ ] detect_cycles() -> List[List[Project]]
+- [ ] find_clusters() -> List[Cluster] (domain boundary candidates)
+- [ ] compute_metrics() -> Dict[str, ProjectMetrics]
+- [ ] diff(baseline: DependencyGraph) -> GraphDiff
+- [ ] to_mermaid() / to_json() export methods
+
+GRAPH PERSISTENCE (HIGH PRIORITY)
+- [ ] Implement scatter/store/graph_cache.py
+- [ ] Save graph to disk (JSON or binary format)
+- [ ] Load graph from disk on subsequent runs
+- [ ] Invalidation: detect code changes via git status or file mtime
+- [ ] If graph is stale, rebuild incrementally or fully as needed
+- [ ] CLI flag: --rebuild-graph to force full rebuild
+
+COUPLING METRICS (MEDIUM PRIORITY)
+- [ ] Implement scatter/analyzers/coupling_analyzer.py
+- [ ] Fan-in: count of projects that depend on this one
+- [ ] Fan-out: count of projects this one depends on
+- [ ] Instability index: fan-out / (fan-in + fan-out)
+- [ ] Coupling score: weighted measure of interconnectedness
+- [ ] Shared DB density: count of database objects shared with other projects
+- [ ] Compute metrics for all projects in the graph
+
+TRANSITIVE ANALYSIS (MEDIUM PRIORITY)
+- [ ] N-hop consumer tracing with depth tracking
+- [ ] Configurable max depth (default: 3)
+- [ ] Output includes hop distance for each consumer
+- [ ] Handle cycles gracefully (don't loop forever)
+
+CIRCULAR DEPENDENCY DETECTION (MEDIUM PRIORITY)
+- [ ] Detect all dependency cycles in the graph
+- [ ] Report cycle length, projects involved, and edge types
+- [ ] Rank cycles by severity (shorter cycles = harder to break)
+
+DOMAIN BOUNDARY DETECTION (MEDIUM PRIORITY)
+- [ ] Implement scatter/analyzers/domain_analyzer.py
+- [ ] Graph clustering to identify tightly-connected groups
+- [ ] Each cluster = candidate domain / service boundary
+- [ ] Report cross-boundary dependencies for each cluster
+- [ ] Score extraction feasibility per cluster
+
+AI BOUNDARY ASSESSMENT (LOW PRIORITY)
+- [ ] Implement AI evaluation of each proposed domain boundary
+- [ ] Assess extraction complexity: Low / Medium / High / Critical
+- [ ] Identify risks specific to each boundary (shared sprocs, circular deps)
+- [ ] Recommend extraction order across boundaries
+
+DATABASE DEPENDENCY MAPPING (MEDIUM PRIORITY)
+- [ ] Implement scatter/scanners/db_scanner.py
+- [ ] Enhanced stored procedure detection (beyond v1 regex)
+- [ ] Entity Framework model-to-table mappings (DbContext/DbSet scanning)
+- [ ] Direct SQL references (table/view names in string literals)
+- [ ] Connection string analysis (which projects connect to which databases)
+- [ ] Cross-project DB object matrix output
+
+HEALTH DASHBOARD DATA (LOW PRIORITY)
+- [ ] Implement scatter/analyzers/health_analyzer.py
+- [ ] Aggregate all metrics: project count, file count, LOC estimate
+- [ ] Top N highest-coupling projects
+- [ ] Circular dependency count and worst offenders
+- [ ] Orphan projects (zero fan-in — deletion candidates)
+- [ ] Shared DB hotspots (most-shared database objects)
+- [ ] Domain cluster summary with scores
+- [ ] Trend lines if baseline history exists
+
+PHASE 3 TESTING
+- [ ] Unit tests for DependencyGraph operations (add/remove/query)
+- [ ] Unit tests for cycle detection (known cycles, no cycles, self-loops)
+- [ ] Unit tests for clustering algorithm (known cluster structures)
+- [ ] Unit tests for coupling metrics (known dependency structures)
+- [ ] Unit tests for graph persistence (save/load/invalidation)
+- [ ] Unit tests for DB scanner (sproc, EF, direct SQL patterns)
+- [ ] Integration test: build graph from example GalaxyWorks projects
+- [ ] Integration test: detect known cycles in test data
+- [ ] Integration test: compute metrics and verify against manual calculation
+
+============================================================================
+INITIATIVE 6: REPORTING & EXTRACTION PLANNING (v2.0 Phase 4)
+Goal: Interactive reports, extraction planning tools, baseline tracking.
+Depends on: Initiative 5 (dependency graph + metrics)
+Ref: PRODUCT_DEFINITION.md Section 12, Phase 4
+============================================================================
+
+HTML REPORT ENGINE (HIGH PRIORITY)
+- [ ] Implement scatter/reports/html_reporter.py
+- [ ] Self-contained single HTML file — embedded JS/CSS, no external dependencies
+- [ ] Works in any browser, can be emailed or dropped into SharePoint/Confluence
+- [ ] Report sections:
+      - Executive summary (AI-generated narrative, 1 paragraph)
+      - Impact table (sortable, searchable, all affected projects with metrics)
+      - Risk assessment (AI-generated, color-coded severity)
+      - Database dependency map
+      - Pipeline impact
+      - Recommended actions (AI-generated)
+      - Detailed findings (collapsible per-project sections)
+
+DEPENDENCY GRAPH VISUALIZATION (MEDIUM PRIORITY)
+- [ ] Interactive D3.js dependency diagram embedded in HTML report
+- [ ] Zoomable, filterable — click a project to see its connections
+- [ ] Color-code by domain cluster or coupling score
+- [ ] Highlight affected projects in blast radius analyses
+
+METRIC DASHBOARD VIEW (MEDIUM PRIORITY)
+- [ ] Color-coded health indicators per project
+- [ ] Sortable project table with all metrics columns
+- [ ] Filterable by domain cluster, coupling threshold, risk level
+
+EXTRACTION PLANNING MODE (HIGH PRIORITY)
+- [ ] Implement `scatter extract` CLI command
+- [ ] Accept --project to specify extraction target
+- [ ] Output extraction scope analysis:
+      - API surface (types/methods used by external consumers)
+      - Consumer inventory (projects that need to switch to service calls)
+      - Shared data dependencies (DB objects needing ownership decisions)
+      - Circular dependencies to break before extraction
+      - Complexity estimate (Low / Medium / High / Critical)
+
+AI MIGRATION STRATEGY (MEDIUM PRIORITY)
+- [ ] Implement scatter/ai/tasks/migration_strategy.py
+- [ ] Step-by-step extraction approach with sequencing
+- [ ] Risk mitigation recommendations per step
+- [ ] Identify what to extract first, what to extract last
+
+AI CONTRACT GENERATION (LOW PRIORITY)
+- [ ] Implement scatter/ai/tasks/contract_gen.py
+- [ ] Draft interface definitions for extraction boundaries
+- [ ] Generate based on actual API surface detected by analysis
+
+BASELINE SAVE/LOAD (HIGH PRIORITY)
+- [ ] Implement scatter/store/baseline.py
+- [ ] `scatter baseline save --scope . --name "q1-2026-start"` — snapshot graph + metrics
+- [ ] `scatter baseline list` — show saved baselines with dates
+- [ ] Store as versioned JSON in .scatter/baselines/ directory
+
+BASELINE DIFF (HIGH PRIORITY)
+- [ ] `scatter baseline diff --name "q1-2026-start" --scope .`
+- [ ] Compare current graph against saved baseline
+- [ ] Compute deltas: projects added/removed, coupling changes, new/resolved cycles
+- [ ] Output as console, JSON, or HTML
+
+AI PROGRESS NARRATIVE (MEDIUM PRIORITY)
+- [ ] Implement scatter/ai/tasks/progress_narrative.py
+- [ ] Summarize what changed since baseline in natural language
+- [ ] Assess whether modernization is on track
+- [ ] Flag regressions (new coupling, new cycles)
+
+MERMAID OUTPUT (LOW PRIORITY)
+- [ ] Implement scatter/reports/mermaid_reporter.py
+- [ ] Dependency diagrams as Mermaid markup
+- [ ] Suitable for embedding in Confluence, wikis, READMEs
+- [ ] Support cluster grouping in Mermaid subgraphs
+
+PHASE 4 TESTING
+- [ ] Unit tests for HTML report generation (valid HTML, sections present)
+- [ ] Unit tests for baseline save/load (roundtrip, versioning)
+- [ ] Unit tests for baseline diff (known deltas)
+- [ ] Unit tests for Mermaid output (valid Mermaid syntax)
+- [ ] Integration test: `scatter extract` against example projects
+- [ ] Integration test: baseline save → make changes → baseline diff
+- [ ] Integration test: full HTML report generation from analysis results
+- [ ] Visual review: open HTML report in browser, verify interactivity
+
+============================================================================
+INITIATIVE 7: CI/CD INTEGRATION & WORKFLOW (v2.0 Phase 5)
+Goal: Integrate Scatter into CI/CD for continuous, automated analysis.
+Depends on: Initiative 6 (reporting + baselines)
+Ref: PRODUCT_DEFINITION.md Section 12, Phase 5
+============================================================================
+
+CI/CD CHECK MODE (HIGH PRIORITY)
+- [ ] Machine-readable output with exit codes for pipeline integration
+      Exit 0 = no concerns, Exit 1 = warnings, Exit 2 = high-risk changes
+- [ ] --fail-on-high-risk flag: non-zero exit if blast radius > N projects
+- [ ] --output-format json for structured consumption by pipeline scripts
+- [ ] Configurable thresholds via .scatter.yaml
+
+PR BLAST RADIUS COMMENTS (HIGH PRIORITY)
+- [ ] Post impact analysis as PR comment (GitHub)
+- [ ] Post impact analysis as PR comment (Azure DevOps)
+- [ ] Include: affected projects, risk level, pipelines to test
+- [ ] Configurable: suppress comment if blast radius = 0
+- [ ] Provide GitHub Action template
+- [ ] Provide Azure DevOps pipeline task template
+
+AUTOMATIC BASELINE UPDATES (MEDIUM PRIORITY)
+- [ ] Update baseline automatically on merge to main
+- [ ] Store baseline history (keep last N baselines)
+- [ ] Trigger via CI/CD pipeline or git hook
+
+COUPLING THRESHOLDS (MEDIUM PRIORITY)
+- [ ] Configurable gates in .scatter.yaml:
+      max_blast_radius: 10 (warn if more than N projects affected)
+      max_coupling_increase: 5% (warn if coupling score increases)
+      block_new_cycles: true (fail if PR introduces circular dependency)
+- [ ] Output threshold violations in CI/CD check mode
+
+WATCH MODE (LOW PRIORITY)
+- [ ] `scatter analyze --watch` — re-run analysis on file changes
+- [ ] Use filesystem events (watchdog or similar)
+- [ ] Useful for interactive local exploration during development
+- [ ] Debounce rapid changes (wait 500ms after last change)
+
+PROGRESS BAR UI (LOW PRIORITY)
+- [ ] Add tqdm progress bars for long-running scans
+- [ ] Show progress per phase: file discovery, project mapping, consumer analysis
+- [ ] Suppress in --quiet mode and CI/CD check mode
+
+PHASE 5 TESTING
+- [ ] Unit tests for exit code logic (threshold evaluation)
+- [ ] Unit tests for PR comment formatting (GitHub + Azure DevOps)
+- [ ] Integration test: CI/CD check mode with known blast radius
+- [ ] Integration test: threshold violations trigger correct exit codes
+- [ ] Integration test: watch mode detects file changes and re-runs
+
+============================================================================
+PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-03)
+============================================================================
+
+CODEBASE STATE:
+  - scatter.py: 2,219 lines, monolithic (no scatter/ package directory)
+  - 26 functions, 4 parallel worker functions, 4 parallel orchestrators
+  - 63 tests across 4 test files (verified: pytest collects 63)
+  - Benchmarks exist for Phase 1 file discovery and Phase 2.1 content analysis
+  - AI integration: Google Gemini only (configure_gemini, summarize_csharp_file_with_gemini)
+  - Output formats: console, CSV, JSON
+  - No .scatter.yaml, no config file system, no plugin architecture
+
+COMPLETED (v1.x):
+  Initiative 1 — Multiprocessing Overhaul:
+  ✅ Phase 1: File discovery parallelization (find_files_with_pattern_parallel)
+  ✅ Phase 1 benchmarking + critical perf fix (benchmark_results/phase1_*)
+  ✅ Phase 2.1: Content analysis parallelization (analyze_cs_files_parallel)
+  ✅ Phase 2.1 benchmarking (benchmark_results/phase21_*)
+  ✅ Phase 2.2: XML parsing parallelization (parse_csproj_files_parallel)
+  ✅ Phase 2.3: Project mapping parallelization (map_cs_to_projects_parallel)
+  ✅ Configuration: --disable-multiprocessing, --max-workers, --chunk-size,
+     --cs-analysis-chunk-size, --csproj-analysis-chunk-size
+  ✅ Testing: 63 tests passing (37 phase1 + 25 phase2.3 + 1 realistic workload)
+  ✅ Adaptive worker scaling via estimate_file_count()
+  ✅ Benchmarking infrastructure (benchmark_framework.py, benchmark_analysis.py)
+  ✅ Scalability test data (20-project and 100-project synthetic codebases)
+
+PARTIALLY COMPLETE (v1.x):
+  Initiative 1 — Multiprocessing Overhaul:
+  🚧 Benchmarking Phase 2.2/2.3 (not yet run — Phase 2.1 benchmarked)
+  🟡 Phase 3: MOSTLY DONE — original tasks referenced non-existent functions;
+     the actual work (ProjectReference checking, namespace analysis) was
+     parallelized during Phase 2. Only method filtering (step 5) remains sequential.
+  🟡 Phase 4: MOSTLY DONE — same situation as Phase 3. Class usage analysis
+     was parallelized in Phase 2.1. extract_type_names_from_content() is
+     lightweight and not a bottleneck.
+  🚧 Phase 5: Adaptive scaling done, process pool reuse and memory optimization not done.
+
+NOT STARTED (v1.x):
+  Initiative 2 — Hybrid Git Analysis (deferred until multiprocessing complete)
+
+NOT STARTED (v2.0):
+  Initiative 3 — Modularization & AI Backend Foundation (v2.0 Phase 1)
+  Initiative 4 — CSE Impact Analysis & AI Enrichment (v2.0 Phase 2)
+  Initiative 5 — Dependency Graph, Metrics & Domain Analysis (v2.0 Phase 3)
+  Initiative 6 — Reporting & Extraction Planning (v2.0 Phase 4)
+  Initiative 7 — CI/CD Integration & Workflow (v2.0 Phase 5)
+
+RECOMMENDED EXECUTION ORDER:
+  1. Finish Initiative 1 remaining work:
+     - Benchmark Phase 2.2/2.3
+     - Parallelize method filtering (step 5 in find_consumers) — the one remaining
+       sequential bottleneck in the analysis pipeline
+     - Profile to confirm no other bottlenecks remain
+  2. Initiative 3: Modularization — prerequisite for everything in v2.0
+     (Initiative 2 Hybrid Git can be folded into Initiative 3 during modularization)
+  3. Initiative 4: Impact analysis — the highest-value new feature
+  4. Initiative 5: Dependency graph — foundation for extraction planning
+  5. Initiative 6: Reporting + extraction planning
+  6. Initiative 7: CI/CD integration
+
+KEY FINDING FROM VALIDATION:
+  The original tasks.txt Phase 3 and Phase 4 referenced functions
+  (check_project_references, find_using_statements, find_class_usage,
+  extract_class_declarations) that never existed in scatter.py. The actual
+  implementation handles all of this inside find_consumers() steps 2-5,
+  and steps 2-4 were parallelized during Phase 2 work. The remaining
+  multiprocessing work before v2.0 is small:
+    1. Parallelize method filtering (step 5) — minor
+    2. Run Phase 2.2/2.3 benchmarks — validation only
+    3. Profile for any remaining bottlenecks — validation only
+  This means Initiative 1 is closer to complete than the task list suggested.
