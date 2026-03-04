@@ -327,9 +327,10 @@ def analyze_cs_files_batch(args: Tuple[List[Path], Dict[str, any]]) -> Dict[Path
         args: Tuple containing:
             - files_batch: List of .cs file paths to analyze
             - analysis_config: Dictionary containing:
-                - 'analysis_type': 'namespace', 'class', or 'sproc'
+                - 'analysis_type': 'namespace', 'class', 'sproc', or 'method'
                 - 'target_namespace': For namespace analysis
                 - 'class_name': For class usage analysis
+                - 'method_pattern': Compiled regex pattern for method analysis
                 - 'sproc_pattern': Compiled regex pattern for sproc analysis
                 - 'using_pattern': Compiled regex pattern for namespace analysis
                 - 'class_pattern': Compiled regex pattern for class analysis
@@ -383,7 +384,14 @@ def analyze_cs_files_batch(args: Tuple[List[Path], Dict[str, any]]) -> Dict[Path
                     matches = list(sproc_pattern.finditer(content))
                     file_result['matches'] = [(match.group(), match.start()) for match in matches]
                     file_result['has_match'] = len(matches) > 0
-                    
+
+            elif analysis_type == 'method':
+                method_pattern = analysis_config.get('method_pattern')
+                if method_pattern:
+                    matches = list(method_pattern.finditer(content))
+                    file_result['matches'] = [match.group() for match in matches]
+                    file_result['has_match'] = len(matches) > 0
+
             else:
                 file_result['error'] = f"Unknown analysis type: {analysis_type}"
                 
@@ -1279,28 +1287,53 @@ def find_consumers(
     if not method_name:
         return format_results(class_consumers)
 
-    # --- step 5: filter by method ---
+    # --- step 5: filter by method (parallel) ---
     logging.debug(f"Checking {len(class_consumers)} class consumers for potential usage of method '{method_name}'...")
 
     method_pattern = re.compile(rf"\.\s*{re.escape(method_name)}\s*\(")
+
+    # Collect all files across all consumers for parallel analysis
+    all_method_files = []
+    file_to_consumer_map: Dict[Path, Path] = {}  # cs_file -> consumer csproj path
     for consumer_path_abs, consumer_data in class_consumers.items():
-        consumer_dir_abs = consumer_path_abs.parent
-        method_match_files = []
-        files_to_check = consumer_data['relevant_files']
-        logging.debug(f"  Checking method '{method_name}' in {len(files_to_check)} relevant files for {consumer_data['consumer_name']}...")
+        for cs_file_abs in consumer_data['relevant_files']:
+            all_method_files.append(cs_file_abs)
+            file_to_consumer_map[cs_file_abs] = consumer_path_abs
 
-        for cs_file_abs in files_to_check:
-            try:
-                content = cs_file_abs.read_text(encoding='utf-8', errors='ignore')
-                if method_pattern.search(content):
-                    method_match_files.append(cs_file_abs)
-            except (OSError, Exception) as e:
-                logging.warning(f"Could not read {cs_file_abs.name} in {consumer_data['consumer_name']} for method check: {e}")
+    logging.debug(f"  Scanning {len(all_method_files)} files across {len(class_consumers)} consumers for method '{method_name}'...")
 
-        if method_match_files:
-            consumer_data['relevant_files'] = method_match_files
-            method_consumers[consumer_path_abs] = consumer_data
-            logging.debug(f"    Method '{method_name}' used in {consumer_data['consumer_name']} (Files: {[f.name for f in method_match_files]})")
+    method_analysis_config = {
+        'analysis_type': 'method',
+        'method_pattern': method_pattern
+    }
+
+    method_results = analyze_cs_files_parallel(
+        all_method_files,
+        method_analysis_config,
+        max_workers=max_workers,
+        cs_analysis_chunk_size=cs_analysis_chunk_size,
+        disable_multiprocessing=disable_multiprocessing
+    )
+
+    # Reassemble results back into per-consumer groupings
+    for cs_file_abs, result in method_results.items():
+        if result.get('error'):
+            consumer_path_abs = file_to_consumer_map[cs_file_abs]
+            consumer_name = class_consumers[consumer_path_abs]['consumer_name']
+            logging.warning(f"Could not read {cs_file_abs.name} in {consumer_name} for method check: {result['error']}")
+            continue
+        if result['has_match']:
+            consumer_path_abs = file_to_consumer_map[cs_file_abs]
+            consumer_data = class_consumers[consumer_path_abs]
+            if consumer_path_abs not in method_consumers:
+                method_consumers[consumer_path_abs] = {
+                    'consumer_name': consumer_data['consumer_name'],
+                    'relevant_files': []
+                }
+            method_consumers[consumer_path_abs]['relevant_files'].append(cs_file_abs)
+
+    for consumer_path_abs, consumer_data in method_consumers.items():
+        logging.debug(f"    Method '{method_name}' used in {consumer_data['consumer_name']} (Files: {[f.name for f in consumer_data['relevant_files']]})")
 
     logging.debug(f"Found {len(method_consumers)} consumer(s) potentially calling method '{method_name}'.")
     if not method_consumers:
