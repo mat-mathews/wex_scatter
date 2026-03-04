@@ -876,6 +876,80 @@ def analyze_branch_changes(repo_path: str, feature_branch_name: str, base_branch
         sys.exit(1)
 
 
+def get_diff_for_file(repo_path: str, file_path: str,
+                      feature_branch: str, base_branch: str = 'main') -> Optional[str]:
+    """Fetches the unified diff text for a single file between merge base and feature branch."""
+    try:
+        repo = git.Repo(repo_path, search_parent_directories=True)
+        merge_base = repo.merge_base(base_branch, feature_branch)
+        if not merge_base:
+            logging.warning(f"Could not find merge base between '{base_branch}' and '{feature_branch}'.")
+            return None
+        diff_text = repo.git.diff(merge_base[0].hexsha, feature_branch, '--', file_path)
+        return diff_text if diff_text else None
+    except Exception as e:
+        logging.warning(f"Could not get diff for {file_path}: {e}")
+        return None
+
+
+def get_affected_symbols_from_diff(file_content: str, diff_text: str,
+                                    file_path: str,
+                                    model_instance) -> Optional[Set[str]]:
+    """
+    Uses Gemini to analyze a diff and identify which C# type declarations were meaningfully changed.
+    Returns a Set of affected type names, or None on failure (triggers fallback to regex).
+    """
+    prompt = f"""Analyze the following C# file and its git diff. Identify which top-level type declarations
+(class, struct, interface, enum) had their body, signature, or members meaningfully changed in the diff.
+
+Rules:
+- Only return type names whose definition/body/members were actually modified in the diff
+- Do NOT include types that merely appear in the same file but were not changed
+- For comment-only or using/import-only changes, return an empty array
+- Return ONLY a JSON array of type name strings, nothing else
+- Example: ["MyClass", "IMyInterface"]
+
+File path: {file_path}
+
+Full file content:
+```csharp
+{file_content}
+```
+
+Git diff:
+```diff
+{diff_text}
+```
+
+Return ONLY the JSON array:"""
+
+    try:
+        response = model_instance.generate_content(prompt)
+        response_text = response.text.strip()
+
+        # Strip markdown code fences if present
+        if response_text.startswith("```"):
+            lines = response_text.split('\n')
+            lines = [l for l in lines if not l.startswith("```")]
+            response_text = '\n'.join(lines).strip()
+
+        affected = json.loads(response_text)
+        if not isinstance(affected, list):
+            logging.warning(f"Gemini returned non-list for {file_path}: {response_text}")
+            return None
+
+        result = {name for name in affected if isinstance(name, str)}
+        logging.info(f"Hybrid analysis for {file_path}: {len(result)} affected type(s) identified by LLM: {result if result else '(none - comment/import only change)'}")
+        return result
+
+    except json.JSONDecodeError as e:
+        logging.warning(f"Failed to parse Gemini JSON response for {file_path}: {e}")
+        return None
+    except Exception as e:
+        logging.warning(f"Gemini call failed for {file_path}: {e}")
+        return None
+
+
 # --- derive_namespace ---
 def derive_namespace(csproj_path: Path) -> Optional[str]:
     """
@@ -1643,6 +1717,10 @@ if __name__ == "__main__":
         "-b", "--base-branch", default="main",
         help="Base branch to compare against (default: main)."
     )
+    git_group.add_argument(
+        "--enable-hybrid-git", action="store_true",
+        help="Enable LLM-enhanced diff analysis for more precise symbol extraction (requires Gemini API key)."
+    )
 
     common_group = parser.add_argument_group('Common Options')
     common_group.add_argument(
@@ -1731,14 +1809,24 @@ if __name__ == "__main__":
     if args.verbose:
         logging.debug("Debug logging enabled.")
 
-    # --- configure gemini we are going to summarize ---
+    # --- configure gemini if we are going to summarize or use hybrid git ---
     gemini_configured_successfully = False
-    if args.summarize_consumers:
-        logging.info("Summarization enabled. Configuring Gemini...")
+    if args.summarize_consumers or args.enable_hybrid_git:
+        reason = []
+        if args.summarize_consumers:
+            reason.append("summarization")
+        if args.enable_hybrid_git:
+            reason.append("hybrid git analysis")
+        logging.info(f"{', '.join(reason).capitalize()} enabled. Configuring Gemini...")
         gemini_configured_successfully = configure_gemini(args.google_api_key, args.gemini_model)
         if not gemini_configured_successfully:
-            logging.error("Gemini configuration failed. Summarization will be disabled.")
-            args.summarize_consumers = False
+            logging.error("Gemini configuration failed.")
+            if args.summarize_consumers:
+                logging.error("Summarization will be disabled.")
+                args.summarize_consumers = False
+            if args.enable_hybrid_git:
+                logging.warning("Hybrid git analysis will fall back to regex extraction.")
+                args.enable_hybrid_git = False
 
     is_git_mode = args.branch_name is not None
     is_target_mode = args.target_project is not None
@@ -1900,7 +1988,24 @@ if __name__ == "__main__":
                     if cs_abs_path.is_file():
                         try:
                             content = cs_abs_path.read_text(encoding='utf-8', errors='ignore')
-                            extracted = extract_type_names_from_content(content)
+                            extracted = None
+
+                            if args.enable_hybrid_git and gemini_model:
+                                diff_text = get_diff_for_file(
+                                    str(repo_path_abs), cs_rel_path_str,
+                                    args.branch_name, args.base_branch)
+                                if diff_text:
+                                    extracted = get_affected_symbols_from_diff(
+                                        content, diff_text, cs_rel_path_str, gemini_model)
+                                    if extracted is None:
+                                        logging.warning(f"LLM analysis failed for {cs_rel_path_str}, falling back to regex extraction.")
+                                        extracted = extract_type_names_from_content(content)
+                                else:
+                                    logging.debug(f"No diff found for {cs_rel_path_str}, using regex extraction.")
+                                    extracted = extract_type_names_from_content(content)
+                            else:
+                                extracted = extract_type_names_from_content(content)
+
                             if extracted:
                                 logging.debug(f"     Found types in {cs_rel_path_str}: {', '.join(extracted)}")
                                 project_types.update(extracted)
