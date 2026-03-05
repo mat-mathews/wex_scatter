@@ -20,21 +20,23 @@ from typing import Dict, List, Optional, Set, Union
 
 from scatter.core.models import DEFAULT_MAX_WORKERS, DEFAULT_CHUNK_SIZE
 from scatter.core.parallel import find_files_with_pattern_parallel
+from scatter.scanners.type_scanner import extract_type_names_from_content
+from scatter.scanners.project_scanner import derive_namespace
+from scatter.scanners.sproc_scanner import find_cs_files_referencing_sproc
+from scatter.analyzers.consumer_analyzer import find_consumers
+from scatter.compat.v1_bridge import (
+    _process_consumer_summaries_and_append_results,
+    find_solutions_for_project,
+    map_batch_jobs_from_config_repo,
+)
 from scatter._legacy import (
-    extract_type_names_from_content,
     find_project_file,
     analyze_branch_changes,
     get_diff_for_file,
     get_affected_symbols_from_diff,
-    derive_namespace,
     configure_gemini,
     gemini_model,
     summarize_csharp_file_with_gemini,
-    _process_consumer_summaries_and_append_results,
-    find_consumers,
-    find_cs_files_referencing_sproc,
-    find_solutions_for_project,
-    map_batch_jobs_from_config_repo,
 )
 
 # Re-import so __main__ block can access the mutable global

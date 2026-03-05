@@ -1,21 +1,18 @@
 """Legacy functions not yet modularized into dedicated submodules.
 
-This module holds functions that will be extracted into scanners/, analyzers/,
-ai/, reports/, and compat/ modules in later phases. It exists to resolve the
-package-vs-file naming conflict: with scatter/ as a package, scatter.py cannot
-be imported as a module, so all importable functions must live in the package.
+This module holds functions that will be extracted into analyzers/git_analyzer.py
+and ai/ modules in later phases (Phase 3 and Phase 4).
+
+Functions already extracted to their permanent homes are re-exported here
+for backward compatibility with scatter/__init__.py imports.
 """
 import google.generativeai as genai
-import textwrap
-import logging
-import re
-import sys
-import os
 import json
-import xml.etree.ElementTree as ET
+import logging
+import os
+import sys
 from pathlib import Path
-from typing import List, Optional, Dict, Set, Union
-from collections import defaultdict
+from typing import Optional, Set
 
 try:
     import git
@@ -24,16 +21,22 @@ except ImportError:
     print("Please install it using: pip install GitPython")
     sys.exit(1)
 
-from scatter.core.models import (
-    DEFAULT_MAX_WORKERS,
-    DEFAULT_CHUNK_SIZE,
-    TYPE_DECLARATION_PATTERN,
+# Re-export functions that have been moved to their permanent modules.
+# This keeps `from scatter._legacy import X` working in __init__.py.
+from scatter.scanners.type_scanner import (
+    extract_type_names_from_content,
+    find_enclosing_type_name,
 )
-from scatter.core.parallel import (
-    find_files_with_pattern_parallel,
-    parse_csproj_files_parallel,
-    analyze_cs_files_parallel,
-    map_cs_to_projects_parallel,
+from scatter.scanners.project_scanner import (
+    find_project_file_on_disk,
+    derive_namespace,
+)
+from scatter.scanners.sproc_scanner import find_cs_files_referencing_sproc
+from scatter.analyzers.consumer_analyzer import find_consumers
+from scatter.compat.v1_bridge import (
+    find_solutions_for_project,
+    map_batch_jobs_from_config_repo,
+    _process_consumer_summaries_and_append_results,
 )
 
 
@@ -41,26 +44,7 @@ from scatter.core.parallel import (
 gemini_model = None
 
 
-# --- helper for type extraction ---
-def extract_type_names_from_content(content: str) -> Set[str]:
-    """
-    extracts declared type names (class, struct, interface, enum) from c# file content.
-    """
-    found_types = set()
-    try:
-        matches = TYPE_DECLARATION_PATTERN.finditer(content)
-        for match in matches:
-            type_name_full = match.group(1).strip()
-            type_name_base = re.sub(r'<.*', '', type_name_full).strip()
-            type_name_base = type_name_base.split(',')[0].strip()
-            if type_name_base:
-                found_types.add(type_name_base)
-    except Exception as e:
-        logging.warning(f"Regex error during type extraction: {e}")
-    return found_types
-
-
-# --- find_project_file  ---
+# --- find_project_file (git tree traversal — Phase 3) ---
 def find_project_file(repo: git.Repo, commit: git.Commit, cs_file_relative_path_str: str) -> Optional[str]:
     cs_file_rel_path = Path(cs_file_relative_path_str)
     current_path = cs_file_rel_path.parent
@@ -165,38 +149,10 @@ def find_project_file(repo: git.Repo, commit: git.Commit, cs_file_relative_path_
     return None
 
 
-# --- find_project_file_on_disk ---
-def find_project_file_on_disk(cs_file_abs_path: Path) -> Optional[Path]:
-    """
-    Finds the .csproj file corresponding to a given C# file by searching upwards
-    in the directory tree from the C# file's location.
-    Returns the absolute path to the first .csproj found, or None.
-    """
-    logging.debug(f"Attempting to find project on disk for: {cs_file_abs_path}")
-    current_path = cs_file_abs_path.parent
-    while True:
-        try:
-            csproj_files = list(current_path.glob('*.csproj'))
-            if csproj_files:
-                project_file = csproj_files[0].resolve()
-                logging.debug(f"Found project file '{project_file.name}' in '{current_path}' for C# file '{cs_file_abs_path.name}'")
-                return project_file
-        except Exception as e:
-            logging.warning(f"Error searching for .csproj in '{current_path}' for '{cs_file_abs_path.name}': {e}")
-            return None
-
-        if current_path == current_path.parent:
-            logging.debug(f"Reached filesystem root without finding .csproj for '{cs_file_abs_path.name}'")
-            break
-        current_path = current_path.parent
-
-    logging.warning(f"No .csproj file found upwards from C# file '{cs_file_abs_path.name}' in its directory tree.")
-    return None
-
-
-# --- analyze_branch_changes ---
-def analyze_branch_changes(repo_path: str, feature_branch_name: str, base_branch_name: str = 'main') -> Dict[str, List[str]]:
+# --- analyze_branch_changes (git — Phase 3) ---
+def analyze_branch_changes(repo_path: str, feature_branch_name: str, base_branch_name: str = 'main'):
     """ Analyzes git changes, returns {proj_rel_path_str: [cs_rel_path_str,...]} using POSIX paths"""
+    from collections import defaultdict
     project_changes = defaultdict(list)
     try:
         repo = git.Repo(repo_path, search_parent_directories=True)
@@ -269,6 +225,7 @@ def analyze_branch_changes(repo_path: str, feature_branch_name: str, base_branch
         sys.exit(1)
 
 
+# --- get_diff_for_file (git — Phase 3) ---
 def get_diff_for_file(repo_path: str, file_path: str,
                       feature_branch: str, base_branch: str = 'main') -> Optional[str]:
     """Fetches the unified diff text for a single file between merge base and feature branch."""
@@ -285,6 +242,7 @@ def get_diff_for_file(repo_path: str, file_path: str,
         return None
 
 
+# --- get_affected_symbols_from_diff (AI — Phase 4) ---
 def get_affected_symbols_from_diff(file_content: str, diff_text: str,
                                     file_path: str,
                                     model_instance) -> Optional[Set[str]]:
@@ -343,45 +301,7 @@ Return ONLY the JSON array:"""
         return None
 
 
-# --- derive_namespace ---
-def derive_namespace(csproj_path: Path) -> Optional[str]:
-    """
-    Attempts to derive the primary namespace from a .csproj file.
-    checks <RootNamespace>, then <AssemblyName> or falls back to filename stem.
-    """
-    if not csproj_path.is_file():
-        logging.error(f"Target project file not found for namespace derivation: {csproj_path}")
-        return None
-    try:
-        namespaces = {'msb': 'http://schemas.microsoft.com/developer/msbuild/2003'}
-        tree = ET.parse(csproj_path)
-        root = tree.getroot()
-
-        tags_to_check = ['RootNamespace', 'AssemblyName']
-
-        for tag in tags_to_check:
-            xpath_query = f'.//msb:{tag}'
-            elem = root.find(xpath_query, namespaces)
-            if elem is None:
-                elem = root.find(f'.//{tag}')
-
-            if elem is not None and elem.text:
-                namespace_value = elem.text.strip()
-                if namespace_value:
-                    logging.debug(f"Derived namespace '{namespace_value}' from <{tag}> in {csproj_path.name}")
-                    return namespace_value
-
-        logging.warning(f"<{'> or <'.join(tags_to_check)}> tags not found or empty in {csproj_path.name}. Falling back to filename stem '{csproj_path.stem}' as namespace.")
-        return csproj_path.stem
-
-    except ET.ParseError as e:
-        logging.error(f"Failed to parse XML for namespace derivation in {csproj_path}: {e}")
-        return None
-    except Exception as e:
-        logging.error(f"Unexpected error deriving namespace from {csproj_path}: {e}")
-        return None
-
-
+# --- configure_gemini (AI — Phase 4) ---
 def configure_gemini(api_key: Optional[str] = None, model_name: str = "gemini-1.5-flash") -> bool:
     """Configures the Gemini client. Returns True on success, False on failure."""
     global gemini_model
@@ -410,91 +330,7 @@ def configure_gemini(api_key: Optional[str] = None, model_name: str = "gemini-1.
         return False
 
 
-def _process_consumer_summaries_and_append_results(
-    target_project_name: str,
-    target_project_rel_path_str: str,
-    triggering_info: str,
-    final_consumers_data: List[Dict[str, Union[Path, str, List[Path]]]],
-    all_results_list: List[Dict[str, Union[str, Dict, List[str]]]],
-    pipeline_map_dict: Dict[str, str],
-    solution_file_cache: List[Path],
-    batch_job_map: Dict[str, List[str]],
-    search_scope_path_abs: Path,
-    summarize_flag: bool,
-    gemini_is_configured: bool,
-    gemini_model_instance,
-    current_gemini_model_name: str) -> None:
-    """
-    Helper to process summaries for consumer files and append to the main results list.
-    Generates a row for EACH unique pipeline found for a consumer.
-    """
-    if not final_consumers_data:
-        logging.info(f"   No consumers found for target '{target_project_name}' triggered by '{triggering_info}'.")
-        return
-
-    logging.info(f"   Found {len(final_consumers_data)} consumer(s) for target '{target_project_name}' triggered by '{triggering_info}'.")
-    summaries_for_this_target: Dict[str, Dict[str, str]] = defaultdict(dict)
-
-    for consumer_info in final_consumers_data:
-        consumer_abs_path = consumer_info['consumer_path']
-        consumer_name_stem = consumer_info['consumer_name']
-        try:
-            consumer_rel_path_str = consumer_abs_path.relative_to(search_scope_path_abs).as_posix()
-        except ValueError:
-            consumer_rel_path_str = consumer_abs_path.as_posix()
-
-        solutions_for_consumer_paths = find_solutions_for_project(consumer_abs_path, solution_file_cache)
-        solutions_for_consumer_names = [p.name for p in solutions_for_consumer_paths]
-        logging.debug(f"   Found {len(solutions_for_consumer_names)} solutions for consumer '{consumer_name_stem}': {solutions_for_consumer_names}")
-
-        consumer_summaries_dict = summaries_for_this_target.get(consumer_rel_path_str, {})
-
-        found_pipelines: Dict[str, str] = {}
-        if solutions_for_consumer_names:
-            for solution_name in solutions_for_consumer_names:
-                solution_stem = Path(solution_name).stem
-                if solution_stem in pipeline_map_dict:
-                    pipeline_name = pipeline_map_dict[solution_stem]
-                    if pipeline_name not in found_pipelines:
-                        found_pipelines[pipeline_name] = solution_stem
-                        logging.debug(f"   Found mapping: Solution '{solution_stem}' -> Pipeline '{pipeline_name}'")
-
-        if found_pipelines:
-            for pipeline_name, source_solution in found_pipelines.items():
-                batch_job_verification = ""
-                if pipeline_name == "cdh-batchprocesses-az-cd":
-                    all_known_jobs = batch_job_map.get(pipeline_name, [])
-                    if consumer_name_stem in all_known_jobs:
-                        batch_job_verification = "Verified"
-                    else:
-                        batch_job_verification = "Unverified"
-
-                all_results_list.append({
-                    'TargetProjectName': target_project_name,
-                    'TargetProjectPath': target_project_rel_path_str,
-                    'TriggeringType': triggering_info,
-                    'ConsumerProjectName': consumer_name_stem,
-                    'ConsumerProjectPath': consumer_rel_path_str,
-                    'ConsumingSolutions': solutions_for_consumer_names,
-                    'PipelineName': pipeline_name,
-                    'BatchJobVerification': batch_job_verification,
-                    'ConsumerFileSummaries': consumer_summaries_dict
-                })
-        else:
-            logging.debug(f"   No pipeline mapping found for consumer '{consumer_name_stem}' via its solutions.")
-            all_results_list.append({
-                'TargetProjectName': target_project_name,
-                'TargetProjectPath': target_project_rel_path_str,
-                'TriggeringType': triggering_info,
-                'ConsumerProjectName': consumer_name_stem,
-                'ConsumerProjectPath': consumer_rel_path_str,
-                'ConsumingSolutions': solutions_for_consumer_names,
-                'PipelineName': '',
-                'BatchJobVerification': '',
-                'ConsumerFileSummaries': consumer_summaries_dict
-            })
-
-
+# --- summarize_csharp_file_with_gemini (AI — Phase 4) ---
 def summarize_csharp_file_with_gemini(model_instance, csharp_code: str, file_path_for_log: str) -> Optional[str]:
     """
     Uses the provided Gemini API model instance to summarize a C# file's content.
@@ -535,490 +371,3 @@ def summarize_csharp_file_with_gemini(model_instance, csharp_code: str, file_pat
     except Exception as e:
         logging.error(f"An error occurred while interacting with the Gemini API for {file_path_for_log}: {e}", exc_info=True)
         return "[Error during summarization]"
-
-
-def find_consumers(
-    target_csproj_path: Path,
-    search_scope_path: Path,
-    target_namespace: str,
-    class_name: Optional[str],
-    method_name: Optional[str],
-    max_workers: int = DEFAULT_MAX_WORKERS,
-    chunk_size: int = DEFAULT_CHUNK_SIZE,
-    disable_multiprocessing: bool = False,
-    cs_analysis_chunk_size: int = 50,
-    csproj_analysis_chunk_size: int = 25
-) -> List[Dict[str, Union[Path, str, List[Path]]]]:
-    """
-    Finds consuming projects based on ProjectReference, namespace usage,
-    and optional class/method usage checks. Tracks the specific files causing matches.
-    """
-    logging.info(f"-- Analyzing consumers for target: {target_csproj_path.name} (Namespace: {target_namespace}) --")
-    if class_name: logging.info(f"     Filtering for type/class: {class_name}")
-    if method_name: logging.info(f"     Filtering for method: {method_name}")
-
-    potential_consumers: List[Path] = []
-    direct_consumers: Dict[Path, Dict[str, Union[str, List[Path]]]] = {}
-    namespace_consumers: Dict[Path, Dict[str, Union[str, List[Path]]]] = {}
-    class_consumers: Dict[Path, Dict[str, Union[str, List[Path]]]] = {}
-    method_consumers: Dict[Path, Dict[str, Union[str, List[Path]]]] = {}
-    cs_file_cache: Dict[Path, List[Path]] = {}
-
-    # --- step 1: find potential consumers ---
-    try:
-        all_csproj_files = find_files_with_pattern_parallel(
-            search_scope_path, '*.csproj',
-            max_workers=max_workers,
-            chunk_size=chunk_size,
-            disable_multiprocessing=disable_multiprocessing
-        )
-        logging.debug(f'Found {len(all_csproj_files)} total .csproj files in scope.')
-        potential_consumers = [
-            p.resolve() for p in all_csproj_files if p.resolve() != target_csproj_path
-        ]
-        logging.debug(f"Found {len(potential_consumers)} potential consumer project(s) to check.")
-    except OSError as e:
-        logging.error(f"Error scanning search scope '{search_scope_path}': {e}")
-        return []
-
-    # --- step 2: identify direct consumers (parallel csproj parsing) ---
-    logging.debug("Checking for direct project references to target...")
-    csproj_parse_results = parse_csproj_files_parallel(
-        potential_consumers,
-        target_csproj_path,
-        max_workers=max_workers,
-        csproj_analysis_chunk_size=csproj_analysis_chunk_size,
-        disable_multiprocessing=disable_multiprocessing
-    )
-
-    for consumer_csproj_abs in potential_consumers:
-        result = csproj_parse_results.get(str(consumer_csproj_abs))
-        if result and result['is_consumer']:
-            direct_consumers[consumer_csproj_abs] = {
-                'consumer_name': result['consumer_name'],
-                'relevant_files': []
-            }
-
-    logging.debug(f"Found {len(direct_consumers)} direct consumer(s) via ProjectReference.")
-    if not direct_consumers:
-        logging.info("No projects directly referencing the target were found.")
-        return []
-
-    # --- step 3: filter consumers by namespace ---
-    if not target_namespace or target_namespace.startswith("NAMESPACE_ERROR_"):
-        logging.warning(f"Target namespace is unreliable or missing ('{target_namespace}'). Skipping namespace usage check. All direct consumers will be considered.")
-        namespace_consumers = direct_consumers
-    else:
-        logging.debug(f"Checking {len(direct_consumers)} direct consumers for 'using {target_namespace};' statements...")
-        using_pattern = re.compile(rf"(?:^|;|\{{)\s*(?:global\s+)?using\s+{re.escape(target_namespace)}(?:\.[A-Za-z0-9_.]+)?\s*;", re.MULTILINE)
-
-        all_cs_files_for_analysis = []
-        consumer_to_files_map = {}
-
-        for consumer_path_abs, consumer_data in direct_consumers.items():
-            consumer_dir_abs = consumer_path_abs.parent
-
-            if consumer_dir_abs not in cs_file_cache:
-                try:
-                    cs_file_cache[consumer_dir_abs] = find_files_with_pattern_parallel(
-                        consumer_dir_abs, '*.cs',
-                        max_workers=max_workers,
-                        chunk_size=chunk_size,
-                        disable_multiprocessing=disable_multiprocessing
-                    )
-                    logging.debug(f"Found {len(cs_file_cache[consumer_dir_abs])} C# files in {consumer_dir_abs}")
-                except OSError as e:
-                    logging.warning(f"Could not list .cs files in {consumer_dir_abs} for project {consumer_data['consumer_name']}: {e}")
-                    cs_file_cache[consumer_dir_abs] = []
-
-            consumer_files = cs_file_cache[consumer_dir_abs]
-            consumer_to_files_map[consumer_path_abs] = consumer_files
-            all_cs_files_for_analysis.extend(consumer_files)
-
-        if all_cs_files_for_analysis:
-            analysis_config = {
-                'analysis_type': 'namespace',
-                'target_namespace': target_namespace,
-                'using_pattern': using_pattern
-            }
-
-            analysis_results = analyze_cs_files_parallel(
-                all_cs_files_for_analysis,
-                analysis_config,
-                max_workers=max_workers,
-                cs_analysis_chunk_size=cs_analysis_chunk_size,
-                disable_multiprocessing=disable_multiprocessing
-            )
-
-            for consumer_path_abs, consumer_data in direct_consumers.items():
-                namespace_match_files = []
-
-                for cs_file_path in consumer_to_files_map.get(consumer_path_abs, []):
-                    file_result = analysis_results.get(cs_file_path)
-                    if file_result:
-                        if file_result.get('error'):
-                            logging.warning(f"Could not read {cs_file_path.name} in {consumer_data['consumer_name']} for namespace check: {file_result['error']}")
-                        elif file_result.get('has_match'):
-                            namespace_match_files.append(cs_file_path)
-
-                if namespace_match_files:
-                    consumer_data['relevant_files'] = namespace_match_files
-                    namespace_consumers[consumer_path_abs] = consumer_data
-                    logging.debug(f"  Namespace used in {consumer_data['consumer_name']} (Files: {[f.name for f in namespace_match_files]})")
-
-        logging.debug(f"Found {len(namespace_consumers)} consumer(s) using namespace '{target_namespace}'.")
-
-    # --- helper to format results ---
-    def format_results(consumer_dict: Dict[Path, Dict[str, Union[str, List[Path]]]]) -> List[Dict[str, Union[Path, str, List[Path]]]]:
-        results = []
-        for path, data in consumer_dict.items():
-            results.append({
-                'consumer_path': path,
-                'consumer_name': data['consumer_name'],
-                'relevant_files': data['relevant_files']
-            })
-        return results
-
-    if not namespace_consumers:
-        logging.info("No consuming projects using the target namespace were found (or check skipped).")
-        return format_results(direct_consumers) if not class_name else []
-    if not class_name:
-        return format_results(namespace_consumers)
-
-    # --- step 4: filter by class/type usage ---
-    logging.debug(f"Checking {len(namespace_consumers)} namespace consumers for usage of type '{class_name}'...")
-
-    class_pattern = re.compile(rf"\b{re.escape(class_name)}\b")
-
-    all_relevant_files = []
-    consumer_to_relevant_files_map = {}
-
-    for consumer_path_abs, consumer_data in namespace_consumers.items():
-        files_to_check = consumer_data['relevant_files']
-        consumer_to_relevant_files_map[consumer_path_abs] = files_to_check
-        all_relevant_files.extend(files_to_check)
-        logging.debug(f"  Checking type '{class_name}' in {len(files_to_check)} relevant files for {consumer_data['consumer_name']}...")
-
-    if all_relevant_files:
-        analysis_config = {
-            'analysis_type': 'class',
-            'class_name': class_name,
-            'class_pattern': class_pattern
-        }
-
-        analysis_results = analyze_cs_files_parallel(
-            all_relevant_files,
-            analysis_config,
-            max_workers=max_workers,
-            cs_analysis_chunk_size=cs_analysis_chunk_size,
-            disable_multiprocessing=disable_multiprocessing
-        )
-
-        for consumer_path_abs, consumer_data in namespace_consumers.items():
-            class_match_files = []
-
-            for cs_file_path in consumer_to_relevant_files_map.get(consumer_path_abs, []):
-                file_result = analysis_results.get(cs_file_path)
-                if file_result:
-                    if file_result.get('error'):
-                        logging.warning(f"Could not read {cs_file_path.name} in {consumer_data['consumer_name']} for type check: {file_result['error']}")
-                    elif file_result.get('has_match'):
-                        class_match_files.append(cs_file_path)
-
-            if class_match_files:
-                consumer_data['relevant_files'] = class_match_files
-                class_consumers[consumer_path_abs] = consumer_data
-                logging.debug(f"    Type '{class_name}' used in {consumer_data['consumer_name']} (Files: {[f.name for f in class_match_files]})")
-
-    logging.debug(f"Found {len(class_consumers)} consumer(s) potentially using type '{class_name}'.")
-    if not class_consumers:
-        logging.info(f"No consuming projects potentially using type '{class_name}' were found.")
-        return []
-    if not method_name:
-        return format_results(class_consumers)
-
-    # --- step 5: filter by method (parallel) ---
-    logging.debug(f"Checking {len(class_consumers)} class consumers for potential usage of method '{method_name}'...")
-
-    method_pattern = re.compile(rf"\.\s*{re.escape(method_name)}\s*\(")
-
-    all_method_files = []
-    file_to_consumer_map: Dict[Path, Path] = {}
-    for consumer_path_abs, consumer_data in class_consumers.items():
-        for cs_file_abs in consumer_data['relevant_files']:
-            all_method_files.append(cs_file_abs)
-            file_to_consumer_map[cs_file_abs] = consumer_path_abs
-
-    logging.debug(f"  Scanning {len(all_method_files)} files across {len(class_consumers)} consumers for method '{method_name}'...")
-
-    method_analysis_config = {
-        'analysis_type': 'method',
-        'method_pattern': method_pattern
-    }
-
-    method_results = analyze_cs_files_parallel(
-        all_method_files,
-        method_analysis_config,
-        max_workers=max_workers,
-        cs_analysis_chunk_size=cs_analysis_chunk_size,
-        disable_multiprocessing=disable_multiprocessing
-    )
-
-    for cs_file_abs, result in method_results.items():
-        if result.get('error'):
-            consumer_path_abs = file_to_consumer_map[cs_file_abs]
-            consumer_name = class_consumers[consumer_path_abs]['consumer_name']
-            logging.warning(f"Could not read {cs_file_abs.name} in {consumer_name} for method check: {result['error']}")
-            continue
-        if result['has_match']:
-            consumer_path_abs = file_to_consumer_map[cs_file_abs]
-            consumer_data = class_consumers[consumer_path_abs]
-            if consumer_path_abs not in method_consumers:
-                method_consumers[consumer_path_abs] = {
-                    'consumer_name': consumer_data['consumer_name'],
-                    'relevant_files': []
-                }
-            method_consumers[consumer_path_abs]['relevant_files'].append(cs_file_abs)
-
-    for consumer_path_abs, consumer_data in method_consumers.items():
-        logging.debug(f"    Method '{method_name}' used in {consumer_data['consumer_name']} (Files: {[f.name for f in consumer_data['relevant_files']]})")
-
-    logging.debug(f"Found {len(method_consumers)} consumer(s) potentially calling method '{method_name}'.")
-    if not method_consumers:
-        logging.info(f"No consuming projects potentially calling method '{method_name}' were found.")
-        return []
-
-    return format_results(method_consumers)
-
-
-# --- find_cs_files_referencing_sproc ---
-def find_cs_files_referencing_sproc(
-    sproc_name_input: str,
-    search_path: Path,
-    custom_sproc_regex_pattern: Optional[str] = None,
-    max_workers: int = DEFAULT_MAX_WORKERS,
-    chunk_size: int = DEFAULT_CHUNK_SIZE,
-    disable_multiprocessing: bool = False,
-    cs_analysis_chunk_size: int = 50
-) -> Dict[Path, Dict[str, Set[Path]]]:
-    """
-    Scans all .cs files within the search_path for the given stored procedure name
-    and identifies the containing class.
-    """
-    projects_classes_sproc_refs: Dict[Path, Dict[str, Set[Path]]] = defaultdict(lambda: defaultdict(set))
-    base_sproc_name = sproc_name_input.split('.')[-1]
-    escaped_base_sproc_name = re.escape(base_sproc_name)
-
-    if custom_sproc_regex_pattern:
-        if "{sproc_name_placeholder}" not in custom_sproc_regex_pattern:
-            logging.error("Custom sproc regex pattern must contain '{sproc_name_placeholder}'. Using default pattern.")
-            sproc_pattern_str = r'["\'](?:[a-zA-Z0-9_]+\.)?' + escaped_base_sproc_name + r'["\']'
-        else:
-            sproc_pattern_str = custom_sproc_regex_pattern.replace("{sproc_name_placeholder}", escaped_base_sproc_name)
-    else:
-        sproc_pattern_str = r'["\'](?:[a-zA-Z_][a-zA-Z0-9_]*\.)?' + escaped_base_sproc_name + r'["\']'
-
-    try:
-        sproc_pattern = re.compile(sproc_pattern_str, re.IGNORECASE)
-        logging.debug(f"Using sproc search pattern: {sproc_pattern.pattern}")
-    except re.error as e:
-        logging.error(f"Invalid regex pattern for sproc search ('{sproc_pattern_str}'): {e}. Aborting sproc search.")
-        return {}
-
-    try:
-        cs_files_to_scan = find_files_with_pattern_parallel(
-            search_path, '*.cs',
-            max_workers=max_workers,
-            chunk_size=chunk_size,
-            disable_multiprocessing=disable_multiprocessing
-        )
-    except OSError as e:
-        logging.error(f"Error scanning for .cs files in '{search_path}': {e}")
-        return {}
-
-    logging.info(f"Scanning {len(cs_files_to_scan)} C# files in '{search_path}' for references to sproc '{sproc_name_input}'.")
-    files_with_ref_count = 0
-    projects_found_count = 0
-    classes_found_count = 0
-
-    if cs_files_to_scan:
-        analysis_config = {
-            'analysis_type': 'sproc',
-            'sproc_name': sproc_name_input,
-            'sproc_pattern': sproc_pattern
-        }
-
-        analysis_results = analyze_cs_files_parallel(
-            cs_files_to_scan,
-            analysis_config,
-            max_workers=max_workers,
-            cs_analysis_chunk_size=cs_analysis_chunk_size,
-            disable_multiprocessing=disable_multiprocessing
-        )
-
-        matching_files = []
-        for cs_file_abs, file_result in analysis_results.items():
-            if file_result.get('error'):
-                log_level_detail = logging.DEBUG if logging.getLogger().level == logging.DEBUG else logging.WARNING
-                logging.log(log_level_detail, f"Error processing file {cs_file_abs.name} for sproc search: {file_result['error']}")
-                continue
-            if file_result.get('has_match'):
-                matching_files.append(cs_file_abs)
-
-        cs_to_csproj_map = {}
-        if matching_files:
-            cs_to_csproj_map = map_cs_to_projects_parallel(
-                matching_files,
-                max_workers=max_workers,
-                cs_analysis_chunk_size=cs_analysis_chunk_size,
-                disable_multiprocessing=disable_multiprocessing
-            )
-
-        for cs_file_abs, file_result in analysis_results.items():
-            try:
-                if file_result.get('error') or not file_result.get('has_match'):
-                    continue
-
-                files_with_ref_count += 1
-                logging.debug(f"  Potential reference(s) to sproc '{sproc_name_input}' found in: {cs_file_abs.relative_to(search_path) if search_path in cs_file_abs.parents else cs_file_abs.name}")
-
-                csproj_str = cs_to_csproj_map.get(str(cs_file_abs))
-                if not csproj_str:
-                    logging.warning(f"  Could not map C# file '{cs_file_abs.name}' (with sproc ref) to a project.")
-                    continue
-
-                project_file_abs = Path(csproj_str)
-                is_new_project = project_file_abs not in projects_classes_sproc_refs
-
-                matches = file_result.get('matches', [])
-                if matches:
-                    first_match_index = matches[0][1] if isinstance(matches[0], tuple) else 0
-
-                    content = cs_file_abs.read_text(encoding='utf-8', errors='ignore')
-                    enclosing_class = find_enclosing_type_name(content, first_match_index)
-
-                    if enclosing_class:
-                        is_new_class_for_project = enclosing_class not in projects_classes_sproc_refs[project_file_abs]
-                        projects_classes_sproc_refs[project_file_abs][enclosing_class].add(cs_file_abs)
-
-                        if is_new_project:
-                            projects_found_count += 1
-                        if is_new_class_for_project:
-                            classes_found_count += 1
-
-                        logging.debug(f"    Mapped sproc ref in '{cs_file_abs.name}' to Project '{project_file_abs.name}' and Class '{enclosing_class}'")
-                    else:
-                        logging.warning(f"    Could not determine enclosing class for sproc ref near index {first_match_index} in '{cs_file_abs.name}' (Project: {project_file_abs.name}). Skipping this reference for class-based consumer analysis.")
-
-            except Exception as e:
-                log_level_detail = logging.DEBUG if logging.getLogger().level == logging.DEBUG else logging.WARNING
-                logging.log(log_level_detail, f"Unexpected error processing results for file {cs_file_abs.name} for sproc search: {e}", exc_info=(log_level_detail == logging.DEBUG))
-
-    if files_with_ref_count == 0:
-        logging.info(f"No C# files found directly referencing sproc '{sproc_name_input}' with the pattern.")
-    else:
-        log_msg = f"Found {files_with_ref_count} C# file(s) with potential sproc references. "
-        log_msg += f"Mapped references to {classes_found_count} unique class(es) across {projects_found_count} project(s)."
-        logging.info(log_msg)
-
-    final_result = {proj: dict(classes) for proj, classes in projects_classes_sproc_refs.items()}
-    return final_result
-
-
-# --- helper function: find enclosing type name ---
-def find_enclosing_type_name(content: str, match_start_index: int) -> Optional[str]:
-    """
-    Tries to find the name of the immediately enclosing type (class, struct, interface, enum)
-    for a given position within the code content by searching backwards using regex.
-    """
-    enclosing_type_pattern = re.compile(
-        r"^\s*(?:(?:public|internal|private|protected)\s+)?(?:(?:static|abstract|sealed|partial)\s+)*"
-        r"(class|struct|interface|enum)\s+([A-Za-z_][A-Za-z0-9_<>,\s]*)",
-        re.MULTILINE
-    )
-
-    last_found_type_name: Optional[str] = None
-    last_match_start = -1
-
-    try:
-        for match in enclosing_type_pattern.finditer(content, 0, match_start_index):
-            if match.start() > last_match_start:
-                last_match_start = match.start()
-                type_name_full = match.group(2).strip()
-                type_name_base = re.sub(r'<.*', '', type_name_full).strip()
-                type_name_base = type_name_base.split(',')[0].strip()
-                if type_name_base:
-                    last_found_type_name = type_name_base
-                    logging.debug(f"  Found potential enclosing type '{last_found_type_name}' at index {match.start()} before index {match_start_index}")
-
-    except Exception as e:
-        logging.warning(f"Regex error during enclosing type search: {e}")
-        return None
-
-    if last_found_type_name:
-        logging.debug(f"  Determined closest enclosing type name: {last_found_type_name}")
-        return last_found_type_name
-    else:
-        logging.warning(f"  Could not determine enclosing type name near index {match_start_index}")
-        return None
-
-
-# --- find_solutions_for_project ---
-def find_solutions_for_project(csproj_path: Path, solution_cache: List[Path]) -> List[Path]:
-    """
-    Finds .sln files that reference a given .csproj file by performing a text search.
-    """
-    found_in_solutions: List[Path] = []
-    project_filename = csproj_path.name
-
-    if not solution_cache:
-        logging.warning("Solution cache is empty. Cannot search for solutions.")
-        return found_in_solutions
-
-    logging.debug(f"Searching {len(solution_cache)} cached solution files for '{project_filename}'...")
-
-    for sln_path in solution_cache:
-        try:
-            content = sln_path.read_text(encoding='utf-8', errors='ignore')
-            if project_filename in content:
-                logging.debug(f"  -> Found reference in: {sln_path.name}")
-                found_in_solutions.append(sln_path)
-        except OSError as e:
-            logging.warning(f"Could not read solution file {sln_path.name}: {e}")
-        except Exception as e:
-            logging.error(f"Unexpected error processing solution file {sln_path.name}: {e}")
-
-    return found_in_solutions
-
-
-# --- map_batch_jobs_from_config_repo ---
-def map_batch_jobs_from_config_repo(app_config_path: Path) -> Dict[str, List[str]]:
-    """
-    Scans the app-config repo for the specific batch processes directory
-    and maps the pipeline name to the actual job (subdirectory) names.
-    """
-    batch_job_map: Dict[str, List[str]] = {}
-    pipeline_name = "cdh-batchprocesses-az-cd"
-
-    if not app_config_path or not app_config_path.is_dir():
-        logging.warning("App config path not provided or not a valid directory. Skipping batch job mapping.")
-        return batch_job_map
-
-    target_dir = app_config_path / pipeline_name / "production"
-    logging.info(f"Searching for batch jobs in: {target_dir}")
-
-    if not target_dir.is_dir():
-        logging.warning(f"Batch job directory not found: {target_dir}. Cannot map specific job names.")
-        return batch_job_map
-
-    try:
-        job_names = sorted([item.name for item in target_dir.iterdir() if item.is_dir()])
-        if job_names:
-            batch_job_map[pipeline_name] = job_names
-            logging.info(f"Found {len(job_names)} specific batch jobs in app-config repo (e.g., {', '.join(job_names[:3])}...).")
-        else:
-            logging.warning(f"Found batch job directory, but it contains no subdirectories: {target_dir}")
-    except OSError as e:
-        logging.error(f"Could not read batch job subdirectories from '{target_dir}': {e}")
-
-    return batch_job_map

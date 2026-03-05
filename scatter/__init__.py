@@ -21,22 +21,29 @@ from scatter.core.parallel import (
     estimate_file_count,
     find_files_with_pattern_parallel,
 )
-from scatter._legacy import (
+from scatter.scanners.type_scanner import (
     extract_type_names_from_content,
-    find_project_file,
+    find_enclosing_type_name,
+)
+from scatter.scanners.project_scanner import (
     find_project_file_on_disk,
+    derive_namespace,
+)
+from scatter.scanners.sproc_scanner import find_cs_files_referencing_sproc
+from scatter.analyzers.consumer_analyzer import find_consumers
+from scatter.compat.v1_bridge import (
+    find_solutions_for_project,
+    map_batch_jobs_from_config_repo,
+    _process_consumer_summaries_and_append_results,
+)
+# Functions still in _legacy (git + AI — Phases 3 & 4)
+from scatter._legacy import (
+    find_project_file,
     analyze_branch_changes,
     get_diff_for_file,
     get_affected_symbols_from_diff,
-    derive_namespace,
     configure_gemini,
     summarize_csharp_file_with_gemini,
-    _process_consumer_summaries_and_append_results,
-    find_consumers,
-    find_cs_files_referencing_sproc,
-    find_enclosing_type_name,
-    find_solutions_for_project,
-    map_batch_jobs_from_config_repo,
     gemini_model,
 )
 
