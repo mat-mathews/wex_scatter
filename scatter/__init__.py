@@ -31,16 +31,18 @@ from scatter.scanners.project_scanner import (
 )
 from scatter.scanners.sproc_scanner import find_cs_files_referencing_sproc
 from scatter.analyzers.consumer_analyzer import find_consumers
+from scatter.analyzers.git_analyzer import (
+    find_project_file,
+    analyze_branch_changes,
+    get_diff_for_file,
+)
 from scatter.compat.v1_bridge import (
     find_solutions_for_project,
     map_batch_jobs_from_config_repo,
     _process_consumer_summaries_and_append_results,
 )
-# Functions still in _legacy (git + AI — Phases 3 & 4)
+# AI functions still in _legacy (Phase 4 target)
 from scatter._legacy import (
-    find_project_file,
-    analyze_branch_changes,
-    get_diff_for_file,
     get_affected_symbols_from_diff,
     configure_gemini,
     summarize_csharp_file_with_gemini,
