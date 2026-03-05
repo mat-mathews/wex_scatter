@@ -26,12 +26,7 @@ from scatter.reports.console_reporter import print_console_report
 from scatter.reports.json_reporter import prepare_detailed_results, write_json_report
 from scatter.reports.csv_reporter import write_csv_report
 
-# AI functions remain here temporarily until Phase 4
-import scatter._legacy as _legacy_module
-from scatter._legacy import (
-    configure_gemini,
-    get_affected_symbols_from_diff,
-)
+from scatter.ai.providers.gemini_provider import GeminiProvider
 
 
 def main():
@@ -167,8 +162,8 @@ def main():
     if args.verbose:
         logging.debug("Debug logging enabled.")
 
-    # --- configure gemini if we are going to summarize or use hybrid git ---
-    gemini_configured_successfully = False
+    # --- configure AI provider if we are going to summarize or use hybrid git ---
+    ai_provider = None
     if args.summarize_consumers or args.enable_hybrid_git:
         reason = []
         if args.summarize_consumers:
@@ -176,9 +171,10 @@ def main():
         if args.enable_hybrid_git:
             reason.append("hybrid git analysis")
         logging.info(f"{', '.join(reason).capitalize()} enabled. Configuring Gemini...")
-        gemini_configured_successfully = configure_gemini(args.google_api_key, args.gemini_model)
-        if not gemini_configured_successfully:
-            logging.error("Gemini configuration failed.")
+        try:
+            ai_provider = GeminiProvider(args.google_api_key, args.gemini_model)
+        except (ValueError, Exception) as e:
+            logging.error(f"Gemini configuration failed: {e}")
             if args.summarize_consumers:
                 logging.error("Summarization will be disabled.")
                 args.summarize_consumers = False
@@ -348,13 +344,13 @@ def main():
                             content = cs_abs_path.read_text(encoding='utf-8', errors='ignore')
                             extracted = None
 
-                            if args.enable_hybrid_git and _legacy_module.gemini_model:
+                            if args.enable_hybrid_git and ai_provider:
                                 diff_text = get_diff_for_file(
                                     str(repo_path_abs), cs_rel_path_str,
                                     args.branch_name, args.base_branch)
                                 if diff_text:
-                                    extracted = get_affected_symbols_from_diff(
-                                        content, diff_text, cs_rel_path_str, _legacy_module.gemini_model)
+                                    extracted = ai_provider.extract_affected_symbols(
+                                        content, diff_text, cs_rel_path_str)
                                     if extracted is None:
                                         logging.warning(f"LLM analysis failed for {cs_rel_path_str}, falling back to regex extraction.")
                                         extracted = extract_type_names_from_content(content)
@@ -451,10 +447,7 @@ def main():
                                 solution_file_cache=solution_file_cache,
                                 batch_job_map=batch_job_map,
                                 search_scope_path_abs=search_scope_abs,
-                                summarize_flag=args.summarize_consumers,
-                                gemini_is_configured=gemini_configured_successfully,
-                                gemini_model_instance=_legacy_module.gemini_model,
-                                current_gemini_model_name=args.gemini_model)
+                                ai_provider=ai_provider)
 
                         else:
                             logging.info(f"     No consumers found for type '{type_name_to_check}' in project '{target_project_name_git_mode}'.")
@@ -511,10 +504,7 @@ def main():
                 solution_file_cache=solution_file_cache,
                 batch_job_map=batch_job_map,
                 search_scope_path_abs=search_scope_abs,
-                summarize_flag=args.summarize_consumers,
-                gemini_is_configured=gemini_configured_successfully,
-                gemini_model_instance=_legacy_module.gemini_model,
-                current_gemini_model_name=args.gemini_model
+                ai_provider=ai_provider
             )
         else:
             logging.info(f"No consuming projects matching the criteria were found for target '{target_project_name}'.")
@@ -596,10 +586,7 @@ def main():
                     solution_file_cache=solution_file_cache,
                     batch_job_map=batch_job_map,
                     search_scope_path_abs=search_scope_abs,
-                    summarize_flag=args.summarize_consumers,
-                    gemini_is_configured=gemini_configured_successfully,
-                    gemini_model_instance=_legacy_module.gemini_model,
-                    current_gemini_model_name=args.gemini_model)
+                    ai_provider=ai_provider)
 
     # --- step: output combined results ---
     logging.info(f"\n\n\n################################################################\n\n")

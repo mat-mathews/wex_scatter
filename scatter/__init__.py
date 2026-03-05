@@ -41,13 +41,15 @@ from scatter.compat.v1_bridge import (
     map_batch_jobs_from_config_repo,
     _process_consumer_summaries_and_append_results,
 )
-# AI functions still in _legacy (Phase 4 target)
+# AI — backward-compatible wrappers in _legacy, canonical code in ai/providers/
 from scatter._legacy import (
     get_affected_symbols_from_diff,
     configure_gemini,
     summarize_csharp_file_with_gemini,
     gemini_model,
 )
+from scatter.ai.base import AITaskType, AnalysisResult, AIProvider
+from scatter.ai.providers.gemini_provider import GeminiProvider
 
 # Re-export stdlib modules that tests access via scatter.X
 import argparse

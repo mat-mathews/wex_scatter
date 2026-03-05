@@ -181,12 +181,12 @@ COMPLETED:
 ✅ Phase 2.1/2.2/2.3 benchmarking (all phases benchmarked)
 ✅ Phase 3/4: Method filtering parallelized (step 5 in find_consumers)
 ✅ End-to-end profiling: no bottlenecks found (profile_find_consumers.py)
-✅ 63 tests passing, 100% backward compatibility
+✅ 70 tests passing, 100% backward compatibility
 ✅ Configurable multiprocessing control
 ✅ Adaptive worker scaling (estimate_file_count)
+✅ Initiative 2: Hybrid Git Analysis complete (7 tests in test_hybrid_git.py)
 
 REMAINING v1.x WORK:
-📋 Initiative 2: Hybrid Git Analysis (deferred — can fold into v2.0 modularization)
 📋 Phase 5 optimization (pool reuse, memory — deferred to v2.0 modularization)
 
 
@@ -212,54 +212,47 @@ Existing v1 functionality must continue to work throughout.
 Ref: PRODUCT_DEFINITION.md Section 12, Phase 1
 ============================================================================
 
-MODULE EXTRACTION (HIGH PRIORITY - DO FIRST)
-- [ ] Create scatter/ package directory structure:
-      scatter/__main__.py, scatter/config.py
-      scatter/core/ (graph.py, models.py, parallel.py)
-      scatter/scanners/ (base.py, file_scanner.py, project_scanner.py,
-        namespace_scanner.py, type_scanner.py, sproc_scanner.py, db_scanner.py)
-      scatter/analyzers/ (base.py, consumer_analyzer.py, coupling_analyzer.py,
-        domain_analyzer.py, impact_analyzer.py, health_analyzer.py)
-      scatter/ai/ (base.py, router.py, budget.py, cache.py)
-      scatter/ai/providers/ (wex_platform_provider.py, openai_provider.py,
-        anthropic_provider.py, gemini_provider.py, azure_provider.py,
-        ollama_provider.py)
-      scatter/ai/tasks/ (parse_work_request.py, summarize.py, risk_assess.py,
-        coupling_narrative.py, impact_narrative.py, migration_strategy.py,
-        complexity_estimate.py, progress_narrative.py, code_explain.py,
-        contract_gen.py)
-      scatter/reports/ (base.py, console_reporter.py, json_reporter.py,
-        csv_reporter.py, html_reporter.py, mermaid_reporter.py)
-      scatter/store/ (graph_cache.py, baseline.py, run_history.py)
-      scatter/compat/v1_bridge.py
-- [ ] Extract file discovery logic into scatter/scanners/file_scanner.py
-- [ ] Extract .csproj parsing logic into scatter/scanners/project_scanner.py
-- [ ] Extract namespace analysis into scatter/scanners/namespace_scanner.py
-- [ ] Extract type declaration extraction into scatter/scanners/type_scanner.py
-- [ ] Extract sproc detection into scatter/scanners/sproc_scanner.py
-- [ ] Extract consumer analysis pipeline into scatter/analyzers/consumer_analyzer.py
-- [ ] Move multiprocessing infrastructure into scatter/core/parallel.py
-- [ ] Define shared data models in scatter/core/models.py (Project, Dependency, etc.)
-- [ ] Move console output into scatter/reports/console_reporter.py
-- [ ] Move JSON output into scatter/reports/json_reporter.py
-- [ ] Move CSV output into scatter/reports/csv_reporter.py
+MODULE EXTRACTION ✅ PHASES 1-4 COMPLETED
+Phase 1 — Package skeleton + core infrastructure:
+- [x] Create scatter/ package directory structure (core/, scanners/, analyzers/,
+      ai/, reports/, compat/ with __init__.py files)
+- [x] Move multiprocessing infrastructure into scatter/core/parallel.py (10 functions)
+- [x] Define shared data models in scatter/core/models.py (constants + regex)
+Phase 2 — Scanner + Analyzer extraction:
+- [x] Extract file discovery logic into scatter/scanners/file_scanner.py
+- [x] Extract .csproj parsing + namespace derivation into scatter/scanners/project_scanner.py
+- [x] Extract type declaration extraction into scatter/scanners/type_scanner.py
+- [x] Extract sproc detection into scatter/scanners/sproc_scanner.py
+- [x] Extract consumer analysis pipeline into scatter/analyzers/consumer_analyzer.py
+- [x] Create scatter/compat/v1_bridge.py (solution lookup, batch job mapping, result processing)
+Phase 3 — Git analysis + reporters + CLI entry point:
+- [x] Extract git analysis into scatter/analyzers/git_analyzer.py
+- [x] Move console output into scatter/reports/console_reporter.py
+- [x] Move JSON output into scatter/reports/json_reporter.py
+- [x] Move CSV output into scatter/reports/csv_reporter.py
+- [x] Move CLI to scatter/__main__.py (full argument parsing + mode dispatch)
+- [x] Reduce scatter.py to 10-line thin entry point using runpy
+Remaining — scatter/_legacy.py contains only AI/Gemini functions (Phase 4 target):
+- [ ] Extract namespace analysis into scatter/scanners/namespace_scanner.py (deferred — not yet needed)
 
-BACKWARD COMPATIBILITY (HIGH PRIORITY - ALONGSIDE MODULE EXTRACTION)
-- [ ] Create scatter/compat/v1_bridge.py that maps old CLI args to new modules
-- [ ] Preserve scatter.py as thin entry point that delegates to scatter/__main__.py
-- [ ] Verify all existing CLI flags work identically after modularization
-- [ ] Run full existing test suite (63 tests) against modularized code — 100% pass
+BACKWARD COMPATIBILITY ✅ COMPLETED (PHASES 1-4)
+- [x] Create scatter/compat/v1_bridge.py that maps old CLI args to new modules
+- [x] Preserve scatter.py as thin entry point that delegates to scatter/__main__.py
+- [x] Both `python scatter.py` and `python -m scatter` work identically
+- [x] Verify all existing CLI flags work identically after modularization
+- [x] Run full existing test suite (70 tests) against modularized code — 100% pass
+- [x] scatter/_legacy.py: thin backward-compat wrappers for AI functions only
+- [x] v1_bridge.py simplified: replaced 4 AI params with single ai_provider=None
 
-AI PROVIDER PROTOCOL (HIGH PRIORITY)
-- [ ] Define AIProvider protocol/interface in scatter/ai/base.py:
+AI PROVIDER PROTOCOL ✅ COMPLETED (PHASE 4)
+- [x] Define AIProvider protocol/interface in scatter/ai/base.py:
       analyze(prompt, context, task_type) -> AnalysisResult
       supports(task_type) -> bool
       estimate_tokens(context) -> int
       max_context_size -> int
-      stream(prompt, context) -> Iterator
-- [ ] Define AnalysisResult model (response, confidence, token_usage, cost_estimate)
-- [ ] Define AI task type enum (summarization, risk_assessment, coupling_narrative,
-      impact_narrative, migration_strategy, complexity_estimate, etc.)
+      name -> str
+- [x] Define AnalysisResult model (response, confidence, token_usage, cost_estimate)
+- [x] Define AI task type enum (summarization, symbol_extraction)
 
 AI TASK ROUTER (HIGH PRIORITY)
 - [ ] Implement scatter/ai/router.py — provider selection based on task type + config
@@ -267,7 +260,10 @@ AI TASK ROUTER (HIGH PRIORITY)
 - [ ] Implement task-to-provider mapping from config
 
 AI PROVIDERS (MEDIUM PRIORITY — implement in order)
-- [ ] Migrate existing Gemini code into scatter/ai/providers/gemini_provider.py
+- [x] Migrate existing Gemini code into scatter/ai/providers/gemini_provider.py
+      GeminiProvider extends AIProvider protocol, delegates to module-level functions
+      for testability (MagicMock compatibility). scatter/_legacy.py provides thin
+      backward-compat wrappers. __main__.py uses ai_provider cleanly (no .model leaks).
 - [ ] Implement WEX AI Platform provider (scatter/ai/providers/wex_platform_provider.py)
       — default, no auth required, uses WEX internal AI infrastructure
 - [ ] Implement Anthropic provider (Claude Opus/Sonnet/Haiku) — requires authorization
@@ -605,9 +601,11 @@ PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-04)
 ============================================================================
 
 CODEBASE STATE:
-  - scatter.py: 2,357 lines, monolithic (no scatter/ package directory)
-  - 28 functions, 4 parallel worker functions, 4 parallel orchestrators
-  - 70 tests across 5 test files (63 existing + 7 hybrid git)
+  - scatter/ package with 19 modules across core/, scanners/, analyzers/, reports/, compat/
+  - scatter.py: 10-line thin entry point (delegates to scatter/__main__.py via runpy)
+  - scatter/__main__.py: ~500 lines (CLI argument parsing + mode dispatch)
+  - scatter/_legacy.py: ~150 lines (AI/Gemini functions only — Phase 4 target)
+  - 70 tests across 6 test files, all passing
   - Benchmarks exist for Phase 1 file discovery and Phase 2.1 content analysis
   - AI integration: Google Gemini only (configure_gemini, summarize_csharp_file_with_gemini)
   - Output formats: console, CSV, JSON
@@ -643,8 +641,15 @@ COMPLETED (v1.x — continued):
   ✅ Integrated into Step 2 type extraction loop with fallback to regex
   ✅ 7 acceptance tests in test_hybrid_git.py (70 total tests passing)
 
+IN PROGRESS (v2.0):
+  Initiative 3 — Modularization & AI Backend Foundation:
+  ✅ Phase 1: Package skeleton + core infrastructure (scatter/core/)
+  ✅ Phase 2: Scanner + Analyzer extraction (scanners/, analyzers/, compat/)
+  ✅ Phase 3: Git analyzer + reporters + CLI entry point (__main__.py, reports/)
+  ✅ Phase 4: AI Provider protocol + Gemini migration (ai/base.py, gemini_provider.py)
+  🔜 Phase 5: Configuration system + AI router (config.py, ai/router.py)
+
 NOT STARTED (v2.0):
-  Initiative 3 — Modularization & AI Backend Foundation (v2.0 Phase 1)
   Initiative 4 — CSE Impact Analysis & AI Enrichment (v2.0 Phase 2)
   Initiative 5 — Dependency Graph, Metrics & Domain Analysis (v2.0 Phase 3)
   Initiative 6 — Reporting & Extraction Planning (v2.0 Phase 4)
@@ -653,7 +658,7 @@ NOT STARTED (v2.0):
 RECOMMENDED EXECUTION ORDER:
   1. ✅ DONE — Initiative 1 multiprocessing work complete
   2. ✅ DONE — Initiative 2 Hybrid Git Analysis complete
-  3. Initiative 3: Modularization — prerequisite for everything in v2.0
+  3. 🔄 IN PROGRESS — Initiative 3: Modularization (Phases 1-4 done, Phase 5 remaining)
   4. Initiative 4: Impact analysis — the highest-value new feature
   5. Initiative 5: Dependency graph — foundation for extraction planning
   6. Initiative 6: Reporting + extraction planning

@@ -74,10 +74,7 @@ def _process_consumer_summaries_and_append_results(
     solution_file_cache: List[Path],
     batch_job_map: Dict[str, List[str]],
     search_scope_path_abs: Path,
-    summarize_flag: bool,
-    gemini_is_configured: bool,
-    gemini_model_instance,
-    current_gemini_model_name: str) -> None:
+    ai_provider=None) -> None:
     """
     Helper to process summaries for consumer files and append to the main results list.
     Generates a row for EACH unique pipeline found for a consumer.
