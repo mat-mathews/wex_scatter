@@ -209,7 +209,7 @@ class TestMultiprocessingPhase1(unittest.TestCase):
         # Test with very small directory set (should fall back to sequential)
         small_dir = self.galaxy_works_project.parent
         
-        with patch('scatter.logging') as mock_logging:
+        with patch('scatter.core.parallel.logging') as mock_logging:
             files = scatter.find_files_with_pattern_parallel(
                 small_dir, '*.cs',
                 max_workers=4,
@@ -229,7 +229,7 @@ class TestMultiprocessingPhase1(unittest.TestCase):
     def test_multiprocessing_disabled_flag(self):
         """Test that the disable_multiprocessing flag works correctly."""
         
-        with patch('scatter.logging') as mock_logging:
+        with patch('scatter.core.parallel.logging') as mock_logging:
             files = scatter.find_files_with_pattern_parallel(
                 self.test_root, '*.csproj',
                 disable_multiprocessing=True
@@ -730,7 +730,7 @@ class TestBackwardsCompatibility(unittest.TestCase):
     def test_error_messages_unchanged(self):
         """Test that error messages and warnings are unchanged for backwards compatibility."""
         
-        with patch('scatter.logging') as mock_logging:
+        with patch('scatter.core.parallel.logging') as mock_logging:
             # Test with an invalid project path (should generate same errors as before)
             try:
                 scatter.find_consumers(

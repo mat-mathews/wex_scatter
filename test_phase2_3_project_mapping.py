@@ -299,7 +299,7 @@ class TestMapCsToProjectsParallel(unittest.TestCase):
         )
         self.assertEqual(len(result), n)
 
-    @patch('scatter.ProcessPoolExecutor')
+    @patch('scatter.core.parallel.ProcessPoolExecutor')
     def test_fallback_on_executor_failure(self, mock_executor_class):
         """If ProcessPoolExecutor raises, falls back to sequential."""
         mock_executor_class.side_effect = RuntimeError("Pool creation failed")
