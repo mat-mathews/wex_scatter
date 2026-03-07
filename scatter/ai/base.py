@@ -7,6 +7,11 @@ from typing import Optional, Protocol, runtime_checkable
 class AITaskType(Enum):
     SUMMARIZATION = "summarization"
     SYMBOL_EXTRACTION = "symbol_extraction"
+    WORK_REQUEST_PARSING = "work_request_parsing"
+    RISK_ASSESSMENT = "risk_assessment"
+    COUPLING_NARRATIVE = "coupling_narrative"
+    IMPACT_NARRATIVE = "impact_narrative"
+    COMPLEXITY_ESTIMATE = "complexity_estimate"
 
 
 @dataclass

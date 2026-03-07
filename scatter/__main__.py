@@ -51,6 +51,16 @@ def main():
         metavar="SPROC_NAME",
         help="MODE: Stored Procedure Analysis. Name of the stored procedure to find references to (e.g., 'usp_MyProcedure' or 'dbo.usp_MyProcedure'). Requires --search-scope."
     )
+    mode_group.add_argument(
+        "--sow",
+        metavar="DESCRIPTION",
+        help="MODE: Impact Analysis. Inline work request text describing the change."
+    )
+    mode_group.add_argument(
+        "--sow-file",
+        metavar="FILE",
+        help="MODE: Impact Analysis. Path to file containing the work request text."
+    )
 
     #--- sproc group ---
     sproc_group = parser.add_argument_group('Stored Procedure Analysis Options (Requires --stored-procedure)')
@@ -79,6 +89,10 @@ def main():
     common_group.add_argument(
         "--search-scope",
         help="Root directory to search for consuming projects (defaults to --repo-path if Git mode is used and this is omitted, otherwise REQUIRED)."
+    )
+    common_group.add_argument(
+        "--max-depth", type=int, default=2,
+        help="Maximum transitive tracing depth for impact analysis (default: 2)."
     )
     common_group.add_argument(
         "--app-config-path",
@@ -162,14 +176,21 @@ def main():
     if args.verbose:
         logging.debug("Debug logging enabled.")
 
-    # --- configure AI provider if we are going to summarize or use hybrid git ---
+    is_git_mode = args.branch_name is not None
+    is_target_mode = args.target_project is not None
+    is_sproc_mode = args.stored_procedure is not None
+    is_impact_mode = args.sow is not None or args.sow_file is not None
+
+    # --- configure AI provider if we are going to summarize, use hybrid git, or impact mode ---
     ai_provider = None
-    if args.summarize_consumers or args.enable_hybrid_git:
+    if args.summarize_consumers or args.enable_hybrid_git or is_impact_mode:
         reason = []
         if args.summarize_consumers:
             reason.append("summarization")
         if args.enable_hybrid_git:
             reason.append("hybrid git analysis")
+        if is_impact_mode:
+            reason.append("impact analysis")
         logging.info(f"{', '.join(reason).capitalize()} enabled. Configuring Gemini...")
         try:
             ai_provider = GeminiProvider(args.google_api_key, args.gemini_model)
@@ -181,10 +202,9 @@ def main():
             if args.enable_hybrid_git:
                 logging.warning("Hybrid git analysis will fall back to regex extraction.")
                 args.enable_hybrid_git = False
-
-    is_git_mode = args.branch_name is not None
-    is_target_mode = args.target_project is not None
-    is_sproc_mode = args.stored_procedure is not None
+            if is_impact_mode:
+                logging.error("Impact analysis requires a working AI provider. Exiting.")
+                sys.exit(1)
 
     repo_path_abs: Optional[Path] = None
     search_scope_abs: Optional[Path] = None
@@ -203,8 +223,10 @@ def main():
             parser.error("--search-scope is required when using --stored-procedure mode.")
         elif is_target_mode:
             parser.error("--search-scope is required when using --target-project mode.")
+        elif is_impact_mode:
+            parser.error("--search-scope is required when using --sow or --sow-file mode.")
         else:
-            parser.error("A mode (--branch-name, --target-project, or --stored-procedure) must be selected.")
+            parser.error("A mode (--branch-name, --target-project, --stored-procedure, --sow, or --sow-file) must be selected.")
 
         if is_sproc_mode:
             if args.repo_path != "." or args.base_branch != "main":
@@ -587,6 +609,64 @@ def main():
                     batch_job_map=batch_job_map,
                     search_scope_path_abs=search_scope_abs,
                     ai_provider=ai_provider)
+
+    # == IMPACT ANALYSIS MODE ==
+    elif is_impact_mode:
+        assert search_scope_abs is not None
+        logging.info(f"\n--- Running Impact Analysis Mode ---")
+
+        # Resolve SOW text
+        if args.sow_file:
+            try:
+                sow_file_path = Path(args.sow_file).resolve(strict=True)
+                sow_text = sow_file_path.read_text(encoding='utf-8')
+                logging.info(f"Loaded work request from file: {sow_file_path}")
+            except FileNotFoundError:
+                logging.error(f"SOW file not found: {args.sow_file}")
+                sys.exit(1)
+            except Exception as e:
+                logging.error(f"Error reading SOW file: {e}")
+                sys.exit(1)
+        else:
+            sow_text = args.sow
+
+        logging.info(f"Work request: {sow_text[:200]}{'...' if len(sow_text) > 200 else ''}")
+
+        from scatter.analyzers.impact_analyzer import run_impact_analysis
+        from scatter.reports.console_reporter import print_impact_report
+        from scatter.reports.json_reporter import write_impact_json_report
+        from scatter.reports.csv_reporter import write_impact_csv_report
+
+        impact_report = run_impact_analysis(
+            sow_text=sow_text,
+            search_scope=search_scope_abs,
+            ai_provider=ai_provider,
+            max_depth=args.max_depth,
+            pipeline_map=pipeline_map,
+            solution_file_cache=solution_file_cache,
+            max_workers=args.max_workers,
+            chunk_size=args.chunk_size,
+            disable_multiprocessing=args.disable_multiprocessing,
+            cs_analysis_chunk_size=args.cs_analysis_chunk_size,
+            csproj_analysis_chunk_size=args.csproj_analysis_chunk_size,
+        )
+
+        # Output impact report (separate from legacy all_results path)
+        if args.output_format == 'json':
+            if not args.output_file:
+                logging.error("JSON output format requires the --output-file argument.")
+                sys.exit(1)
+            write_impact_json_report(impact_report, Path(args.output_file))
+        elif args.output_format == 'csv':
+            if not args.output_file:
+                logging.error("CSV output format requires the --output-file argument.")
+                sys.exit(1)
+            write_impact_csv_report(impact_report, Path(args.output_file))
+        else:
+            print_impact_report(impact_report)
+
+        print("\ndone.\n")
+        return
 
     # --- step: output combined results ---
     logging.info(f"\n\n\n################################################################\n\n")

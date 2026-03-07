@@ -83,22 +83,6 @@ class TestMapCsToProjectsBatch(unittest.TestCase):
             self.assertEqual(result[str(cs_file)], resolved,
                              f"{cs_file.name} should map to ProjectA.csproj")
 
-    def test_cache_efficiency(self):
-        """Multiple files in the same project should hit the directory cache."""
-        # We can't directly inspect the cache, but we can verify that
-        # processing many files in the same project is correct and doesn't
-        # produce wrong results from stale cache entries.
-        files = [str(self.cs_a1), str(self.cs_a2), str(self.cs_a3), str(self.cs_b1)]
-        result = scatter.map_cs_to_projects_batch((files,))
-
-        resolved_a = str(self.proj_a_csproj.resolve())
-        resolved_b = str(self.proj_b_csproj.resolve())
-
-        self.assertEqual(result[str(self.cs_a1)], resolved_a)
-        self.assertEqual(result[str(self.cs_a2)], resolved_a)
-        self.assertEqual(result[str(self.cs_a3)], resolved_a)
-        self.assertEqual(result[str(self.cs_b1)], resolved_b)
-
     def test_cache_does_not_cross_projects(self):
         """Cache from ProjectA must not bleed into ProjectB lookups."""
         # Process A files first, then B — cache should not return A's csproj for B
@@ -122,8 +106,8 @@ class TestMapCsToProjectsBatch(unittest.TestCase):
         # either error or walk to root without finding a .csproj
         # (exact behavior depends on OS, but must not crash)
 
-    def test_no_csproj_found(self):
-        """A .cs file with no .csproj anywhere above it returns None."""
+    def test_orphan_file_does_not_crash(self):
+        """A .cs file with no .csproj anywhere above it returns without crashing."""
         # The orphan file is under temp_dir/no_project/deep/nested/
         # There's no .csproj in that subtree. It will eventually walk up
         # to / without finding one (or find one outside temp_dir, but

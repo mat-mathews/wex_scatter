@@ -8,6 +8,15 @@ from scatter.core.models import (
     DEFAULT_CHUNK_SIZE,
     MULTIPROCESSING_ENABLED,
     TYPE_DECLARATION_PATTERN,
+    AnalysisTarget,
+    EnrichedConsumer,
+    TargetImpact,
+    ImpactReport,
+    CONFIDENCE_HIGH,
+    CONFIDENCE_MEDIUM,
+    CONFIDENCE_LOW,
+    CONFIDENCE_LABELS,
+    DEFAULT_MAX_DEPTH,
 )
 from scatter.core.parallel import (
     chunk_list,

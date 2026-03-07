@@ -181,7 +181,15 @@ class GeminiProvider(AIProvider):
         return 1_000_000  # Gemini 1.5 Flash context window
 
     def supports(self, task_type: AITaskType) -> bool:
-        return task_type in (AITaskType.SUMMARIZATION, AITaskType.SYMBOL_EXTRACTION)
+        return task_type in (
+            AITaskType.SUMMARIZATION,
+            AITaskType.SYMBOL_EXTRACTION,
+            AITaskType.WORK_REQUEST_PARSING,
+            AITaskType.RISK_ASSESSMENT,
+            AITaskType.COUPLING_NARRATIVE,
+            AITaskType.IMPACT_NARRATIVE,
+            AITaskType.COMPLEXITY_ESTIMATE,
+        )
 
     def estimate_tokens(self, context: str) -> int:
         # Rough estimate: ~4 chars per token for English/code

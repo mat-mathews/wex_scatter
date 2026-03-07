@@ -1,505 +1,941 @@
-# scatter.py
-*a mini source code analysis tool*
+# Scatter
 
-"If I change this class in `MyCoreLibrary`, which other projects are actually using it?" Or, "What's the potential blast radius if I merge this feature branch?" Scatter is a proof-of-concept utility designed to help answer these questions by digging through a codebase to find potential "consumers" of code changes.
+*A .NET source code dependency analyzer and impact assessment tool*
 
-It's not a full-blown static analysis engine, but it provides a quick way to identify dependent projects, which can help in assessing risk, planning testing, or identifying CI/CD pipelines that need to be triggered. If pipeline data is provided, it will attempt to map these consuming projects to their respective pipelines in the output. **It can also optionally use the Google Gemini API to summarize the relevant C# files found in those projects.**
+Scatter answers questions like "If I change this class, which other projects are actually using it?" and "What's the blast radius of this work request?" It analyzes .NET codebases to find consumers of code changes, trace transitive dependencies, and produce AI-enriched impact reports for project scoping.
 
-It works in three main ways:
+It works in four modes:
 
-* **Git Branch Analysis**: You provide a feature branch and a base branch (e.g., `main`). It analyzes the `.cs` files changed on your feature branch, identifies the types (`class`, `struct`, `interface`, `enum`) declared within them, and then searches the rest of your codebase for projects that might be using those specific types.
-* **Target Project Analysis**: You point it directly at a `.csproj` file. It then searches for other projects that reference this target and potentially use its namespace, classes, or methods.
-* **Stored Procedure Analysis**: You specify a stored procedure name. It finds C# files that reference that procedure and then analyzes the consumers of the projects containing those references.
+* **Git Branch Analysis**: Compares a feature branch against a base branch, extracts type declarations from changed `.cs` files, and finds consuming projects.
+* **Target Project Analysis**: Analyzes a specific `.csproj` file to find all projects that reference and use its types.
+* **Stored Procedure Analysis**: Finds C# projects that reference a specific stored procedure and traces their consumers.
+* **Impact Analysis** (new): Accepts a natural language work request, uses AI to identify affected components, traces transitive blast radius, and produces a risk-rated impact report with complexity estimates.
 
-The goal is to provide a heads-up about downstream dependencies before you merge or deploy, helping you identify potential integration issues. The optional AI summarization offers a quick glance into the *purpose* of the consuming code.
+The repository includes a set of sample .NET projects that form a realistic dependency graph, making it possible to test all analysis modes without an external codebase.
 
 ---
-## 🚀 Quick Start Examples
 
-### Git Branch Analysis
-Analyze changes on a feature branch against `main` in the current directory.
-```powershell
-python scatter.py --branch-name feature/new-widget --repo-path .
+## Quick Start
+
+### Installation
+
+```bash
+# Clone and set up
+git clone <repository_url>
+cd scatter
+
+# Create and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate       # macOS/Linux
+.\.venv\Scripts\Activate.ps1    # Windows
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-### Target Project Analysis
-Find all consumers of a specific project and map them to CI/CD pipelines using a CSV file.
-```powershell
-python scatter.py --target-project .\MyDotNetApp\MyDotNetApp.csproj --search-scope . --pipeline-csv pipeline_mapping.csv
+### Try It with the Included Sample Projects
+
+The repository ships with 8 sample .NET projects that form two dependency chains (see [Sample Project Structure](#sample-project-structure) for the full graph). You can run every analysis mode against them immediately — no external codebase needed.
+
+#### Target Project Analysis
+
+```bash
+# Find all consumers of the core GalaxyWorks.Data library
+# Expected: 4 consumers (WebPortal, BatchProcessor, MyGalaxyConsumerApp, MyGalaxyConsumerApp2)
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
+
+# Narrow to only consumers that use PortalDataService
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --class-name PortalDataService
+
+# Narrow further to consumers calling StorePortalConfigurationAsync
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --class-name PortalDataService --method-name StorePortalConfigurationAsync
+
+# Find consumers of a mid-tier library (WebPortal)
+# Expected: 1 consumer (BatchProcessor references both Data and WebPortal)
+python scatter.py --target-project ./GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj --search-scope .
+
+# Find consumers of a leaf project with only one consumer
+# Expected: 1 consumer (MyDotNetApp.Consumer)
+python scatter.py --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .
+
+# Verify a standalone project has zero consumers
+# Expected: 0 consumers
+python scatter.py --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .
 ```
 
-### Stored Procedure Analysis
-Find projects and classes that ultimately consume a specific stored procedure.
-```powershell
+#### Stored Procedure Analysis
+
+```bash
+# Trace who ultimately consumes the sproc sp_InsertPortalConfiguration
+# Finds PortalDataService in GalaxyWorks.Data, then finds its consumers
 python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .
+
+# Trace a different sproc — sp_GetPortalConfigurationDetails
+python scatter.py --stored-procedure "dbo.sp_GetPortalConfigurationDetails" --search-scope .
+
+# Sproc trace filtered to a specific containing class
+python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope . \
+  --class-name PortalDataService
 ```
 
-### Advanced Analysis with AI Summarization & JSON Output
-Analyze a target project, generate AI-powered code summaries for consumers, and output all results to a structured JSON file.
-```powershell
-python scatter.py --target-project .\MyDotNetApp\MyDotNetApp.csproj --search-scope . --summarize-consumers --google-api-key YOUR_API_KEY --output-format json --output-file analysis_results.json
+#### Output Formats
+
+```bash
+# JSON output — structured data with pipeline summary
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --output-format json --output-file /tmp/scatter_results.json
+
+# CSV output — one row per consumer relationship
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --output-format csv --output-file /tmp/scatter_results.csv
+
+# Verbose logging — see every step of the analysis pipeline
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . -v
+```
+
+#### AI-Powered Features (require `$GOOGLE_API_KEY`)
+
+```bash
+# AI consumer summarization — explains what each consumer file does with the dependency
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --summarize-consumers --google-api-key $GOOGLE_API_KEY
+
+# AI summarization on sproc analysis
+python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope . \
+  --summarize-consumers --google-api-key $GOOGLE_API_KEY
+
+# AI summarization with class filter + JSON output
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --class-name PortalDataService --summarize-consumers --google-api-key $GOOGLE_API_KEY \
+  --output-format json --output-file /tmp/summarized.json
+
+# Impact Analysis — natural language work request → risk-rated impact report
+python scatter.py \
+  --sow "Modify PortalDataService in GalaxyWorks.Data to add a new parameter to sp_InsertPortalConfiguration" \
+  --search-scope . --google-api-key $GOOGLE_API_KEY
+
+# Impact Analysis with deeper transitive tracing
+# BatchProcessor → WebPortal → GalaxyWorks.Data (2 hops deep)
+python scatter.py \
+  --sow "Refactor the FakeDatabaseHelper connection handling in GalaxyWorks.Data" \
+  --search-scope . --max-depth 2 --google-api-key $GOOGLE_API_KEY
+
+# Impact Analysis from a file containing a longer SOW description
+python scatter.py \
+  --sow-file docs/INITIATIVE_2_PLAN.md \
+  --search-scope . --google-api-key $GOOGLE_API_KEY
+
+# Impact Analysis with JSON output for programmatic consumption
+python scatter.py \
+  --sow "Add a new stored procedure sp_ArchivePortalConfiguration and integrate it into PortalDataService" \
+  --search-scope . --google-api-key $GOOGLE_API_KEY \
+  --output-format json --output-file /tmp/impact_report.json
+
+# Impact Analysis with CSV output — one row per affected consumer
+python scatter.py \
+  --sow "Modify the PortalConfiguration model to add a new IsArchived field" \
+  --search-scope . --google-api-key $GOOGLE_API_KEY \
+  --output-format csv --output-file /tmp/impact_report.csv
 ```
 
 ---
-## 📋 Table of Contents
 
-1.  [Quick Start Examples](#-quick-start-examples)
-2.  [Installation](#installation)
-3.  [How It Works](#how-it-works)
-4.  [Parallel Processing](#-parallel-processing)
-5.  [Configuration & Mapping](#configuration--mapping)
-6.  [Command-Line Arguments](#command-line-arguments)
-7.  [Understanding the Output](#understanding-the-output)
-8.  [Testing & Benchmarking](#-testing--benchmarking)
-9.  [Technical Details](#technical-details)
-10. [Roadmap](#roadmap)
+## Table of Contents
 
----
-## Installation
-
-These instructions will guide you through setting up the necessary environment to run the script.
-
-### Prerequisites
-
-1.  **Git**: For version control operations.
-2.  **Python 3.8+**: Ensure it's added to your system's PATH.
-
-### Steps
-
-1.  **Install Python**:
-    * **Check if installed:** Open a terminal and run `python --version`. If you see a Python 3.x version, you can skip this step.
-    * **Install if needed:** Download the official installer from [python.org](https://www.python.org/downloads/). **Crucially**, during installation, make sure to check the box that says **"Add Python to PATH"**.
-
-2.  **Clone the Repository**:
-    * Open your terminal and navigate to the directory where you want to store the project.
-    * Clone the repository:
-        ```powershell
-        git clone <repository_url>
-        cd <repository_directory_name>
-        ```
-
-3.  **Create and Activate a Virtual Environment**:
-    * Using a virtual environment is highly recommended to isolate dependencies. Inside the project directory, run:
-        ```powershell
-        # Create the virtual environment
-        python -m venv .venv
-        ```
-    * Activate it:
-        ```powershell
-        # On Windows
-        .\.venv\Scripts\Activate.ps1
-        
-        # On macOS/Linux
-        source .venv/bin/activate
-        ```
-        Your terminal prompt should now indicate that the environment is active.
-
-4.  **Install Dependencies**:
-    * With the virtual environment active, install the required packages:
-        ```powershell
-        pip install -r requirements.txt
-        ```
+1. [Quick Start](#quick-start)
+2. [Sample Project Structure](#sample-project-structure)
+3. [Analysis Modes](#analysis-modes)
+4. [AI Features](#ai-features)
+5. [Impact Analysis (Mode 4)](#impact-analysis-mode-4)
+6. [Parallel Processing](#parallel-processing)
+7. [Configuration & Mapping](#configuration--mapping)
+8. [Command-Line Reference](#command-line-reference)
+9. [Output Formats](#output-formats)
+10. [Testing](#testing)
+11. [Technical Details](#technical-details)
+12. [Roadmap](#roadmap)
 
 ---
-## How It Works
 
-### Git Branch Mode
-1.  **Find Merge Base**: It uses `git` to find the common ancestor commit between your feature branch and the base branch. This serves as the starting point for comparison.
-2.  **Identify Changed Files**: It calculates the diff to find all `.cs` files that were added or modified.
-3.  **Map Files to Projects**: For each changed file, it walks up the directory tree to find the nearest `.csproj`, associating the code with its parent project.
-4.  **Extract Declared Types**: It reads the content of the changed files and uses a regular expression to find declarations of `class`, `struct`, `interface`, or `enum`.
-5.  **Find Consumers**: For each project with changed types, it triggers the core consumer analysis logic to find other projects that use those types.
+## Sample Project Structure
 
-### Target Project & Stored Procedure Modes
-1.  **Identify Target(s)**:
-    * **Target Project**: You provide a `.csproj` file. The script parses it to determine its namespace (from `<RootNamespace>` or `<AssemblyName>`).
-    * **Stored Procedure**: You provide a sproc name. The script scans the entire search scope for C# files referencing it and identifies their parent projects. These projects become the "targets" for analysis.
-2.  **Find Consumers**: It then runs the core consumer analysis logic for each target.
+The repository includes sample .NET projects that demonstrate realistic dependency patterns. These are used by the test suite and can be used to explore Scatter's features interactively.
 
-### Core Consumer Analysis
-This is the heart of the script, used by all modes to find consumers of a "target" project:
-1.  **Scan Scope**: It finds all `.csproj` files within the `--search-scope` (excluding the target itself).
-2.  **Filter by ProjectReference**: It parses each potential consumer's `.csproj` file, looking for a `<ProjectReference>` that points directly to the target. Only projects with a direct reference are kept.
-3.  **Filter by Namespace Usage**: It scans the `.cs` files within each directly referencing project, looking for `using <TargetNamespace>;`. Only projects that both reference the target *and* use its namespace proceed.
-4.  **Filter by Class/Method Name (Optional)**: If `--class-name` or `--method-name` is used, it performs a simple text search within the remaining consumer projects to further narrow down the results. **Important**: This is a basic text search and may include matches in comments or strings, which can lead to false positives.
+### Dependency Graph
 
-### AI Summarization (Optional)
-If `--summarize-consumers` is enabled:
-1.  **Identify Relevant Files**: The script knows which `.cs` files in a consumer were responsible for the match (e.g., the file containing the specific class name).
-2.  **Call Gemini API**: It sends the content of each relevant file to the configured Google Gemini model.
-3.  **Generate & Store Summary**: The API returns a concise, 2-3 sentence summary of the file's primary purpose, which is then included in the final report.
+```
+GalaxyWorks.Data                    (core library — no dependencies)
+├── PortalDataService               calls sp_InsertPortalConfiguration
+├── Models: PortalConfiguration, UserActivityLog, SystemModule, StatusType
+└── Core: IDataAccessor interface
+     │
+     ├── GalaxyWorks.WebPortal      (references GalaxyWorks.Data)
+     │   ├── PortalController       uses PortalDataService
+     │   └── PortalCacheService     uses PortalConfiguration
+     │        │
+     │        └── GalaxyWorks.BatchProcessor  (references Data + WebPortal)
+     │            └── SyncJob       uses PortalDataService + PortalCacheService
+     │
+     ├── MyGalaxyConsumerApp        (references GalaxyWorks.Data)
+     │   └── Program               creates PortalDataService instance
+     │
+     └── MyGalaxyConsumerApp2       (references GalaxyWorks.Data)
+         └── Program               creates PortalDataService instance
+
+MyDotNetApp                         (independent library — no dependencies)
+├── Person, DataService, IDataService
+     │
+     └── MyDotNetApp.Consumer       (references MyDotNetApp)
+         └── Program               uses Person & DataService
+
+MyDotNetApp2.Exclude                (standalone — no references, tests exclusion)
+```
+
+### What You Can Test
+
+| Scenario | Command |
+|----------|---------|
+| Find all consumers of a core library | `--target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .` |
+| Filter to a specific class | Add `--class-name PortalDataService` |
+| Filter to a specific method | Add `--class-name PortalDataService --method-name InsertPortalConfiguration` |
+| Trace stored procedure consumers | `--stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .` |
+| Find consumers of a leaf project | `--target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .` |
+| Verify no false positives | `--target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .` (should find 0 consumers) |
+| Impact analysis with transitive tracing | `--sow "Modify PortalDataService" --search-scope . --max-depth 2 --google-api-key $KEY` |
 
 ---
-## 🔀 Parallel Processing
 
-Scatter uses Python's `multiprocessing` module to parallelize CPU-bound and I/O-bound operations across multiple phases of analysis. This is enabled by default and provides significant performance improvements on larger codebases.
+## Analysis Modes
+
+### Mode 1: Git Branch Analysis (`--branch-name`)
+
+Analyzes the `.cs` files changed on a feature branch to identify potential downstream impact.
+
+**How it works:**
+1. Finds the merge base between the feature branch and base branch
+2. Identifies all changed `.cs` files in the diff
+3. Maps changed files to their parent `.csproj` projects
+4. Extracts type declarations (`class`, `struct`, `interface`, `enum`) from changed files
+5. Finds consuming projects for each changed type
+
+**Type extraction** uses regex by default, matching C# type declarations with access modifiers, generics, and keywords like `static`, `abstract`, `sealed`, and `partial`. With `--enable-hybrid-git`, Scatter sends both the full file content and the git diff to an LLM, which identifies only the types whose body, signature, or members were *actually changed* — ignoring types that merely appear in the same file. This significantly reduces false positives. See [AI-Enhanced Type Extraction](#ai-enhanced-type-extraction-hybrid-git) for details.
+
+```bash
+# Basic usage — regex type extraction
+python scatter.py --branch-name feature/new-widget --repo-path .
+
+# Against a different base branch
+python scatter.py --branch-name feature/hotfix --base-branch develop --repo-path /path/to/repo
+
+# With LLM-enhanced diff analysis (reduces false positives)
+python scatter.py --branch-name feature/refactor --repo-path . \
+  --enable-hybrid-git --google-api-key $GOOGLE_API_KEY
+
+# Filter to a specific class
+python scatter.py --branch-name feature/refactor --repo-path . --class-name WidgetFactory
+
+# Full analysis with pipeline mapping and JSON output
+python scatter.py --branch-name feature/new-api --repo-path . \
+  --search-scope src/services \
+  --pipeline-csv build/pipeline_map.csv \
+  --output-format json --output-file reports/analysis.json
+```
+
+### Mode 2: Target Project Analysis (`--target-project`)
+
+Finds all projects that consume a specific `.csproj` file.
+
+**How it works:**
+1. Parses the target `.csproj` to determine its namespace
+2. Finds all `.csproj` files in the search scope with a `<ProjectReference>` to the target
+3. Filters by namespace usage (`using` statements)
+4. Optionally filters by class and method usage
+
+When `--summarize-consumers` is enabled, Scatter sends each relevant consumer `.cs` file to the Gemini API and includes a 2-3 sentence AI-generated summary in the output explaining the file's purpose. See [AI Consumer Summarization](#ai-consumer-summarization) for details and example output.
+
+```bash
+# Basic usage
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
+
+# Override namespace detection
+python scatter.py --target-project ./LegacyLib/LegacyLib.csproj --search-scope . \
+  --target-namespace Company.Product.OldStuff
+
+# Filter by class and method
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --class-name PortalDataService --method-name InsertPortalConfiguration
+
+# With AI summarization — explains what each consumer file does
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --summarize-consumers --google-api-key $GOOGLE_API_KEY
+
+# AI summarization with JSON output
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --summarize-consumers --google-api-key $GOOGLE_API_KEY \
+  --output-format json --output-file reports/summary.json
+```
+
+### Mode 3: Stored Procedure Analysis (`--stored-procedure`)
+
+Finds C# projects that reference a stored procedure, then traces their consumers.
+
+**How it works:**
+1. Scans the search scope for `.cs` files containing the stored procedure name
+2. Maps matching files to their parent `.csproj` projects and containing classes
+3. For each class referencing the sproc, finds consumer projects
+
+```bash
+# Basic usage
+python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .
+
+# Custom regex pattern
+python scatter.py --stored-procedure "UpdateUser" --search-scope . \
+  --sproc-regex-pattern "EXECUTE sp_prefix_{sproc_name_placeholder}"
+
+# Filter by class
+python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope . \
+  --class-name PortalDataService
+
+# JSON output
+python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope . \
+  --output-format json --output-file reports/sproc_consumers.json
+```
+
+### Mode 4: Impact Analysis (`--sow` / `--sow-file`)
+
+Accepts a natural language work request and produces an AI-enriched impact report. See [Impact Analysis (Mode 4)](#impact-analysis-mode-4) for the full breakdown.
+
+---
+
+## AI Features
+
+Scatter integrates with the Google Gemini API in three distinct ways. Each is optional and activated by specific flags. All require a Gemini API key via `--google-api-key` or the `GOOGLE_API_KEY` environment variable.
+
+| Feature | Flag | Available In | Purpose |
+|---------|------|-------------|---------|
+| [Consumer Summarization](#ai-consumer-summarization) | `--summarize-consumers` | Git, Target, Sproc modes | Explain *what* each consumer file does |
+| [Hybrid Type Extraction](#ai-enhanced-type-extraction-hybrid-git) | `--enable-hybrid-git` | Git mode only | Identify *which* types were actually changed in a diff |
+| [Impact Analysis](#impact-analysis-mode-4) | `--sow` / `--sow-file` | Impact mode | Full AI-powered scoping: parse SOW, assess risk, estimate effort |
+
+### AI Consumer Summarization
+
+When `--summarize-consumers` is enabled, Scatter identifies the specific `.cs` files in each consumer project that caused the match (e.g., the file containing the `using GalaxyWorks.Data;` statement and the `PortalDataService` reference). It sends each file's content to the Gemini API and gets back a concise 2-3 sentence summary of the file's purpose.
+
+This is useful when you have dozens of consumers and want to quickly understand *what* each one does with the dependency, without opening every file.
+
+**Try it with the sample projects:**
+
+```bash
+# Summarize what each consumer of GalaxyWorks.Data does with it
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --summarize-consumers --google-api-key $GOOGLE_API_KEY
+
+# Summarize consumers of a stored procedure
+python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope . \
+  --summarize-consumers --google-api-key $GOOGLE_API_KEY
+
+# Combine with class filter and JSON output
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --class-name PortalDataService --summarize-consumers --google-api-key $GOOGLE_API_KEY \
+  --output-format json --output-file reports/summarized.json
+```
+
+**Example console output with summarization:**
+
+```
+Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+    Type/Level: PortalDataService
+         -> Consumed by: MyGalaxyConsumerApp (MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj)
+           Summaries:
+             File: Program.cs
+              This console application creates an instance of PortalDataService
+              and calls its methods to insert and retrieve portal configuration
+              data. It serves as a simple client for the GalaxyWorks.Data library.
+```
+
+**In JSON output**, summaries appear in the `ConsumerFileSummaries` field as a JSON object mapping file paths to summary text:
+
+```json
+{
+  "ConsumerProjectName": "MyGalaxyConsumerApp",
+  "ConsumerFileSummaries": "{\"Program.cs\": \"This console application creates an instance of...\"}"
+}
+```
+
+### AI-Enhanced Type Extraction (Hybrid Git)
+
+In Git Branch mode, Scatter needs to determine which C# types (`class`, `struct`, `interface`, `enum`) were modified in the diff. By default, it uses a regex pattern that extracts *every* type declaration found in any changed file. This can produce false positives — if you modify one class in a file that declares five classes, all five are flagged as changed.
+
+With `--enable-hybrid-git`, Scatter sends the **full file content** and the **git diff** to the Gemini API. The LLM analyzes the diff to determine which types had their body, signature, or members *actually modified*, and returns only those. Types that merely appear in the same file but weren't touched are excluded.
+
+**Regex extraction (default):**
+- Finds all type declarations in every changed `.cs` file
+- Fast, no API calls
+- May over-report: a one-line change in a file with 5 classes flags all 5
+
+**LLM-enhanced extraction (`--enable-hybrid-git`):**
+- Analyzes the actual diff to identify meaningfully changed types
+- Filters out comment-only and import-only changes (returns empty for those)
+- Falls back to regex automatically if the LLM call fails
+- Requires a Gemini API key
+
+**Try it with the sample projects:**
+
+```bash
+# First, create a branch with changes to test against
+git checkout -b feature/test-hybrid
+
+# Make a change to a file in GalaxyWorks.Data (e.g., add a comment to PortalDataService)
+# Then run with regex (default):
+python scatter.py --branch-name feature/test-hybrid --repo-path . --search-scope .
+
+# Same analysis with LLM-enhanced extraction:
+python scatter.py --branch-name feature/test-hybrid --repo-path . --search-scope . \
+  --enable-hybrid-git --google-api-key $GOOGLE_API_KEY -v
+```
+
+With `--verbose`, you can see the LLM's analysis for each file:
+
+```
+Hybrid analysis for GalaxyWorks.Data/DataServices/PortalDataService.cs:
+  1 affected type(s) identified by LLM: {'PortalDataService'}
+```
+
+If a change only affects comments or `using` statements, the LLM returns an empty list and no consumers are searched for that file — avoiding unnecessary analysis.
+
+---
+
+## Impact Analysis (Mode 4)
+
+Impact analysis turns Scatter from a developer tool into a project-scoping tool. Instead of needing to know the exact `.csproj` or class name to analyze, you describe the change in natural language and get back a comprehensive risk assessment.
+
+### Pipeline
+
+```
+Work request text
+  → AI parses into structured AnalysisTargets
+    → find_consumers() per target
+      → BFS transitive tracing (consumers of consumers)
+        → AI enrichment:
+           • Risk assessment per target (Low/Medium/High/Critical)
+           • Coupling narrative (why dependencies exist)
+           • Complexity estimate with effort range
+           • Manager-friendly impact summary
+          → ImpactReport → console / JSON / CSV
+```
+
+### Usage
+
+```bash
+# Inline work request
+python scatter.py \
+  --sow "Modify PortalDataService in GalaxyWorks.Data to add a new parameter to sp_InsertPortalConfiguration" \
+  --search-scope . \
+  --google-api-key $GOOGLE_API_KEY
+
+# Work request from file
+python scatter.py \
+  --sow-file docs/sample_sow.txt \
+  --search-scope . \
+  --google-api-key $GOOGLE_API_KEY
+
+# Control transitive tracing depth (default: 2)
+python scatter.py \
+  --sow "Refactor GalaxyWorks.Data connection handling" \
+  --search-scope . \
+  --max-depth 3 \
+  --google-api-key $GOOGLE_API_KEY
+
+# JSON output for programmatic use
+python scatter.py \
+  --sow "Add caching to PortalDataService" \
+  --search-scope . \
+  --google-api-key $GOOGLE_API_KEY \
+  --output-format json --output-file impact_report.json
+```
+
+### Console Output Format
+
+```
+=== Impact Analysis Report ===
+Work Request: Modify PortalDataService in GalaxyWorks.Data...
+Overall Risk: High | Complexity: Medium (3-5 developer-days)
+
+--- Target: GalaxyWorks.Data ---
+Direct Consumers: 4 | Transitive: 1
+
+  [HIGH] MyGalaxyConsumerApp (direct)
+    Risk: Medium — "Uses PortalDataService directly..."
+    Pipeline: consumer-app-pipeline
+
+  [HIGH] GalaxyWorks.WebPortal (direct)
+    Risk: High — "Core portal controller depends on this service..."
+    Coupling: PortalController instantiates PortalDataService and calls multiple methods.
+    Coupling vectors: Direct class instantiation, Method calls
+
+  [MEDIUM] GalaxyWorks.BatchProcessor (depth: 1)
+    Risk: Medium — "Transitive dependency through WebPortal..."
+
+--- Complexity ---
+Medium: Moderate blast radius with 4 direct and 1 transitive consumers.
+
+--- Impact Summary ---
+This change affects a core data access service used by 4 direct consumers
+including the web portal and batch processing systems. Careful coordination
+of deployments across the affected pipelines is recommended.
+```
+
+### Transitive Tracing
+
+Impact analysis traces dependencies beyond direct consumers using BFS:
+
+| Depth | Meaning | Confidence |
+|-------|---------|------------|
+| 0 | Direct consumer — has a `<ProjectReference>` and uses the target's namespace/class | HIGH (1.0) |
+| 1 | Consumer of a consumer — one hop away from the change | MEDIUM (0.6) |
+| 2+ | Deeply transitive — multiple hops, increasingly indirect | LOW (0.3) |
+
+Cycle detection prevents infinite loops (A→B→A). The `--max-depth` flag controls how far the trace goes (default: 2).
+
+### AI Enrichment
+
+Impact mode makes several AI calls to enrich the raw dependency data:
+
+| AI Task | Purpose | Output |
+|---------|---------|--------|
+| Work request parsing | Extract project names, classes, sprocs from natural language | `AnalysisTarget` list |
+| Risk assessment | Rate risk per target based on consumer count, depth, pipelines | Low/Medium/High/Critical + justification |
+| Coupling narrative | Explain *why* a dependency exists by reading consumer source code | Narrative text + coupling vectors |
+| Complexity estimate | Estimate implementation effort based on blast radius metrics | Rating + effort range (e.g., "3-5 developer-days") |
+| Impact narrative | Generate a manager-friendly summary of the full analysis | 1-2 paragraph summary |
+
+All AI tasks require a Google Gemini API key (`--google-api-key` or `GOOGLE_API_KEY` env var).
+
+---
+
+## Parallel Processing
+
+Scatter uses Python's `multiprocessing` module to parallelize file discovery and content analysis. This is enabled by default.
 
 ### What Gets Parallelized
 
-| Phase | Operation | Worker Function | Default Chunk Size |
-|-------|-----------|-----------------|-------------------|
-| **1 - File Discovery** | Scanning directories for `.cs` and `.csproj` files | `find_files_with_pattern_chunk` | 75 directories |
-| **2.1 - Content Analysis** | Scanning `.cs` files for namespace usage, class references, and sproc patterns | `analyze_cs_files_batch` | 50 files |
-| **2.2 - XML Parsing** | Parsing `.csproj` files to resolve `<ProjectReference>` dependencies | `parse_csproj_files_batch` | 25 files |
-| **2.3 - Project Mapping** | Mapping `.cs` files to their parent `.csproj` by walking up the directory tree | `map_cs_to_projects_batch` | 50 files |
+| Phase | Operation | Default Chunk Size |
+|-------|-----------|-------------------|
+| File Discovery | Scanning directories for `.cs` and `.csproj` files | 75 directories |
+| Content Analysis | Scanning `.cs` files for namespace usage, class references, sproc patterns | 50 files |
+| XML Parsing | Parsing `.csproj` files to resolve `<ProjectReference>` dependencies | 25 files |
+| Project Mapping | Mapping `.cs` files to their parent `.csproj` by directory walk | 50 files |
 
-### How It Works
+### Adaptive Worker Scaling
 
-Each phase follows the same pattern:
+- < 200 files: up to 4 workers
+- < 1000 files: up to 8 workers
+- 1000+ files: up to `--max-workers` (default: CPU cores + 4, max 32)
 
-1. **Chunking**: The input file list is split into batches (chunk size is configurable per phase).
-2. **Adaptive Worker Scaling**: The number of worker processes scales based on the workload:
-   - < 200 files: up to 4 workers
-   - < 1000 files: up to 8 workers
-   - 1000+ files: up to `--max-workers` (default: CPU cores + 4, max 32)
-3. **Parallel Execution**: Chunks are distributed across a `ProcessPoolExecutor` and collected via `as_completed`.
-4. **Automatic Fallback**: If multiprocessing fails or the file count is below the chunk size threshold, processing falls back to sequential mode transparently.
-
-### Key Optimization: Directory-to-Project Caching (Phase 2.3)
-
-When mapping `.cs` files to their `.csproj` projects, each worker maintains a local directory cache. The first file in a project triggers the upward directory walk; subsequent files in the same project (or its subdirectories) resolve instantly from cache. This eliminates redundant filesystem calls when many `.cs` files share the same project hierarchy.
-
-### Multiprocessing CLI Options
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--disable-multiprocessing` | `false` | Force sequential processing for all operations |
-| `--max-workers N` | CPU cores + 4 (max 32) | Maximum number of worker processes |
-| `--chunk-size N` | 75 | Directories per worker batch (file discovery) |
-| `--cs-analysis-chunk-size N` | 50 | `.cs` files per worker batch (content analysis & project mapping) |
-| `--csproj-analysis-chunk-size N` | 25 | `.csproj` files per worker batch (XML parsing) |
-
-### Example: Tuning for a Large Codebase
-
-```shell
-python scatter.py \
-  --target-project src/MyCoreLib/MyCoreLib.csproj \
-  --search-scope /large/monorepo \
-  --max-workers 16 \
-  --chunk-size 100 \
-  --cs-analysis-chunk-size 75
-```
-
-### Example: Forcing Sequential Mode (Debugging)
-
-```shell
-python scatter.py \
-  --stored-procedure "dbo.sp_GetUser" \
-  --search-scope . \
-  --disable-multiprocessing
-```
-
----
-## Configuration & Mapping
-
-### Google API Key
-To use the `--summarize-consumers` feature, you need a Google Gemini API Key.
-1.  **Get an API Key** from the Google AI Studio.
-2.  **Set the Key**:
-    * **Environment Variable (Recommended)**: Set an environment variable named `GOOGLE_API_KEY`.
-        ```powershell
-        # In PowerShell (current session)
-        $env:GOOGLE_API_KEY="YOUR_API_KEY_HERE"
-        ```
-    * **Command-Line Argument**: Use the `--google-api-key` flag when running the script.
-
-### Pipeline Mapping
-You can provide a CSV file (`--pipeline-csv`) to map project names to CI/CD pipeline names. This helps identify which build pipelines might need to be triggered. The CSV requires headers named `Application Name` and `Pipeline Name`.
-
-### Batch Job Verification
-If your project follows a convention where batch jobs are defined as subdirectories in a configuration repository, you can use the `--app-config-path` argument. Point it to your configuration repo, and the script will check if a consuming project corresponds to a known batch job, adding a "Verified" or "Unverified" status to the output.
-
----
-## Command-Line Arguments
-
-*(Ensure your terminal's current directory is within the Git repository you want to analyze if using Git Branch mode.)*
-
-### Mode Selection (Choose ONE)
-
-* `--branch-name <BRANCH>`: **Git Mode**. Analyzes changes on a specific branch.
-* `--target-project <PATH>`: **Project Mode**. Analyzes consumers of a specific `.csproj` file or its directory.
-* `--stored-procedure <SPROC_NAME>`: **Sproc Mode**. Analyzes consumers of projects that reference a stored procedure.
-
-### Key Options
-
-* `--search-scope <PATH>`: **(Required)** The root directory to search for consumer projects.
-* `--output-format [console|csv|json]`: Sets the output format. **Default**: `console`.
-* `--output-file <PATH>`: Writes results to a file. **Required** for `csv` and `json` formats.
-* `--pipeline-csv <PATH>`: Path to a CSV file for mapping project names to pipeline names.
-* `--app-config-path <PATH>`: Path to the app-config repository for batch job verification.
-* `-v, --verbose`: Enables detailed DEBUG level logging for troubleshooting.
-
-### Filtering Options
-
-* `--class-name <CLASS>`: Narrows the search to consumers that use a specific class.
-* `--method-name <METHOD>`: Further narrows the search to consumers that call a specific method. Requires `--class-name`.
-
-### AI Summarization Options
-
-* `--summarize-consumers`: Enables summarization of relevant C# files using the Gemini API.
-* `--google-api-key <KEY>`: Your Google API Key (overrides the environment variable).
-* `--gemini-model <MODEL>`: The Gemini model to use. **Default**: `gemini-1.5-flash`.
+If multiprocessing fails, processing falls back to sequential mode automatically.
 
 ### Multiprocessing Options
 
-* `--disable-multiprocessing`: Disables parallel processing; all operations run sequentially.
-* `--max-workers <N>`: Maximum number of worker processes. **Default**: CPU cores + 4 (max 32).
-* `--chunk-size <N>`: Number of directories per worker batch during file discovery. **Default**: `75`.
-* `--cs-analysis-chunk-size <N>`: Number of `.cs` files per worker batch for content analysis and project mapping. **Default**: `50`.
-* `--csproj-analysis-chunk-size <N>`: Number of `.csproj` files per worker batch for XML parsing. **Default**: `25`.
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--disable-multiprocessing` | `false` | Force sequential processing |
+| `--max-workers N` | CPU cores + 4 (max 32) | Maximum worker processes |
+| `--chunk-size N` | 75 | Directories per batch (file discovery) |
+| `--cs-analysis-chunk-size N` | 50 | `.cs` files per batch (content analysis) |
+| `--csproj-analysis-chunk-size N` | 25 | `.csproj` files per batch (XML parsing) |
 
-For a full list of arguments and defaults, run `python scatter.py --help`.
+```bash
+# Tuning for a large codebase
+python scatter.py --target-project src/Core/Core.csproj --search-scope /large/monorepo \
+  --max-workers 16 --chunk-size 100 --cs-analysis-chunk-size 75
 
----
-## Understanding the Output
-
-* **Console**: Prints a human-readable report listing each target and its consumers. If summarization is enabled, it includes the AI-generated summaries.
-* **CSV**: Generates a flat file with columns for `TargetProjectName`, `ConsumerProjectName`, `PipelineName`, `BatchJobVerification`, etc. The `ConsumerFileSummaries` column contains a JSON string of file paths mapped to their summaries.
-* **JSON**: Produces a structured JSON file containing a `pipeline_summary` (a list of unique pipelines found) and `all_results` (a detailed list of each dependency relationship). This format is ideal for programmatic use.
-
----
-## 🧪 Testing & Benchmarking
-
-### Running the Test Suite
-
-```shell
-# Run all tests
-python -m pytest -v
-
-# Run only Phase 2.3 project mapping tests
-python -m pytest test_phase2_3_project_mapping.py -v
-
-# Run only the original multiprocessing tests
-python -m pytest test_multiprocessing_phase1.py -v
+# Force sequential mode for debugging
+python scatter.py --stored-procedure "dbo.sp_GetUser" --search-scope . --disable-multiprocessing
 ```
 
-### Test Coverage
+---
 
-The test suite currently includes **63 tests** across three test files:
+## Configuration & Mapping
+
+### Google API Key
+
+Required for AI summarization (`--summarize-consumers`), hybrid git analysis (`--enable-hybrid-git`), and impact analysis (`--sow` / `--sow-file`).
+
+```bash
+# Environment variable (recommended)
+export GOOGLE_API_KEY="your-key-here"
+
+# Or pass directly
+python scatter.py --sow "..." --search-scope . --google-api-key "your-key-here"
+```
+
+### Pipeline Mapping
+
+Provide a CSV file (`--pipeline-csv`) to map project names to CI/CD pipelines. The CSV needs `Application Name` and `Pipeline Name` columns.
+
+### Batch Job Verification
+
+Use `--app-config-path` to verify if consumer projects correspond to known batch jobs in a configuration repository.
+
+---
+
+## Command-Line Reference
+
+### Mode Selection (mutually exclusive, one required)
+
+| Flag | Mode |
+|------|------|
+| `--branch-name BRANCH` | Git branch analysis |
+| `--target-project PATH` | Target project analysis |
+| `--stored-procedure NAME` | Stored procedure analysis |
+| `--sow "TEXT"` | Impact analysis (inline) |
+| `--sow-file PATH` | Impact analysis (from file) |
+
+### Common Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--search-scope PATH` | (required) | Root directory to search for consumers |
+| `--output-format FORMAT` | `console` | Output format: `console`, `csv`, `json` |
+| `--output-file PATH` | — | Output file path (required for csv/json) |
+| `--class-name NAME` | — | Filter by class/type name |
+| `--method-name NAME` | — | Filter by method name (requires `--class-name`) |
+| `--max-depth N` | `2` | Transitive tracing depth (impact mode) |
+| `--pipeline-csv PATH` | — | CSV file for pipeline mapping |
+| `--app-config-path PATH` | — | App-config repo for batch job verification |
+| `--target-namespace NS` | — | Override namespace detection |
+| `-v, --verbose` | `false` | Enable DEBUG logging |
+
+### Git Branch Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-r, --repo-path PATH` | `.` | Path to the Git repository |
+| `-b, --base-branch BRANCH` | `main` | Base branch to compare against |
+| `--enable-hybrid-git` | `false` | LLM-enhanced diff analysis |
+
+### Stored Procedure Options
+
+| Flag | Description |
+|------|-------------|
+| `--sproc-regex-pattern PATTERN` | Custom regex for finding sproc references |
+
+### AI / Summarization Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--summarize-consumers` | `false` | AI-summarize relevant consumer files |
+| `--google-api-key KEY` | `$GOOGLE_API_KEY` | Google Gemini API key |
+| `--gemini-model MODEL` | `gemini-1.5-flash` | Gemini model to use |
+
+Run `python scatter.py --help` for the full list with defaults.
+
+---
+
+## Output Formats
+
+### Console (default)
+
+Human-readable report listing each target and its consumers with pipeline mappings, solutions, and optional AI summaries.
+
+### JSON (`--output-format json --output-file report.json`)
+
+Structured JSON. For legacy modes (git/target/sproc), the output includes `pipeline_summary` and `all_results`. For impact mode, the output is the full `ImpactReport` structure:
+
+```json
+{
+  "sow_text": "Modify PortalDataService...",
+  "targets": [
+    {
+      "target": { "target_type": "project", "name": "GalaxyWorks.Data", ... },
+      "consumers": [
+        {
+          "consumer_name": "MyGalaxyConsumerApp",
+          "depth": 0,
+          "confidence": 1.0,
+          "confidence_label": "HIGH",
+          "risk_rating": "Medium",
+          "risk_justification": "...",
+          "pipeline_name": "...",
+          ...
+        }
+      ],
+      "total_direct": 4,
+      "total_transitive": 1
+    }
+  ],
+  "complexity_rating": "Medium",
+  "effort_estimate": "3-5 developer-days",
+  "impact_narrative": "...",
+  "overall_risk": "High"
+}
+```
+
+### CSV (`--output-format csv --output-file report.csv`)
+
+For legacy modes: one row per consumer relationship with columns for target, consumer, pipeline, etc.
+
+For impact mode: one row per consumer with columns: `Target`, `TargetType`, `Consumer`, `ConsumerPath`, `Depth`, `Confidence`, `ConfidenceLabel`, `RiskRating`, `RiskJustification`, `Pipeline`, `Solutions`, `CouplingVectors`.
+
+---
+
+## Testing
+
+### Running Tests
+
+```bash
+# Run the full test suite
+python -m pytest -v
+
+# Run only impact analysis tests
+python -m pytest test_impact_analysis.py -v
+
+# Run only multiprocessing tests
+python -m pytest test_multiprocessing_phase1.py -v
+
+# Run only project mapping tests
+python -m pytest test_phase2_3_project_mapping.py -v
+
+# Run with short output
+python -m pytest -q
+```
+
+### Test Suite Overview
+
+The test suite includes **123 tests** across 6 test files:
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
-| `test_multiprocessing_phase1.py` | 37 | Phase 1 file discovery, consumer analysis, backwards compatibility, target symbol search |
-| `test_phase2_3_project_mapping.py` | 25 | Batch project mapping, parallel orchestrator, sproc integration, cache correctness |
-| `test_realistic_workload.py` | 1 | Scalability benchmarking with synthetic codebases (100 - 5,000 files) |
+| `test_multiprocessing_phase1.py` | 37 | File discovery, consumer analysis, backwards compatibility |
+| `test_phase2_3_project_mapping.py` | 25 | Batch project mapping, parallel orchestration, sproc integration |
+| `test_impact_analysis.py` | 53 | Impact analysis: data models, CLI args, work request parsing, transitive tracing, risk assessment, coupling narrative, impact narrative, complexity estimate, reporters, end-to-end |
+| `test_hybrid_git.py` | 7 | LLM-enhanced git diff analysis |
+| `test_phase21_overhead.py` | — | Phase 2.1 overhead measurement |
+| `test_realistic_workload.py` | 1 | Scalability benchmark with synthetic codebases |
 
-Key areas covered:
-- **Parallel vs sequential consistency**: Every parallel operation is verified to produce identical results when run sequentially with `--disable-multiprocessing`
-- **Backwards compatibility**: 18 dedicated tests ensure all original function signatures, return types, CLI arguments, and output formats remain unchanged
-- **Edge cases**: Empty inputs, nonexistent paths, permission errors, filesystem root boundaries, chunk size boundaries
-- **Fallback behavior**: ProcessPoolExecutor failures fall back to sequential gracefully
+### What the Tests Cover
+
+**Data model construction** — All 4 impact analysis dataclasses (`AnalysisTarget`, `EnrichedConsumer`, `TargetImpact`, `ImpactReport`) with defaults and field validation.
+
+**CLI argument parsing** — Mutual exclusivity between modes (`--sow` vs `--branch-name` vs `--target-project` vs `--stored-procedure`), required argument validation.
+
+**AI task modules** — Each AI task (work request parsing, risk assessment, coupling narrative, impact narrative, complexity estimate) is tested with mock AI responses for:
+- Valid JSON responses
+- Empty responses
+- Invalid JSON / non-list responses
+- Markdown code fence stripping
+- API failures / exceptions
+- No-provider graceful fallback
+
+**Transitive tracing** — Depth-0 returns only direct consumers, depth-1 finds transitive, cycle detection (A→B→A), confidence decay by depth, max depth enforcement.
+
+**Reporters** — Console output formatting, JSON serialization (including `Path` objects), CSV column structure, empty report handling.
+
+**Hybrid git type extraction** — LLM-based symbol extraction with mock model responses, fallback to regex on failure, JSON parsing of model output, markdown fence stripping.
+
+**End-to-end integration** — Full pipeline with all AI mocked: SOW text → parse → find_consumers → transitive tracing → enrichment → report generation.
+
+**Parallel vs sequential consistency** — Every parallel operation is verified to produce identical results when run sequentially with `--disable-multiprocessing`.
+
+All AI-dependent tests use mock models (no real API calls). The mocks simulate valid JSON responses, empty responses, malformed JSON, API exceptions, and markdown-fenced output to verify graceful handling of every failure mode.
+
+### Testing with the Sample Projects
+
+The sample .NET projects in the repository provide real-world test scenarios. Commands below are grouped by what they verify.
+
+**Core analysis (no API key needed):**
+
+```bash
+# Verify GalaxyWorks.Data has 4 consumers (WebPortal, BatchProcessor, 2x ConsumerApp)
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
+
+# Verify MyDotNetApp has exactly 1 consumer (MyDotNetApp.Consumer)
+python scatter.py --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .
+
+# Verify MyDotNetApp2.Exclude has 0 consumers (standalone project)
+python scatter.py --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .
+
+# Verify sproc tracing finds PortalDataService as the referencing class
+python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .
+
+# Verify class filtering narrows results
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --class-name PortalDataService
+
+# Test output formats
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --output-format json --output-file /tmp/test_output.json
+
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --output-format csv --output-file /tmp/test_output.csv
+```
+
+**AI Consumer Summarization (requires `$GOOGLE_API_KEY`):**
+
+```bash
+# Summarize what each consumer of GalaxyWorks.Data does with it
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --summarize-consumers --google-api-key $GOOGLE_API_KEY
+
+# Summarize with class filter — only PortalDataService consumers
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --class-name PortalDataService --summarize-consumers --google-api-key $GOOGLE_API_KEY
+
+# Summarize consumers of a stored procedure
+python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope . \
+  --summarize-consumers --google-api-key $GOOGLE_API_KEY
+
+# Summarization with JSON output — summaries in ConsumerFileSummaries field
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --summarize-consumers --google-api-key $GOOGLE_API_KEY \
+  --output-format json --output-file /tmp/summarized.json
+```
+
+**AI Hybrid Git Type Extraction (requires `$GOOGLE_API_KEY` + a feature branch):**
+
+```bash
+# Create a test branch, modify a file, then analyze
+git checkout -b feature/test-hybrid
+echo "// test change" >> GalaxyWorks.Data/DataServices/PortalDataService.cs
+git add GalaxyWorks.Data/DataServices/PortalDataService.cs
+
+# Regex extraction (default) — may flag all types in the file
+python scatter.py --branch-name feature/test-hybrid --repo-path . --search-scope . -v
+
+# LLM extraction — only flags types whose body/signature actually changed
+python scatter.py --branch-name feature/test-hybrid --repo-path . --search-scope . \
+  --enable-hybrid-git --google-api-key $GOOGLE_API_KEY -v
+
+# Clean up
+git checkout main && git branch -D feature/test-hybrid
+```
+
+**AI Impact Analysis (requires `$GOOGLE_API_KEY`):**
+
+```bash
+# Natural language work request → risk-rated impact report
+python scatter.py \
+  --sow "Modify PortalDataService in GalaxyWorks.Data to add a new parameter to sp_InsertPortalConfiguration" \
+  --search-scope . --google-api-key $GOOGLE_API_KEY
+
+# Transitive tracing — BatchProcessor is a transitive consumer of WebPortal
+python scatter.py \
+  --sow "Modify PortalCacheService in GalaxyWorks.WebPortal" \
+  --search-scope . --max-depth 1 --google-api-key $GOOGLE_API_KEY
+
+# Impact report as JSON
+python scatter.py \
+  --sow "Refactor GalaxyWorks.Data connection handling" \
+  --search-scope . --google-api-key $GOOGLE_API_KEY \
+  --output-format json --output-file /tmp/impact.json
+
+# Impact report as CSV
+python scatter.py \
+  --sow "Refactor GalaxyWorks.Data connection handling" \
+  --search-scope . --google-api-key $GOOGLE_API_KEY \
+  --output-format csv --output-file /tmp/impact.csv
+```
 
 ### Benchmarking
 
-The `test_realistic_workload.py` test generates synthetic `.cs` codebases of varying sizes and measures parallel vs sequential performance:
-
-```shell
-# Run the benchmark directly
+```bash
+# Run synthetic codebase benchmark (100 to 5,000 files)
 python test_realistic_workload.py
-```
 
-This creates temporary directories with 100 to 5,000 realistic `.cs` files and times the parallel file discovery and content analysis operations. Results are printed as a comparison table showing speedup ratios.
-
-You can also benchmark real-world performance on your own codebase by running with `--verbose` and comparing execution times:
-
-```shell
-# Parallel (default)
+# Compare parallel vs sequential on your own codebase
 time python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope /your/codebase -v
-
-# Sequential
 time python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope /your/codebase --disable-multiprocessing -v
 ```
 
 ---
+
 ## Technical Details
 
-### Type Extraction Regex
-In Git Branch mode, the script uses a regular expression to find type declarations in changed `.cs` files. It's designed to capture `class`, `struct`, `interface`, and `enum` declarations, including those with access modifiers, generics, and various keywords.
+### Type Extraction
+
+In Git Branch mode, type declarations are extracted from changed `.cs` files. Scatter supports two extraction strategies:
+
+**Regex extraction (default)** uses a compiled pattern to find type declarations with access modifiers, generics, and keywords like `static`, `abstract`, `sealed`, and `partial`:
 
 ```python
 TYPE_DECLARATION_PATTERN = re.compile(
-    r"^\s*(?:public|internal|private|protected)?\s*" # Optional access modifier
-    r"(?:static\s+|abstract\s+|sealed\s+|partial\s+)*" # Optional keywords
-    r"(?:class|struct|interface|enum)\s+" # Type keyword
-    r"([A-Za-z_][A-Za-z0-9_<>,\s]*?)" # Capture type name (non-greedy)
-    r"\s*(?::|{|where|<)", # Look for end of declaration
+    r"^\s*(?:public|internal|private|protected)?\s*"  # Optional access modifier
+    r"(?:static\s+|abstract\s+|sealed\s+|partial\s+)*"  # Optional keywords
+    r"(?:class|struct|interface|enum)\s+"  # Type keyword
+    r"([A-Za-z_][A-Za-z0-9_<>,\s]*?)"  # Capture type name (non-greedy)
+    r"\s*(?::|{|where|<)",  # Look for end of declaration
     re.MULTILINE
 )
 ```
 
-**Limitations**: This regex is not a full C# parser. It may be confused by complex generic constraints or code in comments that mimics a declaration. However, it is effective for most common coding patterns.
+This is fast and requires no API calls, but extracts *every* type declared in each changed file — even types whose code was not touched by the diff.
+
+**LLM extraction (`--enable-hybrid-git`)** sends both the file content and the git diff to the Gemini API with a prompt asking it to identify only types whose body, signature, or members were meaningfully changed. The LLM returns a JSON array of affected type names. If the LLM call fails or returns invalid JSON, Scatter falls back to regex automatically.
+
+| Aspect | Regex (default) | LLM (`--enable-hybrid-git`) |
+|--------|-----------------|----------------------------|
+| Speed | Instant (no API call) | ~1-2s per file (API round-trip) |
+| Precision | Extracts all types in file | Only types with meaningful changes |
+| Comment-only changes | Flags all types in file | Returns empty (no analysis needed) |
+| API key required | No | Yes |
+| Failure mode | N/A | Falls back to regex |
+
+### Consumer Detection Pipeline
+
+The core consumer detection runs in 5 stages, each progressively filtering:
+
+1. **File Discovery** — Find all `.csproj` files in the search scope
+2. **ProjectReference Filter** — Keep only projects with a `<ProjectReference>` to the target
+3. **Namespace Filter** — Keep only projects with `using TargetNamespace;` statements
+4. **Class Filter** (optional) — Keep only projects referencing the specific class name
+5. **Method Filter** (optional) — Keep only projects calling the specific method
+
+### Impact Analysis Architecture
+
+Impact analysis adds an orchestrator layer (`scatter/analyzers/impact_analyzer.py`) on top of the existing consumer detection pipeline:
+
+```
+scatter/
+├── core/
+│   ├── models.py          # AnalysisTarget, EnrichedConsumer, TargetImpact, ImpactReport
+│   └── parallel.py        # Multiprocessing infrastructure
+├── ai/
+│   ├── base.py            # AIProvider protocol, AITaskType enum
+│   ├── providers/
+│   │   └── gemini_provider.py
+│   └── tasks/
+│       ├── parse_work_request.py    # SOW → AnalysisTarget list
+│       ├── risk_assess.py           # Per-target risk rating
+│       ├── coupling_narrative.py    # Dependency explanation
+│       ├── impact_narrative.py      # Manager-friendly summary
+│       └── complexity_estimate.py   # Effort/complexity rating
+├── analyzers/
+│   ├── consumer_analyzer.py   # Core find_consumers() pipeline
+│   ├── git_analyzer.py        # Git branch diff analysis
+│   └── impact_analyzer.py     # Impact analysis orchestrator + transitive tracing
+├── scanners/                  # Type, project, sproc scanners
+├── reports/
+│   ├── console_reporter.py    # print_console_report() + print_impact_report()
+│   ├── json_reporter.py       # write_json_report() + write_impact_json_report()
+│   └── csv_reporter.py        # write_csv_report() + write_impact_csv_report()
+└── __main__.py                # CLI entry point with 4-mode dispatch
+```
 
 ---
+
 ## Roadmap
 
 ### Completed
-- ✅ **Multiprocessing Phase 1**: Parallel file discovery with adaptive worker scaling and intelligent chunking
-- ✅ **Multiprocessing Phase 2**: Parallel consumer analysis — content scanning (2.1), XML parsing of `.csproj` files (2.2), and batch `.cs`-to-`.csproj` project mapping with directory caching (2.3)
-- ✅ **Benchmarking framework**: Synthetic codebase generator and performance comparison tooling
-- ✅ **Full backwards compatibility**: All original CLI arguments, function signatures, and output formats preserved
+
+- **Multiprocessing** — Parallel file discovery, content analysis, XML parsing, and project mapping with adaptive worker scaling
+- **Hybrid Git Analysis** — LLM-enhanced diff analysis for more precise symbol extraction
+- **Modularization** — Extracted into `scatter/` package with clean module boundaries
+- **Impact Analysis** — AI-powered work request parsing, transitive blast radius tracing, risk assessment, coupling narrative, complexity estimation, and impact reporting
 
 ### Planned
--   **Multiprocessing Phase 3**: Parallel reference analysis — batch `<ProjectReference>` checking, parallel namespace resolution
--   **Multiprocessing Phase 4**: Parallel content analysis — chunked class/method usage scanning, parallel type declaration extraction
--   **Multiprocessing Phase 5**: Optimization — process pool reuse, memory optimization, adaptive scaling based on system resources
--   **Hybrid Git Analysis**: Use an LLM to identify affected symbols from git diffs, reducing false positives in branch analysis
--   **Configuration File**: Support a `config.ini` or `pyproject.toml` file to pre-set common search scopes, repo paths, and other options
--   **Improved Accuracy**: Integrate with more robust C# parsing tools to reduce false positives from the text-based search
--   **Transitive Dependency Analysis**: Find not just direct consumers, but consumers-of-consumers, up to a specified depth
--   **Flexible Git Commits**: Allow comparing arbitrary commit hashes or tags, not just branches
 
----
-## Example commands
-
-
-##  Mode 1: Git Branch Analysis (`--branch-name`)
-
-### Basic Usage
-Analyzes changes on a feature branch against the default `main` branch, assuming the repo is in the current directory.
-```shell
-python scatter.py --branch-name feature/new-widget --repo-path .
-```
-
-Specifying a Different Base Branch
-Compares the feature branch against develop instead of main.
-
-```Shell
-python scatter.py --branch-name feature/hotfix --base-branch develop --repo-path /path/to/repo
-```
-
-Filtering by Class Name
-Only analyzes consumers of the WidgetFactory class, provided it was declared in the changed files on the branch.
-
-```Shell
-python scatter.py --branch-name feature/refactor-widget --repo-path . --class-name WidgetFactory
-```
-
-Filtering by Method Name
-Further filters to find consumers of the Create method on the WidgetFactory class.
-
-```Shell
-python scatter.py --branch-name feature/refactor-widget --repo-path . --class-name WidgetFactory --method-name Create
-```
-
-### Advanced Git Analysis with All Options
-This command:
-
-- Analyzes the feature/new-api branch against main.
-- Limits the consumer search to the src/services directory.
-- Maps consumer projects to pipelines using a CSV file.
-- Verifies batch jobs using an app-config repo.
-- Outputs the results to a JSON file.
-- Enables verbose logging.
-
-```Shell
-python scatter.py \
-  --branch-name feature/new-api \
-  --repo-path . \
-  --base-branch main \
-  --search-scope src/services \
-  --pipeline-csv build/pipeline_map.csv \
-  --app-config-path ../health-benefits-app-config \
-  --output-format json \
-  --output-file reports/analysis_results.json \
-  --verbose
-```
-
-## Mode 2: Target Project Analysis (--target-project)
-
-### Basic Usage
-Finds all consumers of a specific project within the specified search scope.
-
-```Shell
-python scatter.py --target-project src/MyCoreLibrary/MyCoreLibrary.csproj --search-scope .
-```
-
-Overriding the Namespace
-Explicitly sets the target project's namespace, bypassing automatic detection.
-
-
-```Shell
-python scatter.py \
-  --target-project src/LegacyLib/LegacyLib.csproj \
-  --search-scope . \
-  --target-namespace Company.Product.OldStuff
-```
-
-Filtering by Class and Method
-Finds consumers of MyCoreLibrary that specifically use the Sanitize method of the InputHelper class.
-
-```Shell
-python scatter.py \
-  --target-project src/MyCoreLibrary/MyCoreLibrary.csproj \
-  --search-scope . \
-  --class-name InputHelper \
-  --method-name Sanitize
-```
-
-### Advanced Target Analysis with AI Summarization
-This command:
-
-- Analyzes consumers of the MyDotNetApp project.
-- Enables AI summarization of the relevant consumer files.
-- Provides the Google API key directly.
-- Specifies a different Gemini model for summarization.
-- Outputs the results to a CSV file.
-
-```Shell
-python scatter.py \
-  --target-project MyDotNetApp/MyDotNetApp.csproj \
-  --search-scope . \
-  --summarize-consumers \
-  --google-api-key "AIzaSy..." \
-  --gemini-model gemini-1.5-pro \
-  --output-format csv \
-  --output-file reports/summary_report.csv
-```
-
-## Mode 3: Stored Procedure Analysis (--stored-procedure)
-
-### Basic Usage
-Finds projects that reference a specific stored procedure and then analyzes their consumers.
-
-```Shell
-python scatter.py --stored-procedure "dbo.usp_GetUserDetails" --search-scope .
-```
-
-Using a Custom Regex Pattern
-Finds references to a stored procedure using a custom regex format where the name follows a specific prefix.
-
-```Shell
-python scatter.py \
-  --stored-procedure "UpdateUser" \
-  --search-scope . \
-  --sproc-regex-pattern "EXECUTE sp_prefix_{sproc_name_placeholder}"
-```
-
-
-Filtering by Containing Class
-After finding projects that reference the sproc, this only analyzes consumers of the UserDataAccess class within those projects.
-
-```Shell
-python scatter.py \
-  --stored-procedure "dbo.usp_GetUserDetails" \
-  --search-scope . \
-  --class-name UserDataAccess
-```
-
-### Advanced Stored Procedure Analysis
-This command:
-
-- Finds projects referencing the sproc.
-- Only analyzes consumers of the UserDataAccess class and its Fetch method.
-- Outputs the detailed results to a JSON file.
-- Uses verbose logging.
-
-```Shell
-python scatter.py \
-  --stored-procedure "dbo.usp_GetUserDetails" \
-  --search-scope . \
-  --class-name UserDataAccess \
-  --method-name Fetch \
-  --output-format json \
-  --output-file reports/sproc_consumers.json \
-  --verbose
-```
+- **Dependency Graph** — Persistent graph model with cycle detection, coupling metrics, and domain analysis
+- **Reporting & Extraction Planning** — Enhanced reporting with visualization and extraction recommendations
+- **CI/CD Integration** — Pipeline-aware analysis with automated impact checks

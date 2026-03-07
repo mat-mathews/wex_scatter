@@ -111,12 +111,9 @@ class TestGetAffectedSymbolsFromDiff:
 class TestGetDiffForFile:
     """AC-04: Tests for get_diff_for_file()."""
 
-    def test_ac04_returns_diff_text(self):
-        """AC-04: get_diff_for_file returns valid diff text using the test repo."""
-        # Use the actual repo we're in — compare main to main (should return None for no diff)
-        # This validates the function runs without error against a real git repo
+    def test_same_branch_diff_returns_none(self):
+        """Comparing a branch to itself produces no diff (None)."""
         result = get_diff_for_file(".", "scatter.py", "main", "main")
-        # Comparing main to main for a file produces no diff
         assert result is None
 
     def test_returns_none_on_invalid_repo(self):
