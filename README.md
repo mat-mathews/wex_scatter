@@ -150,7 +150,7 @@ python scatter.py \
 4. [AI Features](#ai-features)
 5. [Impact Analysis (Mode 4)](#impact-analysis-mode-4)
 6. [Parallel Processing](#parallel-processing)
-7. [Configuration & Mapping](#configuration--mapping)
+7. [Configuration & Mapping](#configuration--mapping) — YAML config files, precedence, env vars
 8. [Command-Line Reference](#command-line-reference)
 9. [Output Formats](#output-formats)
 10. [Testing](#testing)
@@ -559,16 +559,108 @@ python scatter.py --stored-procedure "dbo.sp_GetUser" --search-scope . --disable
 
 ## Configuration & Mapping
 
-### Google API Key
+Scatter loads configuration from multiple sources with layered precedence. You can set defaults in config files and override them per-invocation with CLI flags.
 
-Required for AI summarization (`--summarize-consumers`), hybrid git analysis (`--enable-hybrid-git`), and impact analysis (`--sow` / `--sow-file`).
+### Precedence Order
+
+Settings are resolved from highest to lowest priority — the first source that provides a value wins:
+
+| Priority | Source | Scope |
+|----------|--------|-------|
+| 1 (highest) | CLI flags (`--gemini-model`, etc.) | Single invocation |
+| 2 | Repo config `.scatter.yaml` | Per-repository |
+| 3 | User config `~/.scatter/config.yaml` | All repos for this user |
+| 4 | Environment variables (`GOOGLE_API_KEY`, etc.) | Session / machine-wide |
+| 5 (lowest) | Built-in defaults | Always present |
+
+Missing config files are silently ignored — you don't need any config files to use Scatter.
+
+### Config File Format
+
+Both `.scatter.yaml` (repo-level) and `~/.scatter/config.yaml` (user-level) use the same schema:
+
+```yaml
+# .scatter.yaml — place in repo root (next to .git/)
+ai:
+  default_provider: gemini               # AI provider to use (currently only "gemini")
+  gemini_model: gemini-2.0-flash         # Gemini model name
+  task_overrides:                         # route specific AI tasks to specific providers
+    work_request_parsing: gemini
+    risk_assessment: gemini
+  credentials:
+    gemini:
+      api_key: ""                         # prefer env var or user config for secrets
+
+search:
+  max_depth: 2                            # transitive tracing depth for impact analysis
+  exclude_patterns:                       # glob patterns to skip during file scanning
+    - "*/bin/*"                           # NOTE: this list REPLACES the defaults,
+    - "*/obj/*"                           #       so re-list any defaults you want to keep
+    - "*/node_modules/*"
+
+multiprocessing:
+  disabled: false
+  max_workers: null                       # null = auto (CPU cores + 4, max 32)
+  chunk_size: null                        # null = use built-in default (75)
+```
+
+### Typical Setup
+
+**User-level config** (`~/.scatter/config.yaml`) — set your API key once, used across all repos:
+
+```yaml
+ai:
+  credentials:
+    gemini:
+      api_key: "your-google-api-key-here"
+```
+
+**Repo-level config** (`.scatter.yaml`) — set repo-specific defaults:
+
+```yaml
+ai:
+  gemini_model: gemini-2.0-flash
+search:
+  max_depth: 3
+  exclude_patterns:
+    - "*/bin/*"
+    - "*/obj/*"
+    - "*/test-fixtures/*"
+```
+
+CLI flags override everything — useful for one-off runs:
 
 ```bash
-# Environment variable (recommended)
-export GOOGLE_API_KEY="your-key-here"
+# Override the model for a single run, even if .scatter.yaml sets it differently
+python scatter.py --sow "Modify PortalDataService" --search-scope . --gemini-model gemini-1.5-pro
+```
 
-# Or pass directly
-python scatter.py --sow "..." --search-scope . --google-api-key "your-key-here"
+### Environment Variables
+
+| Variable | Maps to | Description |
+|----------|---------|-------------|
+| `GOOGLE_API_KEY` | `ai.credentials.gemini.api_key` | Google Gemini API key |
+| `SCATTER_DEFAULT_PROVIDER` | `ai.default_provider` | Default AI provider name |
+
+Environment variables sit below config files in precedence — a `.scatter.yaml` value overrides the env var, and a CLI flag overrides both.
+
+### Google API Key
+
+Required for AI summarization (`--summarize-consumers`), hybrid git analysis (`--enable-hybrid-git`), and impact analysis (`--sow` / `--sow-file`). Set it via any of these methods (highest precedence first):
+
+```bash
+# CLI flag (highest priority)
+python scatter.py --sow "..." --search-scope . --google-api-key "your-key"
+
+# Config file (user-level, recommended for persistent setup)
+# ~/.scatter/config.yaml
+# ai:
+#   credentials:
+#     gemini:
+#       api_key: "your-key"
+
+# Environment variable
+export GOOGLE_API_KEY="your-key"
 ```
 
 ### Pipeline Mapping
@@ -704,10 +796,11 @@ python -m pytest -q
 
 ### Test Suite Overview
 
-The test suite includes **123 tests** across 6 test files:
+The test suite includes **132 tests** across 7 test files:
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
+| `test_config.py` | 24 | Config loading, YAML precedence, env vars, CLI overrides, AI router (caching, task overrides, unknown providers) |
 | `test_multiprocessing_phase1.py` | 37 | File discovery, consumer analysis, backwards compatibility |
 | `test_phase2_3_project_mapping.py` | 25 | Batch project mapping, parallel orchestration, sproc integration |
 | `test_impact_analysis.py` | 53 | Impact analysis: data models, CLI args, work request parsing, transitive tracing, risk assessment, coupling narrative, impact narrative, complexity estimate, reporters, end-to-end |
@@ -898,11 +991,13 @@ Impact analysis adds an orchestrator layer (`scatter/analyzers/impact_analyzer.p
 
 ```
 scatter/
+├── config.py              # YAML config loading with layered precedence
 ├── core/
 │   ├── models.py          # AnalysisTarget, EnrichedConsumer, TargetImpact, ImpactReport
 │   └── parallel.py        # Multiprocessing infrastructure
 ├── ai/
 │   ├── base.py            # AIProvider protocol, AITaskType enum
+│   ├── router.py          # AIRouter — provider selection per task type
 │   ├── providers/
 │   │   └── gemini_provider.py
 │   └── tasks/
@@ -933,6 +1028,7 @@ scatter/
 - **Hybrid Git Analysis** — LLM-enhanced diff analysis for more precise symbol extraction
 - **Modularization** — Extracted into `scatter/` package with clean module boundaries
 - **Impact Analysis** — AI-powered work request parsing, transitive blast radius tracing, risk assessment, coupling narrative, complexity estimation, and impact reporting
+- **Configuration System** — YAML config files (`.scatter.yaml`, `~/.scatter/config.yaml`) with layered precedence, environment variable support, and AI task router for provider selection
 
 ### Planned
 

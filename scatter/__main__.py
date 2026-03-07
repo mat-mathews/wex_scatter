@@ -6,7 +6,7 @@ import logging
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
 from scatter.core.models import DEFAULT_MAX_WORKERS, DEFAULT_CHUNK_SIZE
 from scatter.core.parallel import find_files_with_pattern_parallel
@@ -26,7 +26,27 @@ from scatter.reports.console_reporter import print_console_report
 from scatter.reports.json_reporter import prepare_detailed_results, write_json_report
 from scatter.reports.csv_reporter import write_csv_report
 
-from scatter.ai.providers.gemini_provider import GeminiProvider
+from scatter.config import load_config
+from scatter.ai.router import AIRouter
+
+
+def _build_cli_overrides(args) -> Dict[str, Any]:
+    """Extract CLI args that override config values.
+
+    Only includes keys the user explicitly passed on the command line.
+    Argparse defaults are None for optional args so we can distinguish
+    "not passed" from "passed the default value".
+    """
+    overrides: Dict[str, Any] = {}
+    if args.google_api_key is not None:
+        overrides["ai.credentials.gemini.api_key"] = args.google_api_key
+    if args.gemini_model is not None:
+        overrides["ai.gemini_model"] = args.gemini_model
+    if args.disable_multiprocessing:
+        overrides["multiprocessing.disabled"] = True
+    if args.max_depth is not None:
+        overrides["search.max_depth"] = args.max_depth
+    return overrides
 
 
 def main():
@@ -91,7 +111,7 @@ def main():
         help="Root directory to search for consuming projects (defaults to --repo-path if Git mode is used and this is omitted, otherwise REQUIRED)."
     )
     common_group.add_argument(
-        "--max-depth", type=int, default=2,
+        "--max-depth", type=int, default=None,
         help="Maximum transitive tracing depth for impact analysis (default: 2)."
     )
     common_group.add_argument(
@@ -132,8 +152,8 @@ def main():
         help="Google API Key for Gemini. If not provided, uses the GOOGLE_API_KEY environment variable."
     )
     summarize_group.add_argument(
-        "--gemini-model", default="gemini-1.5-flash",
-        help="The Gemini model to use for summarization."
+        "--gemini-model", default=None,
+        help="The Gemini model to use for summarization (default: gemini-1.5-flash)."
     )
     common_group.add_argument(
         "--output-format", default="console",
@@ -181,7 +201,14 @@ def main():
     is_sproc_mode = args.stored_procedure is not None
     is_impact_mode = args.sow is not None or args.sow_file is not None
 
-    # --- configure AI provider if we are going to summarize, use hybrid git, or impact mode ---
+    # --- load config and configure AI provider ---
+    cli_overrides = _build_cli_overrides(args)
+    # Resolve without strict=True — config loading tolerates missing dirs.
+    # The real path validation with strict=True happens below.
+    config_root = Path(args.search_scope).resolve() if args.search_scope else Path(args.repo_path).resolve()
+    config = load_config(repo_root=config_root, cli_overrides=cli_overrides)
+    router = AIRouter(config)
+
     ai_provider = None
     if args.summarize_consumers or args.enable_hybrid_git or is_impact_mode:
         reason = []
@@ -191,11 +218,10 @@ def main():
             reason.append("hybrid git analysis")
         if is_impact_mode:
             reason.append("impact analysis")
-        logging.info(f"{', '.join(reason).capitalize()} enabled. Configuring Gemini...")
-        try:
-            ai_provider = GeminiProvider(args.google_api_key, args.gemini_model)
-        except (ValueError, Exception) as e:
-            logging.error(f"Gemini configuration failed: {e}")
+        logging.info(f"{', '.join(reason).capitalize()} enabled. Configuring AI provider...")
+        ai_provider = router.get_provider()
+        if ai_provider is None:
+            logging.error("AI provider configuration failed.")
             if args.summarize_consumers:
                 logging.error("Summarization will be disabled.")
                 args.summarize_consumers = False
@@ -641,7 +667,7 @@ def main():
             sow_text=sow_text,
             search_scope=search_scope_abs,
             ai_provider=ai_provider,
-            max_depth=args.max_depth,
+            max_depth=config.max_depth,
             pipeline_map=pipeline_map,
             solution_file_cache=solution_file_cache,
             max_workers=args.max_workers,

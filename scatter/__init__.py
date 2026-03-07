@@ -59,6 +59,8 @@ from scatter._legacy import (
 )
 from scatter.ai.base import AITaskType, AnalysisResult, AIProvider
 from scatter.ai.providers.gemini_provider import GeminiProvider
+from scatter.ai.router import AIRouter
+from scatter.config import ScatterConfig, AIConfig, load_config
 
 # Re-export stdlib modules that tests access via scatter.X
 import argparse
