@@ -111,6 +111,14 @@ class DependencyGraph:
             if con in self._nodes
         ]
 
+    def get_dependency_names(self, name: str) -> Set[str]:
+        """Names of projects this one depends on — O(1) set copy."""
+        return set(self._forward.get(name, set()))
+
+    def get_consumer_names(self, name: str) -> Set[str]:
+        """Names of projects that depend on this one — O(1) set copy."""
+        return set(self._reverse.get(name, set()))
+
     def get_edges_from(self, name: str) -> List[DependencyEdge]:
         """Outgoing edges from a node — O(degree)."""
         return list(self._outgoing.get(name, []))

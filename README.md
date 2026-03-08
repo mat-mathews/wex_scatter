@@ -785,6 +785,9 @@ python -m pytest -v
 # Run only impact analysis tests
 python -m pytest test_impact_analysis.py -v
 
+# Run only coupling metrics + cycle detection tests
+python -m pytest test_coupling.py -v
+
 # Run only multiprocessing tests
 python -m pytest test_multiprocessing_phase1.py -v
 
@@ -797,11 +800,12 @@ python -m pytest -q
 
 ### Test Suite Overview
 
-The test suite includes **178 tests** across 8 test files:
+The test suite includes **203 tests** across 9 test files:
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
 | `test_config.py` | 24 | Config loading, YAML precedence, env vars, CLI overrides, AI router (caching, task overrides, unknown providers) |
+| `test_coupling.py` | 25 | Coupling metrics (fan_in/out, instability, coupling_score, shared_db_density), Tarjan's SCC cycle detection, edge type filtering, rank_by_coupling |
 | `test_graph.py` | 46 | Graph data structures, construction, traversal, serialization, `.csproj` parsing, integration with sample projects |
 | `test_multiprocessing_phase1.py` | 37 | File discovery, consumer analysis, backwards compatibility |
 | `test_phase2_3_project_mapping.py` | 25 | Batch project mapping, parallel orchestration, sproc integration |
@@ -1011,6 +1015,7 @@ scatter/
 │       └── complexity_estimate.py   # Effort/complexity rating
 ├── analyzers/
 │   ├── consumer_analyzer.py   # Core find_consumers() pipeline
+│   ├── coupling_analyzer.py   # Metrics (fan_in/out, instability, coupling_score) + Tarjan's SCC cycle detection
 │   ├── git_analyzer.py        # Git branch diff analysis
 │   ├── graph_builder.py       # Single-pass O(P+F) graph construction
 │   └── impact_analyzer.py     # Impact analysis orchestrator + transitive tracing
@@ -1320,6 +1325,78 @@ project_reference edges (6):
 
 Additional `namespace_usage` and `type_usage` edges are generated automatically based on `using` statements and type references found in the `.cs` files.
 
+### Coupling Metrics
+
+`compute_all_metrics()` in `scatter/analyzers/coupling_analyzer.py` computes per-project structural metrics from the graph:
+
+```python
+from scatter.analyzers.coupling_analyzer import compute_all_metrics, rank_by_coupling
+
+metrics = compute_all_metrics(graph)
+
+# Inspect a specific project
+m = metrics["GalaxyWorks.Data"]
+print(f"fan_in={m.fan_in}, fan_out={m.fan_out}, instability={m.instability:.2f}")
+print(f"coupling_score={m.coupling_score:.1f}, shared_db_density={m.shared_db_density:.1%}")
+print(f"type_exports={m.type_export_count}, consumers={m.consumer_count}")
+
+# Top-3 most coupled projects
+for name, m in rank_by_coupling(metrics, top_n=3):
+    print(f"  {name}: coupling_score={m.coupling_score:.1f}")
+```
+
+| Metric | Formula | Interpretation |
+|--------|---------|---------------|
+| `fan_in` | `project_reference` edges pointing TO this project | How many projects depend on me (build-time) |
+| `fan_out` | `project_reference` edges pointing FROM this project | How many projects I depend on (build-time) |
+| `instability` | `fan_out / (fan_in + fan_out)`, 0.0 if both are 0 | 0.0 = maximally stable, 1.0 = maximally unstable |
+| `coupling_score` | Weighted sum of all edge weights (both directions) | Overall interconnectedness intensity |
+| `afferent_coupling` | Total incoming edges (all types) | Broader than fan_in — includes namespace/type edges |
+| `efferent_coupling` | Total outgoing edges (all types) | Broader than fan_out |
+| `shared_db_density` | Sprocs shared with other projects / total sprocs | 0.0 = no shared DB state, 1.0 = all sprocs shared |
+| `type_export_count` | Count of type declarations | API surface area |
+| `consumer_count` | Unique projects with any incoming edge | Total dependents across all edge types |
+
+**Coupling score weights** are configurable — pass `coupling_weights` to `compute_all_metrics()` or set them in `.scatter.yaml`:
+
+```yaml
+graph:
+  coupling_weights:
+    project_reference: 1.0   # hard compile-time dependency
+    sproc_shared: 0.8        # shared mutable database state
+    namespace_usage: 0.5     # import-level awareness
+    type_usage: 0.3          # code-level reference (could be a single enum)
+```
+
+For the sample projects: `GalaxyWorks.Data` has the highest coupling score (fan_in=4, instability=0.0 — maximally stable core library). `GalaxyWorks.BatchProcessor` has instability=1.0 (depends on 2 projects, nothing depends on it).
+
+### Cycle Detection
+
+`detect_cycles()` uses iterative Tarjan's SCC algorithm (O(N+E), no recursion limit) to find circular dependency groups:
+
+```python
+from scatter.analyzers.coupling_analyzer import detect_cycles
+
+cycles = detect_cycles(graph)
+print(f"Found {len(cycles)} circular dependency group(s)")
+
+for cg in cycles:
+    print(f"  {cg.size} projects: {cg.projects}")
+    print(f"  Shortest cycle: {' → '.join(cg.shortest_cycle)}")
+    print(f"  Internal edges: {cg.edge_count}")
+```
+
+By default, only `project_reference` edges are considered — these represent build-order violations. `namespace_usage` cycles (two projects that both import each other's namespace) are common and benign, so they're excluded by default. Pass `edge_types` to include other edge types:
+
+```python
+# Include namespace_usage cycles too
+cycles = detect_cycles(graph, edge_types={"project_reference", "namespace_usage"})
+```
+
+Each `CycleGroup` contains the SCC's projects (sorted alphabetically), the number of internal edges, and a representative shortest cycle extracted via BFS with predecessor tracking. Cycle groups are sorted smallest-first — the smallest cycles are typically the easiest to break.
+
+The sample projects have zero circular dependencies.
+
 ---
 
 ## Roadmap
@@ -1332,9 +1409,10 @@ Additional `namespace_usage` and `type_usage` edges are generated automatically 
 - **Impact Analysis** — AI-powered work request parsing, transitive blast radius tracing, risk assessment, coupling narrative, complexity estimation, and impact reporting
 - **Configuration System** — YAML config files (`.scatter.yaml`, `~/.scatter/config.yaml`) with layered precedence, environment variable support, and AI task router for provider selection
 - **Dependency Graph (Phase 1)** — Graph model (`ProjectNode`, `DependencyEdge`, `DependencyGraph`) with per-node edge indexes, single-pass O(P+F) builder, BFS traversal, connected components, JSON serialization roundtrip, and 46 tests
+- **Coupling Metrics & Cycle Detection (Phase 2)** — `ProjectMetrics` (fan_in/out, instability index, coupling_score with configurable weights, shared_db_density), iterative Tarjan's SCC cycle detection with edge type filtering, shortest-cycle extraction via BFS predecessor map, `rank_by_coupling()`, and 25 tests
 
 ### Planned
 
-- **Dependency Graph (Phase 2-6)** — Tarjan's SCC cycle detection, configurable coupling metrics, git-based cache invalidation, label propagation clustering, domain boundary analysis
+- **Dependency Graph (Phase 3-6)** — Git-based cache invalidation + CLI integration, database dependency mapping, label propagation clustering, domain boundary analysis, graph reporters + health dashboard
 - **Reporting & Extraction Planning** — Enhanced reporting with visualization and extraction recommendations
 - **CI/CD Integration** — Pipeline-aware analysis with automated impact checks
