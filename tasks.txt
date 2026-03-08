@@ -401,91 +401,93 @@ INITIATIVE 5: DEPENDENCY GRAPH, METRICS & DOMAIN ANALYSIS (v2.0 Phase 3)
 Goal: Full dependency graph with persistence, coupling metrics, domain detection.
 Depends on: Initiative 3 (modularization), Initiative 4 (impact analysis)
 Ref: PRODUCT_DEFINITION.md Section 12, Phase 3
+Detailed plan: docs/INITIATIVE_5_PLAN.md (6 phases, ~2,700 lines est.)
 ============================================================================
 
-DEPENDENCY GRAPH MODEL (HIGH PRIORITY)
-- [ ] Implement scatter/core/graph.py — DependencyGraph data structure
-- [ ] Nodes: Dict[str, Project] — keyed by project name
-- [ ] Edges: List[DependencyEdge] — (source, target, type, weight)
-      Edge types: project_reference, namespace_usage, type_usage, sproc_shared
-- [ ] get_consumers(project, depth=1) -> List[Project]
-- [ ] get_dependencies(project) -> List[Project]
-- [ ] get_transitive_closure(project, max_depth) -> List[(Project, depth)]
-- [ ] detect_cycles() -> List[List[Project]]
-- [ ] find_clusters() -> List[Cluster] (domain boundary candidates)
-- [ ] compute_metrics() -> Dict[str, ProjectMetrics]
-- [ ] diff(baseline: DependencyGraph) -> GraphDiff
-- [ ] to_mermaid() / to_json() export methods
+PHASE 1: GRAPH MODEL + BULK BUILDER (HIGH PRIORITY)
+- [ ] Create scatter/core/graph.py — ProjectNode, DependencyEdge, DependencyGraph
+      DependencyGraph is a pure data structure (mutation, query, traversal, serialization).
+      All analysis algorithms are standalone free functions (SRP — no god object).
+      Per-node edge indexes (_outgoing/_incoming) for O(degree) lookups.
+      Evidence lists capped at 10 entries with evidence_total count.
+      ProjectNode stores file_count (not full file paths — not serialized to cache).
+- [ ] Create scatter/analyzers/graph_builder.py — build_dependency_graph()
+      Single-pass O(P+F) construction: parse all .csproj once, scan all .cs once.
+      Reverse index for .cs-to-.csproj mapping (sorted prefix match, not per-file dir walk).
+      Reuses: find_files_with_pattern_parallel, derive_namespace, extract_type_names_from_content.
+- [ ] Modify scatter/scanners/project_scanner.py — add parse_csproj_all_references()
+      Extracts ALL ProjectReferences, namespace, framework, output type, project style.
+- [ ] Create test_graph.py — ~39 tests (nodes, edges, graph ops, builder, csproj parser, dir index)
 
-GRAPH PERSISTENCE (HIGH PRIORITY)
-- [ ] Implement scatter/store/graph_cache.py
-- [ ] Save graph to disk (JSON or binary format)
-- [ ] Load graph from disk on subsequent runs
-- [ ] Invalidation: detect code changes via git status or file mtime
-- [ ] If graph is stale, rebuild incrementally or fully as needed
-- [ ] CLI flag: --rebuild-graph to force full rebuild
+PHASE 2: METRICS + CYCLE DETECTION (HIGH PRIORITY)
+- [ ] Create scatter/analyzers/coupling_analyzer.py — all standalone free functions
+      ProjectMetrics: fan_in, fan_out, instability, coupling_score, shared_db_density, etc.
+      compute_all_metrics(graph) — O(N+E) using per-node edge indexes.
+      Configurable coupling_weights (default: project_ref=1.0, sproc=0.8, namespace=0.5, type=0.3).
+      Weights documented with rationale, overridable in .scatter.yaml.
+      rank_by_coupling(metrics, top_n) for top-N most coupled projects.
+- [ ] Cycle detection via Tarjan's SCC algorithm — O(N+E)
+      CycleGroup dataclass: projects, size, shortest_cycle, edge_count.
+      detect_cycles(graph) returns List[CycleGroup] (SCCs with size > 1).
+      For each SCC, extract one shortest cycle via BFS for illustration.
+      NOT DFS back-edge (finds only *a* cycle), NOT full enumeration (exponential).
+- [ ] Create test_coupling.py — ~20 tests (metrics, custom weights, SCC, shortest cycles)
 
-COUPLING METRICS (MEDIUM PRIORITY)
-- [ ] Implement scatter/analyzers/coupling_analyzer.py
-- [ ] Fan-in: count of projects that depend on this one
-- [ ] Fan-out: count of projects this one depends on
-- [ ] Instability index: fan-out / (fan-in + fan-out)
-- [ ] Coupling score: weighted measure of interconnectedness
-- [ ] Shared DB density: count of database objects shared with other projects
-- [ ] Compute metrics for all projects in the graph
+PHASE 3: PERSISTENCE + CLI INTEGRATION (HIGH PRIORITY)
+- [ ] Create scatter/store/graph_cache.py — save/load/validate
+      Smart git-based invalidation: git diff --name-only checks actual .csproj/.cs changes.
+      Non-code-only commits (README, docs) do NOT invalidate the cache.
+      Mtime-based fallback for non-git directories.
+      Conservative fallback: if git command fails, rebuild.
+- [ ] Modify scatter/__main__.py — add --graph mode + --rebuild-graph flag
+      --graph goes into existing mutually exclusive mode group.
+      Flow: check cache → build if stale → save → compute_all_metrics → detect_cycles → report.
+- [ ] Modify scatter/config.py — add GraphConfig (cache_dir, rebuild, invalidation, coupling_weights)
+- [ ] Create test_graph_cache.py — ~10 tests (roundtrip, smart invalidation, mtime fallback)
 
-TRANSITIVE ANALYSIS (MEDIUM PRIORITY)
-- [ ] N-hop consumer tracing with depth tracking
-- [ ] Configurable max depth (default: 3)
-- [ ] Output includes hop distance for each consumer
-- [ ] Handle cycles gracefully (don't loop forever)
+PHASE 4: DATABASE DEPENDENCY MAPPING (MEDIUM PRIORITY)
+Note: Independent of Phases 2 and 3 — can be developed in parallel after Phase 1.
+- [ ] Create scatter/scanners/db_scanner.py — DbDependency dataclass + detection functions
+      Comment stripping preprocessor: _strip_cs_comments() removes // and /* */ before regex.
+      Sproc detection with configurable prefixes (default: sp_, usp_; customizable via .scatter.yaml).
+      Direct SQL requires string-literal context (opening quote) to prevent false positives.
+      EF: DbSet<T> and DbContext subclass detection (reliable patterns).
+      Connection string detection in string literals.
+      build_db_dependency_matrix() for cross-project shared DB objects.
+      add_db_edges_to_graph() for sproc_shared edges.
+- [ ] Modify scatter/analyzers/graph_builder.py — optional DB dependency step
+- [ ] Modify scatter/config.py — add DbConfig with sproc_prefixes
+- [ ] Create test_db_scanner.py — ~15 tests (comment stripping, patterns, false positives, integration)
 
-CIRCULAR DEPENDENCY DETECTION (MEDIUM PRIORITY)
-- [ ] Detect all dependency cycles in the graph
-- [ ] Report cycle length, projects involved, and edge types
-- [ ] Rank cycles by severity (shorter cycles = harder to break)
+PHASE 5: DOMAIN BOUNDARY DETECTION (MEDIUM PRIORITY)
+- [ ] Create scatter/analyzers/domain_analyzer.py — all standalone free functions
+      Two-level clustering: connected components first (deterministic, O(N+E)),
+      label propagation only for large components (>20 nodes) as refinement.
+      Label propagation determinism: sorted iteration order + lowest-label tie-breaking + max 100 iterations.
+      Cluster dataclass: name, projects, internal/external edges, cohesion, extraction_feasibility.
+      score_extraction_feasibility() based on cross-boundary edges, shared DB, cycles, API surface.
+- [ ] Modify scatter/ai/base.py — add BOUNDARY_ASSESSMENT to AITaskType
+- [ ] Create test_domain.py — ~12 tests (clustering, determinism, feasibility scoring)
 
-DOMAIN BOUNDARY DETECTION (MEDIUM PRIORITY)
-- [ ] Implement scatter/analyzers/domain_analyzer.py
-- [ ] Graph clustering to identify tightly-connected groups
-- [ ] Each cluster = candidate domain / service boundary
-- [ ] Report cross-boundary dependencies for each cluster
-- [ ] Score extraction feasibility per cluster
+PHASE 6: GRAPH REPORTERS + HEALTH DASHBOARD (MEDIUM PRIORITY)
+- [ ] Create scatter/reports/graph_reporter.py — console, JSON, Mermaid output
+      print_graph_summary(), write_graph_json(), generate_mermaid() — all free functions.
+- [ ] Create scatter/analyzers/health_analyzer.py — HealthDashboard dataclass
+      compute_health_dashboard() aggregates metrics, cycles, clusters, DB hotspots.
+- [ ] Create test_reporters.py — ~9 tests (summary, JSON, Mermaid, dashboard)
 
-AI BOUNDARY ASSESSMENT (LOW PRIORITY)
-- [ ] Implement AI evaluation of each proposed domain boundary
-- [ ] Assess extraction complexity: Low / Medium / High / Critical
-- [ ] Identify risks specific to each boundary (shared sprocs, circular deps)
-- [ ] Recommend extraction order across boundaries
+DEFERRED TO FUTURE INITIATIVE:
+- [ ] diff(baseline, current) -> GraphDiff — needs clear use case + full GraphDiff spec
+- [ ] Graph query DSL — ad-hoc traversal language, premature before basic graph is proven
+- [ ] Incremental graph updates — smart cache invalidation makes full rebuilds acceptable for v1
 
-DATABASE DEPENDENCY MAPPING (MEDIUM PRIORITY)
-- [ ] Implement scatter/scanners/db_scanner.py
-- [ ] Enhanced stored procedure detection (beyond v1 regex)
-- [ ] Entity Framework model-to-table mappings (DbContext/DbSet scanning)
-- [ ] Direct SQL references (table/view names in string literals)
-- [ ] Connection string analysis (which projects connect to which databases)
-- [ ] Cross-project DB object matrix output
-
-HEALTH DASHBOARD DATA (LOW PRIORITY)
-- [ ] Implement scatter/analyzers/health_analyzer.py
-- [ ] Aggregate all metrics: project count, file count, LOC estimate
-- [ ] Top N highest-coupling projects
-- [ ] Circular dependency count and worst offenders
-- [ ] Orphan projects (zero fan-in — deletion candidates)
-- [ ] Shared DB hotspots (most-shared database objects)
-- [ ] Domain cluster summary with scores
-- [ ] Trend lines if baseline history exists
-
-PHASE 3 TESTING
-- [ ] Unit tests for DependencyGraph operations (add/remove/query)
-- [ ] Unit tests for cycle detection (known cycles, no cycles, self-loops)
-- [ ] Unit tests for clustering algorithm (known cluster structures)
-- [ ] Unit tests for coupling metrics (known dependency structures)
-- [ ] Unit tests for graph persistence (save/load/invalidation)
-- [ ] Unit tests for DB scanner (sproc, EF, direct SQL patterns)
-- [ ] Integration test: build graph from example GalaxyWorks projects
-- [ ] Integration test: detect known cycles in test data
-- [ ] Integration test: compute metrics and verify against manual calculation
+INITIATIVE 5 TESTING SUMMARY (~105 tests planned):
+- [ ] test_graph.py — ~39 tests (Phase 1: data models, graph ops, builder, csproj parser, dir index)
+- [ ] test_coupling.py — ~20 tests (Phase 2: metrics, custom weights, Tarjan's SCC, shortest cycles)
+- [ ] test_graph_cache.py — ~10 tests (Phase 3: save/load, smart git invalidation, mtime fallback)
+- [ ] test_db_scanner.py — ~15 tests (Phase 4: comment stripping, detection patterns, false positives)
+- [ ] test_domain.py — ~12 tests (Phase 5: two-level clustering, determinism, feasibility)
+- [ ] test_reporters.py — ~9 tests (Phase 6: console, JSON, Mermaid, health dashboard)
 
 ============================================================================
 INITIATIVE 6: REPORTING & EXTRACTION PLANNING (v2.0 Phase 4)
@@ -682,8 +684,15 @@ COMPLETED (v2.0):
   Initiative 4 — CSE Impact Analysis & AI Enrichment:
   ✅ All tasks completed (53 tests, see Initiative 4 section above)
 
-NOT STARTED (v2.0):
+PLANNED (v2.0):
   Initiative 5 — Dependency Graph, Metrics & Domain Analysis (v2.0 Phase 3)
+    Detailed plan complete: docs/INITIATIVE_5_PLAN.md (6 phases, ~2,700 lines, ~105 tests)
+    Key design decisions: Tarjan's SCC for cycles, per-node edge indexes, free-function
+    architecture (no god object), smart git cache invalidation, two-level clustering,
+    comment-stripping DB scanner, configurable coupling weights.
+    Ready to implement — start with Phase 1 (graph model + builder).
+
+NOT STARTED (v2.0):
   Initiative 6 — Reporting & Extraction Planning (v2.0 Phase 4)
   Initiative 7 — CI/CD Integration & Workflow (v2.0 Phase 5)
 
@@ -692,7 +701,7 @@ RECOMMENDED EXECUTION ORDER:
   2. ✅ DONE — Initiative 2 Hybrid Git Analysis complete
   3. ✅ DONE — Initiative 3: Modularization (all 5 phases complete)
   4. ✅ DONE — Initiative 4: CSE Impact Analysis & AI Enrichment complete (53 new tests)
-  5. Initiative 5: Dependency graph — foundation for extraction planning
+  5. Initiative 5: Dependency graph — PLANNED (docs/INITIATIVE_5_PLAN.md), ready to implement
   6. Initiative 6: Reporting + extraction planning
   7. Initiative 7: CI/CD integration
 
@@ -707,4 +716,6 @@ KEY FINDINGS:
   5. Phase 5 optimization (pool reuse, memory) deferred to v2.0 modularization
      where it can be done properly with a shared pool across the module.
   6. Initiatives 3 & 4 fully complete — config system, AI router, impact analysis all shipped.
-  7. 132 tests across 7 files, all passing. Next up: Initiative 5 (dependency graph).
+  7. 132 tests across 7 files, all passing.
+  8. Initiative 5 fully planned (docs/INITIATIVE_5_PLAN.md) — 6 phases, ~2,700 lines, ~105 tests.
+     Ready to implement starting with Phase 1 (graph model + builder).
