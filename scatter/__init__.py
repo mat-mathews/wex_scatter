@@ -61,6 +61,18 @@ from scatter.ai.base import AITaskType, AnalysisResult, AIProvider
 from scatter.ai.providers.gemini_provider import GeminiProvider
 from scatter.ai.router import AIRouter
 from scatter.config import ScatterConfig, AIConfig, load_config
+from scatter.core.graph import DependencyGraph, ProjectNode, DependencyEdge
+from scatter.scanners.project_scanner import parse_csproj_all_references
+from scatter.analyzers.graph_builder import build_dependency_graph
+from scatter.analyzers.coupling_analyzer import (
+    ProjectMetrics,
+    CycleGroup,
+    compute_all_metrics,
+    detect_cycles,
+    rank_by_coupling,
+    DEFAULT_COUPLING_WEIGHTS,
+    DEFAULT_CYCLE_EDGE_TYPES,
+)
 
 # Re-export stdlib modules that tests access via scatter.X
 import argparse
