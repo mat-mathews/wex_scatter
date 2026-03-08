@@ -48,6 +48,8 @@ def _build_cli_overrides(args) -> Dict[str, Any]:
         overrides["search.max_depth"] = args.max_depth
     if hasattr(args, 'rebuild_graph') and args.rebuild_graph:
         overrides["graph.rebuild"] = True
+    if hasattr(args, 'include_db') and args.include_db:
+        overrides["db.include_db_edges"] = True
     return overrides
 
 
@@ -121,6 +123,10 @@ def main():
     common_group.add_argument(
         "--rebuild-graph", action="store_true",
         help="Force graph rebuild, ignoring cached data (only used with --graph)."
+    )
+    common_group.add_argument(
+        "--include-db", action="store_true",
+        help="Include database dependency scanning (sprocs, EF models, direct SQL) in --graph mode."
     )
     common_group.add_argument(
         "--max-depth", type=int, default=None,
@@ -752,6 +758,8 @@ def main():
                 search_scope_abs,
                 disable_multiprocessing=args.disable_multiprocessing,
                 exclude_patterns=config.exclude_patterns,
+                include_db_dependencies=config.db.include_db_edges,
+                sproc_prefixes=config.db.sproc_prefixes,
             )
             save_graph(graph, cache_path, search_scope_abs)
 

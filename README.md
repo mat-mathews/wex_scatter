@@ -150,11 +150,16 @@ python -m scatter --graph --search-scope .
 # Force rebuild (ignore cached graph)
 python -m scatter --graph --search-scope . --rebuild-graph
 
-# JSON output — full graph with metrics, cycles, and edge data
-python -m scatter --graph --search-scope . --output-format json --output-file graph_report.json
+# Include database dependency scanning (sprocs, EF models, direct SQL)
+# Adds sproc_shared edges between projects that share database objects
+python -m scatter --graph --search-scope . --include-db
 
-# Verbose — see cache hit/miss, build steps, timing
-python -m scatter --graph --search-scope . -v
+# Combine: rebuild with DB scanning and JSON output
+python -m scatter --graph --search-scope . --include-db --rebuild-graph \
+  --output-format json --output-file graph_report.json
+
+# Verbose — see cache hit/miss, build steps, DB dependency counts
+python -m scatter --graph --search-scope . --include-db -v
 
 # Sequential mode (debugging or small codebases)
 python -m scatter --graph --search-scope . --disable-multiprocessing
@@ -227,6 +232,7 @@ MyDotNetApp2.Exclude                (standalone — no references, tests exclusi
 | Verify no false positives | `--target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .` (should find 0 consumers) |
 | Impact analysis with transitive tracing | `--sow "Modify PortalDataService" --search-scope . --max-depth 2 --google-api-key $KEY` |
 | Dependency graph with coupling metrics | `--graph --search-scope .` |
+| Graph with DB dependency scanning | `--graph --search-scope . --include-db` |
 | Force graph rebuild (ignore cache) | `--graph --search-scope . --rebuild-graph` |
 
 ---
@@ -552,12 +558,56 @@ python -m scatter --graph --search-scope /path/to/dotnet/repo
 # Force rebuild — ignore any cached graph
 python -m scatter --graph --search-scope . --rebuild-graph
 
+# Include database dependency scanning
+python -m scatter --graph --search-scope . --include-db
+
 # JSON output — includes full graph, all metrics, cycles, and edge data
 python -m scatter --graph --search-scope . --output-format json --output-file graph_report.json
 
 # Verbose — see cache status, build timing, and project discovery
 python -m scatter --graph --search-scope . -v
 ```
+
+### Database Dependency Scanning (`--include-db`)
+
+When `--include-db` is enabled, graph mode also scans `.cs` files for database dependencies and adds `sproc_shared` edges between projects that share database objects. This reveals hidden coupling through shared mutable database state — two projects that never reference each other via `<ProjectReference>` but both call the same stored procedure are coupled through the database.
+
+**What gets detected:**
+
+| Pattern | Example | Edge Created |
+|---------|---------|-------------|
+| Stored procedures in string literals | `"dbo.sp_InsertPortalConfiguration"` | `sproc_shared` between projects sharing the sproc |
+| EF `DbSet<T>` declarations | `public DbSet<User> Users { get; set; }` | `sproc_shared` between projects with same model |
+| `DbContext` subclasses | `class AppDbContext : DbContext` | Recorded as `ef_context` dependency |
+| Direct SQL in strings | `"SELECT * FROM Users WHERE ..."` | `sproc_shared` between projects querying same table |
+| Connection strings | `"Server=myserver;Database=mydb"` | Recorded as connection dependency |
+
+Comment-stripped source is used for all detection — sproc names in `//` or `/* */` comments are ignored.
+
+**Configurable sproc prefixes** via `.scatter.yaml`:
+
+```yaml
+db:
+  sproc_prefixes:         # default: ["sp_", "usp_"]
+    - "sp_"
+    - "usp_"
+    - "proc_"             # add custom prefix for your codebase
+  include_db_edges: true  # same as --include-db flag
+```
+
+**Example with the sample projects:**
+
+```bash
+# GalaxyWorks.Data and GalaxyWorks.BatchProcessor both reference
+# dbo.sp_InsertPortalConfiguration — --include-db reveals this coupling
+python -m scatter --graph --search-scope . --include-db -v
+
+# Output includes sproc_shared edges:
+#   GalaxyWorks.Data ↔ GalaxyWorks.BatchProcessor [sproc_shared]
+#     evidence: dbo.sp_InsertPortalConfiguration, dbo.sp_GetPortalConfigurationDetails
+```
+
+When multiple projects share the same DB object, edges are aggregated — one edge per direction per project pair, with weight equal to the number of shared objects and all shared object names as evidence.
 
 ### Console Output
 
@@ -752,6 +802,12 @@ graph:
     namespace_usage: 0.5
     type_usage: 0.3
 
+db:
+  sproc_prefixes:                           # stored procedure name prefixes to detect
+    - "sp_"                                 # default prefixes
+    - "usp_"
+  include_db_edges: true                    # add sproc_shared edges in --graph mode
+
 multiprocessing:
   disabled: false
   max_workers: null                       # null = auto (CPU cores + 4, max 32)
@@ -846,6 +902,7 @@ Use `--app-config-path` to verify if consumer projects correspond to known batch
 |------|---------|-------------|
 | `--search-scope PATH` | (required) | Root directory to search for consumers |
 | `--rebuild-graph` | `false` | Force graph rebuild, ignore cache (graph mode) |
+| `--include-db` | `false` | Include DB dependency scanning in graph mode (sprocs, EF models, SQL) |
 | `--output-format FORMAT` | `console` | Output format: `console`, `csv`, `json` |
 | `--output-file PATH` | — | Output file path (required for csv/json) |
 | `--class-name NAME` | — | Filter by class/type name |
@@ -1223,7 +1280,7 @@ Design note: `file_count` stores a count, not a `List[Path]` of file paths — t
 |-------|------|-------------|
 | `source` | `str` | Name of the project that *depends on* the target |
 | `target` | `str` | Name of the project being depended upon |
-| `edge_type` | `str` | One of `"project_reference"`, `"namespace_usage"`, `"type_usage"` |
+| `edge_type` | `str` | One of `"project_reference"`, `"namespace_usage"`, `"type_usage"`, `"sproc_shared"` |
 | `weight` | `float` | Strength of the dependency (1.0 for project refs, evidence count for others) |
 | `evidence` | `Optional[List[str]]` | File paths or `file:TypeName` pairs showing where the dependency occurs |
 | `evidence_total` | `int` | Total evidence count (may exceed `len(evidence)` due to capping) |
@@ -1251,6 +1308,7 @@ The graph captures three categories of inter-project dependency:
 | `project_reference` | `<ProjectReference Include="...">` in `.csproj` | Explicit build-time dependency | 1.0 (always) |
 | `namespace_usage` | `using Namespace;` in `.cs` matching another project's root namespace | Import-level coupling | Count of `.cs` files with that `using` |
 | `type_usage` | Regex match of a type name declared in project B found in project A's source | Code-level coupling (class/interface usage) | Count of `file:TypeName` matches |
+| `sproc_shared` | Two projects reference the same DB object (sproc, table, EF model) | Shared mutable database state | Count of shared DB objects between the pair |
 
 A single pair of projects may have multiple edges (e.g., A has a `project_reference` to B *and* a `namespace_usage` edge *and* a `type_usage` edge). The `get_edges_between(a, b)` method returns all of them.
 
@@ -1331,10 +1389,15 @@ search_scope (Path)
   │
   ├─ Step 5: Build nodes (one ProjectNode per .csproj with aggregated metadata)
   │
-  └─ Step 6: Build edges
-       ├─ 6a: project_reference — resolve <ProjectReference Include="..."> paths
-       ├─ 6b: namespace_usage — match using statements to project namespaces
-       └─ 6c: type_usage — scan .cs content for type names from other projects
+  ├─ Step 6: Build edges
+  │    ├─ 6a: project_reference — resolve <ProjectReference Include="..."> paths
+  │    ├─ 6b: namespace_usage — match using statements to project namespaces
+  │    └─ 6c: type_usage — scan .cs content for type names from other projects
+  │
+  └─ Step 7 (optional, --include-db): DB dependency scan
+       ├─ Strip C# comments from each .cs file (state machine preserving strings)
+       ├─ Detect sprocs, DbSet<T>, DbContext, direct SQL, connection strings
+       └─ Add sproc_shared edges between project pairs sharing DB objects
 ```
 
 **`.csproj` parsing** handles both SDK-style projects (`<Project Sdk="Microsoft.NET.Sdk">`) and legacy Framework-style projects (with MSBuild XML namespace `http://schemas.microsoft.com/developer/msbuild/2003`). The `parse_csproj_all_references()` function tries XPath queries without namespace first, then with the MSBuild namespace prefix, ensuring both styles are parsed correctly.
