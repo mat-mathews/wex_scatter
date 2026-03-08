@@ -46,6 +46,8 @@ def _build_cli_overrides(args) -> Dict[str, Any]:
         overrides["multiprocessing.disabled"] = True
     if args.max_depth is not None:
         overrides["search.max_depth"] = args.max_depth
+    if hasattr(args, 'rebuild_graph') and args.rebuild_graph:
+        overrides["graph.rebuild"] = True
     return overrides
 
 
@@ -81,6 +83,12 @@ def main():
         metavar="FILE",
         help="MODE: Impact Analysis. Path to file containing the work request text."
     )
+    mode_group.add_argument(
+        "--graph",
+        action="store_true",
+        default=False,
+        help="MODE: Dependency Graph Analysis. Build graph, compute coupling metrics, detect cycles."
+    )
 
     #--- sproc group ---
     sproc_group = parser.add_argument_group('Stored Procedure Analysis Options (Requires --stored-procedure)')
@@ -109,6 +117,10 @@ def main():
     common_group.add_argument(
         "--search-scope",
         help="Root directory to search for consuming projects (defaults to --repo-path if Git mode is used and this is omitted, otherwise REQUIRED)."
+    )
+    common_group.add_argument(
+        "--rebuild-graph", action="store_true",
+        help="Force graph rebuild, ignoring cached data (only used with --graph)."
     )
     common_group.add_argument(
         "--max-depth", type=int, default=None,
@@ -200,6 +212,7 @@ def main():
     is_target_mode = args.target_project is not None
     is_sproc_mode = args.stored_procedure is not None
     is_impact_mode = args.sow is not None or args.sow_file is not None
+    is_graph_mode = args.graph
 
     # --- load config and configure AI provider ---
     cli_overrides = _build_cli_overrides(args)
@@ -251,6 +264,8 @@ def main():
             parser.error("--search-scope is required when using --target-project mode.")
         elif is_impact_mode:
             parser.error("--search-scope is required when using --sow or --sow-file mode.")
+        elif is_graph_mode:
+            parser.error("--search-scope is required when using --graph mode.")
         else:
             parser.error("A mode (--branch-name, --target-project, --stored-procedure, --sow, or --sow-file) must be selected.")
 
@@ -690,6 +705,126 @@ def main():
             write_impact_csv_report(impact_report, Path(args.output_file))
         else:
             print_impact_report(impact_report)
+
+        print("\ndone.\n")
+        return
+
+    # == DEPENDENCY GRAPH ANALYSIS MODE ==
+    elif is_graph_mode:
+        assert search_scope_abs is not None
+        logging.info(f"\n--- Running Dependency Graph Analysis Mode ---")
+
+        from scatter.analyzers.graph_builder import build_dependency_graph
+        from scatter.analyzers.coupling_analyzer import (
+            compute_all_metrics,
+            detect_cycles,
+            rank_by_coupling,
+        )
+        from scatter.store.graph_cache import (
+            get_default_cache_path,
+            is_cache_valid,
+            load_graph,
+            save_graph,
+        )
+
+        # Resolve cache path
+        if config.graph.cache_dir:
+            cache_path = Path(config.graph.cache_dir) / "graph_cache.json"
+        else:
+            cache_path = get_default_cache_path(search_scope_abs)
+
+        # Check cache
+        graph = None
+        if not config.graph.rebuild:
+            if is_cache_valid(cache_path, search_scope_abs, config.graph.invalidation):
+                graph = load_graph(cache_path)
+                if graph is not None:
+                    logging.info("Using cached dependency graph.")
+
+        # Build if needed
+        if graph is None:
+            logging.info("Building dependency graph...")
+            graph = build_dependency_graph(
+                search_scope_abs,
+                disable_multiprocessing=args.disable_multiprocessing,
+                exclude_patterns=config.exclude_patterns,
+            )
+            save_graph(graph, cache_path, search_scope_abs)
+
+        # Compute metrics
+        coupling_weights = config.graph.coupling_weights
+        metrics = compute_all_metrics(graph, coupling_weights=coupling_weights)
+        cycles = detect_cycles(graph)
+        ranked = rank_by_coupling(metrics, top_n=10)
+
+        # Output
+        if args.output_format == "json":
+            if not args.output_file:
+                logging.error("JSON output format requires the --output-file argument.")
+                sys.exit(1)
+            graph_report = {
+                "summary": {
+                    "node_count": graph.node_count,
+                    "edge_count": graph.edge_count,
+                    "cycle_count": len(cycles),
+                    "components": len(graph.connected_components),
+                },
+                "top_coupled": [
+                    {"project": name, "coupling_score": m.coupling_score,
+                     "fan_in": m.fan_in, "fan_out": m.fan_out,
+                     "instability": round(m.instability, 3)}
+                    for name, m in ranked
+                ],
+                "cycles": [
+                    {"projects": cg.projects, "size": cg.size,
+                     "shortest_cycle": cg.shortest_cycle, "edge_count": cg.edge_count}
+                    for cg in cycles
+                ],
+                "metrics": {
+                    name: {
+                        "fan_in": m.fan_in, "fan_out": m.fan_out,
+                        "instability": round(m.instability, 3),
+                        "coupling_score": round(m.coupling_score, 3),
+                        "afferent_coupling": m.afferent_coupling,
+                        "efferent_coupling": m.efferent_coupling,
+                        "shared_db_density": round(m.shared_db_density, 3),
+                        "type_export_count": m.type_export_count,
+                        "consumer_count": m.consumer_count,
+                    }
+                    for name, m in sorted(metrics.items())
+                },
+                "graph": graph.to_dict(),
+            }
+            output_path = Path(args.output_file)
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(graph_report, f, indent=2)
+            logging.info(f"Graph report written to {output_path}")
+
+        else:
+            # Console output
+            print(f"\n{'='*60}")
+            print(f"  Dependency Graph Analysis")
+            print(f"{'='*60}")
+            print(f"  Projects: {graph.node_count}")
+            print(f"  Dependencies: {graph.edge_count}")
+            print(f"  Connected components: {len(graph.connected_components)}")
+            print(f"  Circular dependencies: {len(cycles)}")
+            print()
+
+            if ranked:
+                print(f"  Top Coupled Projects:")
+                print(f"  {'Project':<40} {'Score':>8} {'Fan-In':>8} {'Fan-Out':>8} {'Instab.':>8}")
+                print(f"  {'-'*40} {'-'*8} {'-'*8} {'-'*8} {'-'*8}")
+                for name, m in ranked:
+                    print(f"  {name:<40} {m.coupling_score:>8.1f} {m.fan_in:>8} {m.fan_out:>8} {m.instability:>8.2f}")
+                print()
+
+            if cycles:
+                print(f"  Circular Dependencies (build-order violations):")
+                for i, cg in enumerate(cycles, 1):
+                    cycle_str = " -> ".join(cg.shortest_cycle + [cg.shortest_cycle[0]])
+                    print(f"    {i}. [{cg.size} projects] {cycle_str}")
+                print()
 
         print("\ndone.\n")
         return

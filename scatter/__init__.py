@@ -60,7 +60,13 @@ from scatter._legacy import (
 from scatter.ai.base import AITaskType, AnalysisResult, AIProvider
 from scatter.ai.providers.gemini_provider import GeminiProvider
 from scatter.ai.router import AIRouter
-from scatter.config import ScatterConfig, AIConfig, load_config
+from scatter.config import ScatterConfig, AIConfig, GraphConfig, load_config
+from scatter.store.graph_cache import (
+    save_graph,
+    load_graph,
+    is_cache_valid,
+    get_default_cache_path,
+)
 from scatter.core.graph import DependencyGraph, ProjectNode, DependencyEdge
 from scatter.scanners.project_scanner import parse_csproj_all_references
 from scatter.analyzers.graph_builder import build_dependency_graph

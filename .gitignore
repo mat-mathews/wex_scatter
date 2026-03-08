@@ -53,6 +53,9 @@ venv.bak/
 # pytest
 .pytest_cache/
 
+# Scatter graph cache
+.scatter/
+
 # mypy
 .mypy_cache/
 .dmypy.json
