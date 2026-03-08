@@ -4,12 +4,13 @@
 
 Scatter answers questions like "If I change this class, which other projects are actually using it?" and "What's the blast radius of this work request?" It analyzes .NET codebases to find consumers of code changes, trace transitive dependencies, and produce AI-enriched impact reports for project scoping.
 
-It works in four modes:
+It works in five modes:
 
 * **Git Branch Analysis**: Compares a feature branch against a base branch, extracts type declarations from changed `.cs` files, and finds consuming projects.
 * **Target Project Analysis**: Analyzes a specific `.csproj` file to find all projects that reference and use its types.
 * **Stored Procedure Analysis**: Finds C# projects that reference a specific stored procedure and traces their consumers.
-* **Impact Analysis** (new): Accepts a natural language work request, uses AI to identify affected components, traces transitive blast radius, and produces a risk-rated impact report with complexity estimates.
+* **Impact Analysis**: Accepts a natural language work request, uses AI to identify affected components, traces transitive blast radius, and produces a risk-rated impact report with complexity estimates.
+* **Dependency Graph Analysis**: Builds a full project dependency graph, computes coupling metrics, detects circular dependencies, and identifies domain clusters with extraction feasibility scoring.
 
 The repository includes a set of sample .NET projects that form a realistic dependency graph, making it possible to test all analysis modes without an external codebase.
 
@@ -147,16 +148,17 @@ python scatter.py \
 1. [Quick Start](#quick-start)
 2. [Sample Project Structure](#sample-project-structure)
 3. [Analysis Modes](#analysis-modes)
-4. [AI Features](#ai-features)
-5. [Impact Analysis (Mode 4)](#impact-analysis-mode-4)
-6. [Parallel Processing](#parallel-processing)
-7. [Configuration & Mapping](#configuration--mapping) — YAML config files, precedence, env vars
-8. [Command-Line Reference](#command-line-reference)
-9. [Output Formats](#output-formats)
-10. [Testing](#testing)
-11. [Technical Details](#technical-details)
-12. [Dependency Graph](#dependency-graph) — Architecture, performance, construction pipeline, programmatic API
-13. [Roadmap](#roadmap)
+4. [Workflow Examples](#workflow-examples) — End-to-end scenarios for common use cases
+5. [AI Features](#ai-features)
+6. [Impact Analysis (Mode 4)](#impact-analysis-mode-4)
+7. [Parallel Processing](#parallel-processing)
+8. [Configuration & Mapping](#configuration--mapping) — YAML config files, precedence, env vars
+9. [Command-Line Reference](#command-line-reference)
+10. [Output Formats](#output-formats)
+11. [Testing](#testing)
+12. [Technical Details](#technical-details)
+13. [Dependency Graph](#dependency-graph) — Architecture, performance, construction pipeline, programmatic API
+14. [Roadmap](#roadmap)
 
 ---
 
@@ -205,6 +207,8 @@ MyDotNetApp2.Exclude                (standalone — no references, tests exclusi
 | Find consumers of a leaf project | `--target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .` |
 | Verify no false positives | `--target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .` (should find 0 consumers) |
 | Impact analysis with transitive tracing | `--sow "Modify PortalDataService" --search-scope . --max-depth 2 --google-api-key $KEY` |
+| Build dependency graph with domain clusters | `--graph --search-scope .` |
+| Graph analysis with JSON output | `--graph --search-scope . --output-format json --output-file graph.json` |
 
 ---
 
@@ -307,6 +311,249 @@ python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search
 ### Mode 4: Impact Analysis (`--sow` / `--sow-file`)
 
 Accepts a natural language work request and produces an AI-enriched impact report. See [Impact Analysis (Mode 4)](#impact-analysis-mode-4) for the full breakdown.
+
+### Mode 5: Dependency Graph Analysis (`--graph`)
+
+Builds a full dependency graph from the codebase, computes coupling metrics, detects circular dependencies, and identifies domain clusters with extraction feasibility scoring.
+
+**How it works:**
+1. Discovers all `.csproj` and `.cs` files in the search scope
+2. Builds a `DependencyGraph` with project references, namespace usage, and type usage edges
+3. Caches the graph to disk (smart git-based invalidation)
+4. Computes coupling metrics (fan_in, fan_out, instability, coupling_score) per project
+5. Detects circular dependencies via Tarjan's SCC algorithm
+6. Identifies domain clusters via connected components + label propagation
+7. Scores each cluster's extraction feasibility based on cross-boundary coupling, shared DB objects, cycles, and API surface
+
+```bash
+# Basic graph analysis with domain clusters
+python scatter.py --graph --search-scope .
+
+# Force rebuild (ignore cache)
+python scatter.py --graph --search-scope . --rebuild-graph
+
+# JSON output with full graph data, metrics, and cluster details
+python scatter.py --graph --search-scope . --output-format json --output-file graph_report.json
+```
+
+**Console output includes:**
+
+```
+============================================================
+  Dependency Graph Analysis
+============================================================
+  Projects: 8
+  Dependencies: 18
+  Connected components: 2
+  Circular dependencies: 0
+
+  Top Coupled Projects:
+  Project                                    Score   Fan-In  Fan-Out  Instab.
+  ---------------------------------------- -------- -------- -------- --------
+  GalaxyWorks.Data                              8.6        4        0     0.00
+
+  Domain Clusters:
+  Cluster                          Size   Cohesion   Coupling          Feasibility
+  ------------------------------ ------ ---------- ---------- --------------------
+  MyDotNetApp                         2      1.000      0.000         easy (1.000)
+  cluster_0                           3      0.167      0.600     moderate (0.760)
+```
+
+See [Dependency Graph](#dependency-graph) for architecture details, and [Domain Boundary Detection](#domain-boundary-detection) for clustering and feasibility scoring.
+
+---
+
+## Workflow Examples
+
+Real-world scenarios showing how to chain Scatter's analysis modes together.
+
+### 1. Pre-Merge Blast Radius Check
+
+**Persona**: Developer preparing a pull request
+**When**: Before merging a feature branch that touches shared code
+**Why**: Know exactly which downstream projects are affected so reviewers and downstream teams can be notified
+
+Start with a quick blast radius scan:
+
+```bash
+python scatter.py --branch-name feature/new-widget --repo-path . --search-scope .
+```
+
+Review the consumer list in the output. If the list is larger than expected, drill into what each consumer actually does with the dependency:
+
+```bash
+python scatter.py --branch-name feature/new-widget --repo-path . --search-scope . \
+  --summarize-consumers --google-api-key $GOOGLE_API_KEY
+```
+
+For high-precision results (only types whose body/signature actually changed, not every type in the file), enable hybrid git analysis:
+
+```bash
+python scatter.py --branch-name feature/new-widget --repo-path . --search-scope . \
+  --enable-hybrid-git --summarize-consumers --google-api-key $GOOGLE_API_KEY
+```
+
+**What to look for**: Consumer projects you didn't expect. If a "small change" surfaces 10+ consumers, it may need broader review or a phased rollout.
+
+### 2. Stored Procedure Change Impact
+
+**Persona**: Developer or DBA modifying a stored procedure
+**When**: Before altering a sproc's signature, return type, or behavior
+**Why**: Stored procedure callers are invisible in project references — Scatter finds them by scanning source code for the sproc name
+
+Find every C# project that calls the sproc:
+
+```bash
+python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .
+```
+
+Export the results as CSV for sharing with the DBA team or attaching to a change request:
+
+```bash
+python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope . \
+  --output-format csv --output-file sproc_impact.csv
+```
+
+If you have pipeline mappings, add them to see which CI/CD pipelines need to be coordinated:
+
+```bash
+python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope . \
+  --pipeline-csv build/pipeline_map.csv \
+  --output-format csv --output-file sproc_impact.csv
+```
+
+**What to look for**: The containing class (e.g., `PortalDataService`) and all its consumers. A sproc change often requires coordinated deployment across multiple services.
+
+### 3. Work Request Scoping with AI
+
+**Persona**: Tech lead estimating a work request during sprint planning
+**When**: A new feature request or change request arrives and you need to assess scope
+**Why**: Get an AI-generated risk rating, effort estimate, and blast radius before committing to the work
+
+Run impact analysis with the work request description:
+
+```bash
+python scatter.py \
+  --sow "Modify PortalDataService in GalaxyWorks.Data to add a new parameter to sp_InsertPortalConfiguration" \
+  --search-scope . --google-api-key $GOOGLE_API_KEY
+```
+
+For longer work requests, put the description in a file:
+
+```bash
+python scatter.py \
+  --sow-file docs/work_request.md \
+  --search-scope . --google-api-key $GOOGLE_API_KEY
+```
+
+Save the full report as JSON for attaching to a ticket or feeding into project tracking:
+
+```bash
+python scatter.py \
+  --sow "Modify PortalDataService in GalaxyWorks.Data to add a new parameter to sp_InsertPortalConfiguration" \
+  --search-scope . --google-api-key $GOOGLE_API_KEY \
+  --output-format json --output-file impact_report.json
+```
+
+**What to look for**: The `Overall Risk` and `Complexity` ratings in the report header, the number of direct vs. transitive consumers, and the AI-generated impact summary at the bottom.
+
+### 4. Architecture Health Assessment
+
+**Persona**: Architect evaluating the codebase before a modernization initiative
+**When**: Planning a migration to microservices, evaluating tech debt, or identifying extraction candidates
+**Why**: Identify tightly-coupled clusters, circular dependencies, and which groups of projects could realistically be separated
+
+Build the full dependency graph and review the analysis:
+
+```bash
+python scatter.py --graph --search-scope .
+```
+
+**What to look for in the console output**:
+- **Circular dependencies**: Any cycles indicate build-order violations that must be broken before extraction
+- **Top Coupled Projects**: Projects with the highest coupling scores are the hardest to change safely
+- **Domain Clusters table**: The `Feasibility` column rates each cluster as `easy`, `moderate`, `hard`, or `very_hard` for extraction
+- **Cohesion vs. Coupling**: High internal cohesion + low external coupling = good extraction candidate
+
+For a deeper dive, export the full graph data:
+
+```bash
+python scatter.py --graph --search-scope . \
+  --output-format json --output-file architecture_review.json
+```
+
+The JSON output includes per-project metrics (fan_in, fan_out, instability, coupling_score), cycle details, and cluster feasibility breakdowns with individual penalty factors.
+
+### 5. Target Project Dependency Audit
+
+**Persona**: Developer planning to refactor a shared library
+**When**: Before renaming types, changing method signatures, or restructuring a `.csproj` that other projects depend on
+**Why**: Know every project that uses the library's types so you can update all call sites
+
+Start with the full consumer list:
+
+```bash
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
+```
+
+Narrow to a specific class you plan to change:
+
+```bash
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --class-name PortalDataService
+```
+
+Narrow further to a specific method:
+
+```bash
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --class-name PortalDataService --method-name StorePortalConfigurationAsync
+```
+
+Add AI summaries to understand what each consumer does with the dependency:
+
+```bash
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --class-name PortalDataService --summarize-consumers --google-api-key $GOOGLE_API_KEY
+```
+
+**What to look for**: The progression from broad (all consumers) to narrow (specific method callers) helps you gauge how many call sites you need to update. AI summaries explain the context of each usage.
+
+### 6. Full Codebase Analysis Pipeline
+
+**Persona**: DevOps engineer or architect running periodic health checks
+**When**: Monthly or quarterly codebase review, or before a major release
+**Why**: Track coupling trends over time, catch new circular dependencies early, and monitor domain boundary health
+
+Generate a full graph report as JSON:
+
+```bash
+python scatter.py --graph --search-scope . \
+  --output-format json --output-file reports/graph_$(date +%Y%m%d).json
+```
+
+Compare against a previous report to spot trends (e.g., rising coupling scores, new cycles):
+
+```bash
+# Quick comparison of key metrics between two reports
+python -c "
+import json
+old = json.load(open('reports/graph_20260201.json'))
+new = json.load(open('reports/graph_20260301.json'))
+print(f\"Projects: {old['node_count']} -> {new['node_count']}\")
+print(f\"Edges: {old['edge_count']} -> {new['edge_count']}\")
+print(f\"Cycles: {len(old.get('cycles',[]))} -> {len(new.get('cycles',[]))}\")
+"
+```
+
+Force a fresh rebuild if you suspect the cache is stale:
+
+```bash
+python scatter.py --graph --search-scope . --rebuild-graph \
+  --output-format json --output-file reports/graph_$(date +%Y%m%d).json
+```
+
+**What to look for**: Increasing edge counts or coupling scores over time signal growing entanglement. New circular dependencies should be addressed immediately. Clusters shifting from `easy` to `moderate` feasibility indicate erosion of domain boundaries.
 
 ---
 
@@ -685,6 +932,7 @@ Use `--app-config-path` to verify if consumer projects correspond to known batch
 | `--stored-procedure NAME` | Stored procedure analysis |
 | `--sow "TEXT"` | Impact analysis (inline) |
 | `--sow-file PATH` | Impact analysis (from file) |
+| `--graph` | Dependency graph analysis with domain clusters |
 
 ### Common Options
 
@@ -696,6 +944,7 @@ Use `--app-config-path` to verify if consumer projects correspond to known batch
 | `--class-name NAME` | — | Filter by class/type name |
 | `--method-name NAME` | — | Filter by method name (requires `--class-name`) |
 | `--max-depth N` | `2` | Transitive tracing depth (impact mode) |
+| `--rebuild-graph` | `false` | Force graph rebuild, ignoring cache (`--graph` mode) |
 | `--pipeline-csv PATH` | — | CSV file for pipeline mapping |
 | `--app-config-path PATH` | — | App-config repo for batch job verification |
 | `--target-namespace NS` | — | Override namespace detection |
@@ -788,6 +1037,9 @@ python -m pytest test_impact_analysis.py -v
 # Run only coupling metrics + cycle detection tests
 python -m pytest test_coupling.py -v
 
+# Run only domain boundary detection tests
+python -m pytest test_domain.py -v
+
 # Run only multiprocessing tests
 python -m pytest test_multiprocessing_phase1.py -v
 
@@ -800,12 +1052,13 @@ python -m pytest -q
 
 ### Test Suite Overview
 
-The test suite includes **203 tests** across 9 test files:
+The test suite includes **239 tests** across 10 test files:
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
 | `test_config.py` | 24 | Config loading, YAML precedence, env vars, CLI overrides, AI router (caching, task overrides, unknown providers) |
 | `test_coupling.py` | 25 | Coupling metrics (fan_in/out, instability, coupling_score, shared_db_density), Tarjan's SCC cycle detection, edge type filtering, rank_by_coupling |
+| `test_domain.py` | 15 | Domain boundary detection: two-level clustering, label propagation, determinism, cluster naming, extraction feasibility scoring, API surface penalty |
 | `test_graph.py` | 46 | Graph data structures, construction, traversal, serialization, `.csproj` parsing, integration with sample projects |
 | `test_multiprocessing_phase1.py` | 37 | File discovery, consumer analysis, backwards compatibility |
 | `test_phase2_3_project_mapping.py` | 25 | Batch project mapping, parallel orchestration, sproc integration |
@@ -1016,6 +1269,7 @@ scatter/
 ├── analyzers/
 │   ├── consumer_analyzer.py   # Core find_consumers() pipeline
 │   ├── coupling_analyzer.py   # Metrics (fan_in/out, instability, coupling_score) + Tarjan's SCC cycle detection
+│   ├── domain_analyzer.py     # Domain boundary detection + extraction feasibility scoring
 │   ├── git_analyzer.py        # Git branch diff analysis
 │   ├── graph_builder.py       # Single-pass O(P+F) graph construction
 │   └── impact_analyzer.py     # Impact analysis orchestrator + transitive tracing
@@ -1397,6 +1651,51 @@ Each `CycleGroup` contains the SCC's projects (sorted alphabetically), the numbe
 
 The sample projects have zero circular dependencies.
 
+### Domain Boundary Detection
+
+`find_clusters()` in `scatter/analyzers/domain_analyzer.py` identifies natural service boundaries — groups of tightly-connected projects that could be extracted as independent deployable units.
+
+#### Two-Level Clustering
+
+**Level 1: Connected Components** (always runs) — treats all edges as undirected and finds groups of mutually reachable projects. O(N+E), deterministic. Handles the common case of separate project groups.
+
+**Level 2: Label Propagation** (conditional) — for connected components with >20 nodes, applies weighted label propagation to detect sub-communities within large monolithic components. Deterministic via sorted iteration and lowest-label tie-breaking.
+
+```python
+from scatter.analyzers.domain_analyzer import find_clusters
+from scatter.analyzers.coupling_analyzer import compute_all_metrics, detect_cycles
+
+metrics = compute_all_metrics(graph)
+cycles = detect_cycles(graph)
+clusters = find_clusters(graph, min_cluster_size=2, metrics=metrics, cycles=cycles)
+
+for c in clusters:
+    print(f"{c.name}: {len(c.projects)} projects, feasibility={c.extraction_feasibility}")
+    print(f"  Cohesion: {c.cohesion:.3f}, Coupling to outside: {c.coupling_to_outside:.3f}")
+    print(f"  Score: {c.feasibility_score:.3f}")
+    for k, v in c.feasibility_details.items():
+        print(f"    {k}: {v:.3f}")
+```
+
+#### Cluster Naming
+
+Cluster names are derived from the longest common dot-prefix of member project names. For example, `["GalaxyWorks.Data", "GalaxyWorks.WebPortal"]` produces `"GalaxyWorks"`. Projects without a common prefix get a sequential fallback name (`"cluster_0"`, `"cluster_1"`, etc.).
+
+#### Extraction Feasibility Scoring
+
+Each cluster receives a feasibility score from 0.0 (deeply entangled) to 1.0 (trivially extractable), computed from four weighted penalty factors:
+
+| Factor | Weight | What it measures |
+|--------|--------|-----------------|
+| Cross-boundary coupling | 0.40 | Ratio of external edges to total edges |
+| Shared DB objects | 0.25 | Sprocs referenced by projects both inside and outside the cluster |
+| Circular dependencies | 0.20 | Whether any cycle spans the cluster boundary |
+| API surface breadth | 0.15 | Fraction of types used by external consumers |
+
+The score maps to a label: `easy` (>= 0.75), `moderate` (>= 0.50), `hard` (>= 0.25), `very_hard` (< 0.25).
+
+The `feasibility_details` dict breaks down each penalty, making it actionable — you can see exactly which factor is blocking extraction.
+
 ---
 
 ## Roadmap
@@ -1410,9 +1709,12 @@ The sample projects have zero circular dependencies.
 - **Configuration System** — YAML config files (`.scatter.yaml`, `~/.scatter/config.yaml`) with layered precedence, environment variable support, and AI task router for provider selection
 - **Dependency Graph (Phase 1)** — Graph model (`ProjectNode`, `DependencyEdge`, `DependencyGraph`) with per-node edge indexes, single-pass O(P+F) builder, BFS traversal, connected components, JSON serialization roundtrip, and 46 tests
 - **Coupling Metrics & Cycle Detection (Phase 2)** — `ProjectMetrics` (fan_in/out, instability index, coupling_score with configurable weights, shared_db_density), iterative Tarjan's SCC cycle detection with edge type filtering, shortest-cycle extraction via BFS predecessor map, `rank_by_coupling()`, and 25 tests
+- **Graph Persistence & CLI (Phase 3)** — Smart git-based cache invalidation, `--graph` CLI mode, `--rebuild-graph` flag, graph config integration, and 21 tests
+- **Database Dependency Mapping (Phase 4)** — DB scanner with comment stripping, sproc/DbSet/DbContext/SQL/connection string detection, cross-project dependency matrix, `sproc_shared` edges, `--include-db` flag, `DbConfig` with configurable prefixes, and 32 tests
+- **Domain Boundary Detection (Phase 5)** — Two-level clustering (connected components + label propagation), `Cluster` dataclass with cohesion and feasibility scoring, four weighted penalty factors (cross-boundary coupling, shared DB, cycles, API surface), `BOUNDARY_ASSESSMENT` AI task type, and 15 tests
 
 ### Planned
 
-- **Dependency Graph (Phase 3-6)** — Git-based cache invalidation + CLI integration, database dependency mapping, label propagation clustering, domain boundary analysis, graph reporters + health dashboard
+- **Graph Reporters & Health Dashboard (Phase 6)** — Console, JSON, Mermaid output, health dashboard aggregation
 - **Reporting & Extraction Planning** — Enhanced reporting with visualization and extraction recommendations
 - **CI/CD Integration** — Pipeline-aware analysis with automated impact checks
