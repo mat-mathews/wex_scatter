@@ -25,8 +25,17 @@ class AIConfig:
 
 
 @dataclass
+class GraphConfig:
+    cache_dir: Optional[str] = None  # override default cache location
+    rebuild: bool = False  # force rebuild (ignore cache)
+    invalidation: str = "git"  # "git" or "mtime"
+    coupling_weights: Optional[Dict[str, float]] = None  # override DEFAULT_COUPLING_WEIGHTS
+
+
+@dataclass
 class ScatterConfig:
     ai: AIConfig = field(default_factory=AIConfig)
+    graph: GraphConfig = field(default_factory=GraphConfig)
     max_depth: int = 2
     disable_multiprocessing: bool = False
     max_workers: Optional[int] = None
@@ -78,6 +87,17 @@ def _apply_yaml(config: ScatterConfig, data: Dict[str, Any]) -> None:
             # convention for list-valued config: explicit > implicit.
             config.exclude_patterns = search["exclude_patterns"]
 
+    graph = data.get("graph", {})
+    if isinstance(graph, dict):
+        if "cache_dir" in graph:
+            config.graph.cache_dir = str(graph["cache_dir"]) if graph["cache_dir"] is not None else None
+        if "invalidation" in graph:
+            config.graph.invalidation = str(graph["invalidation"])
+        if "coupling_weights" in graph and isinstance(graph["coupling_weights"], dict):
+            config.graph.coupling_weights = {
+                str(k): float(v) for k, v in graph["coupling_weights"].items()
+            }
+
     mp = data.get("multiprocessing", {})
     if isinstance(mp, dict):
         if "disabled" in mp:
@@ -118,6 +138,12 @@ def _apply_cli_overrides(config: ScatterConfig, overrides: Dict[str, Any]) -> No
             config.max_depth = int(value)
         elif key == "search.exclude_patterns":
             config.exclude_patterns = list(value)
+        elif key == "graph.rebuild":
+            config.graph.rebuild = bool(value)
+        elif key == "graph.cache_dir":
+            config.graph.cache_dir = str(value) if value is not None else None
+        elif key == "graph.invalidation":
+            config.graph.invalidation = str(value)
 
 
 def load_config(
