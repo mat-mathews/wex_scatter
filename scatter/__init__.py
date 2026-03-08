@@ -64,6 +64,7 @@ from scatter.config import ScatterConfig, AIConfig, GraphConfig, load_config
 from scatter.store.graph_cache import (
     save_graph,
     load_graph,
+    load_and_validate,
     is_cache_valid,
     get_default_cache_path,
 )

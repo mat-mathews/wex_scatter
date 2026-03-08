@@ -722,9 +722,12 @@ def main():
         )
         from scatter.store.graph_cache import (
             get_default_cache_path,
-            is_cache_valid,
-            load_graph,
+            load_and_validate,
             save_graph,
+        )
+        from scatter.reports.graph_reporter import (
+            print_graph_report,
+            write_graph_json_report,
         )
 
         # Resolve cache path
@@ -733,13 +736,14 @@ def main():
         else:
             cache_path = get_default_cache_path(search_scope_abs)
 
-        # Check cache
+        # Check cache (single-pass: read, validate, deserialize)
         graph = None
         if not config.graph.rebuild:
-            if is_cache_valid(cache_path, search_scope_abs, config.graph.invalidation):
-                graph = load_graph(cache_path)
-                if graph is not None:
-                    logging.info("Using cached dependency graph.")
+            graph = load_and_validate(
+                cache_path, search_scope_abs, config.graph.invalidation
+            )
+            if graph is not None:
+                logging.info("Using cached dependency graph.")
 
         # Build if needed
         if graph is None:
@@ -762,69 +766,17 @@ def main():
             if not args.output_file:
                 logging.error("JSON output format requires the --output-file argument.")
                 sys.exit(1)
-            graph_report = {
-                "summary": {
-                    "node_count": graph.node_count,
-                    "edge_count": graph.edge_count,
-                    "cycle_count": len(cycles),
-                    "components": len(graph.connected_components),
-                },
-                "top_coupled": [
-                    {"project": name, "coupling_score": m.coupling_score,
-                     "fan_in": m.fan_in, "fan_out": m.fan_out,
-                     "instability": round(m.instability, 3)}
-                    for name, m in ranked
-                ],
-                "cycles": [
-                    {"projects": cg.projects, "size": cg.size,
-                     "shortest_cycle": cg.shortest_cycle, "edge_count": cg.edge_count}
-                    for cg in cycles
-                ],
-                "metrics": {
-                    name: {
-                        "fan_in": m.fan_in, "fan_out": m.fan_out,
-                        "instability": round(m.instability, 3),
-                        "coupling_score": round(m.coupling_score, 3),
-                        "afferent_coupling": m.afferent_coupling,
-                        "efferent_coupling": m.efferent_coupling,
-                        "shared_db_density": round(m.shared_db_density, 3),
-                        "type_export_count": m.type_export_count,
-                        "consumer_count": m.consumer_count,
-                    }
-                    for name, m in sorted(metrics.items())
-                },
-                "graph": graph.to_dict(),
-            }
-            output_path = Path(args.output_file)
-            with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(graph_report, f, indent=2)
-            logging.info(f"Graph report written to {output_path}")
+            write_graph_json_report(
+                graph, metrics, ranked, cycles, Path(args.output_file)
+            )
+            logging.info(f"Graph report written to {args.output_file}")
+
+        elif args.output_format == "csv":
+            logging.error("CSV output is not supported for --graph mode. Use --output-format json or console.")
+            sys.exit(1)
 
         else:
-            # Console output
-            print(f"\n{'='*60}")
-            print(f"  Dependency Graph Analysis")
-            print(f"{'='*60}")
-            print(f"  Projects: {graph.node_count}")
-            print(f"  Dependencies: {graph.edge_count}")
-            print(f"  Connected components: {len(graph.connected_components)}")
-            print(f"  Circular dependencies: {len(cycles)}")
-            print()
-
-            if ranked:
-                print(f"  Top Coupled Projects:")
-                print(f"  {'Project':<40} {'Score':>8} {'Fan-In':>8} {'Fan-Out':>8} {'Instab.':>8}")
-                print(f"  {'-'*40} {'-'*8} {'-'*8} {'-'*8} {'-'*8}")
-                for name, m in ranked:
-                    print(f"  {name:<40} {m.coupling_score:>8.1f} {m.fan_in:>8} {m.fan_out:>8} {m.instability:>8.2f}")
-                print()
-
-            if cycles:
-                print(f"  Circular Dependencies (build-order violations):")
-                for i, cg in enumerate(cycles, 1):
-                    cycle_str = " -> ".join(cg.shortest_cycle + [cg.shortest_cycle[0]])
-                    print(f"    {i}. [{cg.size} projects] {cycle_str}")
-                print()
+            print_graph_report(graph, ranked, cycles)
 
         print("\ndone.\n")
         return

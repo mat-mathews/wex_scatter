@@ -4,12 +4,13 @@
 
 Scatter answers questions like "If I change this class, which other projects are actually using it?" and "What's the blast radius of this work request?" It analyzes .NET codebases to find consumers of code changes, trace transitive dependencies, and produce AI-enriched impact reports for project scoping.
 
-It works in four modes:
+It works in five modes:
 
 * **Git Branch Analysis**: Compares a feature branch against a base branch, extracts type declarations from changed `.cs` files, and finds consuming projects.
 * **Target Project Analysis**: Analyzes a specific `.csproj` file to find all projects that reference and use its types.
 * **Stored Procedure Analysis**: Finds C# projects that reference a specific stored procedure and traces their consumers.
-* **Impact Analysis** (new): Accepts a natural language work request, uses AI to identify affected components, traces transitive blast radius, and produces a risk-rated impact report with complexity estimates.
+* **Impact Analysis**: Accepts a natural language work request, uses AI to identify affected components, traces transitive blast radius, and produces a risk-rated impact report with complexity estimates.
+* **Dependency Graph Analysis**: Builds a full project dependency graph, computes coupling metrics and instability indexes, detects circular dependencies, and caches results with smart git-based invalidation.
 
 The repository includes a set of sample .NET projects that form a realistic dependency graph, making it possible to test all analysis modes without an external codebase.
 
@@ -140,6 +141,25 @@ python scatter.py \
   --output-format csv --output-file /tmp/impact_report.csv
 ```
 
+#### Dependency Graph Analysis (no API key needed)
+
+```bash
+# Build graph, compute coupling metrics, detect cycles — console summary
+python -m scatter --graph --search-scope .
+
+# Force rebuild (ignore cached graph)
+python -m scatter --graph --search-scope . --rebuild-graph
+
+# JSON output — full graph with metrics, cycles, and edge data
+python -m scatter --graph --search-scope . --output-format json --output-file graph_report.json
+
+# Verbose — see cache hit/miss, build steps, timing
+python -m scatter --graph --search-scope . -v
+
+# Sequential mode (debugging or small codebases)
+python -m scatter --graph --search-scope . --disable-multiprocessing
+```
+
 ---
 
 ## Table of Contents
@@ -149,14 +169,15 @@ python scatter.py \
 3. [Analysis Modes](#analysis-modes)
 4. [AI Features](#ai-features)
 5. [Impact Analysis (Mode 4)](#impact-analysis-mode-4)
-6. [Parallel Processing](#parallel-processing)
-7. [Configuration & Mapping](#configuration--mapping) — YAML config files, precedence, env vars
-8. [Command-Line Reference](#command-line-reference)
-9. [Output Formats](#output-formats)
-10. [Testing](#testing)
-11. [Technical Details](#technical-details)
-12. [Dependency Graph](#dependency-graph) — Architecture, performance, construction pipeline, programmatic API
-13. [Roadmap](#roadmap)
+6. [Dependency Graph Analysis (Mode 5)](#dependency-graph-analysis-mode-5) — Graph build, cache, metrics, cycles
+7. [Parallel Processing](#parallel-processing)
+8. [Configuration & Mapping](#configuration--mapping) — YAML config files, precedence, env vars
+9. [Command-Line Reference](#command-line-reference)
+10. [Output Formats](#output-formats)
+11. [Testing](#testing)
+12. [Technical Details](#technical-details)
+13. [Dependency Graph](#dependency-graph) — Architecture, performance, construction pipeline, programmatic API
+14. [Roadmap](#roadmap)
 
 ---
 
@@ -205,6 +226,8 @@ MyDotNetApp2.Exclude                (standalone — no references, tests exclusi
 | Find consumers of a leaf project | `--target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .` |
 | Verify no false positives | `--target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .` (should find 0 consumers) |
 | Impact analysis with transitive tracing | `--sow "Modify PortalDataService" --search-scope . --max-depth 2 --google-api-key $KEY` |
+| Dependency graph with coupling metrics | `--graph --search-scope .` |
+| Force graph rebuild (ignore cache) | `--graph --search-scope . --rebuild-graph` |
 
 ---
 
@@ -516,6 +539,127 @@ All AI tasks require a Google Gemini API key (`--google-api-key` or `GOOGLE_API_
 
 ---
 
+## Dependency Graph Analysis (Mode 5)
+
+Graph mode builds a full dependency graph of the codebase, computes coupling metrics for every project, detects circular dependencies, and caches the result for instant subsequent runs.
+
+### Usage
+
+```bash
+# Build graph and print summary (console)
+python -m scatter --graph --search-scope /path/to/dotnet/repo
+
+# Force rebuild — ignore any cached graph
+python -m scatter --graph --search-scope . --rebuild-graph
+
+# JSON output — includes full graph, all metrics, cycles, and edge data
+python -m scatter --graph --search-scope . --output-format json --output-file graph_report.json
+
+# Verbose — see cache status, build timing, and project discovery
+python -m scatter --graph --search-scope . -v
+```
+
+### Console Output
+
+```
+============================================================
+  Dependency Graph Analysis
+============================================================
+  Projects: 8
+  Dependencies: 17
+  Connected components: 2
+  Circular dependencies: 0
+
+  Top Coupled Projects:
+  Project                                     Score   Fan-In  Fan-Out  Instab.
+  ---------------------------------------- -------- -------- -------- --------
+  GalaxyWorks.Data                              9.5        4        0     0.00
+  GalaxyWorks.WebPortal                         4.0        1        1     0.50
+  GalaxyWorks.BatchProcessor                    3.0        0        2     1.00
+  ...
+```
+
+### Graph Caching
+
+The graph is cached to disk after the first build. Subsequent runs load from cache unless the graph is stale.
+
+**Default cache location:** `{search_scope}/.scatter/graph_cache.json`
+
+**Invalidation strategies:**
+
+| Strategy | How it works | When to use |
+|----------|-------------|-------------|
+| `git` (default) | Runs `git diff --name-only <cached_hash> HEAD -- '*.csproj' '*.cs'` to check if code files changed. Non-code commits (docs, yaml, etc.) don't invalidate the cache. | Any git repository |
+| `mtime` | Compares newest `.csproj`/`.cs` file modification time against cache file timestamp. | Non-git directories |
+
+The git strategy only checks `.cs` and `.csproj` files — documentation-only commits, README changes, or YAML config edits won't trigger a rebuild. If the git command fails (e.g., corrupted repo), it falls back to a conservative full rebuild.
+
+**Cache safety:**
+- Atomic writes — uses temp file + `os.replace()` to prevent corrupt cache from partial writes
+- Scope validation — cache stores the `search_scope` it was built from; loading a cache built for `/repo/A` against `/repo/B` triggers a rebuild
+- Version checking — cache format version is stored in the file; version mismatches trigger a rebuild
+
+**Configuration via `.scatter.yaml`:**
+
+```yaml
+graph:
+  cache_dir: /custom/cache/dir    # override default .scatter/ location
+  invalidation: git               # "git" (default) or "mtime"
+  coupling_weights:               # override default coupling score weights
+    project_reference: 1.0
+    sproc_shared: 0.8
+    namespace_usage: 0.5
+    type_usage: 0.3
+```
+
+**Force rebuild via CLI:**
+
+```bash
+python -m scatter --graph --search-scope . --rebuild-graph
+```
+
+### JSON Output Format
+
+The `--output-format json` output includes:
+
+```json
+{
+  "summary": {
+    "node_count": 8,
+    "edge_count": 17,
+    "cycle_count": 0,
+    "components": 2
+  },
+  "top_coupled": [
+    {
+      "project": "GalaxyWorks.Data",
+      "coupling_score": 9.5,
+      "fan_in": 4,
+      "fan_out": 0,
+      "instability": 0.0
+    }
+  ],
+  "cycles": [],
+  "metrics": {
+    "GalaxyWorks.Data": {
+      "fan_in": 4, "fan_out": 0,
+      "instability": 0.0,
+      "coupling_score": 9.5,
+      "afferent_coupling": 8,
+      "efferent_coupling": 0,
+      "shared_db_density": 1.0,
+      "type_export_count": 4,
+      "consumer_count": 4
+    }
+  },
+  "graph": { "nodes": { ... }, "edges": [ ... ] }
+}
+```
+
+CSV output is not supported for graph mode — use JSON for programmatic consumption or console for human-readable output.
+
+---
+
 ## Parallel Processing
 
 Scatter uses Python's `multiprocessing` module to parallelize file discovery and content analysis. This is enabled by default.
@@ -598,6 +742,15 @@ search:
     - "*/bin/*"                           # NOTE: this list REPLACES the defaults,
     - "*/obj/*"                           #       so re-list any defaults you want to keep
     - "*/node_modules/*"
+
+graph:
+  cache_dir: null                           # null = default ({search_scope}/.scatter/)
+  invalidation: git                         # "git" (check code file changes) or "mtime"
+  coupling_weights:                         # optional — override default edge type weights
+    project_reference: 1.0
+    sproc_shared: 0.8
+    namespace_usage: 0.5
+    type_usage: 0.3
 
 multiprocessing:
   disabled: false
@@ -685,12 +838,14 @@ Use `--app-config-path` to verify if consumer projects correspond to known batch
 | `--stored-procedure NAME` | Stored procedure analysis |
 | `--sow "TEXT"` | Impact analysis (inline) |
 | `--sow-file PATH` | Impact analysis (from file) |
+| `--graph` | Dependency graph analysis |
 
 ### Common Options
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--search-scope PATH` | (required) | Root directory to search for consumers |
+| `--rebuild-graph` | `false` | Force graph rebuild, ignore cache (graph mode) |
 | `--output-format FORMAT` | `console` | Output format: `console`, `csv`, `json` |
 | `--output-file PATH` | — | Output file path (required for csv/json) |
 | `--class-name NAME` | — | Filter by class/type name |
@@ -788,6 +943,9 @@ python -m pytest test_impact_analysis.py -v
 # Run only coupling metrics + cycle detection tests
 python -m pytest test_coupling.py -v
 
+# Run only graph caching + persistence tests
+python -m pytest test_graph_cache.py -v
+
 # Run only multiprocessing tests
 python -m pytest test_multiprocessing_phase1.py -v
 
@@ -800,7 +958,7 @@ python -m pytest -q
 
 ### Test Suite Overview
 
-The test suite includes **203 tests** across 9 test files:
+The test suite includes **231 tests** across 10 test files:
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
@@ -810,6 +968,7 @@ The test suite includes **203 tests** across 9 test files:
 | `test_multiprocessing_phase1.py` | 37 | File discovery, consumer analysis, backwards compatibility |
 | `test_phase2_3_project_mapping.py` | 25 | Batch project mapping, parallel orchestration, sproc integration |
 | `test_impact_analysis.py` | 53 | Impact analysis: data models, CLI args, work request parsing, transitive tracing, risk assessment, coupling narrative, impact narrative, complexity estimate, reporters, end-to-end |
+| `test_graph_cache.py` | 28 | Graph caching (save/load roundtrip, atomic writes, cache invalidation — git + mtime, scope validation, `load_and_validate` single-pass), `GraphConfig`, CLI arg parsing, integration |
 | `test_hybrid_git.py` | 7 | LLM-enhanced git diff analysis |
 | `test_phase21_overhead.py` | — | Phase 2.1 overhead measurement |
 | `test_realistic_workload.py` | 1 | Scalability benchmark with synthetic codebases |
@@ -1020,11 +1179,14 @@ scatter/
 │   ├── graph_builder.py       # Single-pass O(P+F) graph construction
 │   └── impact_analyzer.py     # Impact analysis orchestrator + transitive tracing
 ├── scanners/                  # Type, project, sproc scanners
+├── store/
+│   └── graph_cache.py         # save/load/validate graph cache (atomic writes, git invalidation)
 ├── reports/
 │   ├── console_reporter.py    # print_console_report() + print_impact_report()
 │   ├── json_reporter.py       # write_json_report() + write_impact_json_report()
-│   └── csv_reporter.py        # write_csv_report() + write_impact_csv_report()
-└── __main__.py                # CLI entry point with 4-mode dispatch
+│   ├── csv_reporter.py        # write_csv_report() + write_impact_csv_report()
+│   └── graph_reporter.py      # print_graph_report() + write_graph_json_report()
+└── __main__.py                # CLI entry point with 5-mode dispatch
 ```
 
 ---
@@ -1297,7 +1459,30 @@ assert graph2.node_count == graph.node_count
 assert graph2.edge_count == graph.edge_count
 ```
 
-The `to_dict()` / `from_dict()` roundtrip is lossless — all nodes, edges, evidence, and metadata survive serialization. `Path` objects are serialized as strings and reconstructed on deserialization. This enables graph caching: build once, persist to disk, reload in subsequent runs without rescanning the filesystem.
+The `to_dict()` / `from_dict()` roundtrip is lossless — all nodes, edges, evidence, and metadata survive serialization. `Path` objects are serialized as strings and reconstructed on deserialization.
+
+#### Graph Cache API
+
+For production use, the `scatter.store.graph_cache` module provides managed persistence with cache invalidation:
+
+```python
+from pathlib import Path
+from scatter.store.graph_cache import save_graph, load_and_validate, get_default_cache_path
+from scatter.analyzers.graph_builder import build_dependency_graph
+
+search_scope = Path("/path/to/repo")
+cache_path = get_default_cache_path(search_scope)  # {scope}/.scatter/graph_cache.json
+
+# Try loading from cache (single-pass: read, validate, deserialize)
+graph = load_and_validate(cache_path, search_scope, invalidation="git")
+
+if graph is None:
+    # Cache miss or stale — rebuild
+    graph = build_dependency_graph(search_scope)
+    save_graph(graph, cache_path, search_scope)  # atomic write
+```
+
+`save_graph()` writes atomically (temp file + `os.replace()`) and stores metadata including the git HEAD hash. `load_and_validate()` reads the file once, checks the version, validates that the `search_scope` matches, checks freshness via git or mtime, and deserializes the graph — all in a single pass.
 
 #### Working with the Sample Projects
 
@@ -1410,9 +1595,10 @@ The sample projects have zero circular dependencies.
 - **Configuration System** — YAML config files (`.scatter.yaml`, `~/.scatter/config.yaml`) with layered precedence, environment variable support, and AI task router for provider selection
 - **Dependency Graph (Phase 1)** — Graph model (`ProjectNode`, `DependencyEdge`, `DependencyGraph`) with per-node edge indexes, single-pass O(P+F) builder, BFS traversal, connected components, JSON serialization roundtrip, and 46 tests
 - **Coupling Metrics & Cycle Detection (Phase 2)** — `ProjectMetrics` (fan_in/out, instability index, coupling_score with configurable weights, shared_db_density), iterative Tarjan's SCC cycle detection with edge type filtering, shortest-cycle extraction via BFS predecessor map, `rank_by_coupling()`, and 25 tests
+- **Graph Persistence & CLI (Phase 3)** — `--graph` CLI mode, atomic graph caching with git-based invalidation (`.cs`/`.csproj` change detection), mtime fallback, scope validation, `load_and_validate()` single-pass API, `GraphConfig` in `.scatter.yaml`, graph reporters (`print_graph_report()`, `write_graph_json_report()`), `--rebuild-graph` flag, and 28 tests
 
 ### Planned
 
-- **Dependency Graph (Phase 3-6)** — Git-based cache invalidation + CLI integration, database dependency mapping, label propagation clustering, domain boundary analysis, graph reporters + health dashboard
+- **Dependency Graph (Phase 4-6)** — Database dependency mapping, label propagation clustering, domain boundary analysis, graph health dashboard
 - **Reporting & Extraction Planning** — Enhanced reporting with visualization and extraction recommendations
 - **CI/CD Integration** — Pipeline-aware analysis with automated impact checks
