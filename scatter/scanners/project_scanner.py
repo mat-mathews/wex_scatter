@@ -2,7 +2,7 @@
 import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 
 def find_project_file_on_disk(cs_file_abs_path: Path) -> Optional[Path]:
@@ -69,3 +69,63 @@ def derive_namespace(csproj_path: Path) -> Optional[str]:
     except Exception as e:
         logging.error(f"Unexpected error deriving namespace from {csproj_path}: {e}")
         return None
+
+
+def parse_csproj_all_references(csproj_path: Path) -> Optional[Dict[str, Any]]:
+    """Parse a .csproj file and extract all metadata.
+
+    Returns dict with keys:
+    - 'project_references': List[str]  — Include attribute values from <ProjectReference>
+    - 'root_namespace': Optional[str]
+    - 'assembly_name': Optional[str]
+    - 'target_framework': Optional[str]
+    - 'output_type': Optional[str]
+    - 'project_style': str  — "sdk" or "framework"
+
+    Returns None if file doesn't exist or can't be parsed.
+    """
+    if not csproj_path.is_file():
+        logging.warning(f"Csproj file not found: {csproj_path}")
+        return None
+
+    try:
+        tree = ET.parse(csproj_path)
+        root = tree.getroot()
+    except (ET.ParseError, OSError) as e:
+        logging.warning(f"Could not parse {csproj_path}: {e}")
+        return None
+
+    msb_ns = {"msb": "http://schemas.microsoft.com/developer/msbuild/2003"}
+
+    # Detect project style: SDK-style has Sdk attribute on <Project> element
+    project_style = "sdk" if root.get("Sdk") else "framework"
+
+    def _find_text(tag: str) -> Optional[str]:
+        """Find element text, trying without and with MSBuild namespace."""
+        elem = root.find(f".//{tag}")
+        if elem is None:
+            elem = root.find(f".//msb:{tag}", msb_ns)
+        if elem is not None and elem.text:
+            return elem.text.strip()
+        return None
+
+    # Extract ProjectReferences
+    refs: List[str] = []
+    for ref in root.findall(".//ProjectReference"):
+        include = ref.get("Include")
+        if include:
+            refs.append(include.replace("\\", "/"))
+    if not refs:
+        for ref in root.findall(".//msb:ProjectReference", msb_ns):
+            include = ref.get("Include")
+            if include:
+                refs.append(include.replace("\\", "/"))
+
+    return {
+        "project_references": refs,
+        "root_namespace": _find_text("RootNamespace"),
+        "assembly_name": _find_text("AssemblyName"),
+        "target_framework": _find_text("TargetFramework") or _find_text("TargetFrameworkVersion"),
+        "output_type": _find_text("OutputType"),
+        "project_style": project_style,
+    }

@@ -155,7 +155,8 @@ python scatter.py \
 9. [Output Formats](#output-formats)
 10. [Testing](#testing)
 11. [Technical Details](#technical-details)
-12. [Roadmap](#roadmap)
+12. [Dependency Graph](#dependency-graph) — Architecture, performance, construction pipeline, programmatic API
+13. [Roadmap](#roadmap)
 
 ---
 
@@ -796,11 +797,12 @@ python -m pytest -q
 
 ### Test Suite Overview
 
-The test suite includes **132 tests** across 7 test files:
+The test suite includes **178 tests** across 8 test files:
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
 | `test_config.py` | 24 | Config loading, YAML precedence, env vars, CLI overrides, AI router (caching, task overrides, unknown providers) |
+| `test_graph.py` | 46 | Graph data structures, construction, traversal, serialization, `.csproj` parsing, integration with sample projects |
 | `test_multiprocessing_phase1.py` | 37 | File discovery, consumer analysis, backwards compatibility |
 | `test_phase2_3_project_mapping.py` | 25 | Batch project mapping, parallel orchestration, sproc integration |
 | `test_impact_analysis.py` | 53 | Impact analysis: data models, CLI args, work request parsing, transitive tracing, risk assessment, coupling narrative, impact narrative, complexity estimate, reporters, end-to-end |
@@ -994,6 +996,7 @@ scatter/
 ├── config.py              # YAML config loading with layered precedence
 ├── core/
 │   ├── models.py          # AnalysisTarget, EnrichedConsumer, TargetImpact, ImpactReport
+│   ├── graph.py           # ProjectNode, DependencyEdge, DependencyGraph (pure data structure)
 │   └── parallel.py        # Multiprocessing infrastructure
 ├── ai/
 │   ├── base.py            # AIProvider protocol, AITaskType enum
@@ -1009,6 +1012,7 @@ scatter/
 ├── analyzers/
 │   ├── consumer_analyzer.py   # Core find_consumers() pipeline
 │   ├── git_analyzer.py        # Git branch diff analysis
+│   ├── graph_builder.py       # Single-pass O(P+F) graph construction
 │   └── impact_analyzer.py     # Impact analysis orchestrator + transitive tracing
 ├── scanners/                  # Type, project, sproc scanners
 ├── reports/
@@ -1017,6 +1021,304 @@ scatter/
 │   └── csv_reporter.py        # write_csv_report() + write_impact_csv_report()
 └── __main__.py                # CLI entry point with 4-mode dispatch
 ```
+
+---
+
+## Dependency Graph
+
+The dependency graph is a persistent, in-memory data structure that captures the full project-to-project dependency topology of a .NET codebase. It replaces repeated calls to `find_consumers()` (each of which re-scans the filesystem) with a single upfront construction pass, after which all queries — consumers, dependencies, transitive impact, connected components — are answered from the graph in constant or linear time relative to the graph size, not the filesystem.
+
+### Architecture
+
+The graph follows a strict **Single Responsibility Principle** separation: `DependencyGraph` in `scatter/core/graph.py` is a pure data structure (mutation, query, traversal, serialization only), while all construction logic lives in `scatter/analyzers/graph_builder.py`. Analysis algorithms (cycle detection, coupling metrics, clustering) are standalone functions in their respective analyzer modules — they are never methods on the graph itself.
+
+#### Data Structures
+
+**`ProjectNode`** — A dataclass representing a single `.csproj` project:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `path` | `Path` | Absolute path to the `.csproj` file |
+| `name` | `str` | Project name (filename stem, e.g. `GalaxyWorks.Data`) |
+| `namespace` | `Optional[str]` | Root namespace from `<RootNamespace>`, `<AssemblyName>`, or filename |
+| `framework` | `Optional[str]` | Target framework (e.g. `net8.0`, `v4.7.2`) |
+| `project_style` | `str` | `"sdk"` or `"framework"` — detected from `<Project Sdk="...">` attribute |
+| `output_type` | `Optional[str]` | `Library`, `Exe`, etc. |
+| `file_count` | `int` | Number of `.cs` files belonging to this project |
+| `type_declarations` | `List[str]` | Sorted list of type names declared in this project's `.cs` files |
+| `sproc_references` | `List[str]` | Sorted list of stored procedure names referenced in string literals |
+
+Design note: `file_count` stores a count, not a `List[Path]` of file paths — this prevents unbounded memory growth in large codebases (thousands of `.cs` files per project would bloat the serialized graph).
+
+**`DependencyEdge`** — A directed edge between two projects:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `source` | `str` | Name of the project that *depends on* the target |
+| `target` | `str` | Name of the project being depended upon |
+| `edge_type` | `str` | One of `"project_reference"`, `"namespace_usage"`, `"type_usage"` |
+| `weight` | `float` | Strength of the dependency (1.0 for project refs, evidence count for others) |
+| `evidence` | `Optional[List[str]]` | File paths or `file:TypeName` pairs showing where the dependency occurs |
+| `evidence_total` | `int` | Total evidence count (may exceed `len(evidence)` due to capping) |
+
+Evidence is capped at `MAX_EVIDENCE_ENTRIES = 10` entries per edge. If an edge has 500 evidence entries (e.g., a utility project referenced from 500 `.cs` files), only the first 10 are stored and `evidence_total` records the true count of 500. This bounds serialization size while preserving the magnitude signal.
+
+**`DependencyGraph`** — The container holding all nodes and edges with four internal indexes:
+
+```
+_nodes:    Dict[str, ProjectNode]        # name → node (O(1) lookup)
+_outgoing: Dict[str, List[DependencyEdge]]  # source → edges leaving this node
+_incoming: Dict[str, List[DependencyEdge]]  # target → edges arriving at this node
+_forward:  Dict[str, Set[str]]           # source → set of dependency names (adjacency)
+_reverse:  Dict[str, Set[str]]           # target → set of consumer names (reverse adjacency)
+```
+
+The dual index design (`_outgoing`/`_incoming` for full edge data, `_forward`/`_reverse` for fast adjacency checks) means every query — "what does project X depend on?", "what consumes project X?", "what are all edges between A and B?" — runs in O(degree) time without scanning all edges in the graph.
+
+#### Edge Types
+
+The graph captures three categories of inter-project dependency:
+
+| Edge Type | Source | Meaning | Weight |
+|-----------|--------|---------|--------|
+| `project_reference` | `<ProjectReference Include="...">` in `.csproj` | Explicit build-time dependency | 1.0 (always) |
+| `namespace_usage` | `using Namespace;` in `.cs` matching another project's root namespace | Import-level coupling | Count of `.cs` files with that `using` |
+| `type_usage` | Regex match of a type name declared in project B found in project A's source | Code-level coupling (class/interface usage) | Count of `file:TypeName` matches |
+
+A single pair of projects may have multiple edges (e.g., A has a `project_reference` to B *and* a `namespace_usage` edge *and* a `type_usage` edge). The `get_edges_between(a, b)` method returns all of them.
+
+### Performance and Big O
+
+#### Graph Construction — `build_dependency_graph()`
+
+Construction is a **single-pass O(P + F)** algorithm where P = number of `.csproj` files and F = number of `.cs` files:
+
+| Step | Operation | Complexity |
+|------|-----------|------------|
+| 1 | Discover `.csproj` files (parallel glob) | O(dirs) |
+| 2 | Parse each `.csproj` — XML parse, extract metadata | O(P × avg_xml_size) |
+| 3 | Discover `.cs` files (parallel glob) | O(dirs) |
+| 4 | Build reverse directory index, map `.cs` → parent project | O(F × P) worst-case, O(F × log P) typical |
+| 5 | Read each `.cs` file, extract types + sprocs + usings | O(F × avg_file_size) |
+| 6 | Build `project_reference` edges (resolve Include paths) | O(P × avg_refs) |
+| 7 | Build `namespace_usage` edges (match usings to project namespaces) | O(P × U) where U = unique usings per project |
+| 8 | Build `type_usage` edges (scan for type names across projects) | O(F × T) where T = total types across all projects |
+
+Step 8 (`type_usage` edge construction) is the most expensive — for each `.cs` file, it checks every type name declared in other projects using regex word-boundary search. For a codebase with 1,000 `.cs` files and 500 total type declarations, this is ~500,000 regex checks. This is acceptable for typical enterprise codebases but is the primary candidate for optimization in future phases (planned: inverted type index).
+
+**Contrast with per-query scanning:** Without the graph, each call to `find_consumers("ProjectX")` rescans the entire filesystem — discovering `.csproj` files, parsing XML, scanning `.cs` files for namespace and class usage. For N target projects, this is O(N × (P + F)). The graph pays O(P + F) once and answers all N queries from memory.
+
+#### Graph Queries
+
+| Operation | Method | Complexity |
+|-----------|--------|------------|
+| Get a node by name | `get_node(name)` | O(1) dict lookup |
+| Get all nodes | `get_all_nodes()` | O(N) |
+| Direct dependencies | `get_dependencies(name)` | O(out-degree) |
+| Direct consumers | `get_consumers(name)` | O(in-degree) |
+| Outgoing edges (with full edge data) | `get_edges_from(name)` | O(out-degree) |
+| Incoming edges (with full edge data) | `get_edges_to(name)` | O(in-degree) |
+| All edges for a node | `get_edges_for(name)` | O(degree) |
+| Edges between two nodes (both directions) | `get_edges_between(a, b)` | O(degree of a + degree of b) |
+| Transitive consumers (BFS) | `get_transitive_consumers(name, max_depth)` | O(V + E) within depth bound |
+| Transitive dependencies (BFS) | `get_transitive_dependencies(name, max_depth)` | O(V + E) within depth bound |
+| Connected components | `connected_components` property | O(V + E) full BFS |
+| Node count | `node_count` property | O(1) |
+| Edge count | `edge_count` property | O(N) — iterates outgoing lists |
+| All edges (flat list) | `all_edges` property | O(E) |
+
+All traversal methods use a `visited` set to ensure cycle safety — even if the graph contains cycles (A → B → C → A), BFS never visits the same node twice.
+
+#### Serialization
+
+| Operation | Method | Complexity |
+|-----------|--------|------------|
+| Export to dict | `to_dict()` | O(V + E) |
+| Import from dict | `DependencyGraph.from_dict(data)` | O(V + E) |
+
+The `to_dict()` / `from_dict()` roundtrip produces JSON-compatible dicts. All `Path` objects are serialized as strings. The graph can be persisted to disk as JSON and reconstructed without rescanning the filesystem.
+
+### Construction Pipeline
+
+`build_dependency_graph()` in `scatter/analyzers/graph_builder.py` orchestrates a six-step pipeline:
+
+```
+search_scope (Path)
+  │
+  ├─ Step 1: Discover all .csproj files (parallel glob)
+  │    └─ Filter by exclude_patterns (default: */bin/*, */obj/*, */temp_test_data/*)
+  │
+  ├─ Step 2: Parse each .csproj
+  │    ├─ parse_csproj_all_references() → project_references, framework, style, output_type
+  │    └─ derive_namespace() → root namespace (RootNamespace > AssemblyName > filename stem)
+  │
+  ├─ Step 3: Discover all .cs files (parallel glob)
+  │    ├─ Filter by exclude_patterns
+  │    └─ Map each .cs to parent project via reverse directory index
+  │         (index sorted deepest-first so nested projects match before parents)
+  │
+  ├─ Step 4: For each project's .cs files, extract:
+  │    ├─ Type declarations (class, struct, interface, enum names)
+  │    ├─ Sproc references (sp_/usp_ in string literals)
+  │    └─ Using statements (namespace imports)
+  │
+  ├─ Step 5: Build nodes (one ProjectNode per .csproj with aggregated metadata)
+  │
+  └─ Step 6: Build edges
+       ├─ 6a: project_reference — resolve <ProjectReference Include="..."> paths
+       ├─ 6b: namespace_usage — match using statements to project namespaces
+       └─ 6c: type_usage — scan .cs content for type names from other projects
+```
+
+**`.csproj` parsing** handles both SDK-style projects (`<Project Sdk="Microsoft.NET.Sdk">`) and legacy Framework-style projects (with MSBuild XML namespace `http://schemas.microsoft.com/developer/msbuild/2003`). The `parse_csproj_all_references()` function tries XPath queries without namespace first, then with the MSBuild namespace prefix, ensuring both styles are parsed correctly.
+
+**Reverse directory index** maps `.cs` files to their parent `.csproj` by building a sorted list of `(project_directory, project_name)` pairs, sorted deepest-first by path depth. For each `.cs` file, it walks up the parent chain and returns the first matching project directory. This handles nested project structures where a `.cs` file under `src/Lib/SubLib/` should match the `SubLib.csproj` in that directory, not the `Lib.csproj` one level up.
+
+**Exclude patterns** default to `["*/bin/*", "*/obj/*", "*/temp_test_data/*"]` and use `fnmatch.fnmatch()` for glob-style matching. They can be overridden via the `exclude_patterns` parameter or through `.scatter.yaml` config.
+
+### Programmatic API
+
+#### Building a Graph
+
+```python
+from pathlib import Path
+from scatter.analyzers.graph_builder import build_dependency_graph
+
+# Build the graph from a codebase directory
+graph = build_dependency_graph(
+    search_scope=Path("/path/to/dotnet/solution"),
+    max_workers=8,              # parallel workers (default: CPU cores + 4)
+    chunk_size=75,              # directories per parallel batch
+    disable_multiprocessing=False,
+    exclude_patterns=["*/bin/*", "*/obj/*", "*/test-fixtures/*"],
+)
+
+print(f"Discovered {graph.node_count} projects, {graph.edge_count} edges")
+```
+
+#### Querying the Graph
+
+```python
+# Get a specific project node
+node = graph.get_node("GalaxyWorks.Data")
+print(f"Project: {node.name}")
+print(f"Namespace: {node.namespace}")
+print(f"Framework: {node.framework}")
+print(f"Style: {node.project_style}")
+print(f"Files: {node.file_count}")
+print(f"Types: {node.type_declarations}")
+print(f"Sprocs: {node.sproc_references}")
+
+# Find direct consumers (who depends on this project?)
+consumers = graph.get_consumers("GalaxyWorks.Data")
+for c in consumers:
+    print(f"  Consumer: {c.name} ({c.framework})")
+
+# Find direct dependencies (what does this project depend on?)
+deps = graph.get_dependencies("GalaxyWorks.BatchProcessor")
+for d in deps:
+    print(f"  Depends on: {d.name}")
+
+# Get detailed edge information between two projects
+edges = graph.get_edges_between("GalaxyWorks.WebPortal", "GalaxyWorks.Data")
+for edge in edges:
+    print(f"  {edge.source} → {edge.target} [{edge.edge_type}] weight={edge.weight}")
+    if edge.evidence:
+        for ev in edge.evidence:
+            print(f"    Evidence: {ev}")
+```
+
+#### Transitive Traversal
+
+```python
+# Find all transitive consumers of a core library (up to 3 hops)
+transitive = graph.get_transitive_consumers("GalaxyWorks.Data", max_depth=3)
+for node, depth in transitive:
+    print(f"  {'  ' * depth}{node.name} (depth {depth})")
+
+# Example output for the sample projects:
+#   GalaxyWorks.WebPortal (depth 1)
+#   MyGalaxyConsumerApp (depth 1)
+#   MyGalaxyConsumerApp2 (depth 1)
+#     GalaxyWorks.BatchProcessor (depth 2)
+
+# Find all transitive dependencies (what does this project ultimately rely on?)
+deps = graph.get_transitive_dependencies("GalaxyWorks.BatchProcessor", max_depth=3)
+for node, depth in deps:
+    print(f"  {'  ' * depth}{node.name} (depth {depth})")
+
+# Example output:
+#   GalaxyWorks.Data (depth 1)
+#   GalaxyWorks.WebPortal (depth 1)
+```
+
+Both traversal methods use BFS with a visited set, guaranteeing cycle safety. If the graph contains A → B → C → A, the BFS visits each node exactly once and terminates.
+
+#### Connected Components
+
+```python
+# Find clusters of related projects
+components = graph.connected_components
+print(f"Found {len(components)} connected component(s)")
+for i, component in enumerate(components):
+    print(f"  Component {i+1}: {component}")
+
+# For the sample projects (with namespace/type edges connecting everything):
+#   Component 1: ['GalaxyWorks.BatchProcessor', 'GalaxyWorks.Data', 'GalaxyWorks.WebPortal',
+#                  'MyDotNetApp', 'MyDotNetApp.Consumer', 'MyDotNetApp2.Exclude',
+#                  'MyGalaxyConsumerApp', 'MyGalaxyConsumerApp2']
+```
+
+Components are sorted largest-first and alphabetically within each component. They treat all edges as undirected — if A → B exists, A and B are in the same component regardless of direction.
+
+#### Serialization and Persistence
+
+```python
+import json
+
+# Serialize to JSON-compatible dict
+data = graph.to_dict()
+
+# Persist to disk
+with open("graph_cache.json", "w") as f:
+    json.dump(data, f, indent=2)
+
+# Reconstruct from disk (no filesystem scanning needed)
+with open("graph_cache.json") as f:
+    data = json.load(f)
+graph2 = DependencyGraph.from_dict(data)
+
+assert graph2.node_count == graph.node_count
+assert graph2.edge_count == graph.edge_count
+```
+
+The `to_dict()` / `from_dict()` roundtrip is lossless — all nodes, edges, evidence, and metadata survive serialization. `Path` objects are serialized as strings and reconstructed on deserialization. This enables graph caching: build once, persist to disk, reload in subsequent runs without rescanning the filesystem.
+
+#### Working with the Sample Projects
+
+The repository's 8 sample projects produce this graph:
+
+```
+Nodes (8):
+  GalaxyWorks.Data          (sdk, net8.0, Library, 4 types, 2 sprocs)
+  GalaxyWorks.WebPortal     (framework, v4.7.2, Library)
+  GalaxyWorks.BatchProcessor (framework, v4.7.2, Exe)
+  MyDotNetApp               (framework, net8.0, Exe)
+  MyDotNetApp.Consumer      (sdk, net8.0, Exe)
+  MyDotNetApp2.Exclude      (sdk, net8.0, Exe)
+  MyGalaxyConsumerApp       (sdk, net8.0, Exe)
+  MyGalaxyConsumerApp2      (sdk, net8.0, Exe)
+
+project_reference edges (6):
+  GalaxyWorks.WebPortal       → GalaxyWorks.Data
+  GalaxyWorks.BatchProcessor  → GalaxyWorks.Data
+  GalaxyWorks.BatchProcessor  → GalaxyWorks.WebPortal
+  MyDotNetApp.Consumer        → MyDotNetApp
+  MyGalaxyConsumerApp         → GalaxyWorks.Data
+  MyGalaxyConsumerApp2        → GalaxyWorks.Data
+```
+
+Additional `namespace_usage` and `type_usage` edges are generated automatically based on `using` statements and type references found in the `.cs` files.
 
 ---
 
@@ -1029,9 +1331,10 @@ scatter/
 - **Modularization** — Extracted into `scatter/` package with clean module boundaries
 - **Impact Analysis** — AI-powered work request parsing, transitive blast radius tracing, risk assessment, coupling narrative, complexity estimation, and impact reporting
 - **Configuration System** — YAML config files (`.scatter.yaml`, `~/.scatter/config.yaml`) with layered precedence, environment variable support, and AI task router for provider selection
+- **Dependency Graph (Phase 1)** — Graph model (`ProjectNode`, `DependencyEdge`, `DependencyGraph`) with per-node edge indexes, single-pass O(P+F) builder, BFS traversal, connected components, JSON serialization roundtrip, and 46 tests
 
 ### Planned
 
-- **Dependency Graph** — Persistent graph model with cycle detection, coupling metrics, and domain analysis
+- **Dependency Graph (Phase 2-6)** — Tarjan's SCC cycle detection, configurable coupling metrics, git-based cache invalidation, label propagation clustering, domain boundary analysis
 - **Reporting & Extraction Planning** — Enhanced reporting with visualization and extraction recommendations
 - **CI/CD Integration** — Pipeline-aware analysis with automated impact checks
