@@ -474,8 +474,9 @@ PHASE 5: DOMAIN BOUNDARY DETECTION ✅ COMPLETED (MEDIUM PRIORITY)
 - [x] Create test_domain.py — 15 tests (clustering, label propagation, determinism, naming, feasibility scoring, API surface)
 
 PHASE 6: GRAPH REPORTERS + HEALTH DASHBOARD (MEDIUM PRIORITY)
-- [ ] Create scatter/reports/graph_reporter.py — console, JSON, Mermaid output
-      print_graph_summary(), write_graph_json(), generate_mermaid() — all free functions.
+- [x] Create scatter/reports/graph_reporter.py — console + JSON output (done in Phase 4/5 merge)
+      print_graph_report(), build_graph_json(), write_graph_json_report() — all free functions.
+- [ ] Add Mermaid output to graph_reporter.py — generate_mermaid() free function.
 - [ ] Create scatter/analyzers/health_analyzer.py — HealthDashboard dataclass
       compute_health_dashboard() aggregates metrics, cycles, clusters, DB hotspots.
 - [ ] Add cluster member names to graph console output (top 5 members inline per cluster)
@@ -494,7 +495,7 @@ DEFERRED TO FUTURE INITIATIVE:
 - [ ] Graph query DSL — ad-hoc traversal language, premature before basic graph is proven
 - [ ] Incremental graph updates — smart cache invalidation makes full rebuilds acceptable for v1
 
-INITIATIVE 5 TESTING SUMMARY (145 tests completed across Phases 1-5):
+INITIATIVE 5 TESTING SUMMARY (139 tests completed across Phases 1-5, all merged to main):
 - [x] test_graph.py — 46 tests (Phase 1: data models, graph ops, builder, csproj parser, dir index)
 - [x] test_coupling.py — 25 tests (Phase 2: metrics, custom weights, Tarjan's SCC, shortest cycles)
 - [x] test_graph_cache.py — 21 tests (Phase 3: save/load, smart git invalidation, mtime fallback)
@@ -796,19 +797,21 @@ PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-04)
 ============================================================================
 
 CODEBASE STATE (updated 2026-03-08):
-  - scatter/ package with 23 modules across core/, scanners/, analyzers/, ai/, reports/, compat/, store/
+  - scatter/ package with 25 modules across core/, scanners/, analyzers/, ai/, reports/, compat/, store/
   - scatter.py: 10-line thin entry point (delegates to scatter/__main__.py via runpy)
-  - scatter/__main__.py: ~870 lines (CLI argument parsing + 5-mode dispatch + config loading)
+  - scatter/__main__.py: ~800 lines (CLI argument parsing + 5-mode dispatch + config loading)
   - scatter/config.py: YAML config system with layered precedence (AIConfig, GraphConfig, DbConfig)
   - scatter/ai/router.py: AI task router with lazy provider creation and caching
   - scatter/_legacy.py: ~150 lines (backward-compat AI/Gemini wrappers)
+  - scatter/scanners/db_scanner.py: DB dependency detection (sprocs, DbSet, DbContext, SQL, conn strings)
   - scatter/analyzers/domain_analyzer.py: domain boundary detection + extraction feasibility
-  - 239 tests across 10 test files, all passing
+  - scatter/reports/graph_reporter.py: graph console + JSON output with metrics, cycles, clusters
+  - 278 tests across 12 test files, all passing
   - Benchmarks exist for Phase 1 file discovery and Phase 2.1 content analysis
   - AI integration: Google Gemini via AIProvider protocol + AIRouter
   - Config: .scatter.yaml (repo) + ~/.scatter/config.yaml (user) + env vars + CLI
   - Output formats: console, CSV, JSON
-  - Dependency graph: persistent, cached, with coupling metrics + cycle detection + domain clusters
+  - Dependency graph: persistent, cached, with coupling metrics + cycle detection + domain clusters + DB deps
 
 COMPLETED (v1.x):
   Initiative 1 — Multiprocessing Overhaul:
@@ -820,7 +823,7 @@ COMPLETED (v1.x):
   ✅ Phase 2.3: Project mapping parallelization (map_cs_to_projects_parallel)
   ✅ Configuration: --disable-multiprocessing, --max-workers, --chunk-size,
      --cs-analysis-chunk-size, --csproj-analysis-chunk-size
-  ✅ Testing: 239 tests passing (37 phase1 + 25 phase2.3 + 7 hybrid git + 53 impact + 24 config + 46 graph + 25 coupling + 21 cache + 15 domain — note: some tests across files)
+  ✅ Testing: 278 tests passing (37 phase1 + 25 phase2.3 + 7 hybrid git + 53 impact + 24 config + 46 graph + 25 coupling + 21 cache + 32 db_scanner + 15 domain — note: some tests across files)
   ✅ Adaptive worker scaling via estimate_file_count()
   ✅ Benchmarking infrastructure (benchmark_framework.py, benchmark_analysis.py)
   ✅ Scalability test data (20-project and 100-project synthetic codebases)
@@ -875,7 +878,7 @@ RECOMMENDED EXECUTION ORDER:
   2. ✅ DONE — Initiative 2 Hybrid Git Analysis complete
   3. ✅ DONE — Initiative 3: Modularization (all 5 phases complete)
   4. ✅ DONE — Initiative 4: CSE Impact Analysis & AI Enrichment complete (53 new tests)
-  5. ✅ DONE — Initiative 5: Dependency graph — Phases 1-5 complete (139 tests), Phase 6 remaining
+  5. ✅ DONE — Initiative 5: Dependency graph — Phases 1-5 complete and merged (139 tests), Phase 6 remaining
   6. Initiative 6 Phase 1: Report quality fixes (HIGH — correctness issues, low effort)
   7. Initiative 6 Phase 2: Filter pipeline visibility (HIGH — debuggability, low effort)
   8. Initiative 6 Phase 3: Blast radius tree view (HIGH — core value prop)
@@ -898,7 +901,7 @@ KEY FINDINGS:
   5. Phase 5 optimization (pool reuse, memory) deferred to v2.0 modularization
      where it can be done properly with a shared pool across the module.
   6. Initiatives 3 & 4 fully complete — config system, AI router, impact analysis all shipped.
-  7. 239 tests across 10 files, all passing.
+  7. 278 tests across 12 files, all passing.
   8. Initiative 5 Phases 1-5 complete (139 tests) — graph model, coupling metrics, cycle detection,
      graph persistence, DB dependency mapping, domain boundary detection. Phase 6 (reporters) remaining.
   9. Report evaluation (docs/OUTPUT_REPORT_EVALUATION.md) identified critical DX issues:
