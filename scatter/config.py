@@ -25,6 +25,12 @@ class AIConfig:
 
 
 @dataclass
+class DbConfig:
+    sproc_prefixes: List[str] = field(default_factory=lambda: ["sp_", "usp_"])
+    include_db_edges: bool = True  # add sproc_shared edges to graph
+
+
+@dataclass
 class GraphConfig:
     cache_dir: Optional[str] = None  # override default cache location
     rebuild: bool = False  # force rebuild (ignore cache)
@@ -36,6 +42,7 @@ class GraphConfig:
 class ScatterConfig:
     ai: AIConfig = field(default_factory=AIConfig)
     graph: GraphConfig = field(default_factory=GraphConfig)
+    db: DbConfig = field(default_factory=DbConfig)
     max_depth: int = 2
     disable_multiprocessing: bool = False
     max_workers: Optional[int] = None
@@ -98,6 +105,13 @@ def _apply_yaml(config: ScatterConfig, data: Dict[str, Any]) -> None:
                 str(k): float(v) for k, v in graph["coupling_weights"].items()
             }
 
+    db = data.get("db", {})
+    if isinstance(db, dict):
+        if "sproc_prefixes" in db and isinstance(db["sproc_prefixes"], list):
+            config.db.sproc_prefixes = [str(p) for p in db["sproc_prefixes"]]
+        if "include_db_edges" in db:
+            config.db.include_db_edges = bool(db["include_db_edges"])
+
     mp = data.get("multiprocessing", {})
     if isinstance(mp, dict):
         if "disabled" in mp:
@@ -144,6 +158,10 @@ def _apply_cli_overrides(config: ScatterConfig, overrides: Dict[str, Any]) -> No
             config.graph.cache_dir = str(value) if value is not None else None
         elif key == "graph.invalidation":
             config.graph.invalidation = str(value)
+        elif key == "db.sproc_prefixes":
+            config.db.sproc_prefixes = list(value)
+        elif key == "db.include_db_edges":
+            config.db.include_db_edges = bool(value)
 
 
 def load_config(

@@ -5,10 +5,12 @@ Uses git-based invalidation (preferred) with mtime fallback.
 """
 import json
 import logging
+import os
 import subprocess
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from scatter.core.graph import DependencyGraph
 
@@ -21,7 +23,11 @@ def get_default_cache_path(search_scope: Path) -> Path:
 
 
 def save_graph(graph: DependencyGraph, cache_path: Path, search_scope: Path) -> None:
-    """Serialize graph to JSON file with metadata."""
+    """Serialize graph to JSON file with metadata.
+
+    Uses atomic write (temp file + os.replace) to prevent corrupt cache
+    from partial writes or crashes.
+    """
     cache_path.parent.mkdir(parents=True, exist_ok=True)
 
     git_head = _get_git_head(search_scope)
@@ -29,15 +35,28 @@ def save_graph(graph: DependencyGraph, cache_path: Path, search_scope: Path) -> 
     envelope: Dict[str, Any] = {
         "version": CACHE_VERSION,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "search_scope": str(search_scope),
+        "search_scope": str(search_scope.resolve()),
         "git_head": git_head,
         "node_count": graph.node_count,
         "edge_count": graph.edge_count,
         "graph": graph.to_dict(),
     }
 
-    with open(cache_path, "w", encoding="utf-8") as f:
-        json.dump(envelope, f, indent=2)
+    # Atomic write: write to temp file, then rename
+    fd, tmp_path = tempfile.mkstemp(
+        dir=str(cache_path.parent), suffix=".tmp", prefix="graph_cache_"
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(envelope, f, indent=2)
+        os.replace(tmp_path, str(cache_path))
+    except BaseException:
+        # Clean up temp file on any failure
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
     logging.info(
         f"Graph cache saved: {graph.node_count} nodes, {graph.edge_count} edges → {cache_path}"
@@ -46,38 +65,78 @@ def save_graph(graph: DependencyGraph, cache_path: Path, search_scope: Path) -> 
 
 def load_graph(cache_path: Path) -> Optional[DependencyGraph]:
     """Load graph from cache. Returns None if missing or corrupt."""
-    if not cache_path.is_file():
+    envelope = _read_envelope(cache_path)
+    if envelope is None:
+        return None
+
+    graph_data = envelope.get("graph")
+    if not isinstance(graph_data, dict):
+        logging.warning(f"Graph cache missing 'graph' key: {cache_path}")
         return None
 
     try:
-        with open(cache_path, "r", encoding="utf-8") as f:
-            envelope = json.load(f)
-
-        if not isinstance(envelope, dict):
-            logging.warning(f"Graph cache corrupt (not a dict): {cache_path}")
-            return None
-
-        version = envelope.get("version")
-        if version != CACHE_VERSION:
-            logging.info(
-                f"Graph cache version mismatch (got {version}, want {CACHE_VERSION}). Rebuilding."
-            )
-            return None
-
-        graph_data = envelope.get("graph")
-        if not isinstance(graph_data, dict):
-            logging.warning(f"Graph cache missing 'graph' key: {cache_path}")
-            return None
-
         graph = DependencyGraph.from_dict(graph_data)
-        logging.info(
-            f"Graph loaded from cache: {graph.node_count} nodes, {graph.edge_count} edges"
-        )
-        return graph
-
-    except (json.JSONDecodeError, OSError, KeyError, ValueError, TypeError) as e:
-        logging.warning(f"Could not load graph cache {cache_path}: {e}")
+    except (KeyError, ValueError, TypeError) as e:
+        logging.warning(f"Could not deserialize graph from cache {cache_path}: {e}")
         return None
+
+    logging.info(
+        f"Graph loaded from cache: {graph.node_count} nodes, {graph.edge_count} edges"
+    )
+    return graph
+
+
+def load_and_validate(
+    cache_path: Path,
+    search_scope: Path,
+    invalidation: str = "git",
+) -> Optional[DependencyGraph]:
+    """Single-pass load: read cache once, validate, and return graph if valid.
+
+    Returns None if cache is missing, corrupt, stale, or for a different scope.
+    Avoids the double-read of is_cache_valid() + load_graph().
+    """
+    envelope = _read_envelope(cache_path)
+    if envelope is None:
+        return None
+
+    # Validate search_scope matches
+    cached_scope = envelope.get("search_scope")
+    resolved_scope = str(search_scope.resolve())
+    if cached_scope and cached_scope != resolved_scope:
+        logging.info(
+            f"Cache scope mismatch: cached '{cached_scope}' vs current '{resolved_scope}'. Rebuilding."
+        )
+        return None
+
+    # Validate freshness
+    if invalidation == "git":
+        cached_hash = envelope.get("git_head")
+        if cached_hash is None:
+            if not _is_cache_valid_mtime(cache_path, search_scope):
+                return None
+        elif _git_has_code_changes(cached_hash, search_scope):
+            return None
+    else:
+        if not _is_cache_valid_mtime(cache_path, search_scope):
+            return None
+
+    # Deserialize graph
+    graph_data = envelope.get("graph")
+    if not isinstance(graph_data, dict):
+        logging.warning(f"Graph cache missing 'graph' key: {cache_path}")
+        return None
+
+    try:
+        graph = DependencyGraph.from_dict(graph_data)
+    except (KeyError, ValueError, TypeError) as e:
+        logging.warning(f"Could not deserialize graph from cache {cache_path}: {e}")
+        return None
+
+    logging.info(
+        f"Graph loaded from cache: {graph.node_count} nodes, {graph.edge_count} edges"
+    )
+    return graph
 
 
 def is_cache_valid(
@@ -93,17 +152,21 @@ def is_cache_valid(
         invalidation: Strategy — "git" (default) or "mtime".
 
     Returns True if cache is valid and can be reused.
+
+    Note: For production use, prefer load_and_validate() which reads the
+    file once instead of this + load_graph() which reads it twice.
     """
-    if not cache_path.is_file():
+    envelope = _read_envelope(cache_path)
+    if envelope is None:
         return False
 
-    try:
-        with open(cache_path, "r", encoding="utf-8") as f:
-            envelope = json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return False
-
-    if envelope.get("version") != CACHE_VERSION:
+    # Validate search_scope matches
+    cached_scope = envelope.get("search_scope")
+    resolved_scope = str(search_scope.resolve())
+    if cached_scope and cached_scope != resolved_scope:
+        logging.info(
+            f"Cache scope mismatch: cached '{cached_scope}' vs current '{resolved_scope}'. Rebuilding."
+        )
         return False
 
     if invalidation == "git":
@@ -115,6 +178,36 @@ def is_cache_valid(
 
     # mtime strategy
     return _is_cache_valid_mtime(cache_path, search_scope)
+
+
+def _read_envelope(cache_path: Path) -> Optional[Dict[str, Any]]:
+    """Read and validate the cache envelope (version check).
+
+    Shared by is_cache_valid, load_graph, and load_and_validate
+    to avoid duplicating parse + version logic.
+    """
+    if not cache_path.is_file():
+        return None
+
+    try:
+        with open(cache_path, "r", encoding="utf-8") as f:
+            envelope = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        logging.warning(f"Could not read graph cache {cache_path}: {e}")
+        return None
+
+    if not isinstance(envelope, dict):
+        logging.warning(f"Graph cache corrupt (not a dict): {cache_path}")
+        return None
+
+    version = envelope.get("version")
+    if version != CACHE_VERSION:
+        logging.info(
+            f"Graph cache version mismatch (got {version}, want {CACHE_VERSION}). Rebuilding."
+        )
+        return None
+
+    return envelope
 
 
 def _get_git_head(search_scope: Path) -> Optional[str]:
@@ -173,7 +266,13 @@ def _git_has_code_changes(cached_hash: str, search_scope: Path) -> bool:
 
 
 def _is_cache_valid_mtime(cache_path: Path, search_scope: Path) -> bool:
-    """Mtime-based fallback: cache valid if no .csproj/.cs newer than cache."""
+    """Mtime-based fallback: cache valid if no .csproj/.cs newer than cache.
+
+    Note: This performs a recursive glob over the search_scope directory tree.
+    On very large monorepos this can be slow. It's used only as a fallback
+    for non-git directories or when git_head is unavailable. For git repos,
+    the git-based strategy is preferred.
+    """
     try:
         cache_mtime = cache_path.stat().st_mtime
     except OSError:

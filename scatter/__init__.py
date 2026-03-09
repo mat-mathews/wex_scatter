@@ -60,10 +60,18 @@ from scatter._legacy import (
 from scatter.ai.base import AITaskType, AnalysisResult, AIProvider
 from scatter.ai.providers.gemini_provider import GeminiProvider
 from scatter.ai.router import AIRouter
-from scatter.config import ScatterConfig, AIConfig, GraphConfig, load_config
+from scatter.config import ScatterConfig, AIConfig, GraphConfig, DbConfig, load_config
+from scatter.scanners.db_scanner import (
+    DbDependency,
+    DEFAULT_SPROC_PREFIXES,
+    scan_db_dependencies,
+    build_db_dependency_matrix,
+    add_db_edges_to_graph,
+)
 from scatter.store.graph_cache import (
     save_graph,
     load_graph,
+    load_and_validate,
     is_cache_valid,
     get_default_cache_path,
 )

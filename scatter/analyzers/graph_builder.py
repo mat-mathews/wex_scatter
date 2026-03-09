@@ -42,6 +42,8 @@ def build_dependency_graph(
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     disable_multiprocessing: bool = False,
     exclude_patterns: Optional[List[str]] = None,
+    include_db_dependencies: bool = False,
+    sproc_prefixes: Optional[List[str]] = None,
 ) -> DependencyGraph:
     """Build a complete dependency graph from a codebase directory."""
     if exclude_patterns is None:
@@ -211,6 +213,21 @@ def build_dependency_graph(
                     evidence=evidence,
                 )
             )
+
+    # Step 6 (optional): DB dependency scan → sproc_shared edges
+    if include_db_dependencies:
+        from scatter.scanners.db_scanner import add_db_edges_to_graph, scan_db_dependencies
+
+        db_deps = scan_db_dependencies(
+            search_scope,
+            project_cs_map=dict(project_cs_files),
+            max_workers=max_workers,
+            chunk_size=chunk_size,
+            disable_multiprocessing=disable_multiprocessing,
+            exclude_patterns=exclude_patterns,
+            sproc_prefixes=sproc_prefixes,
+        )
+        add_db_edges_to_graph(graph, db_deps)
 
     logging.info(
         f"Built dependency graph: {graph.node_count} nodes, {graph.edge_count} edges"
