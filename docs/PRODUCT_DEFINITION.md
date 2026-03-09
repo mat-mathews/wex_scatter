@@ -1131,33 +1131,50 @@ Scatter provides the dependency data engineers need to make informed decisions i
 
 ### Phase 4: Reporting & Extraction Planning
 
-**Goal:** Interactive reports for sharing with leadership, extraction planning tools, and baseline tracking to measure modernization progress.
+**Goal:** Fix existing report quality issues, add missing output formats, build interactive reports, extraction planning tools, and baseline tracking. Informed by the report evaluation in `docs/OUTPUT_REPORT_EVALUATION.md`.
+
+**Sub-phases** (sequenced by impact and dependency):
+
+| Sub-phase | Focus | Key Deliverables |
+|-----------|-------|-------------------|
+| **4a: Report quality fixes** | Fix correctness issues in existing reporters | Native JSON objects (not stringified), `null` for absent fields, metadata block, console polish, CSV cleanup |
+| **4b: Filter pipeline visibility** | Surface the multi-stage filter funnel in all output | FilterPipeline dataclass, zero-results debugging hints |
+| **4c: Blast radius tree view** | Render propagation path as a tree, not a flat list | Tree console output, BFS parent tracking, `propagation_tree` in JSON |
+| **4d: Markdown output** | Paste-ready format for PRs, tickets, wikis | `--output-format markdown`, inline Mermaid diagrams for graph mode |
+| **4e: Unified report data model** | One `AnalysisReport` object, many formatters | Normalized schema across all modes, `--schema-version` for migration |
+| **4f: Diff reports** | Compare two analyses over time | `--compare-to`, DiffReport, coupling trend tracking |
 
 | Work Item | Description |
 |-----------|-------------|
+| Report quality fixes | Fix JSON serialization (stringified dicts/lists), use `null` for absent fields, add metadata block (timestamp, version, CLI args), console polish ("done." removal, filter display), CSV cleanup |
+| Filter pipeline visibility | Surface intermediate filter counts in all output; zero-results debugging hints |
+| Blast radius tree view | Tree rendering of propagation paths in console and JSON; BFS parent tracking |
+| Markdown output | `--output-format markdown` for all modes; inline Mermaid for graph mode |
+| Unified report data model | `AnalysisReport` dataclass normalizing all modes; snake_case schema; `--schema-version` flag |
+| Diff reports | `--compare-to <previous.json>` producing coupling deltas, new/resolved cycles, consumer changes |
+| Baseline save/load | Snapshot dependency graph and metrics at a point in time |
+| Baseline diff | Compare current state against baseline, compute deltas |
+| AI progress narrative | Natural language summary of changes since baseline |
 | HTML report engine | Self-contained single-file HTML reports with embedded JS/CSS |
 | Dependency graph visualization | Interactive D3.js dependency diagrams in HTML |
 | Metric dashboard view | Color-coded health indicators, sortable project tables |
 | Extraction planning mode | `scatter extract` with full extraction scope analysis |
 | AI migration strategy | Step-by-step extraction approach with sequencing and risk mitigation |
 | AI contract generation | Draft interface definitions for extraction boundaries |
-| Baseline save/load | Snapshot dependency graph and metrics at a point in time |
-| Baseline diff | Compare current state against baseline, compute deltas |
-| AI progress narrative | Natural language summary of changes since baseline |
-| Mermaid output | Dependency diagrams as Mermaid markup for Confluence/wiki embedding |
+| Mermaid output | Standalone `--output-format mermaid` with cluster subgraphs |
 
 ### Phase 5: CI/CD Integration & Workflow
 
-**Goal:** Integrate Scatter into CI/CD for continuous, automated analysis.
+**Goal:** Integrate Scatter into CI/CD for continuous, automated analysis. Exit codes and `--fail-on` flags (from `docs/OUTPUT_REPORT_EVALUATION.md`, Section F) are the entry point — they turn Scatter from a reporting tool into an enforceable architecture governance tool.
 
 | Work Item | Description |
 |-----------|-------------|
-| CI/CD check mode | Machine-readable output with exit codes for pipeline integration |
+| CI/CD check mode | `--fail-on` flags with multiple triggers: `cycles`, `risk:high`, `coupling:15.0`, `consumers:20`. Exit 0 = pass, exit 1 = threshold violated. Reports still produced. Configurable via `.scatter.yaml` |
 | PR blast radius comments | Post impact analysis as PR comment (Azure DevOps / GitHub) |
 | Automatic baseline updates | Update baseline on main branch merges |
-| Coupling thresholds | Configurable gates ("warn if blast radius > N projects") |
+| Coupling thresholds | Configurable gates in `.scatter.yaml` (max_blast_radius, max_coupling_increase, block_new_cycles) |
 | Watch mode | File-watching for iterative local exploration |
-| Progress bar UI | `tqdm` progress bars for long-running scans |
+| Streaming progress | `tqdm` progress bars on stderr for long-running scans; suppress in `--quiet` and CI mode |
 
 ---
 
