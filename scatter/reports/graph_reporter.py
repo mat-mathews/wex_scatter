@@ -1,7 +1,7 @@
 """Reporters for dependency graph analysis output."""
 import json
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from scatter.analyzers.coupling_analyzer import CycleGroup, ProjectMetrics
 from scatter.core.graph import DependencyGraph
@@ -11,6 +11,7 @@ def print_graph_report(
     graph: DependencyGraph,
     ranked: List[Tuple[str, ProjectMetrics]],
     cycles: List[CycleGroup],
+    clusters: Optional[List] = None,
 ) -> None:
     """Print graph analysis summary to console."""
     print(f"\n{'='*60}")
@@ -37,20 +38,31 @@ def print_graph_report(
             print(f"    {i}. [{cg.size} projects] {cycle_str}")
         print()
 
+    if clusters:
+        print(f"  Domain Clusters:")
+        print(f"  {'Cluster':<30} {'Size':>6} {'Cohesion':>10} {'Coupling':>10} {'Feasibility':>20}")
+        print(f"  {'-'*30} {'-'*6} {'-'*10} {'-'*10} {'-'*20}")
+        for clu in clusters:
+            label = f"{clu.extraction_feasibility} ({clu.feasibility_score:.3f})"
+            print(f"  {clu.name:<30} {len(clu.projects):>6} {clu.cohesion:>10.3f} {clu.coupling_to_outside:>10.3f} {label:>20}")
+        print()
+
 
 def build_graph_json(
     graph: DependencyGraph,
     metrics: Dict[str, ProjectMetrics],
     ranked: List[Tuple[str, ProjectMetrics]],
     cycles: List[CycleGroup],
+    clusters: Optional[List] = None,
 ) -> dict:
     """Build JSON-serializable dict for graph report."""
-    return {
+    report = {
         "summary": {
             "node_count": graph.node_count,
             "edge_count": graph.edge_count,
             "cycle_count": len(cycles),
             "components": len(graph.connected_components),
+            "cluster_count": len(clusters) if clusters else 0,
         },
         "top_coupled": [
             {
@@ -87,6 +99,26 @@ def build_graph_json(
         },
         "graph": graph.to_dict(),
     }
+    if clusters:
+        report["clusters"] = [
+            {
+                "name": clu.name,
+                "projects": clu.projects,
+                "size": len(clu.projects),
+                "internal_edges": clu.internal_edges,
+                "external_edges": clu.external_edges,
+                "cohesion": round(clu.cohesion, 3),
+                "coupling_to_outside": round(clu.coupling_to_outside, 3),
+                "extraction_feasibility": clu.extraction_feasibility,
+                "feasibility_score": round(clu.feasibility_score, 3),
+                "feasibility_details": {
+                    k: round(v, 3) for k, v in clu.feasibility_details.items()
+                },
+                "shared_db_objects": clu.shared_db_objects,
+            }
+            for clu in clusters
+        ]
+    return report
 
 
 def write_graph_json_report(
@@ -95,8 +127,9 @@ def write_graph_json_report(
     ranked: List[Tuple[str, ProjectMetrics]],
     cycles: List[CycleGroup],
     output_path: Path,
+    clusters: Optional[List] = None,
 ) -> None:
     """Write graph analysis report as JSON."""
-    report = build_graph_json(graph, metrics, ranked, cycles)
+    report = build_graph_json(graph, metrics, ranked, cycles, clusters=clusters)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)

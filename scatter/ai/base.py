@@ -12,6 +12,7 @@ class AITaskType(Enum):
     COUPLING_NARRATIVE = "coupling_narrative"
     IMPACT_NARRATIVE = "impact_narrative"
     COMPLEXITY_ESTIMATE = "complexity_estimate"
+    BOUNDARY_ASSESSMENT = "boundary_assessment"
 
 
 @dataclass

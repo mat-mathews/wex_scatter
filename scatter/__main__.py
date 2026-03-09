@@ -769,13 +769,18 @@ def main():
         cycles = detect_cycles(graph)
         ranked = rank_by_coupling(metrics, top_n=10)
 
+        # Domain analysis
+        from scatter.analyzers.domain_analyzer import find_clusters
+        clusters = find_clusters(graph, min_cluster_size=2, metrics=metrics, cycles=cycles)
+
         # Output
         if args.output_format == "json":
             if not args.output_file:
                 logging.error("JSON output format requires the --output-file argument.")
                 sys.exit(1)
             write_graph_json_report(
-                graph, metrics, ranked, cycles, Path(args.output_file)
+                graph, metrics, ranked, cycles, Path(args.output_file),
+                clusters=clusters,
             )
             logging.info(f"Graph report written to {args.output_file}")
 
@@ -784,7 +789,7 @@ def main():
             sys.exit(1)
 
         else:
-            print_graph_report(graph, ranked, cycles)
+            print_graph_report(graph, ranked, cycles, clusters=clusters)
 
         print("\ndone.\n")
         return

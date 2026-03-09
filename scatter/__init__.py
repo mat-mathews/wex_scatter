@@ -87,6 +87,11 @@ from scatter.analyzers.coupling_analyzer import (
     DEFAULT_COUPLING_WEIGHTS,
     DEFAULT_CYCLE_EDGE_TYPES,
 )
+from scatter.analyzers.domain_analyzer import (
+    Cluster,
+    find_clusters,
+    score_extraction_feasibility,
+)
 
 # Re-export stdlib modules that tests access via scatter.X
 import argparse
