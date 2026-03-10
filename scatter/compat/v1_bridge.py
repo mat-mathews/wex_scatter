@@ -112,7 +112,7 @@ def _process_consumer_summaries_and_append_results(
 
         if found_pipelines:
             for pipeline_name, source_solution in found_pipelines.items():
-                batch_job_verification = ""
+                batch_job_verification = None
                 if pipeline_name == "cdh-batchprocesses-az-cd":
                     all_known_jobs = batch_job_map.get(pipeline_name, [])
                     if consumer_name_stem in all_known_jobs:
@@ -140,7 +140,7 @@ def _process_consumer_summaries_and_append_results(
                 'ConsumerProjectName': consumer_name_stem,
                 'ConsumerProjectPath': consumer_rel_path_str,
                 'ConsumingSolutions': solutions_for_consumer_names,
-                'PipelineName': '',
-                'BatchJobVerification': '',
+                'PipelineName': None,
+                'BatchJobVerification': None,
                 'ConsumerFileSummaries': consumer_summaries_dict
             })

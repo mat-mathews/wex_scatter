@@ -3,6 +3,7 @@
 Re-exports all public functions for backward compatibility.
 Code that does `from scatter import find_consumers` continues to work.
 """
+from scatter.__version__ import __version__
 from scatter.core.models import (
     DEFAULT_MAX_WORKERS,
     DEFAULT_CHUNK_SIZE,

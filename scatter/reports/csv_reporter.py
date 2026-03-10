@@ -13,15 +13,24 @@ def write_csv_report(detailed_results: List[Dict], output_file_path: Path) -> No
     report_fieldnames = [
         'TargetProjectName', 'TargetProjectPath', 'TriggeringType',
         'ConsumerProjectName', 'ConsumerProjectPath', 'ConsumingSolutions',
-        'PipelineName', 'BatchJobVerification', 'ConsumerFileSummaries'
+        'PipelineName', 'BatchJobVerification',
     ]
+    # Stringify native types for CSV compatibility
+    csv_rows = []
+    for item in detailed_results:
+        row = dict(item)
+        solutions = row.get('ConsumingSolutions', [])
+        row['ConsumingSolutions'] = '; '.join(solutions) if isinstance(solutions, list) else (solutions or '')
+        row['PipelineName'] = row.get('PipelineName') or ''
+        row['BatchJobVerification'] = row.get('BatchJobVerification') or ''
+        csv_rows.append(row)
     try:
         output_file_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_file_path, 'w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=report_fieldnames)
+            writer = csv.DictWriter(csvfile, fieldnames=report_fieldnames, extrasaction='ignore')
             writer.writeheader()
-            if detailed_results:
-                writer.writerows(detailed_results)
+            if csv_rows:
+                writer.writerows(csv_rows)
         logging.info(f"Successfully wrote CSV report to: {output_file_path}")
     except Exception as e:
         logging.error(f"Failed to write output CSV file: {e}")
@@ -50,8 +59,8 @@ def write_impact_csv_report(report: ImpactReport, output_file_path: Path) -> Non
                 'RiskRating': c.risk_rating or '',
                 'RiskJustification': c.risk_justification or '',
                 'Pipeline': c.pipeline_name,
-                'Solutions': ', '.join(c.solutions),
-                'CouplingVectors': ', '.join(c.coupling_vectors) if c.coupling_vectors else '',
+                'Solutions': '; '.join(c.solutions),
+                'CouplingVectors': '; '.join(c.coupling_vectors) if c.coupling_vectors else '',
             })
     try:
         output_file_path.parent.mkdir(parents=True, exist_ok=True)

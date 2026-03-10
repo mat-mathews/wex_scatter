@@ -1,0 +1,2 @@
+"""Scatter version constant."""
+__version__ = "2.1.0"

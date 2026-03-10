@@ -4,9 +4,13 @@ import csv
 import json
 import logging
 import sys
+import time
 from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
+
+from scatter.__version__ import __version__
 
 from scatter.core.models import DEFAULT_MAX_WORKERS, DEFAULT_CHUNK_SIZE
 from scatter.core.parallel import find_files_with_pattern_parallel
@@ -53,7 +57,23 @@ def _build_cli_overrides(args) -> Dict[str, Any]:
     return overrides
 
 
+_REDACTED_CLI_KEYS = frozenset({'google_api_key'})
+
+
+def _build_metadata(args, search_scope_abs, start_time):
+    """Build metadata dict for JSON report output."""
+    cli_args = {k: v for k, v in vars(args).items() if k not in _REDACTED_CLI_KEYS}
+    return {
+        'scatter_version': __version__,
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'cli_args': cli_args,
+        'search_scope': str(search_scope_abs) if search_scope_abs else None,
+        'duration_seconds': round(time.monotonic() - start_time, 2),
+    }
+
+
 def main():
+    start_time = time.monotonic()
     parser = argparse.ArgumentParser(
         description="Analyzes .NET project consumers based on Git branch changes OR a specific target project. Can optionally summarize consumer files using Gemini API.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -703,7 +723,8 @@ def main():
             if not args.output_file:
                 logging.error("JSON output format requires the --output-file argument.")
                 sys.exit(1)
-            write_impact_json_report(impact_report, Path(args.output_file))
+            write_impact_json_report(impact_report, Path(args.output_file),
+                                     metadata=_build_metadata(args, search_scope_abs, start_time))
         elif args.output_format == 'csv':
             if not args.output_file:
                 logging.error("CSV output format requires the --output-file argument.")
@@ -712,7 +733,9 @@ def main():
         else:
             print_impact_report(impact_report)
 
-        print("\ndone.\n")
+        consumer_count = sum(len(ti.consumers) for ti in impact_report.targets)
+        target_count = len(impact_report.targets)
+        print(f"\nAnalysis complete. {consumer_count} consumer(s) found across {target_count} target(s).\n")
         return
 
     # == DEPENDENCY GRAPH ANALYSIS MODE ==
@@ -781,6 +804,7 @@ def main():
             write_graph_json_report(
                 graph, metrics, ranked, cycles, Path(args.output_file),
                 clusters=clusters,
+                metadata=_build_metadata(args, search_scope_abs, start_time),
             )
             logging.info(f"Graph report written to {args.output_file}")
 
@@ -791,7 +815,10 @@ def main():
         else:
             print_graph_report(graph, ranked, cycles, clusters=clusters)
 
-        print("\ndone.\n")
+        node_count = graph.node_count
+        edge_count = graph.edge_count
+        cycle_count = len(cycles)
+        print(f"\nAnalysis complete. {node_count} projects, {edge_count} dependencies, {cycle_count} cycle(s).\n")
         return
 
     # --- step: output combined results ---
@@ -809,7 +836,8 @@ def main():
             logging.error("JSON output format requires the --output-file argument.")
             sys.exit(1)
         detailed = prepare_detailed_results(all_results)
-        write_json_report(detailed, Path(args.output_file))
+        write_json_report(detailed, Path(args.output_file),
+                          metadata=_build_metadata(args, search_scope_abs, start_time))
 
     # Handle CSV Output
     elif args.output_format == 'csv':
@@ -823,7 +851,8 @@ def main():
     else:
         print_console_report(all_results)
 
-    print("\ndone.\n")
+    target_names = {item['TargetProjectName'] for item in all_results}
+    print(f"\nAnalysis complete. {len(all_results)} consumer(s) found across {len(target_names)} target(s).\n")
 
 
 if __name__ == "__main__":

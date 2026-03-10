@@ -1,5 +1,6 @@
 """Console output formatting for analysis results."""
 import textwrap
+from collections import Counter
 from typing import Dict, List, Union
 
 from scatter.core.models import ImpactReport
@@ -12,12 +13,17 @@ def print_console_report(all_results: List[Dict[str, Union[str, Dict, List[str]]
         print("\n--- No Consuming Relationships Found ---")
     else:
         print("\n--- Consuming Relationships Found ---")
+        group_counts = Counter(
+            (item['TargetProjectName'], item['TriggeringType']) for item in all_results
+        )
         last_target_type = None
         for item in all_results:
             current_target_type = (item['TargetProjectName'], item['TriggeringType'])
             if current_target_type != last_target_type:
-                print(f"\nTarget: {item['TargetProjectName']} ({item['TargetProjectPath']})")
-                print(f"    Type/Level: {item['TriggeringType']}")
+                count = group_counts[current_target_type]
+                print(f"\nTarget: {item['TargetProjectName']} ({item['TargetProjectPath']}) ({count} consumer(s))")
+                if 'N/A' not in item['TriggeringType']:
+                    print(f"    Type/Level: {item['TriggeringType']}")
                 last_target_type = current_target_type
 
             pipeline_info = f" [Pipeline: {item.get('PipelineName', 'N/A')}]" if item.get('PipelineName') else ""

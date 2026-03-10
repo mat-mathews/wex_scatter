@@ -54,9 +54,13 @@ def build_graph_json(
     ranked: List[Tuple[str, ProjectMetrics]],
     cycles: List[CycleGroup],
     clusters: Optional[List] = None,
+    metadata: Optional[Dict] = None,
 ) -> dict:
     """Build JSON-serializable dict for graph report."""
-    report = {
+    report = {}
+    if metadata is not None:
+        report['metadata'] = metadata
+    report.update({
         "summary": {
             "node_count": graph.node_count,
             "edge_count": graph.edge_count,
@@ -98,7 +102,7 @@ def build_graph_json(
             for name, m in sorted(metrics.items())
         },
         "graph": graph.to_dict(),
-    }
+    })
     if clusters:
         report["clusters"] = [
             {
@@ -128,8 +132,9 @@ def write_graph_json_report(
     cycles: List[CycleGroup],
     output_path: Path,
     clusters: Optional[List] = None,
+    metadata: Optional[Dict] = None,
 ) -> None:
     """Write graph analysis report as JSON."""
-    report = build_graph_json(graph, metrics, ranked, cycles, clusters=clusters)
+    report = build_graph_json(graph, metrics, ranked, cycles, clusters=clusters, metadata=metadata)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
