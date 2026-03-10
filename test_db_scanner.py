@@ -395,6 +395,43 @@ db:
 # ===========================================================================
 # TestScanSampleProjects (integration)
 # ===========================================================================
+# ===========================================================================
+# TestFileIndex — enclosing_class with non-class types
+# ===========================================================================
+class TestFileIndex:
+    def test_enclosing_struct(self):
+        """_FileIndex.enclosing_class finds struct after regex fix."""
+        from scatter.scanners.db_scanner import _FileIndex
+        code = "public struct MyStruct {\n    var x = 1;\n}"
+        idx = _FileIndex(code)
+        offset = code.index("var x")
+        assert idx.enclosing_class(offset) == "MyStruct"
+
+    def test_enclosing_record(self):
+        """_FileIndex.enclosing_class finds record."""
+        from scatter.scanners.db_scanner import _FileIndex
+        code = "public record MyRecord {\n    var x = 1;\n}"
+        idx = _FileIndex(code)
+        offset = code.index("var x")
+        assert idx.enclosing_class(offset) == "MyRecord"
+
+    def test_enclosing_interface(self):
+        """_FileIndex.enclosing_class finds interface."""
+        from scatter.scanners.db_scanner import _FileIndex
+        code = "public interface IMyService {\n    void Do();\n}"
+        idx = _FileIndex(code)
+        offset = code.index("void Do")
+        assert idx.enclosing_class(offset) == "IMyService"
+
+    def test_before_any_declaration_returns_none(self):
+        """No enclosing type before any declaration."""
+        from scatter.scanners.db_scanner import _FileIndex
+        code = "using System;\nnamespace Foo {\n    public class Bar { }\n}"
+        idx = _FileIndex(code)
+        offset = code.index("namespace")
+        assert idx.enclosing_class(offset) is None
+
+
 class TestScanSampleProjects:
     def test_scan_real_codebase(self):
         """Integration test against the sample .NET projects in this repo."""

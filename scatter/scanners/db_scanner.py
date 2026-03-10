@@ -214,7 +214,7 @@ class _FileIndex:
         # Build class position table: [(char_offset, class_name), ...] sorted
         self._class_positions: List[Tuple[int, str]] = [
             (m.start(), m.group(1))
-            for m in re.finditer(r'\bclass\s+(\w+)', content)
+            for m in re.finditer(r'\b(?:class|struct|interface|enum|record)\s+(\w+)', content)
         ]
 
     def line_number(self, offset: int) -> int:

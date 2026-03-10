@@ -222,10 +222,10 @@ Analyzes the `.cs` files changed on a feature branch to identify potential downs
 1. Finds the merge base between the feature branch and base branch
 2. Identifies all changed `.cs` files in the diff
 3. Maps changed files to their parent `.csproj` projects
-4. Extracts type declarations (`class`, `struct`, `interface`, `enum`) from changed files
+4. Extracts type declarations (`class`, `struct`, `interface`, `enum`, `record`, `delegate`) from changed files
 5. Finds consuming projects for each changed type
 
-**Type extraction** uses regex by default, matching C# type declarations with access modifiers, generics, and keywords like `static`, `abstract`, `sealed`, and `partial`. With `--enable-hybrid-git`, Scatter sends both the full file content and the git diff to an LLM, which identifies only the types whose body, signature, or members were *actually changed* — ignoring types that merely appear in the same file. This significantly reduces false positives. See [AI-Enhanced Type Extraction](#ai-enhanced-type-extraction-hybrid-git) for details.
+**Type extraction** uses regex by default, matching C# type declarations with access modifiers, generics, and keywords like `static`, `abstract`, `sealed`, `partial`, `record`, `readonly`, and `ref`. With `--enable-hybrid-git`, Scatter sends both the full file content and the git diff to an LLM, which identifies only the types whose body, signature, or members were *actually changed* — ignoring types that merely appear in the same file. This significantly reduces false positives. See [AI-Enhanced Type Extraction](#ai-enhanced-type-extraction-hybrid-git) for details.
 
 ```bash
 # Basic usage — regex type extraction
@@ -1052,20 +1052,23 @@ python -m pytest -q
 
 ### Test Suite Overview
 
-The test suite includes **239 tests** across 10 test files:
+The test suite includes **398 tests** across 13 test files (397 pass, 1 xfail):
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
 | `test_config.py` | 24 | Config loading, YAML precedence, env vars, CLI overrides, AI router (caching, task overrides, unknown providers) |
 | `test_coupling.py` | 25 | Coupling metrics (fan_in/out, instability, coupling_score, shared_db_density), Tarjan's SCC cycle detection, edge type filtering, rank_by_coupling |
+| `test_db_scanner.py` | 36 | DB scanner: comment stripping, sproc/DbSet/DbContext/SQL/connection string detection, `_FileIndex` with struct/record/interface, cross-project matrix, graph edges, config, integration |
 | `test_domain.py` | 15 | Domain boundary detection: two-level clustering, label propagation, determinism, cluster naming, extraction feasibility scoring, API surface penalty |
+| `test_find_enclosing_type.py` | 14 | `find_enclosing_type_name()`: basic types (class/struct/interface/enum/record), nested types, generics, readonly/ref struct, edge cases (before-any-declaration, empty content) |
 | `test_graph.py` | 46 | Graph data structures, construction, traversal, serialization, `.csproj` parsing, integration with sample projects |
-| `test_multiprocessing_phase1.py` | 37 | File discovery, consumer analysis, backwards compatibility |
-| `test_phase2_3_project_mapping.py` | 25 | Batch project mapping, parallel orchestration, sproc integration |
-| `test_impact_analysis.py` | 53 | Impact analysis: data models, CLI args, work request parsing, transitive tracing, risk assessment, coupling narrative, impact narrative, complexity estimate, reporters, end-to-end |
+| `test_graph_cache.py` | 28 | Graph persistence: save/load roundtrip, smart git-based cache invalidation, mtime fallback |
 | `test_hybrid_git.py` | 7 | LLM-enhanced git diff analysis |
-| `test_phase21_overhead.py` | — | Phase 2.1 overhead measurement |
-| `test_realistic_workload.py` | 1 | Scalability benchmark with synthetic codebases |
+| `test_impact_analysis.py` | 62 | Impact analysis: data models, CLI args, work request parsing, transitive tracing, risk assessment, coupling narrative, impact narrative, complexity estimate, reporters, end-to-end |
+| `test_multiprocessing_phase1.py` | 15 | File discovery, consumer analysis, backwards compatibility |
+| `test_new_samples.py` | 54 | Sample project validation: type extraction across all sample projects, consumer detection, project reference resolution |
+| `test_phase2_3_project_mapping.py` | 24 | Batch project mapping, parallel orchestration, sproc integration |
+| `test_type_extraction.py` | 48 | Type declaration regex: class/struct/interface/enum/record variants, delegates, readonly/ref struct, primary constructors, attributes, nested types, record false positives, dedup, pathological input |
 
 ### What the Tests Cover
 
@@ -1209,15 +1212,15 @@ time python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope /you
 
 In Git Branch mode, type declarations are extracted from changed `.cs` files. Scatter supports two extraction strategies:
 
-**Regex extraction (default)** uses a compiled pattern to find type declarations with access modifiers, generics, and keywords like `static`, `abstract`, `sealed`, and `partial`:
+**Regex extraction (default)** uses a compiled pattern to find type declarations with access modifiers, generics, and keywords like `static`, `abstract`, `sealed`, `partial`, `record`, `readonly`, and `ref`:
 
 ```python
 TYPE_DECLARATION_PATTERN = re.compile(
     r"^\s*(?:public|internal|private|protected)?\s*"  # Optional access modifier
-    r"(?:static\s+|abstract\s+|sealed\s+|partial\s+)*"  # Optional keywords
-    r"(?:class|struct|interface|enum)\s+"  # Type keyword
+    r"(?:static\s+|abstract\s+|sealed\s+|partial\s+|record\s+|readonly\s+|ref\s+)*"  # Optional keywords
+    r"(?:class|struct|interface|enum|record)\s+"  # Type keyword
     r"([A-Za-z_][A-Za-z0-9_<>,\s]*?)"  # Capture type name (non-greedy)
-    r"\s*(?::|{|where|<)",  # Look for end of declaration
+    r"\s*(?::|{|where|<|\(|;)",  # Look for end of declaration
     re.MULTILINE
 )
 ```

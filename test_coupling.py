@@ -136,8 +136,10 @@ class TestComputeAllMetrics:
     def test_galaxyworks_data_metrics(self, graph_and_metrics):
         _, metrics = graph_and_metrics
         m = metrics["GalaxyWorks.Data"]
-        # 4 project_reference edges pointing TO Data
-        assert m.fan_in == 4
+        # 7 project_reference edges pointing TO Data
+        # (WebPortal, BatchProcessor, MyGalaryConsumerApp, MyGalaryConsumerApp2,
+        #  GalaxyWorks.Common, GalaxyWorks.Api, GalaxyWorks.Data.Tests)
+        assert m.fan_in == 7
         assert m.fan_out == 0
         assert m.instability == 0.0
 
@@ -169,7 +171,7 @@ class TestComputeAllMetrics:
     def test_all_projects_have_metrics(self, graph_and_metrics):
         graph, metrics = graph_and_metrics
         assert len(metrics) == graph.node_count
-        assert len(metrics) == 8
+        assert len(metrics) == 11
 
     def test_coupling_score_ordering(self, graph_and_metrics):
         """GalaxyWorks.Data should have the highest coupling score (most edges)."""

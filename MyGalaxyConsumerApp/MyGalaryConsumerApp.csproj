@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../GalaxyWorks.Data/GalaxyWorks.Data.csproj" />
+    <ProjectReference Include="../GalaxyWorks.Common/GalaxyWorks.Common.csproj" />
   </ItemGroup>
 
 </Project>

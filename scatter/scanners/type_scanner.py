@@ -3,7 +3,7 @@ import logging
 import re
 from typing import Optional, Set
 
-from scatter.core.models import TYPE_DECLARATION_PATTERN
+from scatter.core.models import DELEGATE_DECLARATION_PATTERN, TYPE_DECLARATION_PATTERN
 
 
 def extract_type_names_from_content(content: str) -> Set[str]:
@@ -12,13 +12,13 @@ def extract_type_names_from_content(content: str) -> Set[str]:
     """
     found_types = set()
     try:
-        matches = TYPE_DECLARATION_PATTERN.finditer(content)
-        for match in matches:
-            type_name_full = match.group(1).strip()
-            type_name_base = re.sub(r'<.*', '', type_name_full).strip()
-            type_name_base = type_name_base.split(',')[0].strip()
-            if type_name_base:
-                found_types.add(type_name_base)
+        for pattern in (TYPE_DECLARATION_PATTERN, DELEGATE_DECLARATION_PATTERN):
+            for match in pattern.finditer(content):
+                type_name_full = match.group(1).strip()
+                type_name_base = re.sub(r'<.*', '', type_name_full).strip()
+                type_name_base = type_name_base.split(',')[0].strip()
+                if type_name_base:
+                    found_types.add(type_name_base)
     except Exception as e:
         logging.warning(f"Regex error during type extraction: {e}")
     return found_types
@@ -30,8 +30,8 @@ def find_enclosing_type_name(content: str, match_start_index: int) -> Optional[s
     for a given position within the code content by searching backwards using regex.
     """
     enclosing_type_pattern = re.compile(
-        r"^\s*(?:(?:public|internal|private|protected)\s+)?(?:(?:static|abstract|sealed|partial)\s+)*"
-        r"(class|struct|interface|enum)\s+([A-Za-z_][A-Za-z0-9_<>,\s]*)",
+        r"^\s*(?:(?:public|internal|private|protected)\s+)?(?:(?:static|abstract|sealed|partial|record|readonly|ref)\s+)*"
+        r"(class|struct|interface|enum|record)\s+([A-Za-z_][A-Za-z0-9_<>,\s]*)",
         re.MULTILINE
     )
 

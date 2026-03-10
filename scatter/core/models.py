@@ -13,10 +13,19 @@ MULTIPROCESSING_ENABLED = True
 # --- regex for type extraction ---
 TYPE_DECLARATION_PATTERN = re.compile(
     r"^\s*(?:public|internal|private|protected)?\s*"  # Optional access modifier
-    r"(?:static\s+|abstract\s+|sealed\s+|partial\s+)*"  # Optional keywords
-    r"(?:class|struct|interface|enum)\s+"  # Type keyword
+    r"(?:static\s+|abstract\s+|sealed\s+|partial\s+|record\s+|readonly\s+|ref\s+)*"  # Optional keywords (incl. record as modifier for 'record class'/'record struct')
+    r"(?:class|struct|interface|enum|record)\s+"  # Type keyword (incl. standalone 'record')
     r"([A-Za-z_][A-Za-z0-9_<>,\s]*?)"  # Capture type name (non-greedy) - handles generics roughly
-    r"\s*(?::|{|where|<)",  # Look for inheritance colon, opening brace, where clause, or start of generics
+    r"\s*(?::|{|where|<|\(|;)",  # Look for inheritance colon, opening brace, where clause, generics, positional params, or semicolon
+    re.MULTILINE
+)
+
+DELEGATE_DECLARATION_PATTERN = re.compile(
+    r"^\s*(?:public|internal|private|protected)?\s*"  # Optional access modifier
+    r"delegate\s+"                                     # delegate keyword
+    r"[A-Za-z_][A-Za-z0-9_<>,\s\[\]\.]*?\s+"          # Return type (e.g., Task, void, int)
+    r"([A-Za-z_][A-Za-z0-9_]*)"                        # Capture delegate name
+    r"\s*[<(]",                                         # Generic params or parameter list
     re.MULTILINE
 )
 

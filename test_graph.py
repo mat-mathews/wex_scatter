@@ -334,14 +334,16 @@ class TestParseCsprojAllReferences:
         assert result["root_namespace"] == "MyDotNetApp.Consumer"
 
     def test_multiple_references(self):
-        """Test against consumer apps that reference GalaxyWorks.Data."""
+        """Test against consumer apps that reference GalaxyWorks.Data and GalaxyWorks.Common."""
         csproj = REPO_ROOT / "MyGalaxyConsumerApp" / "MyGalaryConsumerApp.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         result = parse_csproj_all_references(csproj)
         assert result is not None
-        assert len(result["project_references"]) == 1
-        assert "GalaxyWorks.Data.csproj" in result["project_references"][0]
+        assert len(result["project_references"]) == 2
+        refs_str = " ".join(result["project_references"])
+        assert "GalaxyWorks.Data.csproj" in refs_str
+        assert "GalaxyWorks.Common.csproj" in refs_str
 
     def test_missing_file(self):
         result = parse_csproj_all_references(Path("/nonexistent/fake.csproj"))
@@ -427,14 +429,18 @@ class TestGraphBuilder:
         assert graph.edge_count > 0
 
     def test_node_count(self, graph: DependencyGraph):
-        # 8 real .csproj files in repo (excluding temp_test_data)
-        assert graph.node_count == 8
+        # 11 real .csproj files in repo (excluding temp_test_data)
+        # Original 8 + GalaxyWorks.Common, GalaxyWorks.Api, GalaxyWorks.Data.Tests
+        assert graph.node_count == 11
 
     def test_expected_projects_present(self, graph: DependencyGraph):
         expected = {
             "GalaxyWorks.Data",
             "GalaxyWorks.WebPortal",
             "GalaxyWorks.BatchProcessor",
+            "GalaxyWorks.Common",
+            "GalaxyWorks.Api",
+            "GalaxyWorks.Data.Tests",
             "MyDotNetApp",
             "MyDotNetApp.Consumer",
             "MyDotNetApp2.Exclude",
@@ -445,17 +451,25 @@ class TestGraphBuilder:
         assert actual == expected
 
     def test_project_reference_edges(self, graph: DependencyGraph):
-        """There should be 6 project_reference edges."""
+        """There should be 12 project_reference edges."""
         ref_edges = [e for e in graph.all_edges if e.edge_type == "project_reference"]
-        assert len(ref_edges) == 6
+        assert len(ref_edges) == 12
 
         edge_pairs = {(e.source, e.target) for e in ref_edges}
+        # Original 6 edges
         assert ("MyDotNetApp.Consumer", "MyDotNetApp") in edge_pairs
         assert ("MyGalaryConsumerApp", "GalaxyWorks.Data") in edge_pairs
         assert ("MyGalaryConsumerApp2", "GalaxyWorks.Data") in edge_pairs
         assert ("GalaxyWorks.WebPortal", "GalaxyWorks.Data") in edge_pairs
         assert ("GalaxyWorks.BatchProcessor", "GalaxyWorks.Data") in edge_pairs
         assert ("GalaxyWorks.BatchProcessor", "GalaxyWorks.WebPortal") in edge_pairs
+        # New edges from added sample projects
+        assert ("GalaxyWorks.Common", "GalaxyWorks.Data") in edge_pairs
+        assert ("GalaxyWorks.Api", "GalaxyWorks.Data") in edge_pairs
+        assert ("GalaxyWorks.Api", "GalaxyWorks.Common") in edge_pairs
+        assert ("GalaxyWorks.Data.Tests", "GalaxyWorks.Data") in edge_pairs
+        assert ("GalaxyWorks.Data.Tests", "GalaxyWorks.Common") in edge_pairs
+        assert ("MyGalaryConsumerApp", "GalaxyWorks.Common") in edge_pairs
 
     def test_galaxyworks_data_consumers(self, graph: DependencyGraph):
         consumers = graph.get_consumers("GalaxyWorks.Data")
@@ -522,9 +536,9 @@ class TestGraphBuilder:
         components = graph.connected_components
         # Should have at least 1 component; exact count depends on namespace/type edges
         assert len(components) >= 1
-        # All 8 nodes should be accounted for
+        # All 11 nodes should be accounted for
         total_nodes = sum(len(c) for c in components)
-        assert total_nodes == 8
+        assert total_nodes == 11
 
     def test_serialization_roundtrip(self, graph: DependencyGraph):
         data = graph.to_dict()
