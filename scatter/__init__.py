@@ -93,6 +93,12 @@ from scatter.analyzers.domain_analyzer import (
     find_clusters,
     score_extraction_feasibility,
 )
+from scatter.analyzers.health_analyzer import (
+    HealthDashboard,
+    Observation,
+    compute_health_dashboard,
+)
+from scatter.reports.graph_reporter import generate_mermaid, write_graph_csv_report
 
 # Re-export stdlib modules that tests access via scatter.X
 import argparse

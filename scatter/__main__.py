@@ -149,6 +149,10 @@ def main():
         help="Include database dependency scanning (sprocs, EF models, direct SQL) in --graph mode."
     )
     common_group.add_argument(
+        "--include-graph-topology", action="store_true",
+        help="Include raw graph topology (nodes/edges) in JSON output. Omitted by default to reduce file size."
+    )
+    common_group.add_argument(
         "--max-depth", type=int, default=None,
         help="Maximum transitive tracing depth for impact analysis (default: 2)."
     )
@@ -796,6 +800,10 @@ def main():
         from scatter.analyzers.domain_analyzer import find_clusters
         clusters = find_clusters(graph, min_cluster_size=2, metrics=metrics, cycles=cycles)
 
+        # Health dashboard
+        from scatter.analyzers.health_analyzer import compute_health_dashboard
+        dashboard = compute_health_dashboard(graph, metrics, cycles, clusters=clusters)
+
         # Output
         if args.output_format == "json":
             if not args.output_file:
@@ -805,15 +813,21 @@ def main():
                 graph, metrics, ranked, cycles, Path(args.output_file),
                 clusters=clusters,
                 metadata=_build_metadata(args, search_scope_abs, start_time),
+                include_topology=args.include_graph_topology,
+                dashboard=dashboard,
             )
             logging.info(f"Graph report written to {args.output_file}")
 
         elif args.output_format == "csv":
-            logging.error("CSV output is not supported for --graph mode. Use --output-format json or console.")
-            sys.exit(1)
+            if not args.output_file:
+                logging.error("CSV output format requires the --output-file argument.")
+                sys.exit(1)
+            from scatter.reports.graph_reporter import write_graph_csv_report
+            write_graph_csv_report(graph, metrics, Path(args.output_file), clusters=clusters)
+            logging.info(f"Graph CSV report written to {args.output_file}")
 
         else:
-            print_graph_report(graph, ranked, cycles, clusters=clusters)
+            print_graph_report(graph, ranked, cycles, clusters=clusters, dashboard=dashboard)
 
         node_count = graph.node_count
         edge_count = graph.edge_count

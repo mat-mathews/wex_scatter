@@ -1,4 +1,6 @@
 """Reporters for dependency graph analysis output."""
+import csv
+import dataclasses
 import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -7,11 +9,139 @@ from scatter.analyzers.coupling_analyzer import CycleGroup, ProjectMetrics
 from scatter.core.graph import DependencyGraph
 
 
+def generate_mermaid(
+    graph: DependencyGraph,
+    clusters: Optional[List] = None,
+    top_n: Optional[int] = None,
+) -> str:
+    """Render a Mermaid graph diagram from project_reference edges.
+
+    Only includes project_reference edges (strongest signal).
+    If top_n is set, include only the top-N nodes by degree.
+    """
+    lines = ["graph TD"]
+
+    # Collect project_reference edges only
+    ref_edges = [
+        e for e in graph.all_edges if e.edge_type == "project_reference"
+    ]
+
+    if not ref_edges:
+        return "graph TD\n"
+
+    # Determine which nodes to include
+    if top_n is not None:
+        degree: Dict[str, int] = {}
+        for e in ref_edges:
+            degree[e.source] = degree.get(e.source, 0) + 1
+            degree[e.target] = degree.get(e.target, 0) + 1
+        top_nodes = set(
+            name
+            for name, _ in sorted(degree.items(), key=lambda x: -x[1])[:top_n]
+        )
+        ref_edges = [
+            e for e in ref_edges if e.source in top_nodes and e.target in top_nodes
+        ]
+    else:
+        top_nodes = None
+
+    def sanitize(name: str) -> str:
+        return name.replace(".", "_")
+
+    # Build cluster membership lookup
+    cluster_map: Dict[str, str] = {}
+    if clusters:
+        for clu in clusters:
+            for proj in clu.projects:
+                cluster_map[proj] = clu.name
+
+    # Collect all nodes that appear in edges
+    all_nodes = set()
+    for e in ref_edges:
+        all_nodes.add(e.source)
+        all_nodes.add(e.target)
+
+    if clusters and cluster_map:
+        # Group nodes by cluster
+        clustered: Dict[str, List[str]] = {}
+        unclustered: List[str] = []
+        for node in sorted(all_nodes):
+            cname = cluster_map.get(node)
+            if cname:
+                clustered.setdefault(cname, []).append(node)
+            else:
+                unclustered.append(node)
+
+        for cname, members in sorted(clustered.items()):
+            lines.append(f"  subgraph {sanitize(cname)}[\"{cname}\"]")
+            for m in members:
+                lines.append(f"    {sanitize(m)}[\"{m}\"]")
+            lines.append("  end")
+
+        for node in unclustered:
+            lines.append(f"  {sanitize(node)}[\"{node}\"]")
+    else:
+        for node in sorted(all_nodes):
+            lines.append(f"  {sanitize(node)}[\"{node}\"]")
+
+    for e in ref_edges:
+        lines.append(f"  {sanitize(e.source)} --> {sanitize(e.target)}")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_graph_csv_report(
+    graph: DependencyGraph,
+    metrics: Dict[str, ProjectMetrics],
+    output_path: Path,
+    clusters: Optional[List] = None,
+) -> None:
+    """Write graph metrics as CSV."""
+    fieldnames = [
+        "Project", "Namespace", "FanIn", "FanOut", "Instability",
+        "CouplingScore", "AfferentCoupling", "EfferentCoupling",
+        "SharedDbDensity", "TypeExportCount", "ConsumerCount",
+        "Cluster", "ExtractionFeasibility",
+    ]
+
+    # Build cluster lookup
+    cluster_lookup: Dict[str, Tuple[str, str]] = {}
+    if clusters:
+        for clu in clusters:
+            for proj in clu.projects:
+                cluster_lookup[proj] = (clu.name, clu.extraction_feasibility)
+
+    with open(output_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for name, m in sorted(metrics.items()):
+            node = graph.get_node(name)
+            namespace = node.namespace if node else ""
+            clu_name, feasibility = cluster_lookup.get(name, ("", ""))
+            writer.writerow({
+                "Project": name,
+                "Namespace": namespace or "",
+                "FanIn": m.fan_in,
+                "FanOut": m.fan_out,
+                "Instability": round(m.instability, 3),
+                "CouplingScore": round(m.coupling_score, 3),
+                "AfferentCoupling": m.afferent_coupling,
+                "EfferentCoupling": m.efferent_coupling,
+                "SharedDbDensity": round(m.shared_db_density, 3),
+                "TypeExportCount": m.type_export_count,
+                "ConsumerCount": m.consumer_count,
+                "Cluster": clu_name,
+                "ExtractionFeasibility": feasibility,
+            })
+
+
 def print_graph_report(
     graph: DependencyGraph,
     ranked: List[Tuple[str, ProjectMetrics]],
     cycles: List[CycleGroup],
     clusters: Optional[List] = None,
+    dashboard=None,
 ) -> None:
     """Print graph analysis summary to console."""
     print(f"\n{'='*60}")
@@ -45,6 +175,16 @@ def print_graph_report(
         for clu in clusters:
             label = f"{clu.extraction_feasibility} ({clu.feasibility_score:.3f})"
             print(f"  {clu.name:<30} {len(clu.projects):>6} {clu.cohesion:>10.3f} {clu.coupling_to_outside:>10.3f} {label:>20}")
+            # Show top 5 members
+            members = sorted(clu.projects)[:5]
+            suffix = ", ..." if len(clu.projects) > 5 else ""
+            print(f"    Members: {', '.join(members)}{suffix}")
+        print()
+
+    if dashboard and dashboard.observations:
+        print(f"  Observations:")
+        for obs in dashboard.observations:
+            print(f"    [{obs.severity}] {obs.message}")
         print()
 
 
@@ -55,6 +195,8 @@ def build_graph_json(
     cycles: List[CycleGroup],
     clusters: Optional[List] = None,
     metadata: Optional[Dict] = None,
+    include_topology: bool = True,
+    dashboard=None,
 ) -> dict:
     """Build JSON-serializable dict for graph report."""
     report = {}
@@ -101,8 +243,9 @@ def build_graph_json(
             }
             for name, m in sorted(metrics.items())
         },
-        "graph": graph.to_dict(),
     })
+    if include_topology:
+        report["graph"] = graph.to_dict()
     if clusters:
         report["clusters"] = [
             {
@@ -122,6 +265,8 @@ def build_graph_json(
             }
             for clu in clusters
         ]
+    if dashboard is not None:
+        report["health_dashboard"] = dataclasses.asdict(dashboard)
     return report
 
 
@@ -133,8 +278,14 @@ def write_graph_json_report(
     output_path: Path,
     clusters: Optional[List] = None,
     metadata: Optional[Dict] = None,
+    include_topology: bool = True,
+    dashboard=None,
 ) -> None:
     """Write graph analysis report as JSON."""
-    report = build_graph_json(graph, metrics, ranked, cycles, clusters=clusters, metadata=metadata)
+    report = build_graph_json(
+        graph, metrics, ranked, cycles,
+        clusters=clusters, metadata=metadata,
+        include_topology=include_topology, dashboard=dashboard,
+    )
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
