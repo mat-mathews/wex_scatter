@@ -21,7 +21,11 @@ from scatter.scanners.project_scanner import (
     derive_namespace,
     parse_csproj_all_references,
 )
+from scatter.scanners.db_scanner import _strip_cs_comments
 from scatter.scanners.type_scanner import extract_type_names_from_content
+
+# Regex for extracting C# identifiers (for inverted-index type matching)
+_IDENT_PATTERN = re.compile(r"[A-Za-z_]\w*")
 
 # Regex for sproc references in string literals
 _SPROC_PATTERN = re.compile(
@@ -181,10 +185,13 @@ def build_dependency_graph(
                 )
 
     # 5c: type_usage edges (project A references types declared in project B)
-    type_to_project: Dict[str, str] = {}
+    # Build multi-owner map: a type name may exist in multiple projects
+    type_to_projects: Dict[str, Set[str]] = defaultdict(set)
     for pname, types in project_types.items():
         for t in types:
-            type_to_project[t] = pname
+            type_to_projects[t].add(pname)
+
+    type_name_set = set(type_to_projects.keys())
 
     for source_project, cs_paths in project_cs_files.items():
         if source_project not in graph._nodes:
@@ -196,9 +203,14 @@ def build_dependency_graph(
                 content = cs_path.read_text(encoding="utf-8", errors="ignore")
             except OSError:
                 continue
-            for type_name, owner_project in type_to_project.items():
-                if owner_project != source_project and owner_project in graph._nodes:
-                    if re.search(r"\b" + re.escape(type_name) + r"\b", content):
+            # Strip comments to eliminate false positives
+            content = _strip_cs_comments(content)
+            # Tokenize once, intersect with known type names
+            file_identifiers = set(_IDENT_PATTERN.findall(content))
+            matched_types = file_identifiers & type_name_set
+            for type_name in matched_types:
+                for owner_project in type_to_projects[type_name]:
+                    if owner_project != source_project and owner_project in graph._nodes:
                         type_usage_evidence[owner_project].append(
                             f"{cs_path}:{type_name}"
                         )

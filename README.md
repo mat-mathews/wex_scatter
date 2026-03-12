@@ -326,14 +326,23 @@ Builds a full dependency graph from the codebase, computes coupling metrics, det
 7. Scores each cluster's extraction feasibility based on cross-boundary coupling, shared DB objects, cycles, and API surface
 
 ```bash
-# Basic graph analysis with domain clusters
+# Basic graph analysis with domain clusters and health observations
 python scatter.py --graph --search-scope .
 
 # Force rebuild (ignore cache)
 python scatter.py --graph --search-scope . --rebuild-graph
 
-# JSON output with full graph data, metrics, and cluster details
+# Include database dependency scanning (sproc_shared edges)
+python scatter.py --graph --search-scope . --include-db
+
+# JSON output (metrics, clusters, health dashboard — topology omitted by default for size)
 python scatter.py --graph --search-scope . --output-format json --output-file graph_report.json
+
+# JSON with full graph topology (nodes + edges included)
+python scatter.py --graph --search-scope . --output-format json --output-file graph_report.json --include-graph-topology
+
+# CSV output (one row per project with metrics, cluster assignment, feasibility)
+python scatter.py --graph --search-scope . --output-format csv --output-file graph_metrics.csv
 ```
 
 **Console output includes:**
@@ -356,7 +365,12 @@ python scatter.py --graph --search-scope . --output-format json --output-file gr
   Cluster                          Size   Cohesion   Coupling          Feasibility
   ------------------------------ ------ ---------- ---------- --------------------
   MyDotNetApp                         2      1.000      0.000         easy (1.000)
+    Members: MyDotNetApp, MyDotNetApp.Consumer
   cluster_0                           3      0.167      0.600     moderate (0.760)
+    Members: GalaxyWorks.Data, GalaxyWorks.WebPortal, GalaxyWorks.BatchProcessor
+
+  Observations:
+    [warning] GalaxyWorks.Data: stable core (fan_in=4, instability=0.00) — change carefully
 ```
 
 See [Dependency Graph](#dependency-graph) for architecture details, and [Domain Boundary Detection](#domain-boundary-detection) for clustering and feasibility scoring.
@@ -945,6 +959,8 @@ Use `--app-config-path` to verify if consumer projects correspond to known batch
 | `--method-name NAME` | — | Filter by method name (requires `--class-name`) |
 | `--max-depth N` | `2` | Transitive tracing depth (impact mode) |
 | `--rebuild-graph` | `false` | Force graph rebuild, ignoring cache (`--graph` mode) |
+| `--include-graph-topology` | `false` | Include raw graph nodes/edges in JSON output (`--graph` mode) |
+| `--include-db` | `false` | Include database dependency scanning (`--graph` mode) |
 | `--pipeline-csv PATH` | — | CSV file for pipeline mapping |
 | `--app-config-path PATH` | — | App-config repo for batch job verification |
 | `--target-namespace NS` | — | Override namespace detection |
@@ -1052,7 +1068,7 @@ python -m pytest -q
 
 ### Test Suite Overview
 
-The test suite includes **398 tests** across 13 test files (397 pass, 1 xfail):
+The test suite includes **443 tests** across 15 test files (442 pass, 1 xfail):
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
@@ -1068,6 +1084,8 @@ The test suite includes **398 tests** across 13 test files (397 pass, 1 xfail):
 | `test_multiprocessing_phase1.py` | 15 | File discovery, consumer analysis, backwards compatibility |
 | `test_new_samples.py` | 54 | Sample project validation: type extraction across all sample projects, consumer detection, project reference resolution |
 | `test_phase2_3_project_mapping.py` | 24 | Batch project mapping, parallel orchestration, sproc integration |
+| `test_report_quality.py` | 24 | JSON serialization fixes, metadata blocks, console polish, CSV cleanup, version constant, API key redaction |
+| `test_reporters.py` | 21 | Mermaid output, health dashboard observations, console cluster members, CSV export columns, JSON topology flag |
 | `test_type_extraction.py` | 48 | Type declaration regex: class/struct/interface/enum/record variants, delegates, readonly/ref struct, primary constructors, attributes, nested types, record false positives, dedup, pathological input |
 
 ### What the Tests Cover
@@ -1280,8 +1298,9 @@ scatter/
 ├── reports/
 │   ├── console_reporter.py    # print_console_report() + print_impact_report()
 │   ├── json_reporter.py       # write_json_report() + write_impact_json_report()
-│   └── csv_reporter.py        # write_csv_report() + write_impact_csv_report()
-└── __main__.py                # CLI entry point with 4-mode dispatch
+│   ├── csv_reporter.py        # write_csv_report() + write_impact_csv_report()
+│   └── graph_reporter.py      # print_graph_report() + build_graph_json() + generate_mermaid() + write_graph_csv_report()
+└── __main__.py                # CLI entry point with 5-mode dispatch
 ```
 
 ---
@@ -1339,13 +1358,14 @@ The dual index design (`_outgoing`/`_incoming` for full edge data, `_forward`/`_
 
 #### Edge Types
 
-The graph captures three categories of inter-project dependency:
+The graph captures four categories of inter-project dependency:
 
 | Edge Type | Source | Meaning | Weight |
 |-----------|--------|---------|--------|
 | `project_reference` | `<ProjectReference Include="...">` in `.csproj` | Explicit build-time dependency | 1.0 (always) |
 | `namespace_usage` | `using Namespace;` in `.cs` matching another project's root namespace | Import-level coupling | Count of `.cs` files with that `using` |
-| `type_usage` | Regex match of a type name declared in project B found in project A's source | Code-level coupling (class/interface usage) | Count of `file:TypeName` matches |
+| `type_usage` | Inverted index: tokenize identifiers, intersect with known types (comment-stripped) | Code-level coupling (class/interface usage) | Count of `file:TypeName` matches |
+| `sproc_shared` | Stored procedure name referenced by projects in both source and target | Shared mutable database state | Number of shared sprocs |
 
 A single pair of projects may have multiple edges (e.g., A has a `project_reference` to B *and* a `namespace_usage` edge *and* a `type_usage` edge). The `get_edges_between(a, b)` method returns all of them.
 
@@ -1364,9 +1384,15 @@ Construction is a **single-pass O(P + F)** algorithm where P = number of `.cspro
 | 5 | Read each `.cs` file, extract types + sprocs + usings | O(F × avg_file_size) |
 | 6 | Build `project_reference` edges (resolve Include paths) | O(P × avg_refs) |
 | 7 | Build `namespace_usage` edges (match usings to project namespaces) | O(P × U) where U = unique usings per project |
-| 8 | Build `type_usage` edges (scan for type names across projects) | O(F × T) where T = total types across all projects |
+| 8 | Build `type_usage` edges (inverted index: tokenize + set intersection) | O(F × S) where S = avg file size |
 
-Step 8 (`type_usage` edge construction) is the most expensive — for each `.cs` file, it checks every type name declared in other projects using regex word-boundary search. For a codebase with 1,000 `.cs` files and 500 total type declarations, this is ~500,000 regex checks. This is acceptable for typical enterprise codebases but is the primary candidate for optimization in future phases (planned: inverted type index).
+Step 8 (`type_usage` edge construction) uses an **inverted index** approach: each `.cs` file is read once, comments are stripped via `_strip_cs_comments()`, identifiers are tokenized with a single regex pass (`[A-Za-z_]\w*`), and the resulting set is intersected with the set of all known type names. This eliminates the type count (T) from the equation entirely — performance depends only on file count and file size, not on how many types exist in the codebase.
+
+This replaced an earlier O(F × T × S) approach that ran a separate regex search per type per file. At 100 projects that was 1.17M regex operations taking 172 seconds. The inverted index does the same work in 1.7 seconds — a **101x speedup**. At 500 projects, the full graph builds in under 60 seconds.
+
+Comment stripping before tokenization prevents false dependency edges from type names appearing in `//` and `/* */` comments. Type names that appear in multiple projects are tracked via a multi-owner map (`type_to_projects: Dict[str, Set[str]]`) so no edges are silently dropped.
+
+See `docs/ADR_GRAPH_PERFORMANCE.md` for the full architecture decision record including alternatives considered (mega-regex, Aho-Corasick), benchmark methodology, and the remaining optimization roadmap.
 
 **Contrast with per-query scanning:** Without the graph, each call to `find_consumers("ProjectX")` rescans the entire filesystem — discovering `.csproj` files, parsing XML, scanning `.cs` files for namespace and class usage. For N target projects, this is O(N × (P + F)). The graph pays O(P + F) once and answers all N queries from memory.
 
@@ -1429,7 +1455,7 @@ search_scope (Path)
   └─ Step 6: Build edges
        ├─ 6a: project_reference — resolve <ProjectReference Include="..."> paths
        ├─ 6b: namespace_usage — match using statements to project namespaces
-       └─ 6c: type_usage — scan .cs content for type names from other projects
+       └─ 6c: type_usage — strip comments, tokenize identifiers, intersect with known types
 ```
 
 **`.csproj` parsing** handles both SDK-style projects (`<Project Sdk="Microsoft.NET.Sdk">`) and legacy Framework-style projects (with MSBuild XML namespace `http://schemas.microsoft.com/developer/msbuild/2003`). The `parse_csproj_all_references()` function tries XPath queries without namespace first, then with the MSBuild namespace prefix, ensuring both styles are parsed correctly.
@@ -1715,9 +1741,11 @@ The `feasibility_details` dict breaks down each penalty, making it actionable �
 - **Graph Persistence & CLI (Phase 3)** — Smart git-based cache invalidation, `--graph` CLI mode, `--rebuild-graph` flag, graph config integration, and 21 tests
 - **Database Dependency Mapping (Phase 4)** — DB scanner with comment stripping, sproc/DbSet/DbContext/SQL/connection string detection, cross-project dependency matrix, `sproc_shared` edges, `--include-db` flag, `DbConfig` with configurable prefixes, and 32 tests
 - **Domain Boundary Detection (Phase 5)** — Two-level clustering (connected components + label propagation), `Cluster` dataclass with cohesion and feasibility scoring, four weighted penalty factors (cross-boundary coupling, shared DB, cycles, API surface), `BOUNDARY_ASSESSMENT` AI task type, and 15 tests
+- **Graph Reporters & Health Dashboard (Phase 6)** — Console, JSON, Mermaid, CSV output; `HealthDashboard` with deterministic observation rules (stable_core, high_coupling, in_cycle, low_cohesion_cluster, db_hotspot); `--include-graph-topology` flag; cluster member display; and 21 tests
+- **Report Quality Fixes (Initiative 6 Phase 1)** — JSON serialization fixes (native objects, null for absent fields), metadata blocks with version stamp, console polish, CSV cleanup, and 24 tests
+- **Graph Builder Performance Optimization** — Inverted index for type_usage edges (101x speedup at 100 projects), comment stripping for precision, multi-owner type map for correctness. Benchmark tooling: synthetic codebase generator and per-stage profiling harness. See `docs/ADR_GRAPH_PERFORMANCE.md`
 
 ### Planned
 
-- **Graph Reporters & Health Dashboard (Phase 6)** — Console, JSON, Mermaid output, health dashboard aggregation
-- **Reporting & Extraction Planning** — Enhanced reporting with visualization and extraction recommendations
-- **CI/CD Integration** — Pipeline-aware analysis with automated impact checks
+- **Reporting & Extraction Planning** — Filter pipeline visibility, blast radius tree view, markdown output, unified report data model, diff reports, baselines, HTML reports
+- **CI/CD Integration** — Pipeline-aware analysis with automated impact checks, exit codes, PR comments

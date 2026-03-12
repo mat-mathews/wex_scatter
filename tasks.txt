@@ -473,35 +473,53 @@ PHASE 5: DOMAIN BOUNDARY DETECTION ✅ COMPLETED (MEDIUM PRIORITY)
 - [x] Update scatter/__init__.py — export Cluster, find_clusters, score_extraction_feasibility
 - [x] Create test_domain.py — 15 tests (clustering, label propagation, determinism, naming, feasibility scoring, API surface)
 
-PHASE 6: GRAPH REPORTERS + HEALTH DASHBOARD (MEDIUM PRIORITY)
+PHASE 6: GRAPH REPORTERS + HEALTH DASHBOARD ✅ COMPLETED (MEDIUM PRIORITY)
 - [x] Create scatter/reports/graph_reporter.py — console + JSON output (done in Phase 4/5 merge)
       print_graph_report(), build_graph_json(), write_graph_json_report() — all free functions.
-- [ ] Add Mermaid output to graph_reporter.py — generate_mermaid() free function.
-- [ ] Create scatter/analyzers/health_analyzer.py — HealthDashboard dataclass
+- [x] Add Mermaid output to graph_reporter.py — generate_mermaid() free function.
+- [x] Create scatter/analyzers/health_analyzer.py — HealthDashboard, Observation dataclasses
       compute_health_dashboard() aggregates metrics, cycles, clusters, DB hotspots.
-- [ ] Add cluster member names to graph console output (top 5 members inline per cluster)
-- [ ] Add rule-based observations to graph console report:
-      High fan_in + low instability = "stable core, change carefully"
-      High coupling_score + low cohesion = "consider splitting"
-      Cycles present = "must break before extraction"
-      No AI required — deterministic pattern matching on metrics.
-- [ ] Add --include-graph-topology flag (default: omit raw graph from JSON to reduce file size)
-- [ ] Add explicit error when --graph --output-format csv is used (currently silently falls through)
-- [ ] Add graph CSV export: one row per project with metrics + cluster assignment
-- [ ] Create test_reporters.py — ~12 tests (summary, JSON, Mermaid, dashboard, observations, CSV)
+      5 deterministic observation rules: stable_core, high_coupling, in_cycle,
+      low_cohesion_cluster, db_hotspot. No AI required.
+- [x] Add cluster member names to graph console output (top 5 members inline per cluster)
+- [x] Add rule-based observations to graph console report
+- [x] Add --include-graph-topology flag (default: omit raw graph from JSON to reduce file size)
+- [x] Add graph CSV export: one row per project with metrics + cluster assignment
+      write_graph_csv_report() — 13 columns including Cluster and ExtractionFeasibility.
+- [x] Create test_reporters.py — 21 tests (Mermaid, health dashboard, console output, CSV, JSON topology)
+      Review fixes: low_cohesion_cluster threshold bug (ratio vs absolute), dead constant removed,
+      test tautology fixed, added coverage for db_hotspot, high_coupling, dotted names, null namespace.
+
+GRAPH BUILDER PERFORMANCE OPTIMIZATION ✅ COMPLETED
+Ref: docs/ADR_GRAPH_PERFORMANCE.md, docs/PERFORMANCE_AT_SCALE.md
+- [x] Profile graph builder at scale — synthetic codebases at 100/250/500 projects
+- [x] Identify hot path: type_usage_edges stage was 91% of build time (O(F×T×S) triple loop)
+- [x] Implement inverted index: tokenize identifiers once per file, set intersection with known types
+      Replaces per-type regex loop with single-pass O(F×S) — eliminates T dimension entirely
+- [x] Add comment stripping to type_usage stage (reuses _strip_cs_comments from db_scanner.py)
+      Removes false positives from // and /* */ comments before tokenization
+- [x] Fix type name collision bug: type_to_project Dict[str, str] → type_to_projects Dict[str, Set[str]]
+      Same type name in multiple projects now creates edges to all owners (was last-writer-wins)
+- [x] Benchmark results: 100 projects 172s→1.7s (101x), 250 projects >10min→10.1s, 500 projects 42.8s
+- [x] Create synthetic codebase generator (tools/generate_synthetic_codebase.py)
+- [x] Create benchmark harness (tools/benchmark_graph_build.py) with per-stage timing
+- [x] Identify remaining bottlenecks at 500-project scale:
+      Comment stripping 18s (77% of stage 7) — char-by-char Python loop over 232MB
+      Label propagation 21s — get_edges_between() called 205K times/iteration, linear scan
+      Type extraction 14s — sequential file reads + 3 regex per file
 
 DEFERRED TO FUTURE INITIATIVE:
 - [ ] diff(baseline, current) -> GraphDiff — needs clear use case + full GraphDiff spec
 - [ ] Graph query DSL — ad-hoc traversal language, premature before basic graph is proven
 - [ ] Incremental graph updates — smart cache invalidation makes full rebuilds acceptable for v1
 
-INITIATIVE 5 TESTING SUMMARY (143 tests completed across Phases 1-5, all merged to main):
+INITIATIVE 5 TESTING SUMMARY (171 tests completed across Phases 1-6, all merged to main):
 - [x] test_graph.py — 46 tests (Phase 1: data models, graph ops, builder, csproj parser, dir index)
 - [x] test_coupling.py — 25 tests (Phase 2: metrics, custom weights, Tarjan's SCC, shortest cycles)
 - [x] test_graph_cache.py — 28 tests (Phase 3: save/load, smart git invalidation, mtime fallback)
 - [x] test_db_scanner.py — 36 tests (Phase 4: comment stripping, detection patterns, _FileIndex non-class types, integration)
 - [x] test_domain.py — 15 tests (Phase 5: two-level clustering, label propagation, determinism, feasibility, API surface)
-- [ ] test_reporters.py — ~12 tests (Phase 6: console, JSON, Mermaid, dashboard, observations, CSV)
+- [x] test_reporters.py — 21 tests (Phase 6: Mermaid, health dashboard, console output, CSV export, JSON topology)
 
 ============================================================================
 INITIATIVE 6: REPORTING & EXTRACTION PLANNING (v2.0 Phase 4)
@@ -511,45 +529,31 @@ Ref: PRODUCT_DEFINITION.md Section 12, Phase 4
 Evaluation: docs/OUTPUT_REPORT_EVALUATION.md
 ============================================================================
 
-PHASE 1: REPORT QUALITY FIXES (HIGH PRIORITY — prerequisite for everything else)
+PHASE 1: REPORT QUALITY FIXES ✅ COMPLETED (HIGH PRIORITY)
 Ref: OUTPUT_REPORT_EVALUATION.md, Priority Recommendations 1-9
-These are correctness and DX issues in the existing reporters. No new features.
+Correctness and DX issues in the existing reporters. No new features.
 
 Step 1a — JSON serialization fixes:
-- [ ] Fix ConsumerFileSummaries: make it a native JSON object, not a stringified one
-      json_reporter.py prepare_detailed_results() currently does json.dumps() on the dict.
-      Change to pass the dict through directly. This is a breaking schema change — document it.
-- [ ] Fix ConsumingSolutions: make it a proper JSON array instead of a CSV string
-      Same function. Change ", ".join() to pass the list through.
-- [ ] Use null instead of "" for absent optional fields in JSON (PipelineName, BatchJobVerification)
-      Affects prepare_detailed_results() and the legacy result dicts in __main__.py.
+- [x] Fix ConsumerFileSummaries: native JSON object, not stringified
+- [x] Fix ConsumingSolutions: proper JSON array instead of CSV string
+- [x] Use null instead of "" for absent optional fields (PipelineName, BatchJobVerification)
 
 Step 1b — Report metadata:
-- [ ] Add metadata block to all JSON output (legacy, impact, graph):
-      { "metadata": { "timestamp": "...", "scatter_version": "...", "cli_args": [...],
-        "search_scope": "...", "duration_seconds": N } }
-      Requires capturing start time in __main__.py and passing it through to reporters.
-- [ ] Add scatter version constant (scatter/__version__.py or scatter/__init__.py)
+- [x] Add metadata block to all JSON output (legacy, impact, graph)
+- [x] Add scatter version constant (scatter/__version__.py)
 
 Step 1c — Console polish:
-- [ ] Replace "done." with informative completion summary:
-      "Analysis complete. 4 consumers found across 1 target." (or similar per mode)
-- [ ] Drop "Type/Level: N/A (Project Reference)" — omit line when no class/method filter
-      console_reporter.py print_console_report(), only show Type/Level when TriggeringType
-      contains an actual type name (not "N/A").
-- [ ] Add per-target consumer count in console: "Target: GalaxyWorks.Data (4 consumers)"
+- [x] Replace "done." with informative completion summary
+- [x] Drop "Type/Level: N/A (Project Reference)" — omit when no class/method filter
+- [x] Add per-target consumer count in console
 
 Step 1d — CSV cleanup:
-- [ ] Omit ConsumerFileSummaries column from legacy CSV (JSON-in-CSV is unusable in spreadsheets)
-- [ ] Use semicolons for list fields in impact CSV (Solutions, CouplingVectors) to avoid
-      delimiter collision with the CSV comma delimiter.
-- [ ] Add explicit error message for --graph --output-format csv (currently silently falls through)
+- [x] Omit ConsumerFileSummaries column from legacy CSV
+- [x] Use semicolons for list fields in impact CSV (Solutions, CouplingVectors)
+- [x] Graph CSV export now handled by Initiative 5 Phase 6
 
 Step 1e — Testing:
-- [ ] Update existing reporter tests for new JSON schema (native objects, null instead of "")
-- [ ] Add tests for metadata presence in JSON output
-- [ ] Add tests for console completion summary
-- [ ] Add tests for CSV column changes
+- [x] test_report_quality.py — 24 tests (JSON serialization, metadata, console polish, CSV cleanup, version constant, redaction)
 
 PHASE 2: FILTER PIPELINE VISIBILITY (HIGH PRIORITY)
 Ref: OUTPUT_REPORT_EVALUATION.md, Addendum Section A
@@ -707,7 +711,7 @@ MERMAID OUTPUT (LOW PRIORITY — partially covered by Markdown reporter Phase 4)
 - [ ] Support cluster grouping in Mermaid subgraphs
 
 INITIATIVE 6 TESTING
-- [ ] Unit tests for JSON serialization fixes (Phase 1)
+- [x] Unit tests for JSON serialization fixes (Phase 1) — 24 tests in test_report_quality.py
 - [ ] Unit tests for filter pipeline (Phase 2)
 - [ ] Unit tests for tree rendering (Phase 3)
 - [ ] Unit tests for markdown output (Phase 4)
@@ -793,25 +797,30 @@ PHASE 5 TESTING
 - [ ] Integration test: watch mode detects file changes and re-runs
 
 ============================================================================
-PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-04)
+PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-10)
 ============================================================================
 
-CODEBASE STATE (updated 2026-03-09):
-  - scatter/ package with 25 modules across core/, scanners/, analyzers/, ai/, reports/, compat/, store/
+CODEBASE STATE (updated 2026-03-10):
+  - scatter/ package with 26 modules across core/, scanners/, analyzers/, ai/, reports/, compat/, store/
   - scatter.py: 10-line thin entry point (delegates to scatter/__main__.py via runpy)
-  - scatter/__main__.py: ~800 lines (CLI argument parsing + 5-mode dispatch + config loading)
+  - scatter/__main__.py: ~830 lines (CLI argument parsing + 6-mode dispatch + config loading)
   - scatter/config.py: YAML config system with layered precedence (AIConfig, GraphConfig, DbConfig)
   - scatter/ai/router.py: AI task router with lazy provider creation and caching
   - scatter/_legacy.py: ~150 lines (backward-compat AI/Gemini wrappers)
   - scatter/scanners/db_scanner.py: DB dependency detection (sprocs, DbSet, DbContext, SQL, conn strings)
   - scatter/analyzers/domain_analyzer.py: domain boundary detection + extraction feasibility
-  - scatter/reports/graph_reporter.py: graph console + JSON output with metrics, cycles, clusters
-  - 398 tests across 13 test files (397 pass, 1 xfail)
-  - Benchmarks exist for Phase 1 file discovery and Phase 2.1 content analysis
+  - scatter/analyzers/health_analyzer.py: health dashboard + deterministic observation rules
+  - scatter/reports/graph_reporter.py: graph console + JSON + CSV + Mermaid output
+  - tools/generate_synthetic_codebase.py: synthetic .NET codebase generator (100-800 project presets)
+  - tools/benchmark_graph_build.py: graph builder benchmark harness with per-stage timing
+  - docs/ADR_GRAPH_PERFORMANCE.md: architecture decision record for graph builder 100x optimization
+  - 443 tests across 15 test files (442 pass, 1 xfail)
+  - Benchmarks exist for Phase 1 file discovery, Phase 2.1 content analysis, and graph builder at scale
   - AI integration: Google Gemini via AIProvider protocol + AIRouter
   - Config: .scatter.yaml (repo) + ~/.scatter/config.yaml (user) + env vars + CLI
-  - Output formats: console, CSV, JSON
+  - Output formats: console, CSV, JSON (+ Mermaid for graph mode)
   - Dependency graph: persistent, cached, with coupling metrics + cycle detection + domain clusters + DB deps
+  - Health dashboard: deterministic observations (stable_core, high_coupling, in_cycle, low_cohesion_cluster, db_hotspot)
   - Type extraction: supports readonly/ref struct modifiers, record variants, delegates, primary constructors
 
 COMPLETED (v1.x):
@@ -824,7 +833,7 @@ COMPLETED (v1.x):
   ✅ Phase 2.3: Project mapping parallelization (map_cs_to_projects_parallel)
   ✅ Configuration: --disable-multiprocessing, --max-workers, --chunk-size,
      --cs-analysis-chunk-size, --csproj-analysis-chunk-size
-  ✅ Testing: 398 tests (397 pass, 1 xfail) across 13 files (15 phase1 + 24 phase2.3 + 7 hybrid git + 62 impact + 24 config + 46 graph + 25 coupling + 28 cache + 36 db_scanner + 15 domain + 48 type_extraction + 14 find_enclosing_type + 54 new_samples)
+  ✅ Testing: 443 tests (442 pass, 1 xfail) across 15 files (15 phase1 + 24 phase2.3 + 7 hybrid git + 62 impact + 24 config + 46 graph + 25 coupling + 28 cache + 36 db_scanner + 15 domain + 21 reporters + 24 report_quality + 48 type_extraction + 14 find_enclosing_type + 54 new_samples)
   ✅ Adaptive worker scaling via estimate_file_count()
   ✅ Benchmarking infrastructure (benchmark_framework.py, benchmark_analysis.py)
   ✅ Scalability test data (20-project and 100-project synthetic codebases)
@@ -858,20 +867,23 @@ COMPLETED (v2.0 — continued):
   Initiative 5 — Dependency Graph, Metrics & Domain Analysis (v2.0 Phase 3):
   ✅ Phase 1: Graph model + single-pass O(P+F) builder (46 tests)
   ✅ Phase 2: Coupling metrics + Tarjan's SCC cycle detection (25 tests)
-  ✅ Phase 3: Graph persistence + smart git cache invalidation + --graph CLI (21 tests)
-  ✅ Phase 4: DB dependency scanner + sproc_shared edges + --include-db CLI (32 tests)
+  ✅ Phase 3: Graph persistence + smart git cache invalidation + --graph CLI (28 tests)
+  ✅ Phase 4: DB dependency scanner + sproc_shared edges + --include-db CLI (36 tests)
   ✅ Phase 5: Domain boundary detection + extraction feasibility scoring (15 tests)
-  🔜 Phase 6: Graph reporters + health dashboard (planned)
+  ✅ Phase 6: Graph reporters + health dashboard + Mermaid + CSV export (21 tests)
+  Initiative 6 — Reporting & Extraction Planning (v2.0 Phase 4):
+  ✅ Phase 1: Report quality fixes (24 tests)
 
-NOT STARTED (v2.0):
+IN PROGRESS (v2.0):
   Initiative 6 — Reporting & Extraction Planning (v2.0 Phase 4)
-    Phase 1: Report quality fixes (JSON serialization, console polish, CSV cleanup)
     Phase 2: Filter pipeline visibility (show scan funnel in all output)
     Phase 3: Blast radius tree view (render propagation path, not flat list)
     Phase 4: Markdown output format (paste-ready for PRs, tickets, wikis)
     Phase 5: Unified AnalysisReport data model (one object, many formatters)
     Phase 6: Diff reports (--compare-to, track changes over time)
-    Baselines, HTML reports, extraction planning, Mermaid output
+    Baselines, HTML reports, extraction planning
+
+NOT STARTED (v2.0):
   Initiative 7 — CI/CD Integration & Workflow (v2.0 Phase 5)
 
 RECOMMENDED EXECUTION ORDER:
@@ -879,17 +891,16 @@ RECOMMENDED EXECUTION ORDER:
   2. ✅ DONE — Initiative 2 Hybrid Git Analysis complete
   3. ✅ DONE — Initiative 3: Modularization (all 5 phases complete)
   4. ✅ DONE — Initiative 4: CSE Impact Analysis & AI Enrichment complete (53 new tests)
-  5. ✅ DONE — Initiative 5: Dependency graph — Phases 1-5 complete and merged (139 tests), Phase 6 remaining
-  6. Initiative 6 Phase 1: Report quality fixes (HIGH — correctness issues, low effort)
+  5. ✅ DONE — Initiative 5: Dependency graph — all 6 phases complete (171 tests)
+  6. ✅ DONE — Initiative 6 Phase 1: Report quality fixes (24 tests)
   7. Initiative 6 Phase 2: Filter pipeline visibility (HIGH — debuggability, low effort)
   8. Initiative 6 Phase 3: Blast radius tree view (HIGH — core value prop)
-  9. Initiative 5 Phase 6: Graph reporters + health dashboard
-  10. Initiative 6 Phase 4: Markdown output (MEDIUM — sharing workflows)
-  11. Initiative 7 CI/CD exit codes (HIGH — unlocks governance use case)
-  12. Initiative 6 Phase 5: Unified report data model (MEDIUM — architectural foundation)
-  13. Initiative 6 Phase 6: Diff reports + baselines
-  14. Initiative 6: HTML reports, extraction planning, Mermaid
-  15. Initiative 7: PR comments, watch mode, thresholds
+  9. Initiative 6 Phase 4: Markdown output (MEDIUM — sharing workflows)
+  10. Initiative 7 CI/CD exit codes (HIGH — unlocks governance use case)
+  11. Initiative 6 Phase 5: Unified report data model (MEDIUM — architectural foundation)
+  12. Initiative 6 Phase 6: Diff reports + baselines
+  13. Initiative 6: HTML reports, extraction planning
+  14. Initiative 7: PR comments, watch mode, thresholds
 
 KEY FINDINGS:
   1. All 5 steps of find_consumers() are now parallelized (steps 2-5 use
@@ -902,11 +913,14 @@ KEY FINDINGS:
   5. Phase 5 optimization (pool reuse, memory) deferred to v2.0 modularization
      where it can be done properly with a shared pool across the module.
   6. Initiatives 3 & 4 fully complete — config system, AI router, impact analysis all shipped.
-  7. 398 tests across 13 files (397 pass, 1 xfail).
-  8. Initiative 5 Phases 1-5 complete (143 tests) — graph model, coupling metrics, cycle detection,
-     graph persistence, DB dependency mapping, domain boundary detection. Phase 6 (reporters) remaining.
-  9. Report evaluation (docs/OUTPUT_REPORT_EVALUATION.md) identified critical DX issues:
-     JSON serialization bugs (stringified dicts/lists), schema inconsistency between modes
-     (PascalCase flat vs snake_case nested), no metadata in any output, invisible filter
-     pipeline, flat consumer lists instead of propagation trees. These are addressed as
-     Initiative 6 Phases 1-6, sequenced before the larger HTML/extraction/baseline work.
+  7. 443 tests across 15 files (442 pass, 1 xfail).
+  8. Initiative 5 all 6 phases complete (171 tests) — graph model, coupling metrics, cycle detection,
+     graph persistence, DB dependency mapping, domain boundary detection, health dashboard, Mermaid + CSV.
+  9. Initiative 6 Phase 1 complete (24 tests) — JSON serialization fixes, metadata, console polish, CSV cleanup.
+  10. Remaining Initiative 6 work: filter pipeline visibility, blast radius tree view, markdown output,
+      unified report model, diff reports, baselines, HTML reports, extraction planning.
+  11. Graph builder performance: inverted index optimization achieved 101x speedup at 100 projects
+      (172s → 1.7s). 250 projects builds in 10.1s (was killed after 10+ min). 500 projects in 42.8s.
+  12. Three remaining bottlenecks at 500-project scale: comment stripping (18s, char-by-char Python loop),
+      label propagation (21s, linear scan in get_edges_between), type extraction (14s, sequential I/O).
+  13. tracemalloc inflates timing 5-10x for allocation-heavy code — always verify with clean timing runs.
