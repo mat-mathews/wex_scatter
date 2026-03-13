@@ -56,7 +56,7 @@ def write_impact_csv_report(report: ImpactReport, output_file_path: Path) -> Non
     logging.info(f"Writing impact report to CSV: {output_file_path}")
     fieldnames = [
         'Target', 'TargetType', 'Consumer', 'ConsumerPath',
-        'Depth', 'Confidence', 'ConfidenceLabel',
+        'Depth', 'PropagationParent', 'Confidence', 'ConfidenceLabel',
         'RiskRating', 'RiskJustification', 'Pipeline',
         'Solutions', 'CouplingVectors',
     ]
@@ -69,6 +69,7 @@ def write_impact_csv_report(report: ImpactReport, output_file_path: Path) -> Non
                 'Consumer': c.consumer_name,
                 'ConsumerPath': str(c.consumer_path),
                 'Depth': c.depth,
+                'PropagationParent': c.propagation_parent or '',
                 'Confidence': c.confidence,
                 'ConfidenceLabel': c.confidence_label,
                 'RiskRating': c.risk_rating or '',

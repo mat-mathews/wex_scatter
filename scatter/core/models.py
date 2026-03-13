@@ -76,6 +76,9 @@ class EnrichedConsumer:
     risk_justification: Optional[str] = None
     coupling_narrative: Optional[str] = None
     coupling_vectors: Optional[List[str]] = None
+    # consumer_name of the parent in the BFS tree (None = direct consumer).
+    # Assumes consumer_name is unique within a single analysis scope.
+    propagation_parent: Optional[str] = None
 
 
 @dataclass

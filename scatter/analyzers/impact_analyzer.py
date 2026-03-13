@@ -220,6 +220,7 @@ def trace_transitive_impact(
 
     confidence_by_depth = {0: CONFIDENCE_HIGH, 1: CONFIDENCE_MEDIUM, 2: CONFIDENCE_LOW}
     visited: set = set()
+    parent_map: Dict[Path, str] = {}  # maps consumer_path → parent consumer_name
     all_enriched: List[EnrichedConsumer] = []
 
     # Convert direct consumers to EnrichedConsumer at depth 0
@@ -256,6 +257,7 @@ def trace_transitive_impact(
                 depth=depth,
                 confidence=conf,
                 confidence_label=_confidence_label(conf),
+                propagation_parent=parent_map.get(consumer_path),
             )
             all_enriched.append(enriched)
 
@@ -275,6 +277,10 @@ def trace_transitive_impact(
                         cs_analysis_chunk_size=cs_analysis_chunk_size,
                         csproj_analysis_chunk_size=csproj_analysis_chunk_size,
                     )
+                    for td in transitive_data:
+                        td_path = td['consumer_path']
+                        if td_path not in visited and td_path not in parent_map:
+                            parent_map[td_path] = consumer_name
                     next_level_raw.extend(transitive_data)
 
         depth += 1

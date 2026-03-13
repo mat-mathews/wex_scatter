@@ -3,9 +3,10 @@ import json
 import logging
 from dataclasses import asdict
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from scatter.core.models import FilterPipeline, ImpactReport
+from scatter.core.tree import build_adjacency, CONFIDENCE_LABEL_RANK
 
 
 def prepare_detailed_results(all_results: List[Dict[str, Union[str, Dict, List[str]]]]) -> List[Dict]:
@@ -56,6 +57,33 @@ def _path_serializer(obj):
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 
+def _build_propagation_tree(consumers_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Convert flat consumers list into nested propagation tree.
+
+    Each node: {consumer_name, depth, confidence_label, children: [...]}.
+    Sorted by confidence (HIGH first) to match console output ordering.
+    """
+    adjacency = build_adjacency(
+        consumers_list,
+        get_name=lambda c: c["consumer_name"],
+        get_parent=lambda c: c.get("propagation_parent"),
+        sort_key=lambda c: CONFIDENCE_LABEL_RANK.get(c.get("confidence_label", "LOW"), 2),
+    )
+
+    def _build_nodes(parent_key: Optional[str]) -> List[Dict[str, Any]]:
+        nodes = []
+        for c in adjacency.get(parent_key, []):
+            nodes.append({
+                "consumer_name": c["consumer_name"],
+                "depth": c["depth"],
+                "confidence_label": c["confidence_label"],
+                "children": _build_nodes(c["consumer_name"]),
+            })
+        return nodes
+
+    return _build_nodes(None)
+
+
 def write_impact_json_report(report: ImpactReport, output_file_path: Path,
                              metadata: Optional[Dict] = None) -> None:
     """Write impact analysis report as JSON to file."""
@@ -68,6 +96,11 @@ def write_impact_json_report(report: ImpactReport, output_file_path: Path,
     # overwrite the metadata block above.  ImpactReport currently has no
     # such field; if one is added, nest under a 'report' key instead.
     report_dict.update(asdict(report))
+
+    # Inject propagation_tree into each target (alongside flat consumers array)
+    for target_dict in report_dict.get("targets", []):
+        consumers_list = target_dict.get("consumers", [])
+        target_dict["propagation_tree"] = _build_propagation_tree(consumers_list)
 
     try:
         output_file_path.parent.mkdir(parents=True, exist_ok=True)

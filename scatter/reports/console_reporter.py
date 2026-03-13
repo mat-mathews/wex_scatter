@@ -4,9 +4,11 @@ from collections import Counter
 from typing import Dict, List, Optional, Union
 
 from scatter.core.models import (
+    EnrichedConsumer,
     FilterPipeline, ImpactReport,
     STAGE_DISCOVERY, STAGE_INPUT_LABELS,
 )
+from scatter.core.tree import build_adjacency, CONFIDENCE_LABEL_RANK
 
 
 def print_filter_pipeline(pipeline: FilterPipeline) -> None:
@@ -73,6 +75,62 @@ def print_console_report(all_results: List[Dict[str, Union[str, Dict, List[str]]
         print(f"\n--- Total Consuming Relationships Found: {len(all_results)} ---")
 
 
+def _render_tree(consumers: List[EnrichedConsumer]) -> List[str]:
+    """Render consumers as a tree with box-drawing characters.
+
+    Returns a list of output lines (without trailing newlines).
+    The caller is responsible for printing a target header above the tree.
+    """
+    if not consumers:
+        return []
+
+    tree = build_adjacency(
+        consumers,
+        get_name=lambda c: c.consumer_name,
+        get_parent=lambda c: c.propagation_parent,
+        sort_key=lambda c: CONFIDENCE_LABEL_RANK.get(c.confidence_label, 2),
+    )
+    lines: List[str] = []
+
+    def _render_children(parent_key: Optional[str], prefix: str) -> None:
+        children = tree.get(parent_key, [])
+        for i, consumer in enumerate(children):
+            is_last = (i == len(children) - 1)
+            connector = "\u2514\u2500\u2500" if is_last else "\u251c\u2500\u2500"
+            child_prefix = prefix + ("    " if is_last else "\u2502   ")
+
+            # Derive label from tree position, not the raw field — avoids
+            # showing "via <removed>" for orphans re-parented to root.
+            if parent_key is None:
+                depth_info = "direct"
+            else:
+                depth_info = f"via {parent_key}"
+            lines.append(f"{prefix}{connector} {consumer.consumer_name}  [{consumer.confidence_label}]  {depth_info}")
+
+            # Detail lines before children
+            if consumer.risk_rating:
+                justification = f' \u2014 "{consumer.risk_justification}"' if consumer.risk_justification else ""
+                lines.append(f"{child_prefix}Risk: {consumer.risk_rating}{justification}")
+            if consumer.pipeline_name:
+                lines.append(f"{child_prefix}Pipeline: {consumer.pipeline_name}")
+            if consumer.solutions:
+                lines.append(f"{child_prefix}Solutions: {', '.join(consumer.solutions)}")
+            if consumer.coupling_narrative:
+                initial = f"{child_prefix}Coupling: "
+                subsequent = child_prefix + "  "
+                wrapped = textwrap.fill(consumer.coupling_narrative, width=80,
+                                        initial_indent=initial, subsequent_indent=subsequent)
+                lines.extend(wrapped.splitlines())
+            if consumer.coupling_vectors:
+                lines.append(f"{child_prefix}Coupling vectors: {', '.join(consumer.coupling_vectors)}")
+
+            # Recurse into children of this consumer
+            _render_children(consumer.consumer_name, child_prefix)
+
+    _render_children(None, "")
+    return lines
+
+
 def print_impact_report(report: ImpactReport) -> None:
     """Print formatted impact analysis report to console."""
     print("\n=== Impact Analysis Report ===")
@@ -92,26 +150,10 @@ def print_impact_report(report: ImpactReport) -> None:
         print(f"\n--- Target: {ti.target.name} ---")
         print(f"Direct Consumers: {ti.total_direct} | Transitive: {ti.total_transitive}")
 
-        for consumer in ti.consumers:
-            depth_info = "direct" if consumer.depth == 0 else f"depth: {consumer.depth}"
-            print(f"\n  [{consumer.confidence_label}] {consumer.consumer_name} ({depth_info})")
-
-            if consumer.risk_rating:
-                justification = f' — "{consumer.risk_justification}"' if consumer.risk_justification else ""
-                print(f"    Risk: {consumer.risk_rating}{justification}")
-
-            if consumer.pipeline_name:
-                print(f"    Pipeline: {consumer.pipeline_name}")
-
-            if consumer.solutions:
-                print(f"    Solutions: {', '.join(consumer.solutions)}")
-
-            if consumer.coupling_narrative:
-                wrapped = textwrap.fill(consumer.coupling_narrative, width=80, initial_indent="    Coupling: ", subsequent_indent="      ")
-                print(wrapped)
-
-            if consumer.coupling_vectors:
-                print(f"    Coupling vectors: {', '.join(consumer.coupling_vectors)}")
+        if ti.consumers:
+            tree_lines = _render_tree(ti.consumers)
+            for line in tree_lines:
+                print(line)
 
     if report.complexity_justification:
         print(f"\n--- Complexity ---")

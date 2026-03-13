@@ -36,9 +36,10 @@ from scatter.analyzers.impact_analyzer import (
     run_impact_analysis,
     trace_transitive_impact,
 )
-from scatter.reports.console_reporter import print_impact_report
+from scatter.reports.console_reporter import print_impact_report, _render_tree
 from scatter.reports.json_reporter import write_impact_json_report
 from scatter.reports.csv_reporter import write_impact_csv_report
+from scatter.core.tree import build_adjacency
 
 
 # =============================================================================
@@ -85,6 +86,7 @@ def sample_consumers():
             confidence_label="MEDIUM",
             risk_rating="Low",
             risk_justification="Transitive dependency",
+            propagation_parent="ConsumerA",
         ),
     ]
 
@@ -576,6 +578,10 @@ class TestConsoleReporter:
         assert "Medium" in captured
         assert "3-5 developer-days" in captured
         assert "Impact Summary" in captured
+        # Tree view renders box-drawing characters
+        assert "\u251c" in captured or "\u2514" in captured
+        # Transitive consumer shows "via" label
+        assert "via ConsumerA" in captured
 
     def test_print_empty_report(self, capsys):
         report = ImpactReport(sow_text="nothing here")
@@ -626,7 +632,7 @@ class TestCsvReporter:
         assert rows[1]["Depth"] == "1"
         # Check expected columns
         expected_cols = {'Target', 'TargetType', 'Consumer', 'ConsumerPath',
-                         'Depth', 'Confidence', 'ConfidenceLabel',
+                         'Depth', 'PropagationParent', 'Confidence', 'ConfidenceLabel',
                          'RiskRating', 'RiskJustification', 'Pipeline',
                          'Solutions', 'CouplingVectors'}
         assert set(reader.fieldnames) == expected_cols
@@ -985,3 +991,319 @@ class TestQuickStartAIExamples:
             disable_multiprocessing=True,
         )
         assert report.sow_text == sow_content
+
+
+# =============================================================================
+# Initiative 6 Phase 3: Blast Radius Tree View
+# =============================================================================
+
+
+class TestBlastRadiusTreeView:
+    """Tests for the blast radius tree view feature."""
+
+    # -- 6a. Model tests --
+
+    def test_enriched_consumer_has_propagation_parent(self):
+        """propagation_parent field exists and defaults to None."""
+        c = EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A")
+        assert c.propagation_parent is None
+
+    def test_enriched_consumer_with_parent(self):
+        """propagation_parent can be set to a consumer name."""
+        c = EnrichedConsumer(
+            consumer_path=Path("/b.csproj"), consumer_name="B",
+            depth=1, propagation_parent="A",
+        )
+        assert c.propagation_parent == "A"
+
+    # -- 6b. BFS parent tracking tests --
+
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    @patch("scatter.analyzers.impact_analyzer.derive_namespace")
+    def test_transitive_tracing_sets_propagation_parent(self, mock_ns, mock_fc):
+        """Transitive consumer gets propagation_parent set to its discoverer."""
+        mock_ns.return_value = "A.Namespace"
+        mock_fc.return_value = (
+            [{"consumer_path": Path("/b/B.csproj"), "consumer_name": "B", "relevant_files": []}],
+            FilterPipeline(search_scope="/search", total_projects_scanned=0, total_files_scanned=0),
+        )
+        direct = [
+            {"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []},
+        ]
+        with patch.object(Path, 'is_file', return_value=True):
+            result = trace_transitive_impact(direct, Path("/search"), max_depth=1)
+
+        assert result[1].consumer_name == "B"
+        assert result[1].propagation_parent == "A"
+
+    def test_direct_consumers_have_no_parent(self):
+        """Depth-0 consumers have propagation_parent is None."""
+        direct = [
+            {"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []},
+        ]
+        result = trace_transitive_impact(direct, Path("/search"), max_depth=0)
+        assert len(result) == 1
+        assert result[0].propagation_parent is None
+
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    @patch("scatter.analyzers.impact_analyzer.derive_namespace")
+    def test_cycle_detection_preserves_parent(self, mock_ns, mock_fc):
+        """Cycle detection doesn't corrupt parent tracking."""
+        mock_ns.return_value = "A.Namespace"
+        mock_fc.return_value = (
+            [{"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []}],
+            FilterPipeline(search_scope="/search", total_projects_scanned=0, total_files_scanned=0),
+        )
+        direct = [
+            {"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []},
+        ]
+        with patch.object(Path, 'is_file', return_value=True):
+            result = trace_transitive_impact(direct, Path("/search"), max_depth=2)
+
+        assert len(result) == 1
+        assert result[0].propagation_parent is None  # direct, not re-added
+
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    @patch("scatter.analyzers.impact_analyzer.derive_namespace")
+    def test_diamond_dependency_first_parent_wins(self, mock_ns, mock_fc):
+        """When two direct consumers discover the same transitive, first discoverer is parent."""
+        mock_ns.return_value = "NS"
+        _dummy_pipeline = FilterPipeline(
+            search_scope="/search", total_projects_scanned=0, total_files_scanned=0,
+        )
+        call_count = [0]
+
+        def side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] <= 2:  # Both A and B discover C
+                return (
+                    [{"consumer_path": Path("/c/C.csproj"), "consumer_name": "C", "relevant_files": []}],
+                    _dummy_pipeline,
+                )
+            return ([], _dummy_pipeline)
+
+        mock_fc.side_effect = side_effect
+
+        direct = [
+            {"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []},
+            {"consumer_path": Path("/b/B.csproj"), "consumer_name": "B", "relevant_files": []},
+        ]
+        with patch.object(Path, 'is_file', return_value=True):
+            result = trace_transitive_impact(direct, Path("/search"), max_depth=1)
+
+        assert len(result) == 3
+        c = next(r for r in result if r.consumer_name == "C")
+        assert c.propagation_parent == "A"  # first discoverer wins
+
+    def test_orphan_parent_renders_at_root_as_direct(self):
+        """If propagation_parent references removed consumer, renders at root level as 'direct'."""
+        consumers = [
+            EnrichedConsumer(
+                consumer_path=Path("/a.csproj"), consumer_name="A", depth=0,
+                confidence_label="HIGH",
+            ),
+            EnrichedConsumer(
+                consumer_path=Path("/b.csproj"), consumer_name="B", depth=1,
+                confidence_label="MEDIUM", propagation_parent="Removed",
+            ),
+        ]
+        lines = _render_tree(consumers)
+        # B should render at root level (same indent as A) since "Removed" isn't a consumer
+        a_line = next(l for l in lines if "A" in l and "HIGH" in l)
+        b_line = next(l for l in lines if "B" in l and "MEDIUM" in l)
+        a_indent = len(a_line) - len(a_line.lstrip())
+        b_indent = len(b_line) - len(b_line.lstrip())
+        assert a_indent == b_indent
+        # Orphan shows as "direct", NOT "via Removed"
+        assert "direct" in b_line
+        assert "Removed" not in b_line
+
+    def test_orphan_adjacency_falls_back_to_root(self):
+        """build_adjacency re-parents orphans whose parent isn't in the item list."""
+        consumers = [
+            EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0),
+            EnrichedConsumer(consumer_path=Path("/b.csproj"), consumer_name="B", depth=1, propagation_parent="Removed"),
+        ]
+        tree = build_adjacency(
+            consumers,
+            get_name=lambda c: c.consumer_name,
+            get_parent=lambda c: c.propagation_parent,
+        )
+        root_names = [c.consumer_name for c in tree.get(None, [])]
+        assert "A" in root_names
+        assert "B" in root_names
+
+    # -- 6c. Console tree rendering tests --
+
+    def test_tree_output_single_target_direct_only(self):
+        """3 direct consumers render with box-drawing chars."""
+        consumers = [
+            EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0, confidence=CONFIDENCE_HIGH, confidence_label="HIGH"),
+            EnrichedConsumer(consumer_path=Path("/b.csproj"), consumer_name="B", depth=0, confidence=CONFIDENCE_MEDIUM, confidence_label="MEDIUM"),
+            EnrichedConsumer(consumer_path=Path("/c.csproj"), consumer_name="C", depth=0, confidence=CONFIDENCE_LOW, confidence_label="LOW"),
+        ]
+        lines = _render_tree(consumers)
+        joined = "\n".join(lines)
+        assert "\u251c\u2500\u2500" in joined  # branch connector
+        assert "\u2514\u2500\u2500" in joined  # last-child connector
+        assert "A" in joined
+        assert "B" in joined
+        assert "C" in joined
+
+    def test_tree_output_mixed_depths(self):
+        """1 direct + 1 transitive renders nested tree with 'via' label."""
+        consumers = [
+            EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0, confidence=CONFIDENCE_HIGH, confidence_label="HIGH"),
+            EnrichedConsumer(consumer_path=Path("/b.csproj"), consumer_name="B", depth=1, confidence=CONFIDENCE_MEDIUM, confidence_label="MEDIUM", propagation_parent="A"),
+        ]
+        lines = _render_tree(consumers)
+        joined = "\n".join(lines)
+        assert "via A" in joined
+        assert "\u2502" in joined or "\u2514" in joined  # nesting chars
+
+    def test_tree_output_empty_consumers(self):
+        """No consumers produces no tree lines."""
+        lines = _render_tree([])
+        assert lines == []
+
+    def test_tree_output_deep_nesting(self):
+        """Depth 0->1->2 chain renders 3-level tree."""
+        consumers = [
+            EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0, confidence=CONFIDENCE_HIGH, confidence_label="HIGH"),
+            EnrichedConsumer(consumer_path=Path("/b.csproj"), consumer_name="B", depth=1, confidence=CONFIDENCE_MEDIUM, confidence_label="MEDIUM", propagation_parent="A"),
+            EnrichedConsumer(consumer_path=Path("/c.csproj"), consumer_name="C", depth=2, confidence=CONFIDENCE_LOW, confidence_label="LOW", propagation_parent="B"),
+        ]
+        lines = _render_tree(consumers)
+        joined = "\n".join(lines)
+        assert "A" in joined
+        assert "via A" in joined
+        assert "via B" in joined
+        # C should be indented further than B
+        b_line = next(l for l in lines if "B" in l and "via" in l)
+        c_line = next(l for l in lines if "C" in l and "via" in l)
+        # C's leading whitespace should be longer than B's
+        b_indent = len(b_line) - len(b_line.lstrip())
+        c_indent = len(c_line) - len(c_line.lstrip())
+        assert c_indent > b_indent
+
+    def test_tree_output_sorts_by_confidence(self):
+        """HIGH consumers render before LOW within same parent."""
+        consumers = [
+            EnrichedConsumer(consumer_path=Path("/low.csproj"), consumer_name="Low", depth=0, confidence=CONFIDENCE_LOW, confidence_label="LOW"),
+            EnrichedConsumer(consumer_path=Path("/high.csproj"), consumer_name="High", depth=0, confidence=CONFIDENCE_HIGH, confidence_label="HIGH"),
+            EnrichedConsumer(consumer_path=Path("/med.csproj"), consumer_name="Med", depth=0, confidence=CONFIDENCE_MEDIUM, confidence_label="MEDIUM"),
+        ]
+        lines = _render_tree(consumers)
+        joined = "\n".join(lines)
+        assert joined.index("High") < joined.index("Med") < joined.index("Low")
+
+    def test_tree_no_duplicate_target_name(self, capsys):
+        """Tree output should not repeat the target name (header already shows it)."""
+        target = AnalysisTarget(target_type="project", name="MyTarget")
+        consumer = EnrichedConsumer(
+            consumer_path=Path("/a.csproj"), consumer_name="A", depth=0,
+            confidence_label="HIGH",
+        )
+        ti = TargetImpact(target=target, consumers=[consumer], total_direct=1)
+        report = ImpactReport(sow_text="test", targets=[ti])
+        print_impact_report(report)
+        captured = capsys.readouterr().out
+        # Target name appears in header, not duplicated as tree root
+        assert captured.count("MyTarget") == 1
+
+    # -- 6d. JSON propagation_tree tests --
+
+    def test_json_has_propagation_tree(self, tmp_path):
+        """propagation_tree key exists in each target."""
+        target = AnalysisTarget(target_type="project", name="X")
+        consumer = EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0)
+        ti = TargetImpact(target=target, consumers=[consumer], total_direct=1)
+        report = ImpactReport(sow_text="test", targets=[ti])
+
+        output = tmp_path / "report.json"
+        write_impact_json_report(report, output)
+        data = json.loads(output.read_text())
+        assert "propagation_tree" in data["targets"][0]
+
+    def test_json_propagation_tree_nesting(self, tmp_path):
+        """Nested children structure matches BFS chain."""
+        target = AnalysisTarget(target_type="project", name="X")
+        consumers = [
+            EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0, confidence_label="HIGH"),
+            EnrichedConsumer(consumer_path=Path("/b.csproj"), consumer_name="B", depth=1, confidence_label="MEDIUM", propagation_parent="A"),
+        ]
+        ti = TargetImpact(target=target, consumers=consumers, total_direct=1, total_transitive=1)
+        report = ImpactReport(sow_text="test", targets=[ti])
+
+        output = tmp_path / "report.json"
+        write_impact_json_report(report, output)
+        data = json.loads(output.read_text())
+        tree = data["targets"][0]["propagation_tree"]
+        assert len(tree) == 1
+        assert tree[0]["consumer_name"] == "A"
+        assert len(tree[0]["children"]) == 1
+        assert tree[0]["children"][0]["consumer_name"] == "B"
+
+    def test_json_flat_consumers_preserved(self, tmp_path):
+        """Backward-compat consumers[] array still present."""
+        target = AnalysisTarget(target_type="project", name="X")
+        consumer = EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0)
+        ti = TargetImpact(target=target, consumers=[consumer], total_direct=1)
+        report = ImpactReport(sow_text="test", targets=[ti])
+
+        output = tmp_path / "report.json"
+        write_impact_json_report(report, output)
+        data = json.loads(output.read_text())
+        assert "consumers" in data["targets"][0]
+        assert len(data["targets"][0]["consumers"]) == 1
+
+    def test_json_tree_sorted_by_confidence(self, tmp_path):
+        """JSON propagation_tree sorts children HIGH before LOW, matching console."""
+        target = AnalysisTarget(target_type="project", name="X")
+        consumers = [
+            EnrichedConsumer(consumer_path=Path("/low.csproj"), consumer_name="Low", depth=0, confidence_label="LOW"),
+            EnrichedConsumer(consumer_path=Path("/high.csproj"), consumer_name="High", depth=0, confidence_label="HIGH"),
+        ]
+        ti = TargetImpact(target=target, consumers=consumers, total_direct=2)
+        report = ImpactReport(sow_text="test", targets=[ti])
+
+        output = tmp_path / "report.json"
+        write_impact_json_report(report, output)
+        data = json.loads(output.read_text())
+        tree = data["targets"][0]["propagation_tree"]
+        assert tree[0]["consumer_name"] == "High"
+        assert tree[1]["consumer_name"] == "Low"
+
+    # -- 6e. CSV tests --
+
+    def test_csv_has_propagation_parent_column(self, tmp_path):
+        """PropagationParent column exists in output."""
+        target = AnalysisTarget(target_type="project", name="X")
+        consumer = EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0)
+        ti = TargetImpact(target=target, consumers=[consumer], total_direct=1)
+        report = ImpactReport(sow_text="test", targets=[ti])
+
+        output = tmp_path / "report.csv"
+        write_impact_csv_report(report, output)
+        with open(output, newline='') as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+        assert 'PropagationParent' in reader.fieldnames
+
+    def test_csv_propagation_parent_values(self, tmp_path):
+        """Correct parent names in CSV rows."""
+        target = AnalysisTarget(target_type="project", name="X")
+        consumers = [
+            EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0),
+            EnrichedConsumer(consumer_path=Path("/b.csproj"), consumer_name="B", depth=1, propagation_parent="A"),
+        ]
+        ti = TargetImpact(target=target, consumers=consumers, total_direct=1, total_transitive=1)
+        report = ImpactReport(sow_text="test", targets=[ti])
+
+        output = tmp_path / "report.csv"
+        write_impact_csv_report(report, output)
+        with open(output, newline='') as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+        assert rows[0]['PropagationParent'] == ''
+        assert rows[1]['PropagationParent'] == 'A'
