@@ -555,24 +555,32 @@ Step 1d — CSV cleanup:
 Step 1e — Testing:
 - [x] test_report_quality.py — 24 tests (JSON serialization, metadata, console polish, CSV cleanup, version constant, redaction)
 
-PHASE 2: FILTER PIPELINE VISIBILITY (HIGH PRIORITY)
+PHASE 2: FILTER PIPELINE VISIBILITY ✅ COMPLETED (HIGH PRIORITY)
 Ref: OUTPUT_REPORT_EVALUATION.md, Addendum Section A
 The multi-stage filter pipeline (discover → project_ref → namespace → class → method) already
 runs in consumer_analyzer.py but its intermediate counts are discarded. Surface them.
 
-- [ ] Create FilterPipeline dataclass in scatter/core/models.py:
-      stages: List[FilterStage] — each has name, input_count, output_count
-      search_scope, total_projects_scanned, total_files_scanned
-- [ ] Modify consumer_analyzer.py find_consumers() to populate FilterPipeline
-      Capture counts at each stage (post-project_ref, post-namespace, post-class, post-method)
-- [ ] Surface filter pipeline in all three output formats:
-      Console: "Search scope: . (scanned 200 projects, 1847 files)"
+- [x] Create FilterStage + FilterPipeline dataclasses in scatter/core/models.py:
+      FilterStage: name, input_count, output_count, dropped_count property
+      FilterPipeline: search_scope, total_projects_scanned, total_files_scanned, stages,
+      target_project, target_namespace, class_filter, method_filter,
+      format_arrow_chain() method, filter_value_for_stage() method
+      Stage name constants: STAGE_DISCOVERY, STAGE_PROJECT_REFERENCE, STAGE_NAMESPACE,
+      STAGE_CLASS, STAGE_METHOD + STAGE_LABELS and STAGE_INPUT_LABELS dicts
+- [x] Modify consumer_analyzer.py find_consumers() to populate FilterPipeline
+      Return type changed from List[Dict] to Tuple[List[Dict], FilterPipeline]
+      Capture counts at each stage (post-discovery, post-project_ref, post-namespace,
+      post-class, post-method). All return paths return (results, pipeline).
+      Updated all callers: __main__.py (3 sites), impact_analyzer.py (2 sites),
+      test files (19+ sites), profile script (1 site)
+- [x] Surface filter pipeline in all three output formats:
+      Console: print_filter_pipeline() — "Search scope: . (scanned 200 projects, 1847 files)"
               "Filter: 200 → 12 project refs → 8 namespace → 4 class match"
-      JSON: top-level "filter_pipeline" array
-      CSV: add as comment/header row or separate summary section
-- [ ] When zero results: show pipeline to help debug ("0 of 200 projects had a matching
-      ProjectReference — verify the target project path is correct")
-- [ ] Tests: filter pipeline populated correctly, zero-results message
+      JSON: top-level "filter_pipeline" object with stages array (uses dataclasses.asdict)
+      CSV: # comment header with search scope and arrow chain
+- [x] When zero results: show pipeline to help debug with diagnostic hint:
+      "Hint: 0 of 8 namespace-matching projects contained 'WidgetFactory' — verify the class name"
+- [x] Tests: 21 tests in test_filter_pipeline.py (data model, integration, console, JSON, CSV)
 
 PHASE 3: BLAST RADIUS TREE VIEW (HIGH PRIORITY)
 Ref: OUTPUT_REPORT_EVALUATION.md, Addendum Section B
@@ -712,7 +720,7 @@ MERMAID OUTPUT (LOW PRIORITY — partially covered by Markdown reporter Phase 4)
 
 INITIATIVE 6 TESTING
 - [x] Unit tests for JSON serialization fixes (Phase 1) — 24 tests in test_report_quality.py
-- [ ] Unit tests for filter pipeline (Phase 2)
+- [x] Unit tests for filter pipeline (Phase 2) — 21 tests in test_filter_pipeline.py
 - [ ] Unit tests for tree rendering (Phase 3)
 - [ ] Unit tests for markdown output (Phase 4)
 - [ ] Unit tests for AnalysisReport model (Phase 5)
@@ -814,7 +822,7 @@ CODEBASE STATE (updated 2026-03-10):
   - tools/generate_synthetic_codebase.py: synthetic .NET codebase generator (100-800 project presets)
   - tools/benchmark_graph_build.py: graph builder benchmark harness with per-stage timing
   - docs/ADR_GRAPH_PERFORMANCE.md: architecture decision record for graph builder 100x optimization
-  - 443 tests across 15 test files (442 pass, 1 xfail)
+  - 456 tests across 15 test files (455 pass, 1 xfail)
   - Benchmarks exist for Phase 1 file discovery, Phase 2.1 content analysis, and graph builder at scale
   - AI integration: Google Gemini via AIProvider protocol + AIRouter
   - Config: .scatter.yaml (repo) + ~/.scatter/config.yaml (user) + env vars + CLI
@@ -833,7 +841,7 @@ COMPLETED (v1.x):
   ✅ Phase 2.3: Project mapping parallelization (map_cs_to_projects_parallel)
   ✅ Configuration: --disable-multiprocessing, --max-workers, --chunk-size,
      --cs-analysis-chunk-size, --csproj-analysis-chunk-size
-  ✅ Testing: 443 tests (442 pass, 1 xfail) across 15 files (15 phase1 + 24 phase2.3 + 7 hybrid git + 62 impact + 24 config + 46 graph + 25 coupling + 28 cache + 36 db_scanner + 15 domain + 21 reporters + 24 report_quality + 48 type_extraction + 14 find_enclosing_type + 54 new_samples)
+  ✅ Testing: 456 tests (455 pass, 1 xfail) across 15 files (7 phase1 + 24 phase2.3 + 7 hybrid git + 62 impact + 24 config + 46 graph + 25 coupling + 28 cache + 36 db_scanner + 15 domain + 21 reporters + 24 report_quality + 21 filter_pipeline + 48 type_extraction + 14 find_enclosing_type + 54 new_samples)
   ✅ Adaptive worker scaling via estimate_file_count()
   ✅ Benchmarking infrastructure (benchmark_framework.py, benchmark_analysis.py)
   ✅ Scalability test data (20-project and 100-project synthetic codebases)
@@ -873,10 +881,13 @@ COMPLETED (v2.0 — continued):
   ✅ Phase 6: Graph reporters + health dashboard + Mermaid + CSV export (21 tests)
   Initiative 6 — Reporting & Extraction Planning (v2.0 Phase 4):
   ✅ Phase 1: Report quality fixes (24 tests)
+  ✅ Phase 2: Filter pipeline visibility (21 tests)
+  ✅ Test quality cleanup: deleted 1 zombie file (test_phase21_overhead.py), fixed 5 ghost tests,
+     strengthened 3 dead-end assertions, removed 8 redundant tests from test_multiprocessing_phase1.py.
+     Net: 464 → 456 tests across 15 files (455 pass, 1 xfail).
 
 IN PROGRESS (v2.0):
   Initiative 6 — Reporting & Extraction Planning (v2.0 Phase 4)
-    Phase 2: Filter pipeline visibility (show scan funnel in all output)
     Phase 3: Blast radius tree view (render propagation path, not flat list)
     Phase 4: Markdown output format (paste-ready for PRs, tickets, wikis)
     Phase 5: Unified AnalysisReport data model (one object, many formatters)
@@ -893,7 +904,7 @@ RECOMMENDED EXECUTION ORDER:
   4. ✅ DONE — Initiative 4: CSE Impact Analysis & AI Enrichment complete (53 new tests)
   5. ✅ DONE — Initiative 5: Dependency graph — all 6 phases complete (171 tests)
   6. ✅ DONE — Initiative 6 Phase 1: Report quality fixes (24 tests)
-  7. Initiative 6 Phase 2: Filter pipeline visibility (HIGH — debuggability, low effort)
+  7. ✅ DONE — Initiative 6 Phase 2: Filter pipeline visibility (21 tests)
   8. Initiative 6 Phase 3: Blast radius tree view (HIGH — core value prop)
   9. Initiative 6 Phase 4: Markdown output (MEDIUM — sharing workflows)
   10. Initiative 7 CI/CD exit codes (HIGH — unlocks governance use case)
@@ -913,14 +924,16 @@ KEY FINDINGS:
   5. Phase 5 optimization (pool reuse, memory) deferred to v2.0 modularization
      where it can be done properly with a shared pool across the module.
   6. Initiatives 3 & 4 fully complete — config system, AI router, impact analysis all shipped.
-  7. 443 tests across 15 files (442 pass, 1 xfail).
+  7. 456 tests across 15 files (455 pass, 1 xfail).
   8. Initiative 5 all 6 phases complete (171 tests) — graph model, coupling metrics, cycle detection,
      graph persistence, DB dependency mapping, domain boundary detection, health dashboard, Mermaid + CSV.
   9. Initiative 6 Phase 1 complete (24 tests) — JSON serialization fixes, metadata, console polish, CSV cleanup.
-  10. Remaining Initiative 6 work: filter pipeline visibility, blast radius tree view, markdown output,
+  10. Initiative 6 Phase 2 complete (21 tests) — FilterStage/FilterPipeline dataclasses, find_consumers()
+      returns pipeline, arrow-chain in console/JSON/CSV, diagnostic hints for zero-result stages.
+  11. Remaining Initiative 6 work: blast radius tree view, markdown output,
       unified report model, diff reports, baselines, HTML reports, extraction planning.
-  11. Graph builder performance: inverted index optimization achieved 101x speedup at 100 projects
+  12. Graph builder performance: inverted index optimization achieved 101x speedup at 100 projects
       (172s → 1.7s). 250 projects builds in 10.1s (was killed after 10+ min). 500 projects in 42.8s.
-  12. Three remaining bottlenecks at 500-project scale: comment stripping (18s, char-by-char Python loop),
+  13. Three remaining bottlenecks at 500-project scale: comment stripping (18s, char-by-char Python loop),
       label propagation (21s, linear scan in get_edges_between), type extraction (14s, sequential I/O).
-  13. tracemalloc inflates timing 5-10x for allocation-heavy code — always verify with clean timing runs.
+  14. tracemalloc inflates timing 5-10x for allocation-heavy code — always verify with clean timing runs.

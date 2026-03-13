@@ -2,9 +2,14 @@
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
-from scatter.core.models import DEFAULT_MAX_WORKERS, DEFAULT_CHUNK_SIZE
+from scatter.core.models import (
+    DEFAULT_MAX_WORKERS, DEFAULT_CHUNK_SIZE,
+    FilterStage, FilterPipeline,
+    STAGE_DISCOVERY, STAGE_PROJECT_REFERENCE, STAGE_NAMESPACE,
+    STAGE_CLASS, STAGE_METHOD,
+)
 from scatter.core.parallel import (
     find_files_with_pattern_parallel,
     parse_csproj_files_parallel,
@@ -23,14 +28,26 @@ def find_consumers(
     disable_multiprocessing: bool = False,
     cs_analysis_chunk_size: int = 50,
     csproj_analysis_chunk_size: int = 25
-) -> List[Dict[str, Union[Path, str, List[Path]]]]:
+) -> Tuple[List[Dict[str, Union[Path, str, List[Path]]]], FilterPipeline]:
     """
     Finds consuming projects based on ProjectReference, namespace usage,
     and optional class/method usage checks. Tracks the specific files causing matches.
+
+    Returns a tuple of (consumer_results, filter_pipeline).
     """
     logging.info(f"-- Analyzing consumers for target: {target_csproj_path.name} (Namespace: {target_namespace}) --")
     if class_name: logging.info(f"     Filtering for type/class: {class_name}")
     if method_name: logging.info(f"     Filtering for method: {method_name}")
+
+    pipeline = FilterPipeline(
+        search_scope=str(search_scope_path),
+        total_projects_scanned=0,
+        total_files_scanned=0,
+        target_project=target_csproj_path.stem,
+        target_namespace=target_namespace,
+        class_filter=class_name,
+        method_filter=method_name,
+    )
 
     potential_consumers: List[Path] = []
     direct_consumers: Dict[Path, Dict[str, Union[str, List[Path]]]] = {}
@@ -52,9 +69,16 @@ def find_consumers(
             p.resolve() for p in all_csproj_files if p.resolve() != target_csproj_path
         ]
         logging.debug(f"Found {len(potential_consumers)} potential consumer project(s) to check.")
+
+        pipeline.total_projects_scanned = len(all_csproj_files)
+        pipeline.stages.append(FilterStage(
+            name=STAGE_DISCOVERY,
+            input_count=len(all_csproj_files),
+            output_count=len(potential_consumers),
+        ))
     except OSError as e:
         logging.error(f"Error scanning search scope '{search_scope_path}': {e}")
-        return []
+        return [], pipeline
 
     # --- step 2: identify direct consumers (parallel csproj parsing) ---
     logging.debug("Checking for direct project references to target...")
@@ -75,9 +99,16 @@ def find_consumers(
             }
 
     logging.debug(f"Found {len(direct_consumers)} direct consumer(s) via ProjectReference.")
+
+    pipeline.stages.append(FilterStage(
+        name=STAGE_PROJECT_REFERENCE,
+        input_count=len(potential_consumers),
+        output_count=len(direct_consumers),
+    ))
+
     if not direct_consumers:
         logging.info("No projects directly referencing the target were found.")
-        return []
+        return [], pipeline
 
     # --- step 3: filter consumers by namespace ---
     if not target_namespace or target_namespace.startswith("NAMESPACE_ERROR_"):
@@ -109,6 +140,8 @@ def find_consumers(
             consumer_files = cs_file_cache[consumer_dir_abs]
             consumer_to_files_map[consumer_path_abs] = consumer_files
             all_cs_files_for_analysis.extend(consumer_files)
+
+        pipeline.total_files_scanned += len(all_cs_files_for_analysis)
 
         if all_cs_files_for_analysis:
             analysis_config = {
@@ -143,6 +176,12 @@ def find_consumers(
 
         logging.debug(f"Found {len(namespace_consumers)} consumer(s) using namespace '{target_namespace}'.")
 
+    pipeline.stages.append(FilterStage(
+        name=STAGE_NAMESPACE,
+        input_count=len(direct_consumers),
+        output_count=len(namespace_consumers),
+    ))
+
     # --- helper to format results ---
     def format_results(consumer_dict: Dict[Path, Dict[str, Union[str, List[Path]]]]) -> List[Dict[str, Union[Path, str, List[Path]]]]:
         results = []
@@ -156,9 +195,11 @@ def find_consumers(
 
     if not namespace_consumers:
         logging.info("No consuming projects using the target namespace were found (or check skipped).")
-        return format_results(direct_consumers) if not class_name else []
+        if not class_name:
+            return format_results(direct_consumers), pipeline
+        return [], pipeline
     if not class_name:
-        return format_results(namespace_consumers)
+        return format_results(namespace_consumers), pipeline
 
     # --- step 4: filter by class/type usage ---
     logging.debug(f"Checking {len(namespace_consumers)} namespace consumers for usage of type '{class_name}'...")
@@ -173,6 +214,8 @@ def find_consumers(
         consumer_to_relevant_files_map[consumer_path_abs] = files_to_check
         all_relevant_files.extend(files_to_check)
         logging.debug(f"  Checking type '{class_name}' in {len(files_to_check)} relevant files for {consumer_data['consumer_name']}...")
+
+    pipeline.total_files_scanned += len(all_relevant_files)
 
     if all_relevant_files:
         analysis_config = {
@@ -206,11 +249,18 @@ def find_consumers(
                 logging.debug(f"    Type '{class_name}' used in {consumer_data['consumer_name']} (Files: {[f.name for f in class_match_files]})")
 
     logging.debug(f"Found {len(class_consumers)} consumer(s) potentially using type '{class_name}'.")
+
+    pipeline.stages.append(FilterStage(
+        name=STAGE_CLASS,
+        input_count=len(namespace_consumers),
+        output_count=len(class_consumers),
+    ))
+
     if not class_consumers:
         logging.info(f"No consuming projects potentially using type '{class_name}' were found.")
-        return []
+        return [], pipeline
     if not method_name:
-        return format_results(class_consumers)
+        return format_results(class_consumers), pipeline
 
     # --- step 5: filter by method (parallel) ---
     logging.debug(f"Checking {len(class_consumers)} class consumers for potential usage of method '{method_name}'...")
@@ -225,6 +275,8 @@ def find_consumers(
             file_to_consumer_map[cs_file_abs] = consumer_path_abs
 
     logging.debug(f"  Scanning {len(all_method_files)} files across {len(class_consumers)} consumers for method '{method_name}'...")
+
+    pipeline.total_files_scanned += len(all_method_files)
 
     method_analysis_config = {
         'analysis_type': 'method',
@@ -259,8 +311,15 @@ def find_consumers(
         logging.debug(f"    Method '{method_name}' used in {consumer_data['consumer_name']} (Files: {[f.name for f in consumer_data['relevant_files']]})")
 
     logging.debug(f"Found {len(method_consumers)} consumer(s) potentially calling method '{method_name}'.")
+
+    pipeline.stages.append(FilterStage(
+        name=STAGE_METHOD,
+        input_count=len(class_consumers),
+        output_count=len(method_consumers),
+    ))
+
     if not method_consumers:
         logging.info(f"No consuming projects potentially calling method '{method_name}' were found.")
-        return []
+        return [], pipeline
 
-    return format_results(method_consumers)
+    return format_results(method_consumers), pipeline

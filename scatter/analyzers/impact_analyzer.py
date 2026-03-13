@@ -155,7 +155,7 @@ def _analyze_single_target(
         namespace = f"NAMESPACE_ERROR_{target.name}"
 
     # Find direct consumers
-    direct_consumers_data = find_consumers(
+    direct_consumers_data, _pipeline = find_consumers(
         target_csproj_path=target.csproj_path,
         search_scope_path=search_scope,
         target_namespace=namespace,
@@ -263,7 +263,7 @@ def trace_transitive_impact(
             if depth < max_depth and consumer_path.is_file():
                 ns = derive_namespace(consumer_path)
                 if ns:
-                    transitive_data = find_consumers(
+                    transitive_data, _t_pipeline = find_consumers(
                         target_csproj_path=consumer_path,
                         search_scope_path=search_scope,
                         target_namespace=ns,

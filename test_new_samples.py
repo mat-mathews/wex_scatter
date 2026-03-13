@@ -154,12 +154,7 @@ class TestCommonTypeNames:
         assert "Result" in types
 
     def test_false_positive_risk_with_text_search(self):
-        """Demonstrate that text search for 'Result' would match many unrelated files.
-
-        This documents the false positive problem — searching for the word 'Result'
-        in source code will match variable names, method return types, comments, etc.
-        that have nothing to do with GalaxyWorks.Common.Models.Result.
-        """
+        """Type extraction only finds declarations, not variable/return type mentions."""
         unrelated_code = """
 // This file has nothing to do with GalaxyWorks.Common
 public class OrderService
@@ -172,9 +167,10 @@ public class OrderService
         return BadRequest();
     }
 }"""
-        # A naive text search for "Result" would match this file
-        assert "Result" in unrelated_code  # false positive!
-        assert "result" in unrelated_code  # even more false positives with case-insensitive
+        types = extract_type_names_from_content(unrelated_code)
+        assert "OrderService" in types
+        # "Result" as a variable name is NOT extracted as a type
+        assert "result" not in types
 
 
 # ===========================================================================
@@ -296,7 +292,7 @@ class TestUsingAliasAndStatic:
     """Verify handling of using aliases and using static."""
 
     def test_using_alias_hides_type_name(self):
-        """using alias makes the original type name invisible at usage sites."""
+        """Using alias: only actual type declarations are extracted, not aliases."""
         code = """using DataSvc = GalaxyWorks.Data.DataServices.PortalDataService;
 
 namespace GalaxyWorks.Api.Controllers;
@@ -305,14 +301,13 @@ public class MyController
 {
     private readonly DataSvc _service;
 }"""
-        # Type search for "PortalDataService" would find it in the using line,
-        # but at usage sites only "DataSvc" appears
-        assert "PortalDataService" in code  # in the using alias line
-        # A type usage search should check both the alias and the original
-        assert "DataSvc" in code  # at usage site
+        types = extract_type_names_from_content(code)
+        assert "MyController" in types
+        # Alias is not a type declaration
+        assert "DataSvc" not in types
 
     def test_using_static_hides_type_name(self):
-        """using static makes enum member names appear without the type name."""
+        """Using static: only actual type declarations are extracted."""
         code = """using static GalaxyWorks.Data.Models.StatusType;
 
 namespace GalaxyWorks.Api.Controllers;
@@ -324,11 +319,10 @@ public class MyController
         var status = Active;
     }
 }"""
-        # "StatusType" appears in the using line but NOT at usage sites
-        lines = code.split("\n")
-        usage_lines = [l for l in lines if "Active" in l and "using" not in l]
-        for line in usage_lines:
-            assert "StatusType" not in line
+        types = extract_type_names_from_content(code)
+        assert "MyController" in types
+        # StatusType is not declared here, only imported via using static
+        assert "StatusType" not in types
 
     def test_alias_in_sample_file(self):
         """PortalApiController.cs uses both alias and static imports."""
@@ -356,14 +350,14 @@ class TestExtensionMethods:
         assert "StringExtensions" in types
 
     def test_extension_usage_invisible_to_type_search(self):
-        """Extension method calls don't reference the extension class by name."""
+        """Extension method calls produce no type declarations."""
         consumer_code = """
 var greeting = name.Truncate(20);
 var slug = title.ToSlug();
 """
-        # Neither "StringExtensions" nor any class name appears
-        assert "StringExtensions" not in consumer_code
-        # But the methods are used — this coupling is invisible to type search
+        types = extract_type_names_from_content(consumer_code)
+        assert "StringExtensions" not in types
+        assert len(types) == 0
 
 
 # ===========================================================================

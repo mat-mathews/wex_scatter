@@ -2,12 +2,25 @@
 import csv
 import logging
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
-from scatter.core.models import ImpactReport
+from scatter.core.models import FilterPipeline, ImpactReport
 
 
-def write_csv_report(detailed_results: List[Dict], output_file_path: Path) -> None:
+def _build_filter_comment_header(pipeline: FilterPipeline) -> str:
+    """Build comment header lines for CSV from a FilterPipeline."""
+    projects = f"{pipeline.total_projects_scanned:,}"
+    files = f"{pipeline.total_files_scanned:,}"
+    lines = [f"# Search scope: {pipeline.search_scope} ({projects} projects, {files} files)"]
+
+    if pipeline.stages:
+        lines.append(f"# Filter: {pipeline.format_arrow_chain()}")
+
+    return "\n".join(lines) + "\n"
+
+
+def write_csv_report(detailed_results: List[Dict], output_file_path: Path,
+                     pipeline: Optional[FilterPipeline] = None) -> None:
     """Write analysis results as CSV to file."""
     logging.info(f"Writing {len(detailed_results)} results to CSV: {output_file_path}")
     report_fieldnames = [
@@ -27,6 +40,8 @@ def write_csv_report(detailed_results: List[Dict], output_file_path: Path) -> No
     try:
         output_file_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_file_path, 'w', newline='', encoding='utf-8') as csvfile:
+            if pipeline is not None:
+                csvfile.write(_build_filter_comment_header(pipeline))
             writer = csv.DictWriter(csvfile, fieldnames=report_fieldnames, extrasaction='ignore')
             writer.writeheader()
             if csv_rows:

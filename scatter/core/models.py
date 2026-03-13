@@ -98,3 +98,76 @@ class ImpactReport:
     complexity_justification: Optional[str] = None
     effort_estimate: Optional[str] = None        # e.g., "3-5 developer-days"
     overall_risk: Optional[str] = None
+
+
+# --- Filter pipeline visibility models ---
+
+# Stage name constants — use these instead of raw strings.
+STAGE_DISCOVERY = "discovery"
+STAGE_PROJECT_REFERENCE = "project_reference"
+STAGE_NAMESPACE = "namespace"
+STAGE_CLASS = "class"
+STAGE_METHOD = "method"
+
+# Human-readable labels for each stage, keyed by stage name constant.
+STAGE_LABELS = {
+    STAGE_DISCOVERY: None,           # discovery uses input_count as the chain start
+    STAGE_PROJECT_REFERENCE: "project refs",
+    STAGE_NAMESPACE: "namespace",
+    STAGE_CLASS: "class match",
+    STAGE_METHOD: "method match",
+}
+
+# Label describing the *input* population for each stage (used in diagnostic hints).
+STAGE_INPUT_LABELS = {
+    STAGE_PROJECT_REFERENCE: "potential",
+    STAGE_NAMESPACE: "project-reference-matching",
+    STAGE_CLASS: "namespace-matching",
+    STAGE_METHOD: "class-matching",
+}
+
+
+@dataclass
+class FilterStage:
+    """One stage of the consumer detection filter pipeline."""
+    name: str           # STAGE_DISCOVERY, STAGE_PROJECT_REFERENCE, etc.
+    input_count: int    # projects entering this stage
+    output_count: int   # projects passing this stage
+
+    @property
+    def dropped_count(self) -> int:
+        """Number of projects filtered out at this stage."""
+        return self.input_count - self.output_count
+
+
+@dataclass
+class FilterPipeline:
+    """Records the filter funnel from consumer detection."""
+    search_scope: str                       # search scope path (for display)
+    total_projects_scanned: int             # .csproj files found in scope
+    total_files_scanned: int                # .cs files analyzed across all stages
+    stages: List[FilterStage] = field(default_factory=list)
+    target_project: str = ""                # name of the target being analyzed
+    target_namespace: str = ""              # namespace used for filtering
+    class_filter: Optional[str] = None      # class filter if applied
+    method_filter: Optional[str] = None     # method filter if applied
+
+    def format_arrow_chain(self) -> str:
+        """Build the 'N -> M stage -> ...' arrow notation from stages."""
+        parts: List[str] = []
+        for stage in self.stages:
+            if stage.name == STAGE_DISCOVERY:
+                parts.append(str(stage.input_count))
+            label = STAGE_LABELS.get(stage.name, stage.name)
+            if label:
+                parts.append(f"{stage.output_count} {label}")
+        return " \u2192 ".join(parts)
+
+    def filter_value_for_stage(self, stage_name: str) -> Optional[str]:
+        """Return the user-supplied filter value relevant to a given stage."""
+        return {
+            STAGE_PROJECT_REFERENCE: self.target_project,
+            STAGE_NAMESPACE: self.target_namespace,
+            STAGE_CLASS: self.class_filter,
+            STAGE_METHOD: self.method_filter,
+        }.get(stage_name)

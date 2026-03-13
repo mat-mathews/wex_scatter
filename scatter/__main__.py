@@ -407,6 +407,7 @@ def main():
 
     # --- main logic ---
     all_results: List[Dict[str, Union[str, Dict, List[str]]]] = []
+    filter_pipeline = None  # populated by find_consumers() in git/target/sproc modes
 
     # == GIT BRANCH ANALYSIS MODE ==
     if is_git_mode:
@@ -511,7 +512,7 @@ def main():
                         if method_filter:
                             logging.info(f"     (Including method filter: '{method_filter}')")
 
-                        final_consumers_data = find_consumers(
+                        final_consumers_data, _pipeline = find_consumers(
                             target_csproj_abs_git_mode,
                             search_scope_abs,
                             target_namespace_str_git_mode,
@@ -523,6 +524,10 @@ def main():
                             cs_analysis_chunk_size=args.cs_analysis_chunk_size,
                             csproj_analysis_chunk_size=args.csproj_analysis_chunk_size
                         )
+
+                        # Keep the first pipeline that produced results; fall back to last
+                        if filter_pipeline is None or final_consumers_data:
+                            filter_pipeline = _pipeline
 
                         if final_consumers_data:
                             try:
@@ -563,7 +568,7 @@ def main():
         logging.info(f"Using target namespace: '{target_namespace_str}'")
 
         logging.info("\nStep 2: Analyzing consumers...")
-        final_consumers_data = find_consumers(
+        final_consumers_data, filter_pipeline = find_consumers(
             target_csproj_abs_path,
             search_scope_abs,
             target_namespace_str,
@@ -656,7 +661,7 @@ def main():
                 if method_filter_sproc:
                     report_trigger_info = f"{class_containing_sproc}.{method_filter_sproc} (via Sproc: {sproc_name_arg})"
 
-                final_consumers_data = find_consumers(
+                final_consumers_data, _pipeline = find_consumers(
                     target_csproj_path=target_csproj_abs,
                     search_scope_path=search_scope_abs,
                     target_namespace=target_namespace_str_sproc_mode,
@@ -668,6 +673,10 @@ def main():
                     cs_analysis_chunk_size=args.cs_analysis_chunk_size,
                     csproj_analysis_chunk_size=args.csproj_analysis_chunk_size
                 )
+
+                # Keep the first pipeline that produced results; fall back to last
+                if filter_pipeline is None or final_consumers_data:
+                    filter_pipeline = _pipeline
 
                 _process_consumer_summaries_and_append_results(
                     target_project_name=target_project_name_sproc_mode,
@@ -851,7 +860,8 @@ def main():
             sys.exit(1)
         detailed = prepare_detailed_results(all_results)
         write_json_report(detailed, Path(args.output_file),
-                          metadata=_build_metadata(args, search_scope_abs, start_time))
+                          metadata=_build_metadata(args, search_scope_abs, start_time),
+                          pipeline=filter_pipeline)
 
     # Handle CSV Output
     elif args.output_format == 'csv':
@@ -859,11 +869,11 @@ def main():
             logging.error("CSV output format requires the --output-file argument.")
             sys.exit(1)
         detailed = prepare_detailed_results(all_results)
-        write_csv_report(detailed, Path(args.output_file))
+        write_csv_report(detailed, Path(args.output_file), pipeline=filter_pipeline)
 
     # Handle Console Output (Default)
     else:
-        print_console_report(all_results)
+        print_console_report(all_results, pipeline=filter_pipeline)
 
     target_names = {item['TargetProjectName'] for item in all_results}
     print(f"\nAnalysis complete. {len(all_results)} consumer(s) found across {len(target_names)} target(s).\n")

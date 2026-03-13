@@ -1,13 +1,39 @@
 """Console output formatting for analysis results."""
 import textwrap
 from collections import Counter
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
-from scatter.core.models import ImpactReport
+from scatter.core.models import (
+    FilterPipeline, ImpactReport,
+    STAGE_DISCOVERY, STAGE_INPUT_LABELS,
+)
 
 
-def print_console_report(all_results: List[Dict[str, Union[str, Dict, List[str]]]]) -> None:
+def print_filter_pipeline(pipeline: FilterPipeline) -> None:
+    """Print filter pipeline summary to console."""
+    projects = f"{pipeline.total_projects_scanned:,}"
+    files = f"{pipeline.total_files_scanned:,}"
+    print(f"Search scope: {pipeline.search_scope} (scanned {projects} projects, {files} files)")
+
+    if pipeline.stages:
+        print(f"Filter: {pipeline.format_arrow_chain()}")
+
+        # Diagnostic hint when a stage drops to zero
+        for stage in pipeline.stages:
+            if stage.output_count == 0 and stage.input_count > 0 and stage.name != STAGE_DISCOVERY:
+                prev_label = STAGE_INPUT_LABELS.get(stage.name, "")
+                filter_value = pipeline.filter_value_for_stage(stage.name)
+                if filter_value:
+                    print(f"  Hint: 0 of {stage.input_count} {prev_label} projects contained '{filter_value}' \u2014 verify the {stage.name} name")
+                break
+
+
+def print_console_report(all_results: List[Dict[str, Union[str, Dict, List[str]]]],
+                         pipeline: Optional[FilterPipeline] = None) -> None:
     """Print formatted analysis results to console."""
+    if pipeline is not None:
+        print_filter_pipeline(pipeline)
+
     print("\n--- Combined Consumer Analysis Report ---")
     if not all_results:
         print("\n--- No Consuming Relationships Found ---")

@@ -1000,7 +1000,7 @@ Human-readable report listing each target and its consumers with pipeline mappin
 
 ### JSON (`--output-format json --output-file report.json`)
 
-Structured JSON. For legacy modes (git/target/sproc), the output includes `pipeline_summary` and `all_results`. For impact mode, the output is the full `ImpactReport` structure:
+Structured JSON. For legacy modes (git/target/sproc), the output includes `pipeline_summary`, `all_results`, and an optional `filter_pipeline` object showing intermediate counts at each stage of the consumer detection pipeline. For impact mode, the output is the full `ImpactReport` structure:
 
 ```json
 {
@@ -1033,7 +1033,7 @@ Structured JSON. For legacy modes (git/target/sproc), the output includes `pipel
 
 ### CSV (`--output-format csv --output-file report.csv`)
 
-For legacy modes: one row per consumer relationship with columns for target, consumer, pipeline, etc.
+For legacy modes: one row per consumer relationship with columns for target, consumer, pipeline, etc. When filter pipeline data is available, a `#`-prefixed comment header is prepended with the search scope and filter arrow chain (most CSV parsers ignore `#` comment lines).
 
 For impact mode: one row per consumer with columns: `Target`, `TargetType`, `Consumer`, `ConsumerPath`, `Depth`, `Confidence`, `ConfidenceLabel`, `RiskRating`, `RiskJustification`, `Pipeline`, `Solutions`, `CouplingVectors`.
 
@@ -1068,7 +1068,7 @@ python -m pytest -q
 
 ### Test Suite Overview
 
-The test suite includes **443 tests** across 15 test files (442 pass, 1 xfail):
+The test suite includes **456 tests** across 15 test files (455 pass, 1 xfail):
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
@@ -1076,17 +1076,18 @@ The test suite includes **443 tests** across 15 test files (442 pass, 1 xfail):
 | `test_coupling.py` | 25 | Coupling metrics (fan_in/out, instability, coupling_score, shared_db_density), Tarjan's SCC cycle detection, edge type filtering, rank_by_coupling |
 | `test_db_scanner.py` | 36 | DB scanner: comment stripping, sproc/DbSet/DbContext/SQL/connection string detection, `_FileIndex` with struct/record/interface, cross-project matrix, graph edges, config, integration |
 | `test_domain.py` | 15 | Domain boundary detection: two-level clustering, label propagation, determinism, cluster naming, extraction feasibility scoring, API surface penalty |
+| `test_filter_pipeline.py` | 21 | Filter pipeline visibility: `FilterStage`/`FilterPipeline` dataclass construction, `format_arrow_chain()`, `filter_value_for_stage()`, `find_consumers()` tuple return, pipeline stages (discovery, project_ref, class), zero-results pipeline, console/JSON/CSV reporter integration, backward compatibility |
 | `test_find_enclosing_type.py` | 14 | `find_enclosing_type_name()`: basic types (class/struct/interface/enum/record), nested types, generics, readonly/ref struct, edge cases (before-any-declaration, empty content) |
 | `test_graph.py` | 46 | Graph data structures, construction, traversal, serialization, `.csproj` parsing, integration with sample projects |
 | `test_graph_cache.py` | 28 | Graph persistence: save/load roundtrip, smart git-based cache invalidation, mtime fallback |
 | `test_hybrid_git.py` | 7 | LLM-enhanced git diff analysis |
 | `test_impact_analysis.py` | 62 | Impact analysis: data models, CLI args, work request parsing, transitive tracing, risk assessment, coupling narrative, impact narrative, complexity estimate, reporters, end-to-end |
-| `test_multiprocessing_phase1.py` | 15 | File discovery, consumer analysis, backwards compatibility |
+| `test_multiprocessing_phase1.py` | 7 | Parallel file discovery, chunk utility, error handling, symbol search consistency, backwards compatibility |
 | `test_new_samples.py` | 54 | Sample project validation: type extraction across all sample projects, consumer detection, project reference resolution |
 | `test_phase2_3_project_mapping.py` | 24 | Batch project mapping, parallel orchestration, sproc integration |
 | `test_report_quality.py` | 24 | JSON serialization fixes, metadata blocks, console polish, CSV cleanup, version constant, API key redaction |
 | `test_reporters.py` | 21 | Mermaid output, health dashboard observations, console cluster members, CSV export columns, JSON topology flag |
-| `test_type_extraction.py` | 48 | Type declaration regex: class/struct/interface/enum/record variants, delegates, readonly/ref struct, primary constructors, attributes, nested types, record false positives, dedup, pathological input |
+| `test_type_extraction.py` | 48 | Type declaration regex: class/struct/interface/enum/record variants, delegates, readonly/ref struct, primary constructors, attributes, nested types, record false positives, dedup, pathological input, comment filtering |
 
 ### What the Tests Cover
 
@@ -1264,6 +1265,20 @@ The core consumer detection runs in 5 stages, each progressively filtering:
 3. **Namespace Filter** — Keep only projects with `using TargetNamespace;` statements
 4. **Class Filter** (optional) — Keep only projects referencing the specific class name
 5. **Method Filter** (optional) — Keep only projects calling the specific method
+
+The intermediate counts at each stage are captured in a `FilterPipeline` object and surfaced in all output formats. This makes it easy to debug zero-result scenarios — you can see exactly which stage dropped the candidates and what filter value was applied. Console output shows a one-line arrow chain:
+
+```
+Search scope: /path/to/repo (scanned 200 projects, 1,847 files)
+Filter: 200 → 12 project refs → 8 namespace → 4 class match → 2 method match
+```
+
+When a stage drops to zero, a diagnostic hint identifies the problematic filter:
+
+```
+Filter: 200 → 12 project refs → 8 namespace → 0 class match
+  Hint: 0 of 8 namespace-matching projects contained 'WidgetFactory' — verify the class name
+```
 
 ### Impact Analysis Architecture
 
@@ -1743,9 +1758,11 @@ The `feasibility_details` dict breaks down each penalty, making it actionable �
 - **Domain Boundary Detection (Phase 5)** — Two-level clustering (connected components + label propagation), `Cluster` dataclass with cohesion and feasibility scoring, four weighted penalty factors (cross-boundary coupling, shared DB, cycles, API surface), `BOUNDARY_ASSESSMENT` AI task type, and 15 tests
 - **Graph Reporters & Health Dashboard (Phase 6)** — Console, JSON, Mermaid, CSV output; `HealthDashboard` with deterministic observation rules (stable_core, high_coupling, in_cycle, low_cohesion_cluster, db_hotspot); `--include-graph-topology` flag; cluster member display; and 21 tests
 - **Report Quality Fixes (Initiative 6 Phase 1)** — JSON serialization fixes (native objects, null for absent fields), metadata blocks with version stamp, console polish, CSV cleanup, and 24 tests
+- **Filter Pipeline Visibility (Initiative 6 Phase 2)** — `FilterStage` and `FilterPipeline` dataclasses, `find_consumers()` returns pipeline alongside results, arrow-chain summary in console/JSON/CSV output, diagnostic hints for zero-result stages, and 21 tests
 - **Graph Builder Performance Optimization** — Inverted index for type_usage edges (101x speedup at 100 projects), comment stripping for precision, multi-owner type map for correctness. Benchmark tooling: synthetic codebase generator and per-stage profiling harness. See `docs/ADR_GRAPH_PERFORMANCE.md`
+- **Test Quality Cleanup** — Deleted 1 zombie file, fixed 5 ghost tests (replaced no-op assertions with real scatter API calls), strengthened 3 dead-end assertions, removed 8 redundant tests. Suite reduced from 464 to 456 tests with no coverage loss
 
 ### Planned
 
-- **Reporting & Extraction Planning** — Filter pipeline visibility, blast radius tree view, markdown output, unified report data model, diff reports, baselines, HTML reports
+- **Reporting & Extraction Planning** — Blast radius tree view, markdown output, unified report data model, diff reports, baselines, HTML reports
 - **CI/CD Integration** — Pipeline-aware analysis with automated impact checks, exit codes, PR comments

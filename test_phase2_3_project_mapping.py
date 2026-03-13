@@ -97,26 +97,25 @@ class TestMapCsToProjectsBatch(unittest.TestCase):
         self.assertEqual(result, {})
 
     def test_nonexistent_path(self):
-        """Nonexistent file paths return None without crashing."""
+        """Nonexistent file paths return None or a valid .csproj path."""
         fake_path = str(self.temp_dir / "does_not_exist" / "Fake.cs")
         result = scatter.map_cs_to_projects_batch(([fake_path],))
 
         self.assertIn(fake_path, result)
-        # Should be None since the parent directory doesn't exist and will
-        # either error or walk to root without finding a .csproj
-        # (exact behavior depends on OS, but must not crash)
+        value = result[fake_path]
+        if value is not None:
+            self.assertTrue(value.endswith(".csproj"),
+                            f"Expected None or .csproj path, got {value}")
 
     def test_orphan_file_does_not_crash(self):
-        """A .cs file with no .csproj anywhere above it returns without crashing."""
-        # The orphan file is under temp_dir/no_project/deep/nested/
-        # There's no .csproj in that subtree. It will eventually walk up
-        # to / without finding one (or find one outside temp_dir, but
-        # the important thing is it doesn't crash).
+        """A .cs file with no .csproj in its subtree returns None or a valid path."""
         result = scatter.map_cs_to_projects_batch(([str(self.cs_orphan)],))
         self.assertIn(str(self.cs_orphan), result)
-        # The result is either None (no csproj found all the way to root)
-        # or a string (if the system happens to have a .csproj above temp_dir).
-        # Either way, it must not crash.
+        value = result[str(self.cs_orphan)]
+        # Either None (no .csproj found) or a valid .csproj path
+        if value is not None:
+            self.assertTrue(value.endswith(".csproj"),
+                            f"Expected None or .csproj path, got {value}")
 
     def test_all_input_files_appear_in_output(self):
         """Every input file path must appear as a key in the output dict."""

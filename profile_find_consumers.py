@@ -93,7 +93,7 @@ def profile_find_consumers(test_dir: Path, target_csproj: Path,
     print(f"\n  [{label}] disable_multiprocessing={disable_mp}")
 
     start = time.perf_counter()
-    results = scatter.find_consumers(
+    results, _pipeline = scatter.find_consumers(
         target_csproj_path=target_csproj,
         search_scope_path=test_dir,
         target_namespace=namespace,

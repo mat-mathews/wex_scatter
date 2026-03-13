@@ -14,6 +14,7 @@ from scatter.core.models import (
     EnrichedConsumer,
     TargetImpact,
     ImpactReport,
+    FilterPipeline,
     CONFIDENCE_HIGH,
     CONFIDENCE_MEDIUM,
     CONFIDENCE_LOW,
@@ -339,9 +340,10 @@ class TestTransitiveTracing:
     def test_depth_one_finds_transitive(self, mock_ns, mock_fc):
         """With max_depth=1, finds consumers of consumers."""
         mock_ns.return_value = "A.Namespace"
-        mock_fc.return_value = [
-            {"consumer_path": Path("/b/B.csproj"), "consumer_name": "B", "relevant_files": []},
-        ]
+        mock_fc.return_value = (
+            [{"consumer_path": Path("/b/B.csproj"), "consumer_name": "B", "relevant_files": []}],
+            FilterPipeline(search_scope="/search", total_projects_scanned=0, total_files_scanned=0),
+        )
 
         direct = [
             {"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []},
@@ -367,9 +369,10 @@ class TestTransitiveTracing:
              patch("scatter.analyzers.impact_analyzer.derive_namespace", return_value="A"), \
              patch.object(Path, 'is_file', return_value=True):
             # Return A again as a consumer of A (cycle)
-            mock_fc.return_value = [
-                {"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []},
-            ]
+            mock_fc.return_value = (
+                [{"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []}],
+                FilterPipeline(search_scope="/search", total_projects_scanned=0, total_files_scanned=0),
+            )
             result = trace_transitive_impact(direct, Path("/search"), max_depth=2)
 
         assert len(result) == 1  # Only one instance of A
@@ -381,14 +384,15 @@ class TestTransitiveTracing:
              patch.object(Path, 'is_file', return_value=True):
 
             # Depth 0 → A, Depth 1 → B, Depth 2 → C
+            _dummy_pipeline = FilterPipeline(search_scope="/search", total_projects_scanned=0, total_files_scanned=0)
             call_count = [0]
             def side_effect(*args, **kwargs):
                 call_count[0] += 1
                 if call_count[0] == 1:
-                    return [{"consumer_path": Path("/b/B.csproj"), "consumer_name": "B", "relevant_files": []}]
+                    return ([{"consumer_path": Path("/b/B.csproj"), "consumer_name": "B", "relevant_files": []}], _dummy_pipeline)
                 elif call_count[0] == 2:
-                    return [{"consumer_path": Path("/c/C.csproj"), "consumer_name": "C", "relevant_files": []}]
-                return []
+                    return ([{"consumer_path": Path("/c/C.csproj"), "consumer_name": "C", "relevant_files": []}], _dummy_pipeline)
+                return ([], _dummy_pipeline)
 
             mock_fc.side_effect = side_effect
 
@@ -658,9 +662,10 @@ class TestEndToEnd:
         consumer_csproj.write_text("<Project></Project>")
 
         mock_ns.return_value = "GalaxyWorks.Data"
-        mock_fc.return_value = [
-            {"consumer_path": consumer_csproj, "consumer_name": "ConsumerA", "relevant_files": []},
-        ]
+        mock_fc.return_value = (
+            [{"consumer_path": consumer_csproj, "consumer_name": "ConsumerA", "relevant_files": []}],
+            FilterPipeline(search_scope=str(tmp_path), total_projects_scanned=0, total_files_scanned=0),
+        )
 
         # Mock AI provider with responses for each task
         provider = MagicMock()
@@ -745,7 +750,7 @@ class TestQuickStartTargetProjectExamples:
         assert webportal_csproj.exists(), f"WebPortal project not found: {webportal_csproj}"
 
         ns = scatter.derive_namespace(webportal_csproj)
-        consumers = scatter.find_consumers(
+        consumers, _pipeline = scatter.find_consumers(
             target_csproj_path=webportal_csproj,
             search_scope_path=self.test_root,
             target_namespace=ns,
@@ -763,7 +768,7 @@ class TestQuickStartTargetProjectExamples:
         assert mydotnetapp_csproj.exists(), f"MyDotNetApp project not found: {mydotnetapp_csproj}"
 
         ns = scatter.derive_namespace(mydotnetapp_csproj)
-        consumers = scatter.find_consumers(
+        consumers, _pipeline = scatter.find_consumers(
             target_csproj_path=mydotnetapp_csproj,
             search_scope_path=self.test_root,
             target_namespace=ns,
@@ -781,7 +786,7 @@ class TestQuickStartTargetProjectExamples:
         assert exclude_csproj.exists(), f"Exclude project not found: {exclude_csproj}"
 
         ns = scatter.derive_namespace(exclude_csproj)
-        consumers = scatter.find_consumers(
+        consumers, _pipeline = scatter.find_consumers(
             target_csproj_path=exclude_csproj,
             search_scope_path=self.test_root,
             target_namespace=ns,
@@ -831,7 +836,7 @@ class TestQuickStartSprocExamples:
         for proj_path, classes_dict in sproc_results.items():
             if "PortalDataService" in classes_dict:
                 ns = scatter.derive_namespace(proj_path)
-                consumers = scatter.find_consumers(
+                consumers, _pipeline = scatter.find_consumers(
                     target_csproj_path=proj_path,
                     search_scope_path=self.test_root,
                     target_namespace=ns,
@@ -859,7 +864,7 @@ class TestQuickStartOutputFormatExamples:
         from scatter.reports.json_reporter import prepare_detailed_results, write_json_report
 
         ns = scatter.derive_namespace(self.galaxy_csproj)
-        consumers = scatter.find_consumers(
+        consumers, _pipeline = scatter.find_consumers(
             target_csproj_path=self.galaxy_csproj,
             search_scope_path=self.test_root,
             target_namespace=ns,
@@ -897,7 +902,7 @@ class TestQuickStartOutputFormatExamples:
         from scatter.reports.csv_reporter import write_csv_report
 
         ns = scatter.derive_namespace(self.galaxy_csproj)
-        consumers = scatter.find_consumers(
+        consumers, _pipeline = scatter.find_consumers(
             target_csproj_path=self.galaxy_csproj,
             search_scope_path=self.test_root,
             target_namespace=ns,
@@ -941,7 +946,7 @@ class TestQuickStartAIExamples:
         """Target project consumers include relevant_files for summarization."""
         galaxy_csproj = self.test_root / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
         ns = scatter.derive_namespace(galaxy_csproj)
-        consumers = scatter.find_consumers(
+        consumers, _pipeline = scatter.find_consumers(
             target_csproj_path=galaxy_csproj,
             search_scope_path=self.test_root,
             target_namespace=ns,

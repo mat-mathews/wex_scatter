@@ -208,11 +208,10 @@ class TestRecordClassDedup:
         assert "OrderSummary" in types
 
     def test_record_record_pathological(self):
-        """Pathological input 'record record' should not crash."""
+        """Pathological input 'record record' extracts 'record' as type name."""
         code = "public record record {"
         types = extract_type_names_from_content(code)
-        # Should not crash; behavior is to extract "record" as a type name
-        assert isinstance(types, set)
+        assert "record" in types
 
 
 class TestEdgeCases:
@@ -243,8 +242,7 @@ public record Baz(int X);
         assert "record" not in types
 
     def test_comment_lines_not_matched(self):
+        """Regex correctly skips single-line commented-out declarations."""
         code = "// public class Commented {"
         types = extract_type_names_from_content(code)
-        # The regex may match this — it doesn't filter comments
-        # This documents the behavior (not in scope to fix)
-        assert True  # just ensure no crash
+        assert "Commented" not in types

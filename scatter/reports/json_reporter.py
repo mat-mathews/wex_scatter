@@ -5,7 +5,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
-from scatter.core.models import ImpactReport
+from scatter.core.models import FilterPipeline, ImpactReport
 
 
 def prepare_detailed_results(all_results: List[Dict[str, Union[str, Dict, List[str]]]]) -> List[Dict]:
@@ -23,7 +23,8 @@ def prepare_detailed_results(all_results: List[Dict[str, Union[str, Dict, List[s
 
 
 def write_json_report(detailed_results: List[Dict], output_file_path: Path,
-                      metadata: Optional[Dict] = None) -> None:
+                      metadata: Optional[Dict] = None,
+                      pipeline: Optional[FilterPipeline] = None) -> None:
     """Write analysis results as JSON to file."""
     logging.info(f"Writing {len(detailed_results)} detailed results to JSON: {output_file_path}")
 
@@ -34,6 +35,8 @@ def write_json_report(detailed_results: List[Dict], output_file_path: Path,
     json_output = {}
     if metadata is not None:
         json_output['metadata'] = metadata
+    if pipeline is not None:
+        json_output['filter_pipeline'] = asdict(pipeline)
     json_output['pipeline_summary'] = unique_pipelines
     json_output['all_results'] = detailed_results
 
