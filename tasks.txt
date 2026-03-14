@@ -872,10 +872,10 @@ PHASE 5 TESTING
 - [ ] Integration test: watch mode detects file changes and re-runs
 
 ============================================================================
-PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-13)
+PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-14)
 ============================================================================
 
-CODEBASE STATE (updated 2026-03-13):
+CODEBASE STATE (updated 2026-03-14):
   - scatter/ package with 28 modules across core/, scanners/, analyzers/, ai/, reports/, compat/, store/
   - scatter/core/tree.py: shared tree-building utilities (build_adjacency, CONFIDENCE_LABEL_RANK)
   - scatter.py: 10-line thin entry point (delegates to scatter/__main__.py via runpy)
@@ -962,9 +962,15 @@ COMPLETED (v2.0 — continued):
      strengthened 3 dead-end assertions, removed 8 redundant tests from test_multiprocessing_phase1.py.
      Net: 464 → 456 → 476 → 514 tests across 17 files (513 pass, 1 xfail).
 
-IN PROGRESS (v2.0):
-  Tier 1 — Credibility & Adoption (ship first, unlocks everything else)
-  Tier 2 — CI/CD Governance (makes scatter sticky infrastructure)
+IN PROGRESS (v2.0 — reprioritized 2026-03-14):
+  Tier 1 — Credibility & Adoption (ship first, unlocks everything else):
+    - Fix --summarize-consumers wiring (P0 bug)
+    - Integrate dependency graph into --sow / --target-project modes
+    - Claude Code skills in .claude/skills/
+    - Deployment checklist / scatter pipelines shortcut
+  Tier 2 — CI/CD Governance (makes scatter sticky infrastructure):
+    - Initiative 7: CI/CD exit codes (--fail-on)
+    - Initiative 7: PR blast radius comments (GitHub/ADO)
   Tier 3 — Strategic Features (baselines, extraction planning, HTML)
   Tier 4 — Deferred (unified report model, watch mode, extra AI providers)
 
@@ -1052,9 +1058,13 @@ KEY FINDINGS:
   12. Initiative 6 Phase 4 complete (39 tests) — markdown output for all 3 modes with build/write separation,
       stdout fallback, _require_output_file() helper, cell escaping, render_tree() reuse, Mermaid diagrams,
       row padding, consistent metadata footers, column-count validation tests, CLI dispatch tests.
-  13. Remaining Initiative 6 work: unified report model, diff reports, baselines, HTML reports, extraction planning.
-  13. Graph builder performance: inverted index optimization achieved 101x speedup at 100 projects
+  13. Remaining work reprioritized (2026-03-14): Tier 1 adoption fixes (summarize wiring,
+      graph integration, Claude skills, pipeline shortcut) → Tier 2 CI/CD gates → Tier 3
+      strategic features → Tier 4 deferred (unified report model, watch mode, extra providers).
+  14. Graph builder performance: inverted index optimization achieved 101x speedup at 100 projects
       (172s → 1.7s). 250 projects builds in 10.1s (was killed after 10+ min). 500 projects in 42.8s.
-  14. Three remaining bottlenecks at 500-project scale: comment stripping (18s, char-by-char Python loop),
+  15. Three remaining bottlenecks at 500-project scale: comment stripping (18s, char-by-char Python loop),
       label propagation (21s, linear scan in get_edges_between), type extraction (14s, sequential I/O).
-  15. tracemalloc inflates timing 5-10x for allocation-heavy code — always verify with clean timing runs.
+  16. tracemalloc inflates timing 5-10x for allocation-heavy code — always verify with clean timing runs.
+  17. --summarize-consumers flag is a P0 bug: flag exists, AI code exists in gemini_provider.py,
+      but never wired into the analysis pipeline. ConsumerFileSummaries is always {}.
