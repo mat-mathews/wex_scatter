@@ -72,6 +72,7 @@ def build_markdown(
     detailed_results: List[Dict[str, Union[str, Dict, List[str]]]],
     metadata: Optional[Dict] = None,
     pipeline: Optional[FilterPipeline] = None,
+    graph_metrics_requested: bool = False,
 ) -> str:
     """Build markdown string for legacy consumer analysis results."""
     parts: List[str] = ["# Consumer Analysis Report\n"]
@@ -90,12 +91,13 @@ def build_markdown(
         last_target_type = None
         current_rows: List[List[str]] = []
 
+        headers = ["Consumer", "Path", "Pipeline", "Solutions"]
+        if graph_metrics_requested:
+            headers.extend(["Coupling", "Fan-In", "Fan-Out", "Instability", "In Cycle"])
+
         def _flush_table() -> None:
             if current_rows:
-                parts.append(_md_table(
-                    ["Consumer", "Path", "Pipeline", "Solutions"],
-                    current_rows,
-                ))
+                parts.append(_md_table(headers, current_rows))
                 parts.append("")
                 current_rows.clear()
 
@@ -112,12 +114,22 @@ def build_markdown(
             pipeline_name = item.get("PipelineName") or "\u2014"
             solutions = item.get("ConsumingSolutions", [])
             solutions_str = ", ".join(solutions) if solutions else "\u2014"
-            current_rows.append([
+            row = [
                 item["ConsumerProjectName"],
                 item["ConsumerProjectPath"],
                 pipeline_name,
                 solutions_str,
-            ])
+            ]
+            if graph_metrics_requested:
+                cs = item.get("CouplingScore")
+                row.extend([
+                    str(cs) if cs is not None else "\u2014",
+                    str(item.get("FanIn", "\u2014")),
+                    str(item.get("FanOut", "\u2014")),
+                    f"{item['Instability']:.3f}" if item.get("Instability") is not None else "\u2014",
+                    "yes" if item.get("InCycle") else "no" if item.get("InCycle") is not None else "\u2014",
+                ])
+            current_rows.append(row)
 
         _flush_table()
 
@@ -138,9 +150,11 @@ def write_markdown_report(
     output_file_path: Path,
     metadata: Optional[Dict] = None,
     pipeline: Optional[FilterPipeline] = None,
+    graph_metrics_requested: bool = False,
 ) -> None:
     """Write legacy consumer analysis results as markdown to file."""
-    content = build_markdown(detailed_results, metadata=metadata, pipeline=pipeline)
+    content = build_markdown(detailed_results, metadata=metadata, pipeline=pipeline,
+                             graph_metrics_requested=graph_metrics_requested)
     _write_file(content, output_file_path)
 
 
@@ -151,6 +165,7 @@ def write_markdown_report(
 def build_impact_markdown(
     report: ImpactReport,
     metadata: Optional[Dict] = None,
+    graph_metrics_requested: bool = False,
 ) -> str:
     """Build markdown string for impact analysis report."""
     parts: List[str] = ["# Impact Analysis\n"]
@@ -183,6 +198,9 @@ def build_impact_markdown(
 
                 # Flat consumer detail table
                 parts.append("### Consumer Detail\n")
+                detail_headers = ["Consumer", "Confidence", "Depth", "Via", "Risk", "Pipeline", "Solutions"]
+                if graph_metrics_requested:
+                    detail_headers.extend(["Coupling", "Fan-In", "Fan-Out", "Instability", "In Cycle"])
                 rows: List[List[str]] = []
                 for c in ti.consumers:
                     depth_display = "direct" if c.depth == 0 else str(c.depth)
@@ -190,7 +208,7 @@ def build_impact_markdown(
                     risk = c.risk_rating or "\u2014"
                     pipeline_name = c.pipeline_name or "\u2014"
                     solutions = ", ".join(c.solutions) if c.solutions else "\u2014"
-                    rows.append([
+                    row = [
                         c.consumer_name,
                         c.confidence_label,
                         depth_display,
@@ -198,11 +216,17 @@ def build_impact_markdown(
                         risk,
                         pipeline_name,
                         solutions,
-                    ])
-                parts.append(_md_table(
-                    ["Consumer", "Confidence", "Depth", "Via", "Risk", "Pipeline", "Solutions"],
-                    rows,
-                ))
+                    ]
+                    if graph_metrics_requested:
+                        row.extend([
+                            str(c.coupling_score) if c.coupling_score is not None else "\u2014",
+                            str(c.fan_in) if c.fan_in is not None else "\u2014",
+                            str(c.fan_out) if c.fan_out is not None else "\u2014",
+                            f"{c.instability:.3f}" if c.instability is not None else "\u2014",
+                            "yes" if c.in_cycle else "no" if c.in_cycle is not None else "\u2014",
+                        ])
+                    rows.append(row)
+                parts.append(_md_table(detail_headers, rows))
                 parts.append("")
 
     # Complexity justification
@@ -226,9 +250,11 @@ def write_impact_markdown_report(
     report: ImpactReport,
     output_file_path: Path,
     metadata: Optional[Dict] = None,
+    graph_metrics_requested: bool = False,
 ) -> None:
     """Write impact analysis report as markdown to file."""
-    content = build_impact_markdown(report, metadata=metadata)
+    content = build_impact_markdown(report, metadata=metadata,
+                                    graph_metrics_requested=graph_metrics_requested)
     _write_file(content, output_file_path)
 
 

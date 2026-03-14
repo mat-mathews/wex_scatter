@@ -31,7 +31,8 @@ def print_filter_pipeline(pipeline: FilterPipeline) -> None:
 
 
 def print_console_report(all_results: List[Dict[str, Union[str, Dict, List[str]]]],
-                         pipeline: Optional[FilterPipeline] = None) -> None:
+                         pipeline: Optional[FilterPipeline] = None,
+                         graph_metrics_requested: bool = False) -> None:
     """Print formatted analysis results to console."""
     if pipeline is not None:
         print_filter_pipeline(pipeline)
@@ -71,6 +72,17 @@ def print_console_report(all_results: List[Dict[str, Union[str, Dict, List[str]]
                 for file_rel_path, summary in summaries.items():
                     indented_summary = textwrap.indent(summary, ' ' * 14)
                     print(f"             File: {file_rel_path}\n{indented_summary}")
+
+            if graph_metrics_requested:
+                cs = item.get('CouplingScore')
+                if cs is not None:
+                    fi = item.get('FanIn', 0)
+                    fo = item.get('FanOut', 0)
+                    inst = item.get('Instability', 0.0)
+                    cycle = "yes" if item.get('InCycle') else "no"
+                    print(f"           Graph: coupling={cs}, fan-in={fi}, fan-out={fo}, instability={inst:.3f}, in-cycle={cycle}")
+                else:
+                    print("           Graph: (not in graph)")
 
         print(f"\n--- Total Consuming Relationships Found: {len(all_results)} ---")
 
@@ -123,6 +135,13 @@ def render_tree(consumers: List[EnrichedConsumer]) -> List[str]:
                 lines.extend(wrapped.splitlines())
             if consumer.coupling_vectors:
                 lines.append(f"{child_prefix}Coupling vectors: {', '.join(consumer.coupling_vectors)}")
+            if consumer.coupling_score is not None:
+                cycle = "yes" if consumer.in_cycle else "no"
+                lines.append(
+                    f"{child_prefix}Graph: coupling={consumer.coupling_score}, "
+                    f"fan-in={consumer.fan_in}, fan-out={consumer.fan_out}, "
+                    f"instability={consumer.instability:.3f}, in-cycle={cycle}"
+                )
 
             # Recurse into children of this consumer
             _render_children(consumer.consumer_name, child_prefix)

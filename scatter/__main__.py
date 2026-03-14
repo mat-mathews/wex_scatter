@@ -243,6 +243,10 @@ def main():
         help="Root directory to search for consuming projects (defaults to --repo-path if Git mode is used and this is omitted, otherwise REQUIRED)."
     )
     common_group.add_argument(
+        "--graph-metrics", action="store_true",
+        help="Enrich results with dependency graph metrics (coupling, fan-in/out, instability, cycles)."
+    )
+    common_group.add_argument(
         "--rebuild-graph", action="store_true",
         help="Force graph rebuild, ignoring cached data (only used with --graph)."
     )
@@ -511,6 +515,18 @@ def main():
     all_results: List[Dict[str, Union[str, Dict, List[str]]]] = []
     filter_pipeline = None  # populated by find_consumers() in git/target/sproc modes
 
+    # Build graph context lazily if --graph-metrics requested
+    graph_ctx = None
+    if args.graph_metrics and search_scope_abs:
+        from scatter.analyzers.graph_enrichment import (
+            build_graph_context,
+            enrich_legacy_results,
+            enrich_consumers,
+        )
+        graph_ctx = build_graph_context(search_scope_abs, config, args)
+        if graph_ctx is None:
+            logging.warning("Graph context unavailable. Proceeding without graph metrics.")
+
     # == GIT BRANCH ANALYSIS MODE ==
     if is_git_mode:
         assert repo_path_abs is not None and search_scope_abs is not None
@@ -657,6 +673,9 @@ def main():
                         else:
                             logging.info(f"     No consumers found for type '{type_name_to_check}' in project '{target_project_name_git_mode}'.")
 
+        if graph_ctx and all_results:
+            enrich_legacy_results(all_results, graph_ctx)
+
     # == TARGET PROJECT ANALYSIS MODE ==
     elif is_target_mode:
         assert target_csproj_abs_path is not None and search_scope_abs is not None
@@ -718,6 +737,9 @@ def main():
                     ai_provider, search_scope_abs, results_before)
         else:
             logging.info(f"No consuming projects matching the criteria were found for target '{target_project_name}'.")
+
+        if graph_ctx and all_results:
+            enrich_legacy_results(all_results, graph_ctx)
 
     # == STORED PROCEDURE ANALYSIS MODE ==
     elif is_sproc_mode:
@@ -807,6 +829,9 @@ def main():
                         final_consumers_data, all_results,
                         ai_provider, search_scope_abs, results_before)
 
+        if graph_ctx and all_results:
+            enrich_legacy_results(all_results, graph_ctx)
+
     # == IMPACT ANALYSIS MODE ==
     elif is_impact_mode:
         assert search_scope_abs is not None
@@ -848,21 +873,38 @@ def main():
             csproj_analysis_chunk_size=args.csproj_analysis_chunk_size,
         )
 
+        # Enrich consumers with graph metrics if requested
+        if args.graph_metrics and search_scope_abs:
+            if graph_ctx is None:
+                from scatter.analyzers.graph_enrichment import (
+                    build_graph_context,
+                    enrich_consumers,
+                )
+                graph_ctx = build_graph_context(search_scope_abs, config, args)
+            if graph_ctx:
+                for ti in impact_report.targets:
+                    enrich_consumers(ti.consumers, graph_ctx)
+
         # Output impact report (separate from legacy all_results path)
+        _gm_impact = args.graph_metrics
         if args.output_format == 'json':
             output_path = _require_output_file(args, "JSON")
             write_impact_json_report(impact_report, output_path,
                                      metadata=_build_metadata(args, search_scope_abs, start_time))
         elif args.output_format == 'csv':
             output_path = _require_output_file(args, "CSV")
-            write_impact_csv_report(impact_report, output_path)
+            write_impact_csv_report(impact_report, output_path,
+                                    graph_metrics_requested=_gm_impact)
         elif args.output_format == 'markdown':
             from scatter.reports.markdown_reporter import build_impact_markdown, write_impact_markdown_report
             md_metadata = _build_metadata(args, search_scope_abs, start_time)
             if args.output_file:
-                write_impact_markdown_report(impact_report, Path(args.output_file), metadata=md_metadata)
+                write_impact_markdown_report(impact_report, Path(args.output_file),
+                                             metadata=md_metadata,
+                                             graph_metrics_requested=_gm_impact)
             else:
-                print(build_impact_markdown(impact_report, metadata=md_metadata))
+                print(build_impact_markdown(impact_report, metadata=md_metadata,
+                                            graph_metrics_requested=_gm_impact))
         else:
             print_impact_report(impact_report)
 
@@ -872,6 +914,7 @@ def main():
         return
 
     # == DEPENDENCY GRAPH ANALYSIS MODE ==
+    # --graph-metrics is implicit in graph mode; flag ignored.
     elif is_graph_mode:
         assert search_scope_abs is not None
         logging.info(f"\n--- Running Dependency Graph Analysis Mode ---")
@@ -984,10 +1027,12 @@ def main():
         logging.info(f"Overall analysis complete. Found {len(all_results)} consuming relationship(s) matching the criteria.")
         all_results.sort(key=lambda x: (x.get('TargetProjectName',''), x.get('TriggeringType',''), x.get('ConsumerProjectName','')))
 
+    _gm = args.graph_metrics
+
     # Handle JSON Output
     if args.output_format == 'json':
         output_path = _require_output_file(args, "JSON")
-        detailed = prepare_detailed_results(all_results)
+        detailed = prepare_detailed_results(all_results, graph_metrics_requested=_gm)
         write_json_report(detailed, output_path,
                           metadata=_build_metadata(args, search_scope_abs, start_time),
                           pipeline=filter_pipeline)
@@ -995,23 +1040,27 @@ def main():
     # Handle CSV Output
     elif args.output_format == 'csv':
         output_path = _require_output_file(args, "CSV")
-        detailed = prepare_detailed_results(all_results)
-        write_csv_report(detailed, output_path, pipeline=filter_pipeline)
+        detailed = prepare_detailed_results(all_results, graph_metrics_requested=_gm)
+        write_csv_report(detailed, output_path, pipeline=filter_pipeline,
+                         graph_metrics_requested=_gm)
 
     # Handle Markdown Output
     elif args.output_format == 'markdown':
         from scatter.reports.markdown_reporter import build_markdown, write_markdown_report
-        detailed = prepare_detailed_results(all_results)
+        detailed = prepare_detailed_results(all_results, graph_metrics_requested=_gm)
         md_metadata = _build_metadata(args, search_scope_abs, start_time)
         if args.output_file:
             write_markdown_report(detailed, Path(args.output_file),
-                                  metadata=md_metadata, pipeline=filter_pipeline)
+                                  metadata=md_metadata, pipeline=filter_pipeline,
+                                  graph_metrics_requested=_gm)
         else:
-            print(build_markdown(detailed, metadata=md_metadata, pipeline=filter_pipeline))
+            print(build_markdown(detailed, metadata=md_metadata, pipeline=filter_pipeline,
+                                 graph_metrics_requested=_gm))
 
     # Handle Console Output (Default)
     else:
-        print_console_report(all_results, pipeline=filter_pipeline)
+        print_console_report(all_results, pipeline=filter_pipeline,
+                             graph_metrics_requested=_gm)
 
     target_names = {item['TargetProjectName'] for item in all_results}
     print(f"\nAnalysis complete. {len(all_results)} consumer(s) found across {len(target_names)} target(s).\n")

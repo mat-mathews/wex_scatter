@@ -79,6 +79,12 @@ class EnrichedConsumer:
     # consumer_name of the parent in the BFS tree (None = direct consumer).
     # Assumes consumer_name is unique within a single analysis scope.
     propagation_parent: Optional[str] = None
+    # Graph-derived metrics (populated when --graph-metrics is used)
+    coupling_score: Optional[float] = None
+    fan_in: Optional[int] = None
+    fan_out: Optional[int] = None
+    instability: Optional[float] = None
+    in_cycle: Optional[bool] = None
 
 
 @dataclass

@@ -9,17 +9,25 @@ from scatter.core.models import FilterPipeline, ImpactReport
 from scatter.core.tree import build_adjacency, CONFIDENCE_LABEL_RANK
 
 
-def prepare_detailed_results(all_results: List[Dict[str, Union[str, Dict, List[str]]]]) -> List[Dict]:
+def prepare_detailed_results(all_results: List[Dict[str, Union[str, Dict, List[str]]]],
+                             graph_metrics_requested: bool = False) -> List[Dict]:
     """Normalize result dicts for JSON output (coerce empty optional fields to None)."""
     detailed_results = []
     for item in all_results:
-        detailed_results.append({
+        result = {
             **item,
             'ConsumingSolutions': item.get('ConsumingSolutions', []),
             'ConsumerFileSummaries': item.get('ConsumerFileSummaries', {}),
             'PipelineName': item.get('PipelineName') or None,
             'BatchJobVerification': item.get('BatchJobVerification') or None,
-        })
+        }
+        if graph_metrics_requested:
+            result.setdefault('CouplingScore', None)
+            result.setdefault('FanIn', None)
+            result.setdefault('FanOut', None)
+            result.setdefault('Instability', None)
+            result.setdefault('InCycle', None)
+        detailed_results.append(result)
     return detailed_results
 
 
