@@ -271,7 +271,7 @@ Finds all projects that consume a specific `.csproj` file.
 
 When `--summarize-consumers` is enabled, Scatter sends each relevant consumer `.cs` file to the Gemini API and includes a 2-3 sentence AI-generated summary in the output explaining the file's purpose. See [AI Consumer Summarization](#ai-consumer-summarization) for details and example output.
 
-> **Known issue:** The `--summarize-consumers` flag is currently not wired into the analysis pipeline — `ConsumerFileSummaries` will always be `{}`. The AI summarization code exists in `gemini_provider.py` but is never called from the analysis path. This is a Tier 1 priority fix.
+> **Note:** AI summarization requires a Google API key. Set `GOOGLE_API_KEY` in your environment or pass `--google-api-key`.
 
 ```bash
 # Basic usage
@@ -593,6 +593,7 @@ Scatter integrates with the Google Gemini API in three distinct ways. Each is op
 | [Consumer Summarization](#ai-consumer-summarization) | `--summarize-consumers` | Git, Target, Sproc modes | Explain *what* each consumer file does |
 | [Hybrid Type Extraction](#ai-enhanced-type-extraction-hybrid-git) | `--enable-hybrid-git` | Git mode only | Identify *which* types were actually changed in a diff |
 | [Impact Analysis](#impact-analysis-mode-4) | `--sow` / `--sow-file` | Impact mode | Full AI-powered scoping: parse SOW, assess risk, estimate effort |
+| [Graph Metrics Enrichment](#graph-metrics-enrichment) | `--graph-metrics` | All modes | Add coupling score, fan-in/out, instability, and cycle membership to consumer results |
 
 ### AI Consumer Summarization
 
@@ -637,6 +638,41 @@ Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
   "ConsumerProjectName": "MyGalaxyConsumerApp",
   "ConsumerFileSummaries": "{\"Program.cs\": \"This console application creates an instance of...\"}"
 }
+```
+
+### Graph Metrics Enrichment
+
+When `--graph-metrics` is enabled, Scatter builds (or loads from cache) a dependency graph of the search scope and enriches each consumer result with structural metrics from the graph:
+
+- **Coupling Score** — Weighted composite of fan-in, fan-out, and shared database density
+- **Fan-In / Fan-Out** — Number of incoming/outgoing project references
+- **Instability** — Martin's instability index (fan-out / (fan-in + fan-out))
+- **In Cycle** — Whether the consumer participates in a circular dependency
+
+This works in all analysis modes (git, target, sproc, impact) and with all output formats. Consumers outside the graph's scope show `—` / `null` for graph columns.
+
+```bash
+# Target analysis with graph metrics
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --graph-metrics
+
+# Impact analysis with graph metrics in JSON
+python scatter.py --sow "Add caching to PortalDataService" --search-scope . \
+  --google-api-key $GOOGLE_API_KEY --graph-metrics \
+  --output-format json --output-file impact_with_graph.json
+
+# Combine with AI summarization
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --graph-metrics --summarize-consumers --google-api-key $GOOGLE_API_KEY
+```
+
+**Example console output with graph metrics:**
+
+```
+Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+    Type/Level: N/A (Project Reference)
+         -> Consumed by: GalaxyWorks.WebPortal (GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj)
+           Graph: coupling=4.30, fan-in=1, fan-out=2, instability=0.667, in-cycle=no
 ```
 
 ### AI-Enhanced Type Extraction (Hybrid Git)
@@ -971,6 +1007,7 @@ Use `--app-config-path` to verify if consumer projects correspond to known batch
 | `--class-name NAME` | — | Filter by class/type name |
 | `--method-name NAME` | — | Filter by method name (requires `--class-name`) |
 | `--max-depth N` | `2` | Transitive tracing depth (impact mode) |
+| `--graph-metrics` | `false` | Enrich consumer results with dependency graph metrics (coupling, fan-in/out, instability, cycle membership) |
 | `--rebuild-graph` | `false` | Force graph rebuild, ignoring cache (`--graph` mode) |
 | `--include-graph-topology` | `false` | Include raw graph nodes/edges in JSON output (`--graph` mode) |
 | `--include-db` | `false` | Include database dependency scanning (`--graph` mode) |
@@ -1111,7 +1148,7 @@ python -m pytest -q
 
 ### Test Suite Overview
 
-The test suite includes **514 tests** across 17 test files (513 pass, 1 xfail):
+The test suite includes **539 tests** across 19 test files (538 pass, 1 xfail):
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
@@ -1131,6 +1168,8 @@ The test suite includes **514 tests** across 17 test files (513 pass, 1 xfail):
 | `test_report_quality.py` | 24 | JSON serialization fixes, metadata blocks, console polish, CSV cleanup, version constant, API key redaction |
 | `test_reporters.py` | 21 | Mermaid output, health dashboard observations, console cluster members, CSV export columns, JSON topology flag |
 | `test_markdown_reporter.py` | 39 | Markdown output: cell escaping, legacy/impact/graph builders, column-count validation, table edge cases, pipe-in-field escaping, narrative section absence, CLI dispatch (_require_output_file, markdown stdout fallback), file I/O |
+| `test_summarize_consumers.py` | 7 | AI consumer summarization wiring: happy path, no provider, unsupported task, partial failure, no relevant files, results_start_index, stem collision |
+| `test_graph_enrichment.py` | 17 | Graph enrichment: GraphContext construction, legacy result injection (matched/unmatched/idempotent), EnrichedConsumer population, no-graph reporter regression (console/JSON/CSV/markdown), schema stability with flag |
 | `test_type_extraction.py` | 48 | Type declaration regex: class/struct/interface/enum/record variants, delegates, readonly/ref struct, primary constructors, attributes, nested types, record false positives, dedup, pathological input, comment filtering |
 
 ### What the Tests Cover
@@ -1808,11 +1847,11 @@ The `feasibility_details` dict breaks down each penalty, making it actionable �
 - **Test Quality Cleanup** — Deleted 1 zombie file, fixed 5 ghost tests (replaced no-op assertions with real scatter API calls), strengthened 3 dead-end assertions, removed 8 redundant tests. Suite reduced from 464 to 456 tests with no coverage loss
 - **Blast Radius Tree View (Initiative 6 Phase 3)** — `propagation_parent` field on `EnrichedConsumer`, BFS parent tracking in transitive tracing, shared `tree.py` builder (`build_adjacency` + `CONFIDENCE_LABEL_RANK`), orphan re-parenting, box-drawing console tree, nested `propagation_tree` in JSON, `PropagationParent` CSV column, and 20 tests
 - **Markdown Output Format (Initiative 6 Phase 4)** — `scatter/reports/markdown_reporter.py` with build/write separation (`build_*()` returns string, `write_*()` writes file), stdout fallback for markdown format, `_require_output_file()` helper, cell escaping, blast radius tree reuse via `render_tree()`, Mermaid dependency diagrams, and 39 tests
+- **`--summarize-consumers` wiring** — Connected the existing AI summarization code to the analysis pipeline. `ConsumerFileSummaries` now populates in all 3 legacy modes (git, target, sproc). Shared `SUMMARIZATION_PROMPT_TEMPLATE` in `scatter/ai/base.py`, per-file progress logging, and 7 tests
+- **`--graph-metrics` enrichment** — `GraphContext` dataclass in `scatter/analyzers/graph_enrichment.py` bridges the dependency graph into all analysis modes. Post-processing enrichment injects coupling score, fan-in/out, instability, and cycle membership into consumer results. Schema stability: reporters include graph columns when the flag is present, regardless of match. 17 tests
 
 ### Next (Tier 1: Credibility & Adoption)
 
-- **Fix `--summarize-consumers` wiring** — The flag and AI code exist but are not connected; `ConsumerFileSummaries` is always empty
-- **Graph integration into analysis modes** — Use cached dependency graph in `--sow` / `--target-project` instead of rescanning filesystem per target (5x faster multi-target analysis)
 - **Claude Code skills** — `.claude/skills/` slash commands so engineers can ask Claude about dependencies without learning the CLI
 - **Deployment checklist mode** — `scatter pipelines` shortcut that outputs just the pipeline names to run on release night
 

@@ -771,17 +771,22 @@ Goal: Fix broken features, integrate existing systems, enable adoption.
 These are the highest-ROI items on the entire roadmap: low effort, high impact.
 ============================================================================
 
-FIX --summarize-consumers WIRING (P0 BUG — ~20 lines)
-- [ ] Wire summarize_csharp_file_with_gemini() into v1_bridge.py analysis pipeline
-      The flag exists, the code exists in gemini_provider.py, they're just not connected.
-      ConsumerFileSummaries is always {}. README says it works. Fix or remove the flag.
+FIX --summarize-consumers WIRING ✅ COMPLETED (2026-03-14)
+- [x] Wired AI summarization into all 3 legacy modes (git, target, sproc)
+- [x] Added _summarize_consumer_files() helper in __main__.py
+- [x] Extracted shared SUMMARIZATION_PROMPT_TEMPLATE to scatter/ai/base.py
+- [x] Per-file progress logging, stem collision handling (keyed by path)
+- [x] 7 tests in test_summarize_consumers.py
 
-INTEGRATE DEPENDENCY GRAPH INTO ANALYSIS MODES (HIGH PRIORITY — ~4 hours)
-- [ ] Use cached dependency graph in --sow / --target-project modes instead of
-      rescanning filesystem per target. Currently 5 SOW targets = 5 full filesystem
-      scans. With graph: 1 scan (or cache hit) + 5 dict lookups.
-- [ ] Fall back to legacy find_consumers() if graph cache is unavailable
-- [ ] Measure and document the performance improvement
+INTEGRATE DEPENDENCY GRAPH INTO ANALYSIS MODES ✅ COMPLETED (2026-03-14)
+- [x] New --graph-metrics flag enriches consumer results with coupling score,
+      fan-in/out, instability, and cycle membership from the dependency graph
+- [x] GraphContext dataclass in scatter/analyzers/graph_enrichment.py
+- [x] Post-processing enrichment (enrich_legacy_results, enrich_consumers)
+- [x] Works in all modes: git, target, sproc, impact
+- [x] Schema stability: reporters include graph columns when flag is present
+- [x] Graceful degradation: graph failure → warning, analysis continues
+- [x] 17 tests in test_graph_enrichment.py
 
 CLAUDE CODE SKILLS (HIGH PRIORITY — 1 day, zero new Python code)
 Ref: docs/CLAUDE_INTEGRATION_EVALUATION.md
@@ -960,12 +965,17 @@ COMPLETED (v2.0 — continued):
      cell escaping, consistent metadata footers, proper type annotations.
   ✅ Test quality cleanup: deleted 1 zombie file (test_phase21_overhead.py), fixed 5 ghost tests,
      strengthened 3 dead-end assertions, removed 8 redundant tests from test_multiprocessing_phase1.py.
-     Net: 464 → 456 → 476 → 514 tests across 17 files (513 pass, 1 xfail).
+     Net: 464 → 456 → 476 → 514 → 539 tests across 19 files (538 pass, 1 xfail).
+  ✅ --summarize-consumers wiring (7 tests) — connected AI summarization to all 3 legacy modes,
+     shared prompt template in scatter/ai/base.py, per-file progress logging, stem collision fix.
+  ✅ --graph-metrics enrichment (17 tests) — GraphContext dataclass, post-processing enrichment
+     for all modes (git/target/sproc/impact), schema stability (reporters include graph columns
+     when flag present), graceful degradation on graph failure.
 
 IN PROGRESS (v2.0 — reprioritized 2026-03-14):
-  Tier 1 — Credibility & Adoption (ship first, unlocks everything else):
-    - Fix --summarize-consumers wiring (P0 bug)
-    - Integrate dependency graph into --sow / --target-project modes
+  Tier 1 — Credibility & Adoption (2 of 4 shipped):
+    - ✅ Fix --summarize-consumers wiring
+    - ✅ Integrate dependency graph into analysis modes (--graph-metrics)
     - Claude Code skills in .claude/skills/
     - Deployment checklist / scatter pipelines shortcut
   Tier 2 — CI/CD Governance (makes scatter sticky infrastructure):
@@ -996,10 +1006,9 @@ RECOMMENDED EXECUTION ORDER (reprioritized 2026-03-13):
   8. ✅ DONE — Initiative 6 Phase 3: Blast radius tree view (20 tests)
   9. ✅ DONE — Initiative 6 Phase 4: Markdown output (39 tests)
 
-  TIER 1: CREDIBILITY & ADOPTION (do these next — highest ROI, lowest effort)
-  10. Fix --summarize-consumers wiring (P0 BUG — ~20 lines, README says it works, it doesn't)
-  11. Integrate dependency graph into --sow / --target-project modes (HIGH — biggest
-      perf/accuracy win remaining; 5 SOW targets = 5 filesystem scans → 1 scan + 5 lookups)
+  TIER 1: CREDIBILITY & ADOPTION (highest ROI, lowest effort)
+  10. ✅ DONE — Fix --summarize-consumers wiring (7 tests)
+  11. ✅ DONE — Integrate dependency graph into analysis modes via --graph-metrics (17 tests)
   12. Claude Code skills in .claude/skills/ (HIGH — 1 day, zero new Python code,
       collapses adoption barrier; engineers ask Claude instead of learning CLI)
   13. Deployment checklist / `scatter pipelines` shortcut (HIGH — #1 release-night
@@ -1046,7 +1055,7 @@ KEY FINDINGS:
   5. Phase 5 optimization (pool reuse, memory) deferred to v2.0 modularization
      where it can be done properly with a shared pool across the module.
   6. Initiatives 3 & 4 fully complete — config system, AI router, impact analysis all shipped.
-  7. 514 tests across 17 files (513 pass, 1 xfail).
+  7. 539 tests across 19 files (538 pass, 1 xfail).
   8. Initiative 5 all 6 phases complete (171 tests) — graph model, coupling metrics, cycle detection,
      graph persistence, DB dependency mapping, domain boundary detection, health dashboard, Mermaid + CSV.
   9. Initiative 6 Phase 1 complete (24 tests) — JSON serialization fixes, metadata, console polish, CSV cleanup.
@@ -1066,5 +1075,7 @@ KEY FINDINGS:
   15. Three remaining bottlenecks at 500-project scale: comment stripping (18s, char-by-char Python loop),
       label propagation (21s, linear scan in get_edges_between), type extraction (14s, sequential I/O).
   16. tracemalloc inflates timing 5-10x for allocation-heavy code — always verify with clean timing runs.
-  17. --summarize-consumers flag is a P0 bug: flag exists, AI code exists in gemini_provider.py,
-      but never wired into the analysis pipeline. ConsumerFileSummaries is always {}.
+  17. --summarize-consumers wiring fixed (2026-03-14): connected AI summarization to all 3 legacy
+      modes, shared SUMMARIZATION_PROMPT_TEMPLATE in scatter/ai/base.py, 7 tests.
+  18. --graph-metrics enrichment shipped (2026-03-14): GraphContext in graph_enrichment.py,
+      post-processing enrichment for all modes, schema stability in all reporters, 17 tests.
