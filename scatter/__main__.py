@@ -32,6 +32,100 @@ from scatter.reports.csv_reporter import write_csv_report
 
 from scatter.config import load_config
 from scatter.ai.router import AIRouter
+from scatter.ai.base import (
+    AITaskType, MAX_SUMMARIZATION_CHARS, SUMMARIZATION_PROMPT_TEMPLATE,
+)
+
+
+def _summarize_consumer_files(
+    final_consumers_data: List[Dict[str, Union[Path, str, List[Path]]]],
+    all_results: List[Dict],
+    ai_provider,
+    search_scope: Path,
+    results_start_index: int,
+) -> None:
+    """Summarize relevant files for each consumer and inject into result dicts.
+
+    Reads each consumer's relevant_files, sends content to the AI provider
+    for summarization, and populates the 'ConsumerFileSummaries' field in
+    the corresponding result dicts (which were appended by the bridge call).
+
+    Args:
+        final_consumers_data: Consumer dicts from find_consumers(), each with
+            'consumer_name', 'consumer_path', and 'relevant_files'.
+        all_results: The results list that the bridge already appended to.
+        ai_provider: An AIProvider instance that supports SUMMARIZATION.
+        search_scope: Absolute path used to compute relative file paths.
+        results_start_index: Index into all_results where this batch starts,
+            so we can match consumers to their result dicts.
+    """
+    if not ai_provider or not final_consumers_data:
+        return
+
+    if not ai_provider.supports(AITaskType.SUMMARIZATION):
+        logging.warning("AI provider does not support summarization. Skipping.")
+        return
+
+    # Build a map keyed by consumer_path (absolute) to avoid stem collisions
+    consumer_files_map: Dict[Path, List[Path]] = {}
+    for consumer_info in final_consumers_data:
+        consumer_path = consumer_info['consumer_path']
+        files = consumer_info.get('relevant_files', [])
+        if files:
+            consumer_files_map[consumer_path] = files
+
+    if not consumer_files_map:
+        logging.debug("No relevant files found for any consumer. Skipping summarization.")
+        return
+
+    total_files = sum(len(f) for f in consumer_files_map.values())
+    logging.info(f"Summarizing {total_files} file(s) across {len(consumer_files_map)} consumer(s)...")
+
+    # Summarize each file and build summaries dict per consumer path
+    summaries_by_path: Dict[Path, Dict[str, str]] = defaultdict(dict)
+    file_counter = 0
+    for consumer_path, file_paths in consumer_files_map.items():
+        for file_path in file_paths:
+            try:
+                content = file_path.read_text(encoding='utf-8', errors='ignore')
+            except OSError as e:
+                logging.warning(f"Could not read {file_path}: {e}")
+                continue
+
+            if not content.strip():
+                continue
+
+            try:
+                rel_path = file_path.relative_to(search_scope).as_posix()
+            except ValueError:
+                rel_path = file_path.name
+
+            prompt = SUMMARIZATION_PROMPT_TEMPLATE.format(
+                filename=file_path.name,
+                code=content[:MAX_SUMMARIZATION_CHARS],
+            )
+
+            try:
+                result = ai_provider.analyze(prompt, "", AITaskType.SUMMARIZATION)
+                file_counter += 1
+                if result and result.response:
+                    summaries_by_path[consumer_path][rel_path] = result.response
+                    logging.info(f"  Summarized {file_counter}/{total_files}: {rel_path}")
+            except Exception as e:
+                file_counter += 1
+                logging.warning(f"Summarization failed for {rel_path}: {e}")
+
+    # Inject summaries into result dicts by matching ConsumerProjectPath
+    for result_dict in all_results[results_start_index:]:
+        consumer_rel = result_dict.get('ConsumerProjectPath', '')
+        for consumer_abs, summaries in summaries_by_path.items():
+            try:
+                expected_rel = consumer_abs.relative_to(search_scope).as_posix()
+            except ValueError:
+                expected_rel = consumer_abs.as_posix()
+            if consumer_rel == expected_rel:
+                result_dict['ConsumerFileSummaries'] = summaries
+                break
 
 
 def _build_cli_overrides(args) -> Dict[str, Any]:
@@ -543,6 +637,7 @@ def main():
                             except ValueError:
                                 target_proj_rel_for_git_report = target_csproj_abs_git_mode.as_posix()
 
+                            results_before = len(all_results)
                             _process_consumer_summaries_and_append_results(
                                 target_project_name=target_project_name_git_mode,
                                 target_project_rel_path_str=target_proj_rel_for_git_report,
@@ -552,8 +647,12 @@ def main():
                                 pipeline_map_dict=pipeline_map,
                                 solution_file_cache=solution_file_cache,
                                 batch_job_map=batch_job_map,
-                                search_scope_path_abs=search_scope_abs,
-                                ai_provider=ai_provider)
+                                search_scope_path_abs=search_scope_abs)
+
+                            if args.summarize_consumers and ai_provider:
+                                _summarize_consumer_files(
+                                    final_consumers_data, all_results,
+                                    ai_provider, search_scope_abs, results_before)
 
                         else:
                             logging.info(f"     No consumers found for type '{type_name_to_check}' in project '{target_project_name_git_mode}'.")
@@ -600,6 +699,7 @@ def main():
             except ValueError:
                 target_rel_path_for_report = target_csproj_abs_path.as_posix()
 
+            results_before = len(all_results)
             _process_consumer_summaries_and_append_results(
                 target_project_name=target_project_name,
                 target_project_rel_path_str=target_rel_path_for_report,
@@ -609,9 +709,13 @@ def main():
                 pipeline_map_dict=pipeline_map,
                 solution_file_cache=solution_file_cache,
                 batch_job_map=batch_job_map,
-                search_scope_path_abs=search_scope_abs,
-                ai_provider=ai_provider
+                search_scope_path_abs=search_scope_abs
             )
+
+            if args.summarize_consumers and ai_provider:
+                _summarize_consumer_files(
+                    final_consumers_data, all_results,
+                    ai_provider, search_scope_abs, results_before)
         else:
             logging.info(f"No consuming projects matching the criteria were found for target '{target_project_name}'.")
 
@@ -686,6 +790,7 @@ def main():
                 if filter_pipeline is None or final_consumers_data:
                     filter_pipeline = _pipeline
 
+                results_before = len(all_results)
                 _process_consumer_summaries_and_append_results(
                     target_project_name=target_project_name_sproc_mode,
                     target_project_rel_path_str=target_project_rel_path_str,
@@ -695,8 +800,12 @@ def main():
                     pipeline_map_dict=pipeline_map,
                     solution_file_cache=solution_file_cache,
                     batch_job_map=batch_job_map,
-                    search_scope_path_abs=search_scope_abs,
-                    ai_provider=ai_provider)
+                    search_scope_path_abs=search_scope_abs)
+
+                if args.summarize_consumers and ai_provider:
+                    _summarize_consumer_files(
+                        final_consumers_data, all_results,
+                        ai_provider, search_scope_abs, results_before)
 
     # == IMPACT ANALYSIS MODE ==
     elif is_impact_mode:

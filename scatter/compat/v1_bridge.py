@@ -73,8 +73,7 @@ def _process_consumer_summaries_and_append_results(
     pipeline_map_dict: Dict[str, str],
     solution_file_cache: List[Path],
     batch_job_map: Dict[str, List[str]],
-    search_scope_path_abs: Path,
-    ai_provider=None) -> None:
+    search_scope_path_abs: Path) -> None:
     """
     Helper to process summaries for consumer files and append to the main results list.
     Generates a row for EACH unique pipeline found for a consumer.

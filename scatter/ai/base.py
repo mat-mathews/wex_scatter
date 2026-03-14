@@ -3,6 +3,18 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Protocol, runtime_checkable
 
+SUMMARIZATION_PROMPT_TEMPLATE = (
+    "Analyze the following C# code from the file '{filename}':\n\n"
+    "```csharp\n{code}\n```\n\n"
+    "Please provide a concise summary (2-3 sentences) explaining the "
+    "primary purpose of the C# code in this file. Focus on what the "
+    "main classes/structs/interfaces/enums declared within this specific "
+    "file *do*. Do not list methods or properties unless essential for "
+    "the summary."
+)
+
+MAX_SUMMARIZATION_CHARS = 20000
+
 
 class AITaskType(Enum):
     SUMMARIZATION = "summarization"

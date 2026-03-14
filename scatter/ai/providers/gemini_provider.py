@@ -13,7 +13,10 @@ from typing import Optional, Set
 
 import google.generativeai as genai
 
-from scatter.ai.base import AIProvider, AITaskType, AnalysisResult
+from scatter.ai.base import (
+    AIProvider, AITaskType, AnalysisResult,
+    MAX_SUMMARIZATION_CHARS, SUMMARIZATION_PROMPT_TEMPLATE,
+)
 
 
 # --- Module-level functions (provider-agnostic) ---
@@ -97,15 +100,10 @@ def summarize_file_with_model(model_instance, csharp_code: str,
         return "[File is empty or contains only whitespace]"
 
     try:
-        prompt = f"""
-        Analyze the following C# code from the file '{Path(file_path).name}':
-
-        ```csharp
-        {csharp_code[:20000]}
-        ```
-
-        Please provide a concise summary (2-3 sentences) explaining the primary purpose of the C# code in this file. Focus on what the main classes/structs/interfaces/enums declared within this specific file *do*. Do not list methods or properties unless essential for the summary.
-        """
+        prompt = SUMMARIZATION_PROMPT_TEMPLATE.format(
+            filename=Path(file_path).name,
+            code=csharp_code[:MAX_SUMMARIZATION_CHARS],
+        )
 
         logging.info(f"Requesting summary for {file_path} from Gemini API...")
         safety_settings = [
