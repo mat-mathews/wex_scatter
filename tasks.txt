@@ -268,24 +268,30 @@ AI TASK ROUTER ✅ COMPLETED (PHASE 5)
 - [x] Lazy provider creation with caching for reuse
 - [x] Graceful failure — returns None if credentials missing
 
-AI PROVIDERS (MEDIUM PRIORITY — implement in order)
+AI PROVIDERS (TIER 4 — DEFERRED, build on demand)
 - [x] Migrate existing Gemini code into scatter/ai/providers/gemini_provider.py
       GeminiProvider extends AIProvider protocol, delegates to module-level functions
       for testability (MagicMock compatibility). scatter/_legacy.py provides thin
       backward-compat wrappers. __main__.py uses ai_provider cleanly (no .model leaks).
 - [ ] Implement WEX AI Platform provider (scatter/ai/providers/wex_platform_provider.py)
       — default, no auth required, uses WEX internal AI infrastructure
+      Build when WEX AI Platform is available. This is the only provider that matters
+      for broad adoption (zero-config, no API key). Others are speculative.
 - [ ] Implement Anthropic provider (Claude Opus/Sonnet/Haiku) — requires authorization
 - [ ] Implement OpenAI provider (GPT-4o, GPT-4.1) — requires authorization
 - [ ] Implement Azure OpenAI provider — requires authorization
 - [ ] Implement Ollama provider (local models) — requires authorization
 
-AI RESPONSE CACHING (MEDIUM PRIORITY)
+AI RESPONSE CACHING (TIER 4 — DEFERRED, premature optimization)
+Rationale: AI calls are infrequent and cheap ($0.01-$0.15/run). Build when cost
+becomes a real concern or when latency blocks CI/CD integration.
 - [ ] Implement scatter/ai/cache.py — file-based cache with configurable TTL
 - [ ] Cache key based on: code content hash + task type + provider
 - [ ] Invalidate cache entries when source files change (via mtime or git status)
 
-TOKEN BUDGET MANAGER (MEDIUM PRIORITY)
+TOKEN BUDGET MANAGER (TIER 4 — DEFERRED, premature optimization)
+Rationale: Current AI calls are small and targeted. Build when context window
+limits become a real constraint (e.g., summarizing 50+ consumer files in one call).
 - [ ] Implement scatter/ai/budget.py — context chunking when input exceeds model window
 - [ ] Smart context selection: send relevant files/excerpts, not entire projects
 - [ ] Pre-call token estimation and cost logging
@@ -633,8 +639,11 @@ Detailed plan: docs/INITIATIVE_6_PHASE4_PLAN.md
       _md_table row padding for short rows, consistent metadata footer pattern,
       proper type annotations on graph builder params, top-level imports (no lazy loading)
 
-PHASE 5: UNIFIED REPORT DATA MODEL (MEDIUM PRIORITY)
+PHASE 5: UNIFIED REPORT DATA MODEL (TIER 4 — DEFERRED)
 Ref: OUTPUT_REPORT_EVALUATION.md, Addendum Section H
+Rationale for deferral: This is an internal refactor that no user sees. The current
+four output formats (console, JSON, CSV, markdown) all work. Do this when a 5th format
+is needed or when schema inconsistency blocks a concrete feature.
 Currently: legacy modes pass List[Dict], impact mode passes ImpactReport, graph mode builds
 an ad-hoc dict in __main__.py. Each reporter picks fields independently. Schema is inconsistent
 (PascalCase vs snake_case, stringified JSON vs native objects, flat vs nested).
@@ -654,9 +663,11 @@ an ad-hoc dict in __main__.py. Each reporter picks fields independently. Schema 
       Allows downstream consumers to migrate on their own timeline.
 - [ ] Tests: AnalysisReport construction from each mode, roundtrip serialization, v1 compat
 
-PHASE 6: DIFF REPORTS (MEDIUM PRIORITY)
+PHASE 6: DIFF REPORTS (TIER 3 — after CI/CD gates and adoption established)
 Ref: OUTPUT_REPORT_EVALUATION.md, Addendum Section C
 Depends on: Phase 5 (unified report data model) or at minimum stable JSON schema.
+Rationale for Tier 3: Needs real baseline history from actual users. Without
+adoption, diff reports are built against synthetic data.
 
 - [ ] Create scatter/analyzers/diff_analyzer.py — compare two AnalysisReport or graph JSON files
       DiffReport dataclass: added/removed projects, coupling deltas, new/resolved cycles,
@@ -687,7 +698,7 @@ AI PROGRESS NARRATIVE (MEDIUM PRIORITY)
 - [ ] Assess whether modernization is on track
 - [ ] Flag regressions (new coupling, new cycles)
 
-HTML REPORT ENGINE (MEDIUM PRIORITY)
+HTML REPORT ENGINE (TIER 3 — after CI/CD and adoption established)
 - [ ] Implement scatter/reports/html_reporter.py
 - [ ] Self-contained single HTML file — embedded JS/CSS, no external dependencies
 - [ ] Works in any browser, can be emailed or dropped into SharePoint/Confluence
@@ -711,7 +722,7 @@ METRIC DASHBOARD VIEW (MEDIUM PRIORITY)
 - [ ] Sortable project table with all metrics columns
 - [ ] Filterable by domain cluster, coupling threshold, risk level
 
-EXTRACTION PLANNING MODE (HIGH PRIORITY)
+EXTRACTION PLANNING MODE (TIER 3 — high strategic value, needs graph integration first)
 - [ ] Implement `scatter extract` CLI command
 - [ ] Accept --project to specify extraction target
 - [ ] Output extraction scope analysis:
@@ -755,13 +766,49 @@ INITIATIVE 6 TESTING
 - [ ] Visual review: open HTML report in browser, verify interactivity
 
 ============================================================================
-INITIATIVE 7: CI/CD INTEGRATION & WORKFLOW (v2.0 Phase 5)
+ADOPTION & CREDIBILITY FIXES (Tier 1 — do before all other remaining work)
+Goal: Fix broken features, integrate existing systems, enable adoption.
+These are the highest-ROI items on the entire roadmap: low effort, high impact.
+============================================================================
+
+FIX --summarize-consumers WIRING (P0 BUG — ~20 lines)
+- [ ] Wire summarize_csharp_file_with_gemini() into v1_bridge.py analysis pipeline
+      The flag exists, the code exists in gemini_provider.py, they're just not connected.
+      ConsumerFileSummaries is always {}. README says it works. Fix or remove the flag.
+
+INTEGRATE DEPENDENCY GRAPH INTO ANALYSIS MODES (HIGH PRIORITY — ~4 hours)
+- [ ] Use cached dependency graph in --sow / --target-project modes instead of
+      rescanning filesystem per target. Currently 5 SOW targets = 5 full filesystem
+      scans. With graph: 1 scan (or cache hit) + 5 dict lookups.
+- [ ] Fall back to legacy find_consumers() if graph cache is unavailable
+- [ ] Measure and document the performance improvement
+
+CLAUDE CODE SKILLS (HIGH PRIORITY — 1 day, zero new Python code)
+Ref: docs/CLAUDE_INTEGRATION_EVALUATION.md
+- [ ] Create .claude/skills/scatter-graph/SKILL.md
+- [ ] Create .claude/skills/scatter-consumers/SKILL.md
+- [ ] Create .claude/skills/scatter-impact/SKILL.md
+- [ ] Create .claude/skills/scatter-sproc/SKILL.md
+- [ ] Create .claude/skills/scatter-branch/SKILL.md
+- [ ] Test each skill interactively with Claude Code
+
+DEPLOYMENT CHECKLIST / SCATTER PIPELINES SHORTCUT (HIGH PRIORITY — ~2 hours)
+Ref: docs/USE_CASE_REVIEW.md, Use Case #9
+- [ ] Add --output-format pipelines or scatter pipelines subcommand
+      Output: unique pipeline names, one per line, suitable for piping to deployment scripts
+- [ ] Support with --branch-name, --target-project, --sow modes
+- [ ] Clean output (no headers, no decoration) for scripting
+
+============================================================================
+INITIATIVE 7: CI/CD INTEGRATION & WORKFLOW (v2.0 — Tier 2, promoted)
 Goal: Integrate Scatter into CI/CD for continuous, automated analysis.
-Depends on: Initiative 6 (reporting + baselines)
+Dependency: Tier 1 items above should ship first for credibility.
+Previously depended on Initiative 6 completion — now promoted because CI/CD
+gates make scatter infrastructure (runs without anyone remembering to use it).
 Ref: PRODUCT_DEFINITION.md Section 12, Phase 5
 ============================================================================
 
-CI/CD CHECK MODE (HIGH PRIORITY)
+CI/CD CHECK MODE (HIGH PRIORITY — Tier 2, ship after Tier 1)
 Ref: OUTPUT_REPORT_EVALUATION.md, Addendum Section F
 - [ ] Machine-readable output with exit codes for pipeline integration
       Exit 0 = no concerns, Exit 1 = threshold violated
@@ -801,13 +848,13 @@ COUPLING THRESHOLDS (MEDIUM PRIORITY)
       block_new_cycles: true (fail if PR introduces circular dependency)
 - [ ] Output threshold violations in CI/CD check mode
 
-WATCH MODE (LOW PRIORITY)
+WATCH MODE (TIER 4 — DEFERRED, no user demand)
 - [ ] `scatter analyze --watch` — re-run analysis on file changes
 - [ ] Use filesystem events (watchdog or similar)
 - [ ] Useful for interactive local exploration during development
 - [ ] Debounce rapid changes (wait 500ms after last change)
 
-PROGRESS BAR / STREAMING PROGRESS (LOW PRIORITY)
+PROGRESS BAR / STREAMING PROGRESS (TIER 4 — DEFERRED, graph cache means most runs <2s)
 Ref: OUTPUT_REPORT_EVALUATION.md, Addendum Section G
 - [ ] Add tqdm progress bars to stderr for long-running scans
       Scanning projects... 1,247 .csproj files found
@@ -916,15 +963,23 @@ COMPLETED (v2.0 — continued):
      Net: 464 → 456 → 476 → 514 tests across 17 files (513 pass, 1 xfail).
 
 IN PROGRESS (v2.0):
-  Initiative 6 — Reporting & Extraction Planning (v2.0 Phase 4)
-    Phase 5: Unified AnalysisReport data model (one object, many formatters)
-    Phase 6: Diff reports (--compare-to, track changes over time)
-    Baselines, HTML reports, extraction planning
+  Tier 1 — Credibility & Adoption (ship first, unlocks everything else)
+  Tier 2 — CI/CD Governance (makes scatter sticky infrastructure)
+  Tier 3 — Strategic Features (baselines, extraction planning, HTML)
+  Tier 4 — Deferred (unified report model, watch mode, extra AI providers)
 
 NOT STARTED (v2.0):
   Initiative 7 — CI/CD Integration & Workflow (v2.0 Phase 5)
 
-RECOMMENDED EXECUTION ORDER:
+RECOMMENDED EXECUTION ORDER (reprioritized 2026-03-13):
+
+  Rationale: Previous order followed architectural dependency (Phase 5 before
+  Phase 6, etc.). New order follows adoption-driven sequencing: fix credibility
+  issues first, drive adoption second, make scatter sticky third. User feedback
+  from real usage should inform later priorities. A tool nobody uses has zero
+  value regardless of engineering quality.
+
+  COMPLETED:
   1. ✅ DONE — Initiative 1 multiprocessing work complete
   2. ✅ DONE — Initiative 2 Hybrid Git Analysis complete
   3. ✅ DONE — Initiative 3: Modularization (all 5 phases complete)
@@ -934,11 +989,45 @@ RECOMMENDED EXECUTION ORDER:
   7. ✅ DONE — Initiative 6 Phase 2: Filter pipeline visibility (21 tests)
   8. ✅ DONE — Initiative 6 Phase 3: Blast radius tree view (20 tests)
   9. ✅ DONE — Initiative 6 Phase 4: Markdown output (39 tests)
-  10. Initiative 6 Phase 5: Unified report data model (MEDIUM — architectural foundation)
-  11. Initiative 7 CI/CD exit codes (HIGH — unlocks governance use case)
-  12. Initiative 6 Phase 6: Diff reports + baselines
-  13. Initiative 6: HTML reports, extraction planning
-  14. Initiative 7: PR comments, watch mode, thresholds
+
+  TIER 1: CREDIBILITY & ADOPTION (do these next — highest ROI, lowest effort)
+  10. Fix --summarize-consumers wiring (P0 BUG — ~20 lines, README says it works, it doesn't)
+  11. Integrate dependency graph into --sow / --target-project modes (HIGH — biggest
+      perf/accuracy win remaining; 5 SOW targets = 5 filesystem scans → 1 scan + 5 lookups)
+  12. Claude Code skills in .claude/skills/ (HIGH — 1 day, zero new Python code,
+      collapses adoption barrier; engineers ask Claude instead of learning CLI)
+  13. Deployment checklist / `scatter pipelines` shortcut (HIGH — #1 release-night
+      use case per USE_CASE_REVIEW; release managers want "run these 7 pipelines"
+      not a full impact report; ~2 hours)
+
+  TIER 2: CI/CD GOVERNANCE (makes scatter infrastructure, not optional)
+  14. Initiative 7: CI/CD exit codes --fail-on (HIGH — turns scatter into an
+      architecture governance gate; cycles, risk:high, coupling:N, consumers:N)
+  15. Initiative 7: PR blast radius comments GitHub/ADO (HIGH — visible to reviewers
+      without anyone remembering to run scatter; combined with skills = two always-on
+      touchpoints)
+
+  TIER 3: STRATEGIC FEATURES (do after adoption is established)
+  16. Baselines + diff reports (Initiative 6 Phase 6 — needs real usage data first;
+      without baseline history from actual users, diff engine is built against
+      synthetic data)
+  17. Extraction planning mode (HIGH strategic value but needs graph integration
+      from #11 and real-world validation of coupling metrics)
+  18. HTML reports (polish — markdown already covers "paste into ticket" workflow;
+      vis-network.js pattern from CODEGRAPHCONTEXT_COMPARISON is good reference)
+
+  TIER 4: DEFERRED (build when concrete demand materializes)
+  19. Initiative 6 Phase 5: Unified AnalysisReport data model (internal refactor
+      no user sees; do when a 5th output format is needed or schema inconsistency
+      blocks something concrete)
+  20. Watch mode (graph cache makes repeat runs <2s; no user has asked for this)
+  21. Additional AI providers — Anthropic, OpenAI, Azure, Ollama (Gemini works;
+      build WEX AI Platform provider when it exists; others are speculative)
+  22. AI response caching + token budget manager (premature optimization; AI calls
+      are infrequent and cheap)
+  23. MCP server (per CLAUDE_INTEGRATION_EVALUATION: skills first, MCP when
+      cross-client demand materializes)
+  24. Streaming progress / tqdm (nice DX but graph cache means most runs <2s)
 
 KEY FINDINGS:
   1. All 5 steps of find_consumers() are now parallelized (steps 2-5 use

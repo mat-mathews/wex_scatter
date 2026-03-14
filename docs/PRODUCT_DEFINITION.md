@@ -1071,33 +1071,37 @@ Scatter provides the dependency data engineers need to make informed decisions i
 
 ### Phase Summary
 
-| Phase | Focus | Scatter Evolves From → To |
-|-------|-------|--------------------------|
-| **Phase 1** | Modularize the engine, set up the AI backend | Single script → modular package |
-| **Phase 2** | Add "Impact Mode" for CSE scoping | CLI utility → work-request analysis tool |
-| **Phase 3** | Full dependency graph, domain discovery, metrics | Point analysis → whole-codebase analysis |
-| **Phase 4** | Interactive reports, extraction planning, baselines | Developer tool → planning tool |
-| **Phase 5** | CI/CD integration, automated gates | Manual runs → continuous analysis |
+| Phase | Focus | Scatter Evolves From → To | Status |
+|-------|-------|--------------------------|--------|
+| **Phase 1** | Modularize the engine, set up the AI backend | Single script → modular package | ✅ Complete |
+| **Phase 2** | Add "Impact Mode" for CSE scoping | CLI utility → work-request analysis tool | ✅ Complete |
+| **Phase 3** | Full dependency graph, domain discovery, metrics | Point analysis → whole-codebase analysis | ✅ Complete |
+| **Phase 4a-d** | Report quality, filter visibility, tree view, markdown | Raw output → polished, shareable reports | ✅ Complete |
+| **Phase 4.5** | **Credibility & adoption** — fix broken features, graph integration, Claude skills, pipeline shortcut | Developer tool → adopted team tool | **Next** |
+| **Phase 5** | CI/CD integration, automated gates | Manual runs → continuous analysis | After adoption |
+| **Phase 4e-f** | Unified report model, diff reports, baselines, HTML | Snapshots → monitoring over time | After CI/CD |
 
-### Phase 1: Modularization & AI Backend Foundation
+**Sequencing rationale (updated 2026-03-13):** Phase 5 (CI/CD) is promoted ahead of Phase 4e-f because CI/CD gates drive stickier adoption than internal refactoring or diff reports. A new Phase 4.5 captures credibility fixes and adoption enablers (broken `--summarize-consumers` wiring, graph integration into analysis modes, Claude Code skills, deployment checklist shortcut) that should ship before any infrastructure features. The unified report model (Phase 4e) is deferred — it's architecturally correct but no user sees it, and it can wait until schema inconsistency blocks a concrete feature.
+
+### Phase 1: Modularization & AI Backend Foundation ✅ Complete
 
 **Goal:** Restructure the codebase and establish the pluggable AI backend. Existing functionality continues to work.
 
-| Work Item | Description |
-|-----------|-------------|
-| Module extraction | Split `scatter.py` into `scanners/`, `analyzers/`, `core/`, `reports/`, `ai/` |
-| AI provider protocol | Define `AIProvider` interface with `analyze()`, `supports()`, `estimate_tokens()` |
-| AI task router | Implement provider selection, fallback logic, and configuration system |
-| WEX AI Platform provider | Implement default provider against WEX internal AI infrastructure (no auth required) |
-| Gemini migration | Move existing Gemini code into `providers/gemini_provider.py` |
-| Anthropic provider | Implement Claude plugin — Opus, Sonnet, Haiku (requires authorization) |
-| OpenAI provider | Implement OpenAI/Azure OpenAI plugin (requires authorization) |
-| Ollama provider | Local model support (requires authorization) |
-| AI response caching | File-based cache with TTL and code-change invalidation |
-| Token budget manager | Context chunking, priority selection, cost estimation logging |
-| Configuration system | `.scatter.yaml` config file, env vars, CLI flags |
-| Backward compatibility | `scatter.py` entry point preserved, delegates to new modules |
-| Test suite | Unit tests for each module |
+| Work Item | Description | Status |
+|-----------|-------------|--------|
+| Module extraction | Split `scatter.py` into `scanners/`, `analyzers/`, `core/`, `reports/`, `ai/` | ✅ |
+| AI provider protocol | Define `AIProvider` interface with `analyze()`, `supports()`, `estimate_tokens()` | ✅ |
+| AI task router | Implement provider selection, fallback logic, and configuration system | ✅ |
+| Gemini migration | Move existing Gemini code into `providers/gemini_provider.py` | ✅ |
+| Configuration system | `.scatter.yaml` config file, env vars, CLI flags | ✅ |
+| Backward compatibility | `scatter.py` entry point preserved, delegates to new modules | ✅ |
+| Test suite | Unit tests for each module | ✅ |
+| WEX AI Platform provider | Implement default provider against WEX internal AI infrastructure | Deferred (Tier 4 — build when platform exists) |
+| Anthropic provider | Implement Claude plugin (requires authorization) | Deferred (Tier 4 — build on demand) |
+| OpenAI provider | Implement OpenAI/Azure OpenAI plugin (requires authorization) | Deferred (Tier 4 — build on demand) |
+| Ollama provider | Local model support (requires authorization) | Deferred (Tier 4 — build on demand) |
+| AI response caching | File-based cache with TTL and code-change invalidation | Deferred (Tier 4 — premature; AI calls are infrequent and cheap) |
+| Token budget manager | Context chunking, priority selection, cost estimation logging | Deferred (Tier 4 — premature) |
 
 ### Phase 2: CSE Impact Analysis & AI Enrichment
 
@@ -1133,16 +1137,19 @@ Scatter provides the dependency data engineers need to make informed decisions i
 
 **Goal:** Fix existing report quality issues, add missing output formats, build interactive reports, extraction planning tools, and baseline tracking. Informed by the report evaluation in `docs/OUTPUT_REPORT_EVALUATION.md`.
 
-**Sub-phases** (sequenced by impact and dependency):
+**Sub-phases** (resequenced 2026-03-13 by adoption impact):
 
-| Sub-phase | Focus | Key Deliverables |
-|-----------|-------|-------------------|
-| **4a: Report quality fixes** | Fix correctness issues in existing reporters | Native JSON objects (not stringified), `null` for absent fields, metadata block, console polish, CSV cleanup |
-| **4b: Filter pipeline visibility** | Surface the multi-stage filter funnel in all output | FilterPipeline dataclass, zero-results debugging hints |
-| **4c: Blast radius tree view** | Render propagation path as a tree, not a flat list | Tree console output, BFS parent tracking, `propagation_tree` in JSON |
-| **4d: Markdown output** | Paste-ready format for PRs, tickets, wikis | `--output-format markdown`, inline Mermaid diagrams for graph mode |
-| **4e: Unified report data model** | One `AnalysisReport` object, many formatters | Normalized schema across all modes, `--schema-version` for migration |
-| **4f: Diff reports** | Compare two analyses over time | `--compare-to`, DiffReport, coupling trend tracking |
+| Sub-phase | Focus | Key Deliverables | Status |
+|-----------|-------|-------------------|--------|
+| **4a: Report quality fixes** | Fix correctness issues in existing reporters | Native JSON objects, `null` for absent fields, metadata block, console polish, CSV cleanup | ✅ Complete |
+| **4b: Filter pipeline visibility** | Surface the multi-stage filter funnel in all output | FilterPipeline dataclass, zero-results debugging hints | ✅ Complete |
+| **4c: Blast radius tree view** | Render propagation path as a tree, not a flat list | Tree console output, BFS parent tracking, `propagation_tree` in JSON | ✅ Complete |
+| **4d: Markdown output** | Paste-ready format for PRs, tickets, wikis | `--output-format markdown`, inline Mermaid diagrams for graph mode | ✅ Complete |
+| **4.5: Credibility & adoption** | Fix broken features, integrate graph, enable adoption | Fix `--summarize-consumers`, graph→analysis integration, Claude skills, `scatter pipelines` | **Next** |
+| **4e: Unified report data model** | One `AnalysisReport` object, many formatters | Normalized schema across all modes, `--schema-version` for migration | Deferred (Tier 4) |
+| **4f: Diff reports** | Compare two analyses over time | `--compare-to`, DiffReport, coupling trend tracking | After CI/CD (Tier 3) |
+
+**Note:** Phase 4e (unified report model) demoted to Tier 4. It is architecturally correct but no user sees it — the current four output formats work. Phase 4.5 is a new insertion capturing adoption-critical items that should ship before any further infrastructure work. Phase 5 (CI/CD) is now prioritized ahead of 4e and 4f.
 
 | Work Item | Description |
 |-----------|-------------|
@@ -1163,18 +1170,20 @@ Scatter provides the dependency data engineers need to make informed decisions i
 | AI contract generation | Draft interface definitions for extraction boundaries |
 | Mermaid output | Standalone `--output-format mermaid` with cluster subgraphs |
 
-### Phase 5: CI/CD Integration & Workflow
+### Phase 5: CI/CD Integration & Workflow (promoted to Tier 2 — ship after Phase 4.5)
 
 **Goal:** Integrate Scatter into CI/CD for continuous, automated analysis. Exit codes and `--fail-on` flags (from `docs/OUTPUT_REPORT_EVALUATION.md`, Section F) are the entry point — they turn Scatter from a reporting tool into an enforceable architecture governance tool.
 
-| Work Item | Description |
-|-----------|-------------|
-| CI/CD check mode | `--fail-on` flags with multiple triggers: `cycles`, `risk:high`, `coupling:15.0`, `consumers:20`. Exit 0 = pass, exit 1 = threshold violated. Reports still produced. Configurable via `.scatter.yaml` |
-| PR blast radius comments | Post impact analysis as PR comment (Azure DevOps / GitHub) |
-| Automatic baseline updates | Update baseline on main branch merges |
-| Coupling thresholds | Configurable gates in `.scatter.yaml` (max_blast_radius, max_coupling_increase, block_new_cycles) |
-| Watch mode | File-watching for iterative local exploration |
-| Streaming progress | `tqdm` progress bars on stderr for long-running scans; suppress in `--quiet` and CI mode |
+**Priority note (2026-03-13):** Phase 5 CI/CD gates and PR comments are now prioritized ahead of Phase 4e-f (unified report model, diff reports, baselines, HTML). CI/CD integration makes scatter sticky — it runs without anyone remembering to use it. The unified report model and diff reports are Tier 3-4 items that should wait for real adoption to inform their design.
+
+| Work Item | Description | Priority |
+|-----------|-------------|----------|
+| CI/CD check mode | `--fail-on` flags with multiple triggers: `cycles`, `risk:high`, `coupling:15.0`, `consumers:20`. Exit 0 = pass, exit 1 = threshold violated. Reports still produced. Configurable via `.scatter.yaml` | **Tier 2 — ship first** |
+| PR blast radius comments | Post impact analysis as PR comment (Azure DevOps / GitHub) | **Tier 2 — ship first** |
+| Coupling thresholds | Configurable gates in `.scatter.yaml` (max_blast_radius, max_coupling_increase, block_new_cycles) | Tier 2 |
+| Automatic baseline updates | Update baseline on main branch merges | Tier 3 (depends on baselines) |
+| Streaming progress | `tqdm` progress bars on stderr for long-running scans; suppress in `--quiet` and CI mode | Tier 4 — deferred (graph cache means most runs <2s) |
+| Watch mode | File-watching for iterative local exploration | Tier 4 — deferred (no user demand) |
 
 ---
 

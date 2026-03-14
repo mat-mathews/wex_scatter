@@ -513,16 +513,23 @@ This is the highest-effort suggestion but it's the architectural foundation that
 
 ---
 
-### Summary: What to build and in what order
+### Summary: What to build and in what order (updated 2026-03-13)
 
-| Phase | What | Why | Depends on |
-|-------|------|-----|------------|
-| **Now** | Fix JSON serialization bugs (items 1-4 from Priority Recommendations) | These are correctness issues, not features | Nothing |
-| **Now** | Filter pipeline visibility (A) | Dramatically improves debuggability for zero cost | Nothing |
-| **Next** | Blast radius tree view (B) | Makes the core value proposition visible | Nothing |
-| **Next** | Markdown output (E) | The #1 missing format for how teams actually share results | Nothing |
-| **Next** | Exit codes for CI (F) | Unlocks Scatter as a governance tool, not just a reporting tool | Nothing |
-| **Next** | Rule-based observations in graph mode (D) | Makes the graph report actionable without AI | Nothing |
-| **Later** | Unified `AnalysisReport` dataclass (H) | Architectural foundation for everything below | Nothing, but large refactor |
-| **Later** | Diff reports (C) | Transforms Scatter from snapshot tool to monitoring tool | Unified report object (or JSON schema stability) |
-| **Later** | Streaming progress (G) | Polish for large codebases | Nothing |
+Items marked ✅ are completed. Remaining items resequenced by adoption impact.
+
+| Phase | What | Status | Why |
+|-------|------|--------|-----|
+| **Done** | Fix JSON serialization bugs (items 1-4) | ✅ Initiative 6 Phase 1 | Correctness issues |
+| **Done** | Filter pipeline visibility (A) | ✅ Initiative 6 Phase 2 | Debuggability |
+| **Done** | Blast radius tree view (B) | ✅ Initiative 6 Phase 3 | Core value proposition |
+| **Done** | Markdown output (E) | ✅ Initiative 6 Phase 4 | Sharing format |
+| **Done** | Rule-based observations in graph mode (D) | ✅ Initiative 5 Phase 6 | Actionable without AI |
+| **Now** | Exit codes for CI (F) | Tier 2 priority | Unlocks governance — makes scatter infrastructure, not optional |
+| **Next** | Diff reports (C) | Tier 3 priority | Needs real baseline history from actual users first |
+| **Later** | Unified `AnalysisReport` dataclass (H) | Tier 4 — deferred | Internal refactor no user sees; do when a 5th format is needed |
+| **Later** | Streaming progress (G) | Tier 4 — deferred | Graph cache means most runs <2s; nice DX but not urgent |
+
+Note: Exit codes (F) were previously ranked below the unified report model (H).
+Resequenced because CI/CD gates drive stickier adoption than internal refactoring.
+The unified report model is correct architecturally but can wait until schema
+inconsistency actually blocks a concrete feature.

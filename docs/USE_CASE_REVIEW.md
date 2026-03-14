@@ -105,20 +105,46 @@ The `--branch-name` mode does the closest thing:
 
 ---
 
-## Prioritization
+## Prioritization (updated 2026-03-13)
 
-If shipping this to teams tomorrow:
+Resequenced by adoption impact. Previous ordering was correct on effort/value
+per item but didn't account for the adoption flywheel: credibility fixes and
+zero-friction entry points (Claude skills) must come before infrastructure
+features (CI/CD gates, baselines) because a tool nobody uses has zero value.
+
+### Tier 1: Credibility & Adoption (do first — highest ROI)
 
 | Priority | Item | Effort | Value |
 |----------|------|--------|-------|
-| **P0** | Fix consumer summarization (wire the existing code) | ~1 hour | Broken feature in README |
-| **P0** | Deployment checklist output mode | ~2 hours | Your #1 release-night use case |
-| **P1** | Integrate graph into `--sow` mode | ~4 hours | 5x faster multi-target analysis |
+| **P0** | Fix consumer summarization (wire the existing code) | ~1 hour | Broken feature in README — credibility issue |
+| **P0** | Integrate graph into `--sow` / `--target-project` modes | ~4 hours | 5x faster multi-target analysis; makes graph investment pay off in core workflow |
+| **P0** | Claude Code skills in `.claude/skills/` | ~1 day | Collapses adoption barrier — engineers ask Claude, never learn the CLI |
+| **P0** | Deployment checklist / `scatter pipelines` shortcut | ~2 hours | #1 release-night use case; release managers want "run these 7 pipelines" |
+
+### Tier 2: CI/CD Governance (makes scatter sticky)
+
+| Priority | Item | Effort | Value |
+|----------|------|--------|-------|
+| **P1** | CI/CD exit codes (`--fail-on cycles`, `risk:high`, etc.) | ~4 hours | Turns scatter into an architecture gate — runs without anyone remembering |
+| **P1** | PR blast radius comments (GitHub / ADO) | ~4 hours | Visible to reviewers automatically; combined with skills = two always-on touchpoints |
 | **P1** | Pipeline auto-discovery from YAML | ~3 hours | Eliminates manual CSV maintenance |
-| **P1** | `scatter pipelines` shortcut command | ~2 hours | The thing teams will actually alias |
-| **P2** | Graph caching to disk | ~2 hours | Repeat runs go from 30s → <1s |
-| **P2** | CI/CD PR comment integration | ~4 hours | Shift-left pipeline awareness |
-| **P3** | Historical coupling analysis | ~1 week | Tech debt visibility |
-| **P3** | Extraction planning mode | ~1 week | Strategic architecture value |
+
+### Tier 3: Strategic Features (after adoption established)
+
+| Priority | Item | Effort | Value |
+|----------|------|--------|-------|
+| **P2** | Baselines + diff reports | ~1 week | "Is modernization working?" — needs real usage history first |
+| **P2** | Extraction planning mode | ~1 week | High strategic value, needs validated coupling metrics |
+| **P3** | HTML reports | ~1 week | Polish; markdown already covers "paste into ticket" |
+| **P3** | Historical coupling analysis | ~1 week | Tech debt visibility over time |
+
+### Deferred
+
+| Item | Rationale |
+|------|-----------|
+| Unified AnalysisReport data model | Internal refactor; do when needed for a 5th format |
+| Watch mode | Graph cache makes repeat runs <2s |
+| Additional AI providers | Build WEX AI Platform when it exists; others speculative |
+| MCP server | Skills first; MCP when cross-client demand materializes |
 
 The README should be honest about the summarization gap, and the "deployment checklist" use case should be front-and-center — that's the thing a release manager Slacks the team about at 4pm on release day.
