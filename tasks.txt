@@ -3,8 +3,8 @@ Based on Product Definition v2.0 (updated 2026-03-04)
 Reference: docs/PRODUCT_DEFINITION.md
 
 ============================================================================
-INITIATIVE 1: MULTIPROCESSING OVERHAUL (Performance Focus)
-Target: 4-15x performance improvement across all phases
+INITIATIVE 1: MULTIPROCESSING OVERHAUL ✅ PHASES 1-4 COMPLETED (Performance Focus)
+Target: 4-15x performance improvement across all phases (Phase 5 optimization deferred)
 ============================================================================
 
 PHASE 1: File Discovery Operations ✅ COMPLETED (HIGH PRIORITY)
@@ -51,7 +51,7 @@ Note: Phase 2.2/2.3 operations (XML parsing, dir walking) are individually very 
 Parallelization benefits appear at enterprise scale (10,000+ projects). Adaptive
 fallback thresholds correctly prevent parallel execution for small datasets.
 
-PHASE 3: Reference Analysis — LARGELY COMPLETED BY PHASE 2 (NEEDS RE-EVALUATION)
+PHASE 3: Reference Analysis — ✅ COMPLETED BY PHASE 2
 Note: The original Phase 3 tasks referenced functions that don't exist in the codebase.
 The actual implementation folded this work into find_consumers() steps 2-4, which were
 parallelized during Phase 2:
@@ -66,7 +66,7 @@ REMAINING WORK: ✅ ALL COMPLETED
 - [x] Benchmark find_consumers() end-to-end (profile_find_consumers.py)
 Note: find_solutions_for_project() is not in a hot path — called only for reporting.
 
-PHASE 4: Content Analysis — LARGELY COMPLETED BY PHASE 2 (NEEDS RE-EVALUATION)
+PHASE 4: Content Analysis — ✅ COMPLETED BY PHASE 2
 Note: The original Phase 4 tasks referenced functions that don't exist in the codebase.
 The actual implementation:
   - "find_class_usage()" → done by analyze_cs_files_parallel() with 'class' config (Phase 2.1)
@@ -403,57 +403,57 @@ PHASE 2 TESTING ✅ COMPLETED (53 tests)
 - [x] All 70 existing tests continue to pass (123 total)
 
 ============================================================================
-INITIATIVE 5: DEPENDENCY GRAPH, METRICS & DOMAIN ANALYSIS (v2.0 Phase 3)
+INITIATIVE 5: DEPENDENCY GRAPH, METRICS & DOMAIN ANALYSIS ✅ ALL 6 PHASES COMPLETED
 Goal: Full dependency graph with persistence, coupling metrics, domain detection.
 Depends on: Initiative 3 (modularization), Initiative 4 (impact analysis)
 Ref: PRODUCT_DEFINITION.md Section 12, Phase 3
 Detailed plan: docs/INITIATIVE_5_PLAN.md (6 phases, ~2,700 lines est.)
 ============================================================================
 
-PHASE 1: GRAPH MODEL + BULK BUILDER (HIGH PRIORITY)
-- [ ] Create scatter/core/graph.py — ProjectNode, DependencyEdge, DependencyGraph
+PHASE 1: GRAPH MODEL + BULK BUILDER ✅ COMPLETED (HIGH PRIORITY)
+- [x] Create scatter/core/graph.py — ProjectNode, DependencyEdge, DependencyGraph
       DependencyGraph is a pure data structure (mutation, query, traversal, serialization).
       All analysis algorithms are standalone free functions (SRP — no god object).
       Per-node edge indexes (_outgoing/_incoming) for O(degree) lookups.
       Evidence lists capped at 10 entries with evidence_total count.
       ProjectNode stores file_count (not full file paths — not serialized to cache).
-- [ ] Create scatter/analyzers/graph_builder.py — build_dependency_graph()
+- [x] Create scatter/analyzers/graph_builder.py — build_dependency_graph()
       Single-pass O(P+F) construction: parse all .csproj once, scan all .cs once.
       Reverse index for .cs-to-.csproj mapping (sorted prefix match, not per-file dir walk).
       Reuses: find_files_with_pattern_parallel, derive_namespace, extract_type_names_from_content.
-- [ ] Modify scatter/scanners/project_scanner.py — add parse_csproj_all_references()
+- [x] Modify scatter/scanners/project_scanner.py — add parse_csproj_all_references()
       Extracts ALL ProjectReferences, namespace, framework, output type, project style.
-- [ ] Create test_graph.py — ~39 tests (nodes, edges, graph ops, builder, csproj parser, dir index)
+- [x] Create test_graph.py — 46 tests (nodes, edges, graph ops, builder, csproj parser, dir index)
 
-PHASE 2: METRICS + CYCLE DETECTION (HIGH PRIORITY)
-- [ ] Create scatter/analyzers/coupling_analyzer.py — all standalone free functions
+PHASE 2: METRICS + CYCLE DETECTION ✅ COMPLETED (HIGH PRIORITY)
+- [x] Create scatter/analyzers/coupling_analyzer.py — all standalone free functions
       ProjectMetrics: fan_in, fan_out, instability, coupling_score, shared_db_density, etc.
       compute_all_metrics(graph) — O(N+E) using per-node edge indexes.
       Configurable coupling_weights (default: project_ref=1.0, sproc=0.8, namespace=0.5, type=0.3).
       Weights documented with rationale, overridable in .scatter.yaml.
       rank_by_coupling(metrics, top_n) for top-N most coupled projects.
-- [ ] Cycle detection via Tarjan's SCC algorithm — O(N+E)
+- [x] Cycle detection via Tarjan's SCC algorithm — O(N+E)
       CycleGroup dataclass: projects, size, shortest_cycle, edge_count.
       detect_cycles(graph) returns List[CycleGroup] (SCCs with size > 1).
       For each SCC, extract one shortest cycle via BFS for illustration.
       NOT DFS back-edge (finds only *a* cycle), NOT full enumeration (exponential).
-- [ ] Create test_coupling.py — ~20 tests (metrics, custom weights, SCC, shortest cycles)
+- [x] Create test_coupling.py — 25 tests (metrics, custom weights, SCC, shortest cycles)
 
-PHASE 3: PERSISTENCE + CLI INTEGRATION (HIGH PRIORITY)
-- [ ] Create scatter/store/graph_cache.py — save/load/validate
+PHASE 3: PERSISTENCE + CLI INTEGRATION ✅ COMPLETED (HIGH PRIORITY)
+- [x] Create scatter/store/graph_cache.py — save/load/validate
       Smart git-based invalidation: git diff --name-only checks actual .csproj/.cs changes.
       Non-code-only commits (README, docs) do NOT invalidate the cache.
       Mtime-based fallback for non-git directories.
       Conservative fallback: if git command fails, rebuild.
-- [ ] Modify scatter/__main__.py — add --graph mode + --rebuild-graph flag
+- [x] Modify scatter/__main__.py — add --graph mode + --rebuild-graph flag
       --graph goes into existing mutually exclusive mode group.
       Flow: check cache → build if stale → save → compute_all_metrics → detect_cycles → report.
-- [ ] Modify scatter/config.py — add GraphConfig (cache_dir, rebuild, invalidation, coupling_weights)
-- [ ] Create test_graph_cache.py — ~10 tests (roundtrip, smart invalidation, mtime fallback)
+- [x] Modify scatter/config.py — add GraphConfig (cache_dir, rebuild, invalidation, coupling_weights)
+- [x] Create test_graph_cache.py — 28 tests (roundtrip, smart git invalidation, mtime fallback)
 
-PHASE 4: DATABASE DEPENDENCY MAPPING (MEDIUM PRIORITY)
+PHASE 4: DATABASE DEPENDENCY MAPPING ✅ COMPLETED (MEDIUM PRIORITY)
 Note: Independent of Phases 2 and 3 — can be developed in parallel after Phase 1.
-- [ ] Create scatter/scanners/db_scanner.py — DbDependency dataclass + detection functions
+- [x] Create scatter/scanners/db_scanner.py — DbDependency dataclass + detection functions
       Comment stripping preprocessor: _strip_cs_comments() removes // and /* */ before regex.
       Sproc detection with configurable prefixes (default: sp_, usp_; customizable via .scatter.yaml).
       Direct SQL requires string-literal context (opening quote) to prevent false positives.
@@ -461,9 +461,9 @@ Note: Independent of Phases 2 and 3 — can be developed in parallel after Phase
       Connection string detection in string literals.
       build_db_dependency_matrix() for cross-project shared DB objects.
       add_db_edges_to_graph() for sproc_shared edges.
-- [ ] Modify scatter/analyzers/graph_builder.py — optional DB dependency step
-- [ ] Modify scatter/config.py — add DbConfig with sproc_prefixes
-- [ ] Create test_db_scanner.py — ~15 tests (comment stripping, patterns, false positives, integration)
+- [x] Modify scatter/analyzers/graph_builder.py — optional DB dependency step
+- [x] Modify scatter/config.py — add DbConfig with sproc_prefixes
+- [x] Create test_db_scanner.py — 36 tests (comment stripping, detection patterns, _FileIndex non-class types, integration)
 
 PHASE 5: DOMAIN BOUNDARY DETECTION ✅ COMPLETED (MEDIUM PRIORITY)
 - [x] Create scatter/analyzers/domain_analyzer.py — all standalone free functions
@@ -514,10 +514,44 @@ Ref: docs/ADR_GRAPH_PERFORMANCE.md, docs/PERFORMANCE_AT_SCALE.md
       Label propagation 21s — get_edges_between() called 205K times/iteration, linear scan
       Type extraction 14s — sequential file reads + 3 regex per file
 
+INCREMENTAL GRAPH UPDATES (PLANNED — Tier 2 prerequisite, ~3-4 days)
+Ref: docs/INCREMENTAL_GRAPH_BRAINSTORM.md (team debate), docs/INCREMENTAL_GRAPH_PLAN.md (4-phase plan)
+Replace all-or-nothing cache invalidation with surgical per-file patching.
+Target: PR with 10 changed files, 500 projects → <1s (vs 60s full rebuild).
+
+Phase 1 — Cache format v2 + data models (~0.5 day):
+- [ ] FileFacts dataclass (types_declared, namespaces_used, sprocs_referenced, content_hash)
+- [ ] ProjectFacts dataclass (namespace, project_references, csproj_content_hash)
+- [ ] v2 cache envelope with file_facts, project_facts, project_set_hash
+- [ ] v1 → v2 migration (load v1 → full rebuild → save as v2)
+- [ ] Tests: v2 roundtrip, v1 backward compat, project_set_hash mismatch
+
+Phase 2 — Graph mutation + fact extraction (~1 day):
+- [ ] Add remove_edges_from() and remove_edges_to() to DependencyGraph
+- [ ] extract_file_facts() and extract_project_facts() in graph_patcher.py
+- [ ] Extend build_dependency_graph() with capture_facts=True option
+- [ ] Tests: edge removal updates all 4 indexes, fact extraction correctness
+
+Phase 3 — Patch algorithm (~1.5 days):
+- [ ] Create scatter/store/graph_patcher.py — patch_graph() core function
+- [ ] Decision tree: classify → threshold check → early cutoff → rebuild edges
+- [ ] Content hash early cutoff (Bazel-inspired: unchanged hash → skip re-extraction)
+- [ ] Early cutoff on types_declared (Salsa-inspired: declarations unchanged → cheap path)
+- [ ] Safety valve: >50 projects or >30% files → fall back to full rebuild
+- [ ] Edge rebuild helpers: namespace, type_usage, sproc, project_reference
+- [ ] get_changed_files() git diff integration
+- [ ] Tests: usage-only, declaration change, .csproj change, deleted/new files, thresholds
+
+Phase 4 — Integration + property tests (~1 day):
+- [ ] Wire into build_graph_context() in graph_enrichment.py
+- [ ] Property-based tests: incremental == full rebuild (100 iterations, synthetic mutations)
+- [ ] mutate_codebase() function in tools/generate_synthetic_codebase.py
+- [ ] Regression: coupling scores and cycles identical after incremental
+- [ ] End-to-end: analysis output identical with cached vs fresh graph
+
 DEFERRED TO FUTURE INITIATIVE:
 - [ ] diff(baseline, current) -> GraphDiff — needs clear use case + full GraphDiff spec
 - [ ] Graph query DSL — ad-hoc traversal language, premature before basic graph is proven
-- [ ] Incremental graph updates — smart cache invalidation makes full rebuilds acceptable for v1
 
 INITIATIVE 5 TESTING SUMMARY (171 tests completed across Phases 1-6, all merged to main):
 - [x] test_graph.py — 46 tests (Phase 1: data models, graph ops, builder, csproj parser, dir index)
@@ -528,8 +562,9 @@ INITIATIVE 5 TESTING SUMMARY (171 tests completed across Phases 1-6, all merged 
 - [x] test_reporters.py — 21 tests (Phase 6: Mermaid, health dashboard, console output, CSV export, JSON topology)
 
 ============================================================================
-INITIATIVE 6: REPORTING & EXTRACTION PLANNING (v2.0 Phase 4)
+INITIATIVE 6: REPORTING & EXTRACTION PLANNING — PHASES 1-4 ✅ COMPLETED (v2.0 Phase 4)
 Goal: Fix report quality issues, add missing formats, extraction planning, baselines.
+Phases 5-6 (unified report model, diff reports) deferred to Tier 3/4.
 Depends on: Initiative 5 (dependency graph + metrics)
 Ref: PRODUCT_DEFINITION.md Section 12, Phase 4
 Evaluation: docs/OUTPUT_REPORT_EVALUATION.md
@@ -588,7 +623,7 @@ runs in consumer_analyzer.py but its intermediate counts are discarded. Surface 
       "Hint: 0 of 8 namespace-matching projects contained 'WidgetFactory' — verify the class name"
 - [x] Tests: 21 tests in test_filter_pipeline.py (data model, integration, console, JSON, CSV)
 
-PHASE 3: BLAST RADIUS TREE VIEW (HIGH PRIORITY)
+PHASE 3: BLAST RADIUS TREE VIEW ✅ COMPLETED (HIGH PRIORITY)
 Ref: OUTPUT_REPORT_EVALUATION.md, Addendum Section B
 The impact mode console output shows a flat list with depth numbers. Render as a tree instead.
 
@@ -978,6 +1013,9 @@ IN PROGRESS (v2.0 — reprioritized 2026-03-14):
     - ✅ Integrate dependency graph into analysis modes (--graph-metrics)
     - Claude Code skills in .claude/skills/
     - Deployment checklist / scatter pipelines shortcut
+  Tier 1.5 — Incremental Graph Updates (prerequisite for Tier 2 CI/CD):
+    - Per-file facts cache + lazy git-diff patching (~3-4 days)
+    - Ref: docs/INCREMENTAL_GRAPH_PLAN.md
   Tier 2 — CI/CD Governance (makes scatter sticky infrastructure):
     - Initiative 7: CI/CD exit codes (--fail-on)
     - Initiative 7: PR blast radius comments (GitHub/ADO)
@@ -1015,34 +1053,40 @@ RECOMMENDED EXECUTION ORDER (reprioritized 2026-03-13):
       use case per USE_CASE_REVIEW; release managers want "run these 7 pipelines"
       not a full impact report; ~2 hours)
 
+  TIER 1.5: INCREMENTAL GRAPH UPDATES (prerequisite for CI/CD — 3-4 days)
+  14. Incremental graph updates — per-file facts cache, lazy git-diff patching,
+      content hash early cutoff, project-level edge attribution, property-based testing.
+      Ref: docs/INCREMENTAL_GRAPH_PLAN.md. Makes CI/CD gates viable (<1s graph update
+      vs 60s rebuild). Must ship before Tier 2.
+
   TIER 2: CI/CD GOVERNANCE (makes scatter infrastructure, not optional)
-  14. Initiative 7: CI/CD exit codes --fail-on (HIGH — turns scatter into an
+  15. Initiative 7: CI/CD exit codes --fail-on (HIGH — turns scatter into an
       architecture governance gate; cycles, risk:high, coupling:N, consumers:N)
-  15. Initiative 7: PR blast radius comments GitHub/ADO (HIGH — visible to reviewers
+  16. Initiative 7: PR blast radius comments GitHub/ADO (HIGH — visible to reviewers
       without anyone remembering to run scatter; combined with skills = two always-on
       touchpoints)
 
   TIER 3: STRATEGIC FEATURES (do after adoption is established)
-  16. Baselines + diff reports (Initiative 6 Phase 6 — needs real usage data first;
+  17. Baselines + diff reports (Initiative 6 Phase 6 — needs real usage data first;
       without baseline history from actual users, diff engine is built against
       synthetic data)
-  17. Extraction planning mode (HIGH strategic value but needs graph integration
+  18. Extraction planning mode (HIGH strategic value but needs graph integration
       from #11 and real-world validation of coupling metrics)
-  18. HTML reports (polish — markdown already covers "paste into ticket" workflow;
+  19. HTML reports (polish — markdown already covers "paste into ticket" workflow;
       vis-network.js pattern from CODEGRAPHCONTEXT_COMPARISON is good reference)
 
   TIER 4: DEFERRED (build when concrete demand materializes)
-  19. Initiative 6 Phase 5: Unified AnalysisReport data model (internal refactor
+  20. Initiative 6 Phase 5: Unified AnalysisReport data model (internal refactor
       no user sees; do when a 5th output format is needed or schema inconsistency
       blocks something concrete)
-  20. Watch mode (graph cache makes repeat runs <2s; no user has asked for this)
-  21. Additional AI providers — Anthropic, OpenAI, Azure, Ollama (Gemini works;
+  21. Watch mode (graph cache makes repeat runs <2s; no user has asked for this)
+  22. Additional AI providers — Anthropic, OpenAI, Azure, Ollama (Gemini works;
       build WEX AI Platform provider when it exists; others are speculative)
-  22. AI response caching + token budget manager (premature optimization; AI calls
+  23. AI response caching + token budget manager (premature optimization; AI calls
       are infrequent and cheap)
-  23. MCP server (per CLAUDE_INTEGRATION_EVALUATION: skills first, MCP when
+  24. MCP server (per CLAUDE_INTEGRATION_EVALUATION: skills first, MCP when
       cross-client demand materializes)
-  24. Streaming progress / tqdm (nice DX but graph cache means most runs <2s)
+  25. Streaming progress / tqdm (nice DX but graph cache means most runs <2s)
 
 KEY FINDINGS:
   1. All 5 steps of find_consumers() are now parallelized (steps 2-5 use
@@ -1079,3 +1123,7 @@ KEY FINDINGS:
       modes, shared SUMMARIZATION_PROMPT_TEMPLATE in scatter/ai/base.py, 7 tests.
   18. --graph-metrics enrichment shipped (2026-03-14): GraphContext in graph_enrichment.py,
       post-processing enrichment for all modes, schema stability in all reporters, 17 tests.
+  19. Incremental graph updates planned (2026-03-14): team brainstorm produced 4-phase plan.
+      Per-file facts cache + lazy git-diff patching + content hash early cutoff + property-based
+      testing. Target: <1s for typical PRs (vs 60s full rebuild). Tier 1.5 prerequisite for CI/CD.
+      Ref: docs/INCREMENTAL_GRAPH_BRAINSTORM.md, docs/INCREMENTAL_GRAPH_PLAN.md.
