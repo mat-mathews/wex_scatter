@@ -75,7 +75,7 @@ def print_console_report(all_results: List[Dict[str, Union[str, Dict, List[str]]
         print(f"\n--- Total Consuming Relationships Found: {len(all_results)} ---")
 
 
-def _render_tree(consumers: List[EnrichedConsumer]) -> List[str]:
+def render_tree(consumers: List[EnrichedConsumer]) -> List[str]:
     """Render consumers as a tree with box-drawing characters.
 
     Returns a list of output lines (without trailing newlines).
@@ -151,7 +151,7 @@ def print_impact_report(report: ImpactReport) -> None:
         print(f"Direct Consumers: {ti.total_direct} | Transitive: {ti.total_transitive}")
 
         if ti.consumers:
-            tree_lines = _render_tree(ti.consumers)
+            tree_lines = render_tree(ti.consumers)
             for line in tree_lines:
                 print(line)
 

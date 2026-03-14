@@ -72,6 +72,14 @@ def _build_metadata(args, search_scope_abs, start_time):
     }
 
 
+def _require_output_file(args, format_name: str) -> Path:
+    """Validate --output-file is provided for file-based formats. Exit if missing."""
+    if not args.output_file:
+        logging.error(f"{format_name} output format requires the --output-file argument.")
+        sys.exit(1)
+    return Path(args.output_file)
+
+
 def main():
     start_time = time.monotonic()
     parser = argparse.ArgumentParser(
@@ -199,8 +207,8 @@ def main():
     )
     common_group.add_argument(
         "--output-format", default="console",
-        choices=['console', 'csv', 'json'],
-        help="Format for the output. 'console' prints to screen. 'csv' or 'json' requires --output-file."
+        choices=['console', 'csv', 'json', 'markdown'],
+        help="Format for the output. 'console' prints to screen. 'csv', 'json', or 'markdown' writes to --output-file (markdown also prints to stdout if no file given)."
     )
 
     # Multiprocessing options
@@ -733,16 +741,19 @@ def main():
 
         # Output impact report (separate from legacy all_results path)
         if args.output_format == 'json':
-            if not args.output_file:
-                logging.error("JSON output format requires the --output-file argument.")
-                sys.exit(1)
-            write_impact_json_report(impact_report, Path(args.output_file),
+            output_path = _require_output_file(args, "JSON")
+            write_impact_json_report(impact_report, output_path,
                                      metadata=_build_metadata(args, search_scope_abs, start_time))
         elif args.output_format == 'csv':
-            if not args.output_file:
-                logging.error("CSV output format requires the --output-file argument.")
-                sys.exit(1)
-            write_impact_csv_report(impact_report, Path(args.output_file))
+            output_path = _require_output_file(args, "CSV")
+            write_impact_csv_report(impact_report, output_path)
+        elif args.output_format == 'markdown':
+            from scatter.reports.markdown_reporter import build_impact_markdown, write_impact_markdown_report
+            md_metadata = _build_metadata(args, search_scope_abs, start_time)
+            if args.output_file:
+                write_impact_markdown_report(impact_report, Path(args.output_file), metadata=md_metadata)
+            else:
+                print(build_impact_markdown(impact_report, metadata=md_metadata))
         else:
             print_impact_report(impact_report)
 
@@ -815,11 +826,9 @@ def main():
 
         # Output
         if args.output_format == "json":
-            if not args.output_file:
-                logging.error("JSON output format requires the --output-file argument.")
-                sys.exit(1)
+            output_path = _require_output_file(args, "JSON")
             write_graph_json_report(
-                graph, metrics, ranked, cycles, Path(args.output_file),
+                graph, metrics, ranked, cycles, output_path,
                 clusters=clusters,
                 metadata=_build_metadata(args, search_scope_abs, start_time),
                 include_topology=args.include_graph_topology,
@@ -828,12 +837,25 @@ def main():
             logging.info(f"Graph report written to {args.output_file}")
 
         elif args.output_format == "csv":
-            if not args.output_file:
-                logging.error("CSV output format requires the --output-file argument.")
-                sys.exit(1)
+            output_path = _require_output_file(args, "CSV")
             from scatter.reports.graph_reporter import write_graph_csv_report
-            write_graph_csv_report(graph, metrics, Path(args.output_file), clusters=clusters)
+            write_graph_csv_report(graph, metrics, output_path, clusters=clusters)
             logging.info(f"Graph CSV report written to {args.output_file}")
+
+        elif args.output_format == "markdown":
+            from scatter.reports.markdown_reporter import build_graph_markdown, write_graph_markdown_report
+            md_metadata = _build_metadata(args, search_scope_abs, start_time)
+            if args.output_file:
+                write_graph_markdown_report(
+                    graph, metrics, ranked, cycles, Path(args.output_file),
+                    clusters=clusters, metadata=md_metadata, dashboard=dashboard,
+                )
+                logging.info(f"Graph markdown report written to {args.output_file}")
+            else:
+                print(build_graph_markdown(
+                    graph, metrics, ranked, cycles,
+                    clusters=clusters, metadata=md_metadata, dashboard=dashboard,
+                ))
 
         else:
             print_graph_report(graph, ranked, cycles, clusters=clusters, dashboard=dashboard)
@@ -855,21 +877,28 @@ def main():
 
     # Handle JSON Output
     if args.output_format == 'json':
-        if not args.output_file:
-            logging.error("JSON output format requires the --output-file argument.")
-            sys.exit(1)
+        output_path = _require_output_file(args, "JSON")
         detailed = prepare_detailed_results(all_results)
-        write_json_report(detailed, Path(args.output_file),
+        write_json_report(detailed, output_path,
                           metadata=_build_metadata(args, search_scope_abs, start_time),
                           pipeline=filter_pipeline)
 
     # Handle CSV Output
     elif args.output_format == 'csv':
-        if not args.output_file:
-            logging.error("CSV output format requires the --output-file argument.")
-            sys.exit(1)
+        output_path = _require_output_file(args, "CSV")
         detailed = prepare_detailed_results(all_results)
-        write_csv_report(detailed, Path(args.output_file), pipeline=filter_pipeline)
+        write_csv_report(detailed, output_path, pipeline=filter_pipeline)
+
+    # Handle Markdown Output
+    elif args.output_format == 'markdown':
+        from scatter.reports.markdown_reporter import build_markdown, write_markdown_report
+        detailed = prepare_detailed_results(all_results)
+        md_metadata = _build_metadata(args, search_scope_abs, start_time)
+        if args.output_file:
+            write_markdown_report(detailed, Path(args.output_file),
+                                  metadata=md_metadata, pipeline=filter_pipeline)
+        else:
+            print(build_markdown(detailed, metadata=md_metadata, pipeline=filter_pipeline))
 
     # Handle Console Output (Default)
     else:

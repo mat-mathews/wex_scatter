@@ -586,32 +586,52 @@ PHASE 3: BLAST RADIUS TREE VIEW (HIGH PRIORITY)
 Ref: OUTPUT_REPORT_EVALUATION.md, Addendum Section B
 The impact mode console output shows a flat list with depth numbers. Render as a tree instead.
 
-- [ ] Add tree rendering to console_reporter.py print_impact_report():
+- [x] Add tree rendering to console_reporter.py print_impact_report():
       GalaxyWorks.Data  (target)
       ├── GalaxyWorks.WebPortal       [HIGH]  direct
       │   └── GalaxyWorks.BatchProcessor  [MEDIUM]  via WebPortal
       ├── MyGalaxyConsumerApp         [MEDIUM] direct
       └── MyGalaxyConsumerApp2        [LOW]    direct
       Requires grouping consumers by their parent in the BFS traversal.
-- [ ] Add propagation_tree to impact JSON output:
+- [x] Add propagation_tree to impact JSON output:
       Nested structure preserving the BFS parent chain. Flat consumers[] stays for compatibility.
-- [ ] Modify impact_analyzer.py to track BFS parent for each consumer
+- [x] Modify impact_analyzer.py to track BFS parent for each consumer
       (which consumer exposed this transitive consumer). Currently only tracks depth.
-- [ ] Tests: tree rendering with multiple targets, mixed depths, single-target simple case
+- [x] Tests: tree rendering with multiple targets, mixed depths, single-target simple case
+- [x] Add propagation_parent field to EnrichedConsumer dataclass
+- [x] Create scatter/core/tree.py — shared build_adjacency() + CONFIDENCE_LABEL_RANK
+      Eliminates DRY violation between console (EnrichedConsumer objects) and JSON (dict) reporters.
+      Orphan re-parenting: consumers whose propagation_parent references a removed consumer attach to root.
+- [x] Add PropagationParent column to CSV impact report
+- [x] 20 tests in TestBlastRadiusTreeView class (model, BFS, orphan, console tree, JSON tree, CSV)
 
-PHASE 4: MARKDOWN OUTPUT FORMAT (MEDIUM PRIORITY)
+PHASE 4: MARKDOWN OUTPUT FORMAT ✅ COMPLETED (MEDIUM PRIORITY)
 Ref: OUTPUT_REPORT_EVALUATION.md, Addendum Section E
+Detailed plan: docs/INITIATIVE_6_PHASE4_PLAN.md
 
-- [ ] Create scatter/reports/markdown_reporter.py — all free functions
-      write_markdown_report() for legacy modes
-      write_impact_markdown_report() for impact mode
-      write_graph_markdown_report() for graph mode
-- [ ] Add --output-format markdown support in __main__.py
-- [ ] Legacy mode: table with Target, Consumer, Pipeline columns + summary
-- [ ] Impact mode: risk header + per-target table + narrative sections
-- [ ] Graph mode: summary stats + metrics table + Mermaid dependency diagram (inline)
+- [x] Create scatter/reports/markdown_reporter.py — all free functions
+      Build/write separation: build_markdown(), build_impact_markdown(), build_graph_markdown()
+      return strings; write_markdown_report(), write_impact_markdown_report(),
+      write_graph_markdown_report() are thin file-writing wrappers.
+      Shared helpers: _escape_cell(), _fmt_metadata(), _fmt_pipeline(), _write_file(), _md_table().
+      Reuses render_tree() from console_reporter.py for blast radius tree in fenced code blocks.
+      Reuses generate_mermaid() from graph_reporter.py for dependency diagrams.
+- [x] Add --output-format markdown support in __main__.py
+      Added 'markdown' to --output-format choices. Stdout fallback when --output-file omitted
+      (unlike csv/json which require --output-file). Extracted _require_output_file() helper
+      to eliminate 6 repeated validation blocks.
+- [x] Legacy mode: table with Consumer, Path, Pipeline, Solutions columns + summary
+- [x] Impact mode: risk/complexity header + blast radius tree (```text code block) +
+      consumer detail table (7 columns) + complexity/narrative sections
+- [x] Graph mode: summary stats table + top coupled table + cycles list + clusters table +
+      observations list + Mermaid dependency diagram (inline fenced block)
       GitHub, ADO, and Confluence all render Mermaid natively.
-- [ ] Tests: valid markdown syntax, all sections present, Mermaid block renders
+- [x] Tests: 39 tests in test_markdown_reporter.py — escape helpers, legacy/impact/graph builders,
+      column-count validation, table edge cases, pipe-in-field escaping, narrative absence,
+      CLI dispatch (require_output_file, markdown stdout fallback), file I/O
+- [x] Review fixes: renamed _render_tree → render_tree (public cross-module API),
+      _md_table row padding for short rows, consistent metadata footer pattern,
+      proper type annotations on graph builder params, top-level imports (no lazy loading)
 
 PHASE 5: UNIFIED REPORT DATA MODEL (MEDIUM PRIORITY)
 Ref: OUTPUT_REPORT_EVALUATION.md, Addendum Section H
@@ -721,8 +741,8 @@ MERMAID OUTPUT (LOW PRIORITY — partially covered by Markdown reporter Phase 4)
 INITIATIVE 6 TESTING
 - [x] Unit tests for JSON serialization fixes (Phase 1) — 24 tests in test_report_quality.py
 - [x] Unit tests for filter pipeline (Phase 2) — 21 tests in test_filter_pipeline.py
-- [ ] Unit tests for tree rendering (Phase 3)
-- [ ] Unit tests for markdown output (Phase 4)
+- [x] Unit tests for tree rendering (Phase 3) — 20 tests in TestBlastRadiusTreeView
+- [x] Unit tests for markdown output (Phase 4) — 39 tests in test_markdown_reporter.py
 - [ ] Unit tests for AnalysisReport model (Phase 5)
 - [ ] Unit tests for diff analyzer (Phase 6)
 - [ ] Unit tests for baseline save/load (roundtrip, versioning)
@@ -805,13 +825,14 @@ PHASE 5 TESTING
 - [ ] Integration test: watch mode detects file changes and re-runs
 
 ============================================================================
-PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-10)
+PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-13)
 ============================================================================
 
-CODEBASE STATE (updated 2026-03-10):
-  - scatter/ package with 26 modules across core/, scanners/, analyzers/, ai/, reports/, compat/, store/
+CODEBASE STATE (updated 2026-03-13):
+  - scatter/ package with 28 modules across core/, scanners/, analyzers/, ai/, reports/, compat/, store/
+  - scatter/core/tree.py: shared tree-building utilities (build_adjacency, CONFIDENCE_LABEL_RANK)
   - scatter.py: 10-line thin entry point (delegates to scatter/__main__.py via runpy)
-  - scatter/__main__.py: ~830 lines (CLI argument parsing + 6-mode dispatch + config loading)
+  - scatter/__main__.py: ~850 lines (CLI argument parsing + 6-mode dispatch + config loading + _require_output_file)
   - scatter/config.py: YAML config system with layered precedence (AIConfig, GraphConfig, DbConfig)
   - scatter/ai/router.py: AI task router with lazy provider creation and caching
   - scatter/_legacy.py: ~150 lines (backward-compat AI/Gemini wrappers)
@@ -819,14 +840,16 @@ CODEBASE STATE (updated 2026-03-10):
   - scatter/analyzers/domain_analyzer.py: domain boundary detection + extraction feasibility
   - scatter/analyzers/health_analyzer.py: health dashboard + deterministic observation rules
   - scatter/reports/graph_reporter.py: graph console + JSON + CSV + Mermaid output
+  - scatter/reports/markdown_reporter.py: markdown output for all 3 modes (build/write separation, stdout fallback)
+  - scatter/reports/console_reporter.py: render_tree() public API (used by markdown_reporter.py)
   - tools/generate_synthetic_codebase.py: synthetic .NET codebase generator (100-800 project presets)
   - tools/benchmark_graph_build.py: graph builder benchmark harness with per-stage timing
   - docs/ADR_GRAPH_PERFORMANCE.md: architecture decision record for graph builder 100x optimization
-  - 456 tests across 15 test files (455 pass, 1 xfail)
+  - 514 tests across 17 test files (513 pass, 1 xfail)
   - Benchmarks exist for Phase 1 file discovery, Phase 2.1 content analysis, and graph builder at scale
   - AI integration: Google Gemini via AIProvider protocol + AIRouter
   - Config: .scatter.yaml (repo) + ~/.scatter/config.yaml (user) + env vars + CLI
-  - Output formats: console, CSV, JSON (+ Mermaid for graph mode)
+  - Output formats: console, CSV, JSON, markdown (+ Mermaid for graph mode)
   - Dependency graph: persistent, cached, with coupling metrics + cycle detection + domain clusters + DB deps
   - Health dashboard: deterministic observations (stable_core, high_coupling, in_cycle, low_cohesion_cluster, db_hotspot)
   - Type extraction: supports readonly/ref struct modifiers, record variants, delegates, primary constructors
@@ -841,7 +864,7 @@ COMPLETED (v1.x):
   ✅ Phase 2.3: Project mapping parallelization (map_cs_to_projects_parallel)
   ✅ Configuration: --disable-multiprocessing, --max-workers, --chunk-size,
      --cs-analysis-chunk-size, --csproj-analysis-chunk-size
-  ✅ Testing: 456 tests (455 pass, 1 xfail) across 15 files (7 phase1 + 24 phase2.3 + 7 hybrid git + 62 impact + 24 config + 46 graph + 25 coupling + 28 cache + 36 db_scanner + 15 domain + 21 reporters + 24 report_quality + 21 filter_pipeline + 48 type_extraction + 14 find_enclosing_type + 54 new_samples)
+  ✅ Testing: 514 tests (513 pass, 1 xfail) across 17 files (7 phase1 + 24 phase2.3 + 7 hybrid git + 82 impact + 24 config + 46 graph + 25 coupling + 28 cache + 36 db_scanner + 15 domain + 21 reporters + 24 report_quality + 21 filter_pipeline + 48 type_extraction + 14 find_enclosing_type + 54 new_samples + 39 markdown_reporter)
   ✅ Adaptive worker scaling via estimate_file_count()
   ✅ Benchmarking infrastructure (benchmark_framework.py, benchmark_analysis.py)
   ✅ Scalability test data (20-project and 100-project synthetic codebases)
@@ -882,14 +905,18 @@ COMPLETED (v2.0 — continued):
   Initiative 6 — Reporting & Extraction Planning (v2.0 Phase 4):
   ✅ Phase 1: Report quality fixes (24 tests)
   ✅ Phase 2: Filter pipeline visibility (21 tests)
+  ✅ Phase 3: Blast radius tree view (20 tests) — propagation_parent tracking, tree rendering,
+     shared tree.py builder, orphan re-parenting, JSON propagation_tree, CSV PropagationParent column.
+  ✅ Phase 4: Markdown output format (39 tests) — build/write separation (build_*() → str, write_*()
+     thin wrappers), stdout fallback, _require_output_file() helper, _md_table with row padding,
+     render_tree() reuse for blast radius trees, generate_mermaid() for dependency diagrams,
+     cell escaping, consistent metadata footers, proper type annotations.
   ✅ Test quality cleanup: deleted 1 zombie file (test_phase21_overhead.py), fixed 5 ghost tests,
      strengthened 3 dead-end assertions, removed 8 redundant tests from test_multiprocessing_phase1.py.
-     Net: 464 → 456 tests across 15 files (455 pass, 1 xfail).
+     Net: 464 → 456 → 476 → 514 tests across 17 files (513 pass, 1 xfail).
 
 IN PROGRESS (v2.0):
   Initiative 6 — Reporting & Extraction Planning (v2.0 Phase 4)
-    Phase 3: Blast radius tree view (render propagation path, not flat list)
-    Phase 4: Markdown output format (paste-ready for PRs, tickets, wikis)
     Phase 5: Unified AnalysisReport data model (one object, many formatters)
     Phase 6: Diff reports (--compare-to, track changes over time)
     Baselines, HTML reports, extraction planning
@@ -905,10 +932,10 @@ RECOMMENDED EXECUTION ORDER:
   5. ✅ DONE — Initiative 5: Dependency graph — all 6 phases complete (171 tests)
   6. ✅ DONE — Initiative 6 Phase 1: Report quality fixes (24 tests)
   7. ✅ DONE — Initiative 6 Phase 2: Filter pipeline visibility (21 tests)
-  8. Initiative 6 Phase 3: Blast radius tree view (HIGH — core value prop)
-  9. Initiative 6 Phase 4: Markdown output (MEDIUM — sharing workflows)
-  10. Initiative 7 CI/CD exit codes (HIGH — unlocks governance use case)
-  11. Initiative 6 Phase 5: Unified report data model (MEDIUM — architectural foundation)
+  8. ✅ DONE — Initiative 6 Phase 3: Blast radius tree view (20 tests)
+  9. ✅ DONE — Initiative 6 Phase 4: Markdown output (39 tests)
+  10. Initiative 6 Phase 5: Unified report data model (MEDIUM — architectural foundation)
+  11. Initiative 7 CI/CD exit codes (HIGH — unlocks governance use case)
   12. Initiative 6 Phase 6: Diff reports + baselines
   13. Initiative 6: HTML reports, extraction planning
   14. Initiative 7: PR comments, watch mode, thresholds
@@ -924,16 +951,21 @@ KEY FINDINGS:
   5. Phase 5 optimization (pool reuse, memory) deferred to v2.0 modularization
      where it can be done properly with a shared pool across the module.
   6. Initiatives 3 & 4 fully complete — config system, AI router, impact analysis all shipped.
-  7. 456 tests across 15 files (455 pass, 1 xfail).
+  7. 514 tests across 17 files (513 pass, 1 xfail).
   8. Initiative 5 all 6 phases complete (171 tests) — graph model, coupling metrics, cycle detection,
      graph persistence, DB dependency mapping, domain boundary detection, health dashboard, Mermaid + CSV.
   9. Initiative 6 Phase 1 complete (24 tests) — JSON serialization fixes, metadata, console polish, CSV cleanup.
   10. Initiative 6 Phase 2 complete (21 tests) — FilterStage/FilterPipeline dataclasses, find_consumers()
       returns pipeline, arrow-chain in console/JSON/CSV, diagnostic hints for zero-result stages.
-  11. Remaining Initiative 6 work: blast radius tree view, markdown output,
-      unified report model, diff reports, baselines, HTML reports, extraction planning.
-  12. Graph builder performance: inverted index optimization achieved 101x speedup at 100 projects
+  11. Initiative 6 Phase 3 complete (20 tests) — propagation_parent in EnrichedConsumer, BFS parent tracking,
+      shared tree.py builder (build_adjacency + CONFIDENCE_LABEL_RANK), orphan re-parenting, box-drawing
+      console tree, JSON propagation_tree, CSV PropagationParent column.
+  12. Initiative 6 Phase 4 complete (39 tests) — markdown output for all 3 modes with build/write separation,
+      stdout fallback, _require_output_file() helper, cell escaping, render_tree() reuse, Mermaid diagrams,
+      row padding, consistent metadata footers, column-count validation tests, CLI dispatch tests.
+  13. Remaining Initiative 6 work: unified report model, diff reports, baselines, HTML reports, extraction planning.
+  13. Graph builder performance: inverted index optimization achieved 101x speedup at 100 projects
       (172s → 1.7s). 250 projects builds in 10.1s (was killed after 10+ min). 500 projects in 42.8s.
-  13. Three remaining bottlenecks at 500-project scale: comment stripping (18s, char-by-char Python loop),
+  14. Three remaining bottlenecks at 500-project scale: comment stripping (18s, char-by-char Python loop),
       label propagation (21s, linear scan in get_edges_between), type extraction (14s, sequential I/O).
-  14. tracemalloc inflates timing 5-10x for allocation-heavy code — always verify with clean timing runs.
+  15. tracemalloc inflates timing 5-10x for allocation-heavy code — always verify with clean timing runs.

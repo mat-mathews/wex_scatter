@@ -36,7 +36,7 @@ from scatter.analyzers.impact_analyzer import (
     run_impact_analysis,
     trace_transitive_impact,
 )
-from scatter.reports.console_reporter import print_impact_report, _render_tree
+from scatter.reports.console_reporter import print_impact_report, render_tree
 from scatter.reports.json_reporter import write_impact_json_report
 from scatter.reports.csv_reporter import write_impact_csv_report
 from scatter.core.tree import build_adjacency
@@ -1107,7 +1107,7 @@ class TestBlastRadiusTreeView:
                 confidence_label="MEDIUM", propagation_parent="Removed",
             ),
         ]
-        lines = _render_tree(consumers)
+        lines = render_tree(consumers)
         # B should render at root level (same indent as A) since "Removed" isn't a consumer
         a_line = next(l for l in lines if "A" in l and "HIGH" in l)
         b_line = next(l for l in lines if "B" in l and "MEDIUM" in l)
@@ -1142,7 +1142,7 @@ class TestBlastRadiusTreeView:
             EnrichedConsumer(consumer_path=Path("/b.csproj"), consumer_name="B", depth=0, confidence=CONFIDENCE_MEDIUM, confidence_label="MEDIUM"),
             EnrichedConsumer(consumer_path=Path("/c.csproj"), consumer_name="C", depth=0, confidence=CONFIDENCE_LOW, confidence_label="LOW"),
         ]
-        lines = _render_tree(consumers)
+        lines = render_tree(consumers)
         joined = "\n".join(lines)
         assert "\u251c\u2500\u2500" in joined  # branch connector
         assert "\u2514\u2500\u2500" in joined  # last-child connector
@@ -1156,14 +1156,14 @@ class TestBlastRadiusTreeView:
             EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0, confidence=CONFIDENCE_HIGH, confidence_label="HIGH"),
             EnrichedConsumer(consumer_path=Path("/b.csproj"), consumer_name="B", depth=1, confidence=CONFIDENCE_MEDIUM, confidence_label="MEDIUM", propagation_parent="A"),
         ]
-        lines = _render_tree(consumers)
+        lines = render_tree(consumers)
         joined = "\n".join(lines)
         assert "via A" in joined
         assert "\u2502" in joined or "\u2514" in joined  # nesting chars
 
     def test_tree_output_empty_consumers(self):
         """No consumers produces no tree lines."""
-        lines = _render_tree([])
+        lines = render_tree([])
         assert lines == []
 
     def test_tree_output_deep_nesting(self):
@@ -1173,7 +1173,7 @@ class TestBlastRadiusTreeView:
             EnrichedConsumer(consumer_path=Path("/b.csproj"), consumer_name="B", depth=1, confidence=CONFIDENCE_MEDIUM, confidence_label="MEDIUM", propagation_parent="A"),
             EnrichedConsumer(consumer_path=Path("/c.csproj"), consumer_name="C", depth=2, confidence=CONFIDENCE_LOW, confidence_label="LOW", propagation_parent="B"),
         ]
-        lines = _render_tree(consumers)
+        lines = render_tree(consumers)
         joined = "\n".join(lines)
         assert "A" in joined
         assert "via A" in joined
@@ -1193,7 +1193,7 @@ class TestBlastRadiusTreeView:
             EnrichedConsumer(consumer_path=Path("/high.csproj"), consumer_name="High", depth=0, confidence=CONFIDENCE_HIGH, confidence_label="HIGH"),
             EnrichedConsumer(consumer_path=Path("/med.csproj"), consumer_name="Med", depth=0, confidence=CONFIDENCE_MEDIUM, confidence_label="MEDIUM"),
         ]
-        lines = _render_tree(consumers)
+        lines = render_tree(consumers)
         joined = "\n".join(lines)
         assert joined.index("High") < joined.index("Med") < joined.index("Low")
 
