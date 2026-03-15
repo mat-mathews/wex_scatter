@@ -1108,44 +1108,55 @@ RECOMMENDED EXECUTION ORDER (reprioritized 2026-03-13):
   11. ✅ DONE — Integrate dependency graph into analysis modes via --graph-metrics (17 tests)
   12. Claude Code skills in .claude/skills/ (HIGH — 1 day, zero new Python code,
       collapses adoption barrier; engineers ask Claude instead of learning CLI)
-  13. Deployment checklist / `scatter pipelines` shortcut (HIGH — #1 release-night
-      use case per USE_CASE_REVIEW; release managers want "run these 7 pipelines"
-      not a full impact report; ~2 hours)
+  13. ✅ DONE — Deployment checklist / `--output-format pipelines` (14 tests)
 
   TIER 1.5: INCREMENTAL GRAPH UPDATES (prerequisite for CI/CD — 3-4 days)
-  14. Incremental graph updates — per-file facts cache, lazy git-diff patching,
+  14. ✅ DONE — Incremental graph updates — per-file facts cache, lazy git-diff patching,
       content hash early cutoff, project-level edge attribution, property-based testing.
-      Ref: docs/INCREMENTAL_GRAPH_PLAN.md. Makes CI/CD gates viable (<1s graph update
-      vs 60s rebuild). Must ship before Tier 2.
+      Ref: docs/INCREMENTAL_GRAPH_PLAN.md. 49 tests.
+
+  TIER 1.75: TRANSPARENT GRAPH (makes graph the default fast path)
+  Ref: docs/ADR_TRANSPARENT_GRAPH.md
+  15. Phase A — Auto graph loading (LOW RISK, MEDIUM VALUE)
+      Auto-load graph when cache exists (no --graph-metrics flag needed).
+      Add "graph_enriched": true to JSON metadata. Deprecate --graph-metrics.
+  16. Phase B — Graph-accelerated consumer lookup (MEDIUM RISK, HIGH VALUE)
+      Use graph.get_consumers() to replace first 2-3 stages of find_consumers().
+      Graph becomes the primary lookup engine, not a bolt-on enrichment layer.
+      Requires correctness audit: namespace matching divergence between graph
+      builder and find_consumers(). Add --verify-graph diagnostic flag.
+  17. Phase C — First-run graph build (LOW RISK, MEDIUM VALUE)
+      Build graph during first analysis run and cache it. Every subsequent run
+      gets the fast path automatically (synchronous or background).
 
   TIER 2: CI/CD GOVERNANCE (makes scatter infrastructure, not optional)
-  15. Initiative 7: CI/CD exit codes --fail-on (HIGH — turns scatter into an
+  18. Initiative 7: CI/CD exit codes --fail-on (HIGH — turns scatter into an
       architecture governance gate; cycles, risk:high, coupling:N, consumers:N)
-  16. Initiative 7: PR blast radius comments GitHub/ADO (HIGH — visible to reviewers
+  19. Initiative 7: PR blast radius comments GitHub/ADO (HIGH — visible to reviewers
       without anyone remembering to run scatter; combined with skills = two always-on
       touchpoints)
 
   TIER 3: STRATEGIC FEATURES (do after adoption is established)
-  17. Baselines + diff reports (Initiative 6 Phase 6 — needs real usage data first;
+  20. Baselines + diff reports (Initiative 6 Phase 6 — needs real usage data first;
       without baseline history from actual users, diff engine is built against
       synthetic data)
-  18. Extraction planning mode (HIGH strategic value but needs graph integration
+  21. Extraction planning mode (HIGH strategic value but needs graph integration
       from #11 and real-world validation of coupling metrics)
-  19. HTML reports (polish — markdown already covers "paste into ticket" workflow;
+  22. HTML reports (polish — markdown already covers "paste into ticket" workflow;
       vis-network.js pattern from CODEGRAPHCONTEXT_COMPARISON is good reference)
 
   TIER 4: DEFERRED (build when concrete demand materializes)
-  20. Initiative 6 Phase 5: Unified AnalysisReport data model (internal refactor
+  23. Initiative 6 Phase 5: Unified AnalysisReport data model (internal refactor
       no user sees; do when a 5th output format is needed or schema inconsistency
       blocks something concrete)
-  21. Watch mode (graph cache makes repeat runs <2s; no user has asked for this)
-  22. Additional AI providers — Anthropic, OpenAI, Azure, Ollama (Gemini works;
+  24. Watch mode (graph cache makes repeat runs <2s; no user has asked for this)
+  25. Additional AI providers — Anthropic, OpenAI, Azure, Ollama (Gemini works;
       build WEX AI Platform provider when it exists; others are speculative)
-  23. AI response caching + token budget manager (premature optimization; AI calls
+  26. AI response caching + token budget manager (premature optimization; AI calls
       are infrequent and cheap)
-  24. MCP server (per CLAUDE_INTEGRATION_EVALUATION: skills first, MCP when
+  27. MCP server (per CLAUDE_INTEGRATION_EVALUATION: skills first, MCP when
       cross-client demand materializes)
-  25. Streaming progress / tqdm (nice DX but graph cache means most runs <2s)
+  28. Streaming progress / tqdm (nice DX but graph cache means most runs <2s)
 
 KEY FINDINGS:
   1. All 5 steps of find_consumers() are now parallelized (steps 2-5 use
@@ -1158,7 +1169,7 @@ KEY FINDINGS:
   5. Phase 5 optimization (pool reuse, memory) deferred to v2.0 modularization
      where it can be done properly with a shared pool across the module.
   6. Initiatives 3 & 4 fully complete — config system, AI router, impact analysis all shipped.
-  7. 539 tests across 19 files (538 pass, 1 xfail).
+  7. 601 tests across 20 files (600 pass, 1 xfail).
   8. Initiative 5 all 6 phases complete (171 tests) — graph model, coupling metrics, cycle detection,
      graph persistence, DB dependency mapping, domain boundary detection, health dashboard, Mermaid + CSV.
   9. Initiative 6 Phase 1 complete (24 tests) — JSON serialization fixes, metadata, console polish, CSV cleanup.
@@ -1186,3 +1197,7 @@ KEY FINDINGS:
       Per-file facts cache + lazy git-diff patching + content hash early cutoff + property-based
       testing. Target: <1s for typical PRs (vs 60s full rebuild). Tier 1.5 prerequisite for CI/CD.
       Ref: docs/INCREMENTAL_GRAPH_BRAINSTORM.md, docs/INCREMENTAL_GRAPH_PLAN.md.
+  20. --output-format pipelines shipped (2026-03-15): pipe-friendly output for release managers.
+      Sorted unique pipeline names, one per line. Works in legacy + impact modes. Early rejection
+      in graph mode via parser.error(). Warns on stderr without --pipeline-csv. 14 tests.
+      601 total tests (600 pass, 1 xfail).

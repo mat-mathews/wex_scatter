@@ -154,7 +154,7 @@ def _build_cli_overrides(args) -> Dict[str, Any]:
 _REDACTED_CLI_KEYS = frozenset({'google_api_key'})
 
 
-def _build_metadata(args, search_scope_abs, start_time):
+def _build_metadata(args, search_scope_abs, start_time, *, graph_enriched=False):
     """Build metadata dict for JSON report output."""
     cli_args = {k: v for k, v in vars(args).items() if k not in _REDACTED_CLI_KEYS}
     return {
@@ -163,6 +163,7 @@ def _build_metadata(args, search_scope_abs, start_time):
         'cli_args': cli_args,
         'search_scope': str(search_scope_abs) if search_scope_abs else None,
         'duration_seconds': round(time.monotonic() - start_time, 2),
+        'graph_enriched': graph_enriched,
     }
 
 
@@ -244,7 +245,12 @@ def main():
     )
     common_group.add_argument(
         "--graph-metrics", action="store_true",
-        help="Enrich results with dependency graph metrics (coupling, fan-in/out, instability, cycles)."
+        help="Build dependency graph and enrich results with graph metrics (coupling, fan-in/out, instability, cycles). "
+             "When a graph cache already exists, enrichment happens automatically without this flag."
+    )
+    common_group.add_argument(
+        "--no-graph", action="store_true",
+        help="Skip automatic graph loading and enrichment, even when a cache exists."
     )
     common_group.add_argument(
         "--rebuild-graph", action="store_true",
@@ -521,17 +527,28 @@ def main():
     all_results: List[Dict[str, Union[str, Dict, List[str]]]] = []
     filter_pipeline = None  # populated by find_consumers() in git/target/sproc modes
 
-    # Build graph context lazily if --graph-metrics requested
+    # Build graph context: auto-load from cache, or build if --graph-metrics requested.
+    # Scope mismatch or corrupt cache → build_graph_context() returns None silently,
+    # which is expected — auto-load is best-effort, not guaranteed.
     graph_ctx = None
-    if args.graph_metrics and search_scope_abs:
-        from scatter.analyzers.graph_enrichment import (
-            build_graph_context,
-            enrich_legacy_results,
-            enrich_consumers,
+    graph_enriched = False
+    if not args.no_graph and search_scope_abs and not is_graph_mode:
+        from scatter.store.graph_cache import cache_exists
+        should_load_graph = args.graph_metrics or cache_exists(
+            search_scope_abs, config.graph.cache_dir
         )
-        graph_ctx = build_graph_context(search_scope_abs, config, args)
-        if graph_ctx is None:
-            logging.warning("Graph context unavailable. Proceeding without graph metrics.")
+        if should_load_graph:
+            from scatter.analyzers.graph_enrichment import (
+                build_graph_context,
+                enrich_legacy_results,
+                enrich_consumers,
+            )
+            graph_ctx = build_graph_context(search_scope_abs, config, args)
+            if graph_ctx:
+                graph_enriched = True
+            elif args.graph_metrics:
+                # Only warn if user explicitly asked for metrics
+                logging.warning("Graph context unavailable. Proceeding without graph metrics.")
 
     # == GIT BRANCH ANALYSIS MODE ==
     if is_git_mode:
@@ -879,31 +896,24 @@ def main():
             csproj_analysis_chunk_size=args.csproj_analysis_chunk_size,
         )
 
-        # Enrich consumers with graph metrics if requested
-        if args.graph_metrics and search_scope_abs:
-            if graph_ctx is None:
-                from scatter.analyzers.graph_enrichment import (
-                    build_graph_context,
-                    enrich_consumers,
-                )
-                graph_ctx = build_graph_context(search_scope_abs, config, args)
-            if graph_ctx:
-                for ti in impact_report.targets:
-                    enrich_consumers(ti.consumers, graph_ctx)
+        # Enrich consumers with graph metrics if available
+        if graph_ctx:
+            for ti in impact_report.targets:
+                enrich_consumers(ti.consumers, graph_ctx)
 
         # Output impact report (separate from legacy all_results path)
-        _gm_impact = args.graph_metrics
+        _gm_impact = graph_enriched
         if args.output_format == 'json':
             output_path = _require_output_file(args, "JSON")
             write_impact_json_report(impact_report, output_path,
-                                     metadata=_build_metadata(args, search_scope_abs, start_time))
+                                     metadata=_build_metadata(args, search_scope_abs, start_time, graph_enriched=graph_enriched))
         elif args.output_format == 'csv':
             output_path = _require_output_file(args, "CSV")
             write_impact_csv_report(impact_report, output_path,
                                     graph_metrics_requested=_gm_impact)
         elif args.output_format == 'markdown':
             from scatter.reports.markdown_reporter import build_impact_markdown, write_impact_markdown_report
-            md_metadata = _build_metadata(args, search_scope_abs, start_time)
+            md_metadata = _build_metadata(args, search_scope_abs, start_time, graph_enriched=graph_enriched)
             if args.output_file:
                 write_impact_markdown_report(impact_report, Path(args.output_file),
                                              metadata=md_metadata,
@@ -999,7 +1009,7 @@ def main():
             write_graph_json_report(
                 graph, metrics, ranked, cycles, output_path,
                 clusters=clusters,
-                metadata=_build_metadata(args, search_scope_abs, start_time),
+                metadata=_build_metadata(args, search_scope_abs, start_time, graph_enriched=True),
                 include_topology=args.include_graph_topology,
                 dashboard=dashboard,
             )
@@ -1013,7 +1023,7 @@ def main():
 
         elif args.output_format == "markdown":
             from scatter.reports.markdown_reporter import build_graph_markdown, write_graph_markdown_report
-            md_metadata = _build_metadata(args, search_scope_abs, start_time)
+            md_metadata = _build_metadata(args, search_scope_abs, start_time, graph_enriched=True)
             if args.output_file:
                 write_graph_markdown_report(
                     graph, metrics, ranked, cycles, Path(args.output_file),
@@ -1044,14 +1054,14 @@ def main():
         logging.info(f"Overall analysis complete. Found {len(all_results)} consuming relationship(s) matching the criteria.")
         all_results.sort(key=lambda x: (x.get('TargetProjectName',''), x.get('TriggeringType',''), x.get('ConsumerProjectName','')))
 
-    _gm = args.graph_metrics
+    _gm = graph_enriched
 
     # Handle JSON Output
     if args.output_format == 'json':
         output_path = _require_output_file(args, "JSON")
         detailed = prepare_detailed_results(all_results, graph_metrics_requested=_gm)
         write_json_report(detailed, output_path,
-                          metadata=_build_metadata(args, search_scope_abs, start_time),
+                          metadata=_build_metadata(args, search_scope_abs, start_time, graph_enriched=graph_enriched),
                           pipeline=filter_pipeline)
 
     # Handle CSV Output
@@ -1065,7 +1075,7 @@ def main():
     elif args.output_format == 'markdown':
         from scatter.reports.markdown_reporter import build_markdown, write_markdown_report
         detailed = prepare_detailed_results(all_results, graph_metrics_requested=_gm)
-        md_metadata = _build_metadata(args, search_scope_abs, start_time)
+        md_metadata = _build_metadata(args, search_scope_abs, start_time, graph_enriched=graph_enriched)
         if args.output_file:
             write_markdown_report(detailed, Path(args.output_file),
                                   metadata=md_metadata, pipeline=filter_pipeline,

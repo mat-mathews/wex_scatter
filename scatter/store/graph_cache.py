@@ -62,6 +62,15 @@ def get_default_cache_path(search_scope: Path) -> Path:
     return search_scope / ".scatter" / "graph_cache.json"
 
 
+def cache_exists(search_scope: Path, config_cache_dir: Optional[str] = None) -> bool:
+    """Check if a graph cache file exists for the given scope."""
+    if config_cache_dir:
+        path = Path(config_cache_dir) / "graph_cache.json"
+    else:
+        path = get_default_cache_path(search_scope)
+    return path.is_file()
+
+
 def save_graph(
     graph: DependencyGraph,
     cache_path: Path,
