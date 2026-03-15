@@ -1117,9 +1117,10 @@ RECOMMENDED EXECUTION ORDER (reprioritized 2026-03-13):
 
   TIER 1.75: TRANSPARENT GRAPH (makes graph the default fast path)
   Ref: docs/ADR_TRANSPARENT_GRAPH.md
-  15. Phase A — Auto graph loading (LOW RISK, MEDIUM VALUE)
+  15. Phase A — Auto graph loading ✅ DONE
       Auto-load graph when cache exists (no --graph-metrics flag needed).
-      Add "graph_enriched": true to JSON metadata. Deprecate --graph-metrics.
+      Add --no-graph escape hatch. "graph_enriched" metadata field. 15 tests.
+      Ref: docs/TRANSPARENT_GRAPH_PHASE_A_PLAN.md
   16. Phase B — Graph-accelerated consumer lookup (MEDIUM RISK, HIGH VALUE)
       Use graph.get_consumers() to replace first 2-3 stages of find_consumers().
       Graph becomes the primary lookup engine, not a bolt-on enrichment layer.
