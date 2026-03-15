@@ -34,6 +34,10 @@ def build_graph_context(search_scope, config, args) -> Optional["GraphContext"]:
 
     Returns GraphContext on success, None on failure. Caller should
     treat None as "enrichment unavailable" and continue without it.
+
+    Supports incremental graph updates (v2 cache): if the cache has
+    per-file/project facts, uses git diff to surgically patch the graph
+    instead of rebuilding from scratch.
     """
     from scatter.analyzers.graph_builder import build_dependency_graph
     from scatter.store.graph_cache import (
@@ -41,6 +45,7 @@ def build_graph_context(search_scope, config, args) -> Optional["GraphContext"]:
         load_and_validate,
         save_graph,
     )
+    from scatter.store.graph_patcher import get_changed_files, patch_graph
     from pathlib import Path
 
     try:
@@ -52,26 +57,78 @@ def build_graph_context(search_scope, config, args) -> Optional["GraphContext"]:
 
         # Check cache (exact scope match)
         graph = None
+        file_facts = None
+        project_facts = None
+        needs_full_rebuild = True
+
         if not config.graph.rebuild:
-            graph = load_and_validate(
+            cache_result = load_and_validate(
                 cache_path, search_scope, config.graph.invalidation
             )
-            if graph is not None:
-                logging.info("Using cached dependency graph for metrics enrichment.")
+            if cache_result is not None:
+                graph, file_facts, project_facts, git_head, proj_set_hash = cache_result
+
+                if file_facts is not None and project_facts is not None and git_head:
+                    # v2 cache with git_head — try incremental patch
+                    changed = get_changed_files(git_head, search_scope)
+                    if changed is not None and len(changed) > 0:
+                        result = patch_graph(
+                            graph, file_facts, project_facts,
+                            changed, search_scope,
+                            cached_project_set_hash=proj_set_hash,
+                        )
+                        if result.patch_applied:
+                            save_graph(
+                                result.graph, cache_path, search_scope,
+                                result.file_facts, result.project_facts,
+                            )
+                            graph = result.graph
+                            file_facts = result.file_facts
+                            project_facts = result.project_facts
+                            needs_full_rebuild = False
+                            logging.info(
+                                f"Incremental graph update: {result.files_processed} files, "
+                                f"{result.projects_affected} projects ({result.elapsed_ms}ms)"
+                            )
+                        else:
+                            graph = None  # fall through to full rebuild
+                    elif changed is not None and len(changed) == 0:
+                        logging.info("Using cached dependency graph (no changes detected).")
+                        needs_full_rebuild = False
+                    else:
+                        graph = None  # git diff failed, full rebuild
+                elif file_facts is not None and not git_head:
+                    # v2 cache but no git_head (non-git dir) — fall back to mtime
+                    from scatter.store.graph_cache import _is_cache_valid_mtime
+                    if _is_cache_valid_mtime(cache_path, search_scope):
+                        logging.info("Using cached dependency graph (mtime valid, no git).")
+                        needs_full_rebuild = False
+                    else:
+                        logging.info("Cache stale (mtime). Full rebuild needed.")
+                        graph = None
+                elif file_facts is None:
+                    # v1 cache (no facts) — force rebuild to upgrade to v2
+                    logging.info("Using cached dependency graph (v1 cache, will upgrade to v2).")
+                    graph = None  # force rebuild to capture facts
+                else:
+                    logging.info("Using cached dependency graph for metrics enrichment.")
+                    needs_full_rebuild = False
 
         # Build if needed
-        if graph is None:
+        if graph is None or needs_full_rebuild:
             logging.info(
                 f"Building dependency graph from {search_scope} for metrics enrichment..."
             )
-            graph = build_dependency_graph(
+            build_result = build_dependency_graph(
                 search_scope,
                 disable_multiprocessing=args.disable_multiprocessing,
                 exclude_patterns=config.exclude_patterns,
                 include_db_dependencies=config.db.include_db_edges,
                 sproc_prefixes=config.db.sproc_prefixes,
+                capture_facts=True,
             )
-            save_graph(graph, cache_path, search_scope)
+            graph, file_facts, project_facts = build_result
+            save_graph(graph, cache_path, search_scope, file_facts, project_facts)
 
         logging.info(
             f"Graph built from search scope {search_scope} "

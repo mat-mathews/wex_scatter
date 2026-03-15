@@ -9,7 +9,6 @@ Single-pass O(P+F) construction:
 6. Construct DependencyGraph with all nodes and edges
 """
 import logging
-import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -21,23 +20,11 @@ from scatter.scanners.project_scanner import (
     derive_namespace,
     parse_csproj_all_references,
 )
+from scatter.core.patterns import IDENT_PATTERN as _IDENT_PATTERN
+from scatter.core.patterns import SPROC_PATTERN as _SPROC_PATTERN
+from scatter.core.patterns import USING_PATTERN as _USING_PATTERN
 from scatter.scanners.db_scanner import _strip_cs_comments
 from scatter.scanners.type_scanner import extract_type_names_from_content
-
-# Regex for extracting C# identifiers (for inverted-index type matching)
-_IDENT_PATTERN = re.compile(r"[A-Za-z_]\w*")
-
-# Regex for sproc references in string literals
-_SPROC_PATTERN = re.compile(
-    r"""["'](?:[a-zA-Z_][a-zA-Z0-9_]*\.)?(?:sp_|usp_)\w+["']""",
-    re.IGNORECASE,
-)
-
-# Regex for C# using statements
-_USING_PATTERN = re.compile(
-    r"^\s*using\s+([A-Za-z_][A-Za-z0-9_.]*)\s*;",
-    re.MULTILINE,
-)
 
 
 def build_dependency_graph(
@@ -48,8 +35,13 @@ def build_dependency_graph(
     exclude_patterns: Optional[List[str]] = None,
     include_db_dependencies: bool = False,
     sproc_prefixes: Optional[List[str]] = None,
-) -> DependencyGraph:
-    """Build a complete dependency graph from a codebase directory."""
+    capture_facts: bool = False,
+):
+    """Build a complete dependency graph from a codebase directory.
+
+    If capture_facts=True, returns (graph, file_facts, project_facts) tuple
+    for v2 cache persistence. Otherwise returns just the graph.
+    """
     if exclude_patterns is None:
         exclude_patterns = ["*/bin/*", "*/obj/*", "*/temp_test_data/*"]
 
@@ -109,6 +101,7 @@ def build_dependency_graph(
             project_cs_files[project_name].append(cs_path)
 
     # Step 4: For each project's .cs files, extract type declarations, sproc refs, namespace usages
+    # When capture_facts=True, we also build FileFacts inline to avoid re-reading files.
     project_types: Dict[str, Set[str]] = defaultdict(set)
     project_sprocs: Dict[str, Set[str]] = defaultdict(set)
     project_using_namespaces: Dict[str, Set[str]] = defaultdict(set)
@@ -116,6 +109,9 @@ def build_dependency_graph(
     project_namespace_evidence: Dict[str, Dict[str, List[str]]] = defaultdict(
         lambda: defaultdict(list)
     )
+
+    # Inline fact capture (avoids second pass over all .cs files)
+    captured_file_facts: Optional[Dict] = {} if capture_facts else None
 
     for project_name, cs_paths in project_cs_files.items():
         for cs_path in cs_paths:
@@ -130,15 +126,35 @@ def build_dependency_graph(
             project_types[project_name].update(types)
 
             # Sproc references
+            file_sprocs: Set[str] = set()
             for match in _SPROC_PATTERN.finditer(content):
                 sproc_name = match.group().strip("\"'")
                 project_sprocs[project_name].add(sproc_name)
+                file_sprocs.add(sproc_name)
 
             # Using statements → namespace usages
+            file_namespaces: Set[str] = set()
             for match in _USING_PATTERN.finditer(content):
                 ns = match.group(1)
                 project_using_namespaces[project_name].add(ns)
                 project_namespace_evidence[project_name][ns].append(str(cs_path))
+                file_namespaces.add(ns)
+
+            # Capture per-file facts inline (single read)
+            if captured_file_facts is not None:
+                from scatter.store.graph_cache import FileFacts, compute_content_hash
+                try:
+                    rel = str(cs_path.relative_to(search_scope))
+                except ValueError:
+                    rel = str(cs_path)
+                captured_file_facts[rel] = FileFacts(
+                    path=rel,
+                    project=project_name,
+                    types_declared=sorted(types),
+                    namespaces_used=sorted(file_namespaces),
+                    sprocs_referenced=sorted(file_sprocs),
+                    content_hash=compute_content_hash(cs_path),
+                )
 
     # Build nodes
     for project_name, meta in project_metadata.items():
@@ -244,7 +260,39 @@ def build_dependency_graph(
     logging.info(
         f"Built dependency graph: {graph.node_count} nodes, {graph.edge_count} edges"
     )
-    return graph
+
+    if not capture_facts:
+        return graph
+
+    # File facts were captured inline during Step 4 — build project facts now
+    from scatter.store.graph_cache import ProjectFacts, compute_content_hash
+
+    captured_project_facts: Dict[str, "ProjectFacts"] = {}
+    all_names = set(project_metadata.keys())
+    for project_name, meta in project_metadata.items():
+        csproj_path = meta["path"]
+        content_hash = compute_content_hash(csproj_path)
+
+        # Resolve references to project names
+        ref_names = []
+        for include in project_refs.get(project_name, []):
+            if "$(" in include:
+                continue
+            try:
+                ref_abs = (csproj_path.parent / include).resolve(strict=False)
+                ref_name = ref_abs.stem
+                if ref_name in all_names:
+                    ref_names.append(ref_name)
+            except OSError:
+                pass
+
+        captured_project_facts[project_name] = ProjectFacts(
+            namespace=meta.get("namespace"),
+            project_references=sorted(ref_names),
+            csproj_content_hash=content_hash,
+        )
+
+    return graph, captured_file_facts, captured_project_facts
 
 
 def _build_project_reference_edges(

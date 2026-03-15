@@ -165,9 +165,9 @@ python scatter.py \
 8. [Configuration & Mapping](#configuration--mapping) — YAML config files, precedence, env vars
 9. [Command-Line Reference](#command-line-reference)
 10. [Output Formats](#output-formats)
-11. [Testing](#testing)
+11. [Testing](#testing) — Test suite, benchmarking (full build, incremental, parallel vs sequential)
 12. [Technical Details](#technical-details)
-13. [Dependency Graph](#dependency-graph) — Architecture, performance, construction pipeline, programmatic API
+13. [Dependency Graph](#dependency-graph) — Architecture, performance, incremental updates, construction pipeline, programmatic API
 14. [Roadmap](#roadmap)
 
 ---
@@ -1133,6 +1133,9 @@ python -m pytest test_impact_analysis.py -v
 # Run only coupling metrics + cycle detection tests
 python -m pytest test_coupling.py -v
 
+# Run only incremental graph update tests
+python -m pytest test_graph_patcher.py -v
+
 # Run only domain boundary detection tests
 python -m pytest test_domain.py -v
 
@@ -1148,7 +1151,7 @@ python -m pytest -q
 
 ### Test Suite Overview
 
-The test suite includes **539 tests** across 19 test files (538 pass, 1 xfail):
+The test suite includes **588 tests** across 20 test files (587 pass, 1 xfail):
 
 | Test File | Tests | Coverage |
 |-----------|-------|----------|
@@ -1160,6 +1163,7 @@ The test suite includes **539 tests** across 19 test files (538 pass, 1 xfail):
 | `test_find_enclosing_type.py` | 14 | `find_enclosing_type_name()`: basic types (class/struct/interface/enum/record), nested types, generics, readonly/ref struct, edge cases (before-any-declaration, empty content) |
 | `test_graph.py` | 46 | Graph data structures, construction, traversal, serialization, `.csproj` parsing, integration with sample projects |
 | `test_graph_cache.py` | 28 | Graph persistence: save/load roundtrip, smart git-based cache invalidation, mtime fallback |
+| `test_graph_patcher.py` | 49 | Incremental graph updates: v2 cache format, edge removal (4-index consistency), fact extraction, patch algorithm (usage-only, declaration, delete, new file, .csproj, thresholds, structural changes, content hash cutoff), property tests (incremental == full rebuild for 6 mutation types), integration |
 | `test_hybrid_git.py` | 7 | LLM-enhanced git diff analysis |
 | `test_impact_analysis.py` | 82 | Impact analysis: data models, CLI args, work request parsing, transitive tracing, risk assessment, coupling narrative, impact narrative, complexity estimate, reporters, end-to-end, blast radius tree view (model, BFS parent tracking, orphan re-parenting, console tree, JSON tree, CSV) |
 | `test_multiprocessing_phase1.py` | 7 | Parallel file discovery, chunk utility, error handling, symbol search consistency, backwards compatibility |
@@ -1297,11 +1301,83 @@ python scatter.py \
 
 ### Benchmarking
 
-```bash
-# Run synthetic codebase benchmark (100 to 5,000 files)
-python test_realistic_workload.py
+Scatter includes three benchmark tools for measuring performance at various scales. All benchmarks use a synthetic codebase generator that creates realistic .NET monoliths with configurable project counts, coupling density, and file sizes.
 
-# Compare parallel vs sequential on your own codebase
+#### Generate a Synthetic Codebase
+
+```bash
+# Generate with a preset (small=100, medium=250, large=500, xlarge=800 projects)
+python tools/generate_synthetic_codebase.py --preset large --output /tmp/synthetic_monolith
+
+# Custom parameters
+python tools/generate_synthetic_codebase.py --projects 300 --files-per-project 25 \
+  --coupling-pct 0.04 --avg-file-kb 15 --output /tmp/custom_monolith
+
+# Reproducible generation (default seed=42)
+python tools/generate_synthetic_codebase.py --preset medium --seed 123 --output /tmp/seeded
+```
+
+#### Benchmark Full Graph Build
+
+Instruments each internal stage of the graph builder (file discovery, csproj parsing, type extraction, edge construction, metrics, clustering, health dashboard) with wall-clock timing and memory tracking.
+
+```bash
+# Stage-level instrumentation (default)
+python tools/benchmark_graph_build.py /tmp/synthetic_monolith
+
+# Black-box mode (calls build_dependency_graph() as a single stage)
+python tools/benchmark_graph_build.py /tmp/synthetic_monolith --mode full
+
+# Multiple runs with warmup for reliable median timing
+python tools/benchmark_graph_build.py /tmp/synthetic_monolith --runs 3 --warmup
+
+# Include DB dependency scanning stage
+python tools/benchmark_graph_build.py /tmp/synthetic_monolith --include-db
+
+# JSON output for programmatic consumption
+python tools/benchmark_graph_build.py /tmp/synthetic_monolith --json -o results.json
+```
+
+#### Benchmark Incremental Graph Updates
+
+Compares `patch_graph()` (incremental) vs `build_dependency_graph()` (full rebuild) across 9 mutation scenarios at configurable scales.
+
+```bash
+# Default: benchmark small (100 projects) and medium (250 projects)
+python tools/benchmark_incremental.py
+
+# Specific presets
+python tools/benchmark_incremental.py --preset small medium large
+
+# Multiple runs for reliable median timing
+python tools/benchmark_incremental.py --runs 3
+
+# JSON output
+python tools/benchmark_incremental.py --json -o incremental_results.json
+```
+
+The 9 mutation scenarios tested:
+- **Usage-only** (1/5/10 files) — editing method bodies, adding `using` statements
+- **Declaration change** (1/5 files) — adding/renaming a class (triggers global type_usage rebuild)
+- **New file** (1/5 files) — adding `.cs` files to existing projects
+- **Deleted file** — removing a `.cs` file
+- **csproj modified** — changing a project reference or framework
+
+Example output:
+```
+Scenario                          small (100)    medium (250)
+--------------------------------------------------------------
+Full rebuild (baseline)              1137ms          9507ms
+  1 file usage-only                   111x            954x
+  10 files usage-only                  16x             30x
+  1 file declaration change             2x              1x
+  1 csproj modified                   122x            253x
+```
+
+#### Compare Parallel vs Sequential
+
+```bash
+# Compare on your own codebase
 time python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope /your/codebase -v
 time python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope /your/codebase --disable-multiprocessing -v
 ```
@@ -1562,6 +1638,50 @@ search_scope (Path)
 **Reverse directory index** maps `.cs` files to their parent `.csproj` by building a sorted list of `(project_directory, project_name)` pairs, sorted deepest-first by path depth. For each `.cs` file, it walks up the parent chain and returns the first matching project directory. This handles nested project structures where a `.cs` file under `src/Lib/SubLib/` should match the `SubLib.csproj` in that directory, not the `Lib.csproj` one level up.
 
 **Exclude patterns** default to `["*/bin/*", "*/obj/*", "*/temp_test_data/*"]` and use `fnmatch.fnmatch()` for glob-style matching. They can be overridden via the `exclude_patterns` parameter or through `.scatter.yaml` config.
+
+### Incremental Graph Updates
+
+When the dependency graph is cached (v2 format), subsequent runs use git diff to identify changed files since the last build and surgically patch the graph instead of rebuilding from scratch. This is transparent — the cached graph is automatically updated on the next run.
+
+**How it works:**
+
+1. `get_changed_files()` runs `git diff --name-only <cached_head> HEAD -- *.cs *.csproj` to find changes
+2. Changed `.cs` files are mapped to their parent projects via the reverse directory index
+3. **Content hash early cutoff** — if the file's SHA-256 hash hasn't changed (e.g., whitespace-only edits), skip re-extraction
+4. **Declaration early cutoff** — if `types_declared` are unchanged after re-extraction, only rebuild edges for the affected project (not globally)
+5. **Edge rebuild** — remove and reconstruct namespace_usage, type_usage, and sproc_shared edges for affected projects
+6. **Global rebuild triggers** — if any type declarations changed, all projects' type_usage edges are rebuilt (any project could reference the new/renamed type)
+
+**Safety valves** (trigger full rebuild instead):
+- Structural changes: `.csproj` added or removed
+- Threshold exceeded: >50 affected projects or >30% of files changed
+- Project set hash mismatch: external tool added/removed a project
+- Git diff failure: unreachable commit, non-git directory
+
+**Cache format:**
+
+The v2 cache envelope extends v1 with per-file and per-project facts:
+
+| Field | Description |
+|-------|-------------|
+| `file_facts` | `Dict[relative_path, FileFacts]` — types, namespaces, sprocs, content hash per `.cs` file |
+| `project_facts` | `Dict[project_name, ProjectFacts]` — namespace, project references, csproj content hash |
+| `project_set_hash` | SHA-256 of sorted project names — detects structural changes |
+| `git_head` | Commit hash at time of build — used as git diff baseline |
+
+v1 caches are automatically upgraded: loading a v1 cache triggers a full rebuild with `capture_facts=True`, saving the result as v2.
+
+**Performance (synthetic codebase benchmarks):**
+
+| Scenario | 100 projects | 250 projects |
+|----------|-------------|-------------|
+| Full rebuild | 1.1s | 9.5s |
+| 1 file usage change | 10ms (110x) | 10ms (954x) |
+| 10 files usage change | 70ms (16x) | 315ms (30x) |
+| 1 csproj modified | 9ms (122x) | 38ms (253x) |
+| 1 declaration change | 555ms (2x) | 7060ms (1.3x) |
+
+Usage-only changes (the most common real-world scenario — editing method bodies, adding imports) see 10-954x speedups. Declaration changes trigger global type_usage rebuilds, giving more modest speedups.
 
 ### Programmatic API
 
@@ -1849,6 +1969,7 @@ The `feasibility_details` dict breaks down each penalty, making it actionable �
 - **Markdown Output Format (Initiative 6 Phase 4)** — `scatter/reports/markdown_reporter.py` with build/write separation (`build_*()` returns string, `write_*()` writes file), stdout fallback for markdown format, `_require_output_file()` helper, cell escaping, blast radius tree reuse via `render_tree()`, Mermaid dependency diagrams, and 39 tests
 - **`--summarize-consumers` wiring** — Connected the existing AI summarization code to the analysis pipeline. `ConsumerFileSummaries` now populates in all 3 legacy modes (git, target, sproc). Shared `SUMMARIZATION_PROMPT_TEMPLATE` in `scatter/ai/base.py`, per-file progress logging, and 7 tests
 - **`--graph-metrics` enrichment** — `GraphContext` dataclass in `scatter/analyzers/graph_enrichment.py` bridges the dependency graph into all analysis modes. Post-processing enrichment injects coupling score, fan-in/out, instability, and cycle membership into consumer results. Schema stability: reporters include graph columns when the flag is present, regardless of match. 17 tests
+- **Incremental Graph Updates** — `scatter/store/graph_patcher.py` replaces all-or-nothing cache invalidation with surgical per-file patching. Git diff identifies changed files, content hash and declaration early cutoffs minimize re-extraction, and edge rebuild is scoped to affected projects. Safety valves (>50 projects, >30% files, structural changes) fall back to full rebuild. Shared regex patterns in `scatter/core/patterns.py`. v2 cache format with per-file/project facts and automatic v1→v2 migration. Benchmarked: 10-954x speedup for usage-only changes, 122-253x for csproj modifications. 49 tests + performance benchmark harness (`tools/benchmark_incremental.py`)
 
 ### Next (Tier 1: Credibility & Adoption)
 

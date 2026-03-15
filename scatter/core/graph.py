@@ -87,6 +87,108 @@ class DependencyGraph:
         self._forward[edge.source].add(edge.target)
         self._reverse[edge.target].add(edge.source)
 
+    def remove_edges_from(
+        self, source: str, edge_types: Optional[Set[str]] = None
+    ) -> int:
+        """Remove outgoing edges from source, optionally filtered by edge_type.
+
+        Updates _outgoing, _incoming, _forward, _reverse consistently.
+        Returns count of edges removed. O(degree) single-pass.
+        """
+        if source not in self._outgoing:
+            return 0
+
+        edges = self._outgoing[source]
+
+        # Single-pass partition into keep vs remove
+        if edge_types is None:
+            to_remove = edges[:]
+            self._outgoing[source] = []
+        else:
+            to_remove_ids: Set[int] = set()
+            to_remove = []
+            keep = []
+            for e in edges:
+                if e.edge_type in edge_types:
+                    to_remove.append(e)
+                    to_remove_ids.add(id(e))
+                else:
+                    keep.append(e)
+            if not to_remove:
+                return 0
+            self._outgoing[source] = keep
+
+        # Remove from _incoming in one pass per affected target
+        removed_targets: Set[str] = set()
+        to_remove_ids = {id(e) for e in to_remove}
+        for edge in to_remove:
+            removed_targets.add(edge.target)
+
+        for target in removed_targets:
+            if target in self._incoming:
+                self._incoming[target] = [
+                    e for e in self._incoming[target] if id(e) not in to_remove_ids
+                ]
+
+        # Update _forward and _reverse — check if any edges to target remain
+        remaining_targets = {e.target for e in self._outgoing.get(source, [])}
+        for target in removed_targets:
+            if target not in remaining_targets:
+                self._forward.get(source, set()).discard(target)
+                self._reverse.get(target, set()).discard(source)
+
+        return len(to_remove)
+
+    def remove_edges_to(
+        self, target: str, edge_types: Optional[Set[str]] = None
+    ) -> int:
+        """Remove incoming edges to target, optionally filtered by edge_type.
+
+        Updates _outgoing, _incoming, _forward, _reverse consistently.
+        Returns count of edges removed. O(degree) single-pass.
+        """
+        if target not in self._incoming:
+            return 0
+
+        edges = self._incoming[target]
+
+        # Single-pass partition
+        if edge_types is None:
+            to_remove = edges[:]
+            self._incoming[target] = []
+        else:
+            to_remove = []
+            keep = []
+            for e in edges:
+                if e.edge_type in edge_types:
+                    to_remove.append(e)
+                else:
+                    keep.append(e)
+            if not to_remove:
+                return 0
+            self._incoming[target] = keep
+
+        # Remove from _outgoing in one pass per affected source
+        removed_sources: Set[str] = set()
+        to_remove_ids = {id(e) for e in to_remove}
+        for edge in to_remove:
+            removed_sources.add(edge.source)
+
+        for source in removed_sources:
+            if source in self._outgoing:
+                self._outgoing[source] = [
+                    e for e in self._outgoing[source] if id(e) not in to_remove_ids
+                ]
+
+        # Update _forward and _reverse
+        for source in removed_sources:
+            still_has_edge = any(e.target == target for e in self._outgoing.get(source, []))
+            if not still_has_edge:
+                self._forward.get(source, set()).discard(target)
+                self._reverse.get(target, set()).discard(source)
+
+        return len(to_remove)
+
     # --- Query ---
 
     def get_node(self, name: str) -> Optional[ProjectNode]:

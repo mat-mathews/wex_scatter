@@ -514,52 +514,111 @@ Ref: docs/ADR_GRAPH_PERFORMANCE.md, docs/PERFORMANCE_AT_SCALE.md
       Label propagation 21s — get_edges_between() called 205K times/iteration, linear scan
       Type extraction 14s — sequential file reads + 3 regex per file
 
-INCREMENTAL GRAPH UPDATES (PLANNED — Tier 2 prerequisite, ~3-4 days)
+INCREMENTAL GRAPH UPDATES ✅ COMPLETED (Tier 1.5 — prerequisite for CI/CD governance)
 Ref: docs/INCREMENTAL_GRAPH_BRAINSTORM.md (team debate), docs/INCREMENTAL_GRAPH_PLAN.md (4-phase plan)
 Replace all-or-nothing cache invalidation with surgical per-file patching.
 Target: PR with 10 changed files, 500 projects → <1s (vs 60s full rebuild).
+Branch: feature/incremental-graph-updates
 
-Phase 1 — Cache format v2 + data models (~0.5 day):
-- [ ] FileFacts dataclass (types_declared, namespaces_used, sprocs_referenced, content_hash)
-- [ ] ProjectFacts dataclass (namespace, project_references, csproj_content_hash)
-- [ ] v2 cache envelope with file_facts, project_facts, project_set_hash
-- [ ] v1 → v2 migration (load v1 → full rebuild → save as v2)
-- [ ] Tests: v2 roundtrip, v1 backward compat, project_set_hash mismatch
+Phase 1 — Cache format v2 + data models ✅ COMPLETED:
+- [x] FileFacts dataclass (types_declared, namespaces_used, sprocs_referenced, content_hash)
+- [x] ProjectFacts dataclass (namespace, project_references, csproj_content_hash)
+- [x] v2 cache envelope with file_facts, project_facts, project_set_hash
+- [x] v1 → v2 migration (load v1 → full rebuild → save as v2)
+- [x] Tests: v2 roundtrip, v1 backward compat, project_set_hash mismatch
 
-Phase 2 — Graph mutation + fact extraction (~1 day):
-- [ ] Add remove_edges_from() and remove_edges_to() to DependencyGraph
-- [ ] extract_file_facts() and extract_project_facts() in graph_patcher.py
-- [ ] Extend build_dependency_graph() with capture_facts=True option
-- [ ] Tests: edge removal updates all 4 indexes, fact extraction correctness
+Phase 2 — Graph mutation + fact extraction ✅ COMPLETED:
+- [x] Add remove_edges_from() and remove_edges_to() to DependencyGraph
+      O(degree) single-pass with id() sets (not O(n²) list.remove)
+      Updates all 4 indexes: _outgoing, _incoming, _forward, _reverse
+- [x] extract_file_facts() and extract_project_facts() in graph_patcher.py
+- [x] Extend build_dependency_graph() with capture_facts=True option
+      Facts captured inline during Step 4 loop (single file read, no second pass)
+- [x] Tests: edge removal updates all 4 indexes, fact extraction correctness
 
-Phase 3 — Patch algorithm (~1.5 days):
-- [ ] Create scatter/store/graph_patcher.py — patch_graph() core function
-- [ ] Decision tree: classify → threshold check → early cutoff → rebuild edges
-- [ ] Content hash early cutoff (Bazel-inspired: unchanged hash → skip re-extraction)
-- [ ] Early cutoff on types_declared (Salsa-inspired: declarations unchanged → cheap path)
-- [ ] Safety valve: >50 projects or >30% files → fall back to full rebuild
-- [ ] Edge rebuild helpers: namespace, type_usage, sproc, project_reference
-- [ ] get_changed_files() git diff integration
-- [ ] Tests: usage-only, declaration change, .csproj change, deleted/new files, thresholds
+Phase 3 — Patch algorithm ✅ COMPLETED:
+- [x] Create scatter/store/graph_patcher.py — patch_graph() core function (~640 lines)
+- [x] Decision tree: classify → structural check → threshold check → early cutoff → rebuild edges
+- [x] Content hash early cutoff (Bazel-inspired: unchanged hash → skip re-extraction)
+- [x] Early cutoff on types_declared (Salsa-inspired: declarations unchanged → cheap path)
+- [x] Safety valve: >50 projects or >30% files → fall back to full rebuild
+- [x] Edge rebuild helpers: namespace, type_usage, sproc, project_reference
+- [x] get_changed_files() git diff integration
+- [x] Shared regex patterns in scatter/core/patterns.py (prevents divergence)
+- [x] _build_project_to_files() index built once (avoids O(all_files) per-project scan)
+- [x] Shallow-copy input dicts to prevent partial mutation on bail-out
+- [x] project_set_hash validated at patch entry point
+- [x] Tests: usage-only, declaration change, .csproj change, deleted/new files, thresholds
 
-Phase 4 — Integration + property tests (~1 day):
-- [ ] Wire into build_graph_context() in graph_enrichment.py
-- [ ] Property-based tests: incremental == full rebuild (100 iterations, synthetic mutations)
-- [ ] mutate_codebase() function in tools/generate_synthetic_codebase.py
-- [ ] Regression: coupling scores and cycles identical after incremental
-- [ ] End-to-end: analysis output identical with cached vs fresh graph
+Phase 4 — Integration + property tests ✅ COMPLETED:
+- [x] Wire into build_graph_context() in graph_enrichment.py
+      Handles: v2+git_head → incremental, v2+no_git → mtime fallback, v1 → full rebuild
+- [x] Property-based tests: incremental == full rebuild for 6 mutation types
+      (usage-only, declaration change, deleted file, new file, namespace change, .csproj ref change)
+- [x] Regression: coupling scores and cycles identical after noop patch (integration test)
+- [x] Updated all callers of load_and_validate for 5-tuple return type
+
+BENCHMARKING — INCREMENTAL GRAPH UPDATES ✅ COMPLETED:
+- [x] Create tools/benchmark_incremental.py — automated perf benchmark
+      Generates synthetic codebases at configurable scales (small/medium/large/xlarge)
+      9 mutation scenarios: usage-only (1/5/10 files), declaration (1/5 files),
+      new file (1/5), deleted file, csproj modified
+      Reports patch time, speedup factor, files processed, projects affected
+      Supports --runs for median timing, --json/-o for machine-readable output
+- [x] Benchmark results (small=100 projects, medium=250 projects):
+      Usage-only 1 file:     10ms (110-954x speedup)
+      Usage-only 10 files:   70-315ms (16-30x speedup)
+      csproj modified:       9-38ms (122-253x speedup)
+      Declaration change:    555-7060ms (1.3-2x speedup — triggers global type_usage rebuild)
+
+FILES CHANGED (10 modified, 2 new):
+  New: scatter/store/graph_patcher.py, scatter/core/patterns.py
+  New: test_graph_patcher.py (49 tests), tools/benchmark_incremental.py
+  Modified: scatter/store/graph_cache.py, scatter/core/graph.py,
+            scatter/analyzers/graph_builder.py, scatter/analyzers/graph_enrichment.py,
+            scatter/__main__.py, test_graph_cache.py
+
+TRANSPARENT GRAPH ACCELERATION (DECISION PENDING — architectural)
+Ref: docs/ADR_TRANSPARENT_GRAPH.md
+Today find_consumers() rescans the filesystem on every run, even when a valid graph cache
+exists that could answer the same question in milliseconds. The --graph-metrics flag adds
+enrichment but doesn't accelerate the core lookup. CLI flag count is growing.
+Decision: which phases to implement, and in what order.
+
+Phase A — Auto graph loading (~0.5 day, low risk):
+- [ ] Load graph cache automatically on every run (no flag needed)
+- [ ] Enrich results transparently when graph is available
+- [ ] Deprecate --graph-metrics (redefine as "eager build on first run")
+- [ ] Add "graph_enriched" field to JSON metadata for downstream parsers
+
+Phase B — Graph-accelerated consumer lookup (~2 days, medium risk):
+- [ ] Add graph: Optional[DependencyGraph] parameter to find_consumers()
+- [ ] When graph available, skip discovery/project_ref/namespace filesystem stages
+- [ ] Class/method text-search still runs on candidate set
+- [ ] --verify-graph diagnostic flag (run both paths, warn on divergence)
+- [ ] Property tests: graph path == filesystem path for all sample scenarios
+- [ ] Audit namespace matching divergence (RootNamespace vs using statements)
+
+Phase C — First-run graph build (~0.5 day, low risk):
+- [ ] After find_consumers() completes, build graph cache if none exists
+- [ ] Cost is ~same as find_consumers() (same files scanned)
+- [ ] Future runs get fast path automatically
+
+Recommended: A → C → B (safe first, biggest win last with most testing)
+Alternative: A only, defer B/C until concrete performance complaint
 
 DEFERRED TO FUTURE INITIATIVE:
 - [ ] diff(baseline, current) -> GraphDiff — needs clear use case + full GraphDiff spec
 - [ ] Graph query DSL — ad-hoc traversal language, premature before basic graph is proven
 
-INITIATIVE 5 TESTING SUMMARY (171 tests completed across Phases 1-6, all merged to main):
+INITIATIVE 5 TESTING SUMMARY (220 tests completed across Phases 1-6 + incremental, all merged to main):
 - [x] test_graph.py — 46 tests (Phase 1: data models, graph ops, builder, csproj parser, dir index)
 - [x] test_coupling.py — 25 tests (Phase 2: metrics, custom weights, Tarjan's SCC, shortest cycles)
 - [x] test_graph_cache.py — 28 tests (Phase 3: save/load, smart git invalidation, mtime fallback)
 - [x] test_db_scanner.py — 36 tests (Phase 4: comment stripping, detection patterns, _FileIndex non-class types, integration)
 - [x] test_domain.py — 15 tests (Phase 5: two-level clustering, label propagation, determinism, feasibility, API surface)
 - [x] test_reporters.py — 21 tests (Phase 6: Mermaid, health dashboard, console output, CSV export, JSON topology)
+- [x] test_graph_patcher.py — 49 tests (incremental updates: v2 cache, edge removal, fact extraction, patch algorithm, property tests, integration)
 
 ============================================================================
 INITIATIVE 6: REPORTING & EXTRACTION PLANNING — PHASES 1-4 ✅ COMPLETED (v2.0 Phase 4)

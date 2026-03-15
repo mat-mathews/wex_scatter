@@ -236,9 +236,10 @@ class TestLoadAndValidate:
 
         # tmp_path is not a git repo, so git_head=None → falls back to mtime
         # No code files → mtime valid
-        loaded = load_and_validate(cache_path, tmp_path, invalidation="mtime")
-        assert loaded is not None
-        assert loaded.node_count == 3
+        result = load_and_validate(cache_path, tmp_path, invalidation="mtime")
+        assert result is not None
+        loaded_graph, file_facts, project_facts, git_head, _proj_set_hash = result
+        assert loaded_graph.node_count == 3
 
     def test_returns_none_when_stale(self, tmp_path):
         """load_and_validate returns None when cache is stale."""

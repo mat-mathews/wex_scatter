@@ -944,10 +944,11 @@ def main():
         # Check cache (single-pass: read, validate, deserialize)
         graph = None
         if not config.graph.rebuild:
-            graph = load_and_validate(
+            cache_result = load_and_validate(
                 cache_path, search_scope_abs, config.graph.invalidation
             )
-            if graph is not None:
+            if cache_result is not None:
+                graph = cache_result[0]  # (graph, file_facts, project_facts, git_head, project_set_hash)
                 logging.info("Using cached dependency graph.")
 
         # Build if needed

@@ -2,19 +2,59 @@
 
 Saves/loads graphs to JSON with metadata for cache validation.
 Uses git-based invalidation (preferred) with mtime fallback.
+
+Cache format v2 adds per-file and per-project facts for incremental updates.
 """
+import hashlib
 import json
 import logging
 import os
 import subprocess
 import tempfile
+from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from scatter.core.graph import DependencyGraph
 
-CACHE_VERSION = 1
+CACHE_VERSION = 2
+
+
+@dataclass
+class FileFacts:
+    """Per-.cs-file parsed facts for incremental invalidation."""
+
+    path: str  # relative to search_scope
+    project: str  # owning project name
+    types_declared: List[str] = field(default_factory=list)
+    namespaces_used: List[str] = field(default_factory=list)
+    sprocs_referenced: List[str] = field(default_factory=list)
+    content_hash: str = ""  # sha256 of file contents
+
+
+@dataclass
+class ProjectFacts:
+    """Per-project parsed facts for incremental invalidation."""
+
+    namespace: Optional[str] = None
+    project_references: List[str] = field(default_factory=list)
+    csproj_content_hash: str = ""  # sha256 of .csproj contents
+
+
+def compute_content_hash(file_path: Path) -> str:
+    """Compute SHA-256 hash of a file's contents."""
+    try:
+        content = file_path.read_bytes()
+        return hashlib.sha256(content).hexdigest()
+    except OSError:
+        return ""
+
+
+def compute_project_set_hash(csproj_paths: List[str]) -> str:
+    """Hash of sorted .csproj relative paths to detect structural changes."""
+    joined = "\n".join(sorted(csproj_paths))
+    return hashlib.sha256(joined.encode("utf-8")).hexdigest()
 
 
 def get_default_cache_path(search_scope: Path) -> Path:
@@ -22,11 +62,19 @@ def get_default_cache_path(search_scope: Path) -> Path:
     return search_scope / ".scatter" / "graph_cache.json"
 
 
-def save_graph(graph: DependencyGraph, cache_path: Path, search_scope: Path) -> None:
+def save_graph(
+    graph: DependencyGraph,
+    cache_path: Path,
+    search_scope: Path,
+    file_facts: Optional[Dict[str, "FileFacts"]] = None,
+    project_facts: Optional[Dict[str, "ProjectFacts"]] = None,
+) -> None:
     """Serialize graph to JSON file with metadata.
 
     Uses atomic write (temp file + os.replace) to prevent corrupt cache
     from partial writes or crashes.
+
+    v2: optionally includes file_facts and project_facts for incremental updates.
     """
     cache_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -41,6 +89,14 @@ def save_graph(graph: DependencyGraph, cache_path: Path, search_scope: Path) -> 
         "edge_count": graph.edge_count,
         "graph": graph.to_dict(),
     }
+
+    if file_facts is not None:
+        envelope["file_facts"] = {k: asdict(v) for k, v in file_facts.items()}
+    if project_facts is not None:
+        envelope["project_facts"] = {k: asdict(v) for k, v in project_facts.items()}
+    if file_facts is not None and project_facts is not None:
+        csproj_paths = list(project_facts.keys())
+        envelope["project_set_hash"] = compute_project_set_hash(csproj_paths)
 
     # Atomic write: write to temp file, then rename
     fd, tmp_path = tempfile.mkstemp(
@@ -90,11 +146,19 @@ def load_and_validate(
     cache_path: Path,
     search_scope: Path,
     invalidation: str = "git",
-) -> Optional[DependencyGraph]:
+) -> Optional[
+    Tuple[DependencyGraph, Optional[Dict[str, "FileFacts"]],
+          Optional[Dict[str, "ProjectFacts"]], Optional[str], Optional[str]]
+]:
     """Single-pass load: read cache once, validate, and return graph if valid.
 
     Returns None if cache is missing, corrupt, stale, or for a different scope.
     Avoids the double-read of is_cache_valid() + load_graph().
+
+    v2 return: (graph, file_facts_or_None, project_facts_or_None, git_head_or_None,
+                project_set_hash_or_None).
+    file_facts/project_facts are None for v1 caches (caller should do full rebuild
+    to populate them).
     """
     envelope = _read_envelope(cache_path)
     if envelope is None:
@@ -109,17 +173,21 @@ def load_and_validate(
         )
         return None
 
-    # Validate freshness
-    if invalidation == "git":
-        cached_hash = envelope.get("git_head")
-        if cached_hash is None:
+    # Validate freshness — for v2 with facts, we skip git freshness check
+    # because the patcher will use git diff to do incremental updates.
+    has_facts = "file_facts" in envelope and "project_facts" in envelope
+    if not has_facts:
+        # v1-style: validate freshness the old way
+        if invalidation == "git":
+            cached_hash = envelope.get("git_head")
+            if cached_hash is None:
+                if not _is_cache_valid_mtime(cache_path, search_scope):
+                    return None
+            elif _git_has_code_changes(cached_hash, search_scope):
+                return None
+        else:
             if not _is_cache_valid_mtime(cache_path, search_scope):
                 return None
-        elif _git_has_code_changes(cached_hash, search_scope):
-            return None
-    else:
-        if not _is_cache_valid_mtime(cache_path, search_scope):
-            return None
 
     # Deserialize graph
     graph_data = envelope.get("graph")
@@ -133,10 +201,30 @@ def load_and_validate(
         logging.warning(f"Could not deserialize graph from cache {cache_path}: {e}")
         return None
 
+    # Deserialize facts (v2)
+    file_facts = None
+    project_facts = None
+    if has_facts:
+        try:
+            file_facts = {
+                k: FileFacts(**v) for k, v in envelope["file_facts"].items()
+            }
+            project_facts = {
+                k: ProjectFacts(**v) for k, v in envelope["project_facts"].items()
+            }
+        except (KeyError, TypeError) as e:
+            logging.warning(f"Could not deserialize facts from cache: {e}")
+            file_facts = None
+            project_facts = None
+
+    git_head = envelope.get("git_head")
+    project_set_hash = envelope.get("project_set_hash")
+
     logging.info(
         f"Graph loaded from cache: {graph.node_count} nodes, {graph.edge_count} edges"
+        + (" (with facts)" if file_facts is not None else " (no facts, will rebuild)")
     )
-    return graph
+    return graph, file_facts, project_facts, git_head, project_set_hash
 
 
 def is_cache_valid(
@@ -201,7 +289,7 @@ def _read_envelope(cache_path: Path) -> Optional[Dict[str, Any]]:
         return None
 
     version = envelope.get("version")
-    if version != CACHE_VERSION:
+    if version not in (1, CACHE_VERSION):
         logging.info(
             f"Graph cache version mismatch (got {version}, want {CACHE_VERSION}). Rebuilding."
         )
