@@ -305,8 +305,8 @@ def main():
     )
     common_group.add_argument(
         "--output-format", default="console",
-        choices=['console', 'csv', 'json', 'markdown'],
-        help="Format for the output. 'console' prints to screen. 'csv', 'json', or 'markdown' writes to --output-file (markdown also prints to stdout if no file given)."
+        choices=['console', 'csv', 'json', 'markdown', 'pipelines'],
+        help="Format for the output. 'console' prints to screen. 'csv', 'json', or 'markdown' writes to --output-file (markdown also prints to stdout if no file given). 'pipelines' prints sorted unique pipeline names, one per line."
     )
 
     # Multiprocessing options
@@ -349,6 +349,12 @@ def main():
     is_sproc_mode = args.stored_procedure is not None
     is_impact_mode = args.sow is not None or args.sow_file is not None
     is_graph_mode = args.graph
+
+    if is_graph_mode and args.output_format == 'pipelines':
+        parser.error("Pipeline output format is not supported in graph mode.")
+
+    if args.output_format == 'pipelines' and not args.pipeline_csv:
+        logging.warning("--output-format pipelines was requested without --pipeline-csv; output will be empty.")
 
     # --- load config and configure AI provider ---
     cli_overrides = _build_cli_overrides(args)
@@ -905,12 +911,22 @@ def main():
             else:
                 print(build_impact_markdown(impact_report, metadata=md_metadata,
                                             graph_metrics_requested=_gm_impact))
+        elif args.output_format == 'pipelines':
+            from scatter.reports.pipeline_reporter import extract_impact_pipeline_names, format_pipeline_output, write_pipeline_report
+            names = extract_impact_pipeline_names(impact_report)
+            if args.output_file:
+                write_pipeline_report(names, Path(args.output_file))
+            else:
+                output = format_pipeline_output(names)
+                if output:
+                    print(output)
         else:
             print_impact_report(impact_report)
 
         consumer_count = sum(len(ti.consumers) for ti in impact_report.targets)
         target_count = len(impact_report.targets)
-        print(f"\nAnalysis complete. {consumer_count} consumer(s) found across {target_count} target(s).\n")
+        if args.output_format != 'pipelines':
+            print(f"\nAnalysis complete. {consumer_count} consumer(s) found across {target_count} target(s).\n")
         return
 
     # == DEPENDENCY GRAPH ANALYSIS MODE ==
@@ -1058,13 +1074,25 @@ def main():
             print(build_markdown(detailed, metadata=md_metadata, pipeline=filter_pipeline,
                                  graph_metrics_requested=_gm))
 
+    # Handle Pipelines Output
+    elif args.output_format == 'pipelines':
+        from scatter.reports.pipeline_reporter import extract_pipeline_names, format_pipeline_output, write_pipeline_report
+        names = extract_pipeline_names(all_results)
+        if args.output_file:
+            write_pipeline_report(names, Path(args.output_file))
+        else:
+            output = format_pipeline_output(names)
+            if output:
+                print(output)
+
     # Handle Console Output (Default)
     else:
         print_console_report(all_results, pipeline=filter_pipeline,
                              graph_metrics_requested=_gm)
 
     target_names = {item['TargetProjectName'] for item in all_results}
-    print(f"\nAnalysis complete. {len(all_results)} consumer(s) found across {len(target_names)} target(s).\n")
+    if args.output_format != 'pipelines':
+        print(f"\nAnalysis complete. {len(all_results)} consumer(s) found across {len(target_names)} target(s).\n")
 
 
 if __name__ == "__main__":
