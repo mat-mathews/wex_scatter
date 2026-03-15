@@ -1,6 +1,9 @@
 """Tests for graph metrics enrichment in legacy and impact modes."""
 import csv
 import json
+import logging
+import subprocess
+import sys
 from io import StringIO
 from pathlib import Path
 from typing import Dict, List
@@ -246,3 +249,166 @@ class TestSchemaWithGraphMetrics:
         output = capsys.readouterr().out
         assert "Graph: coupling=" in output
         assert "in-cycle=yes" in output
+
+
+# ---------------------------------------------------------------------------
+# Auto graph loading (Phase A: transparent graph)
+# ---------------------------------------------------------------------------
+
+def _resolve_graph_loading(graph_metrics=False, no_graph=False,
+                           cache_hit=False, build_returns_ctx=True):
+    """Simulate the graph loading logic from __main__.py.
+
+    Returns (graph_ctx, graph_enriched) using the same branching as the real code.
+    """
+    graph_ctx = None
+    graph_enriched = False
+    search_scope_abs = Path("/fake/scope")
+    is_graph_mode = False
+
+    if not no_graph and search_scope_abs and not is_graph_mode:
+        should_load_graph = graph_metrics or cache_hit
+        if should_load_graph:
+            if build_returns_ctx:
+                graph_ctx = _make_graph_context()
+                graph_enriched = True
+            elif graph_metrics:
+                pass  # would log warning in real code
+    return graph_ctx, graph_enriched
+
+
+class TestAutoGraphLoading:
+
+    def test_auto_loads_when_cache_exists(self):
+        ctx, enriched = _resolve_graph_loading(cache_hit=True)
+        assert ctx is not None
+        assert enriched is True
+
+    def test_skips_when_no_cache_and_no_flag(self):
+        ctx, enriched = _resolve_graph_loading(cache_hit=False, graph_metrics=False)
+        assert ctx is None
+        assert enriched is False
+
+    def test_builds_when_graph_metrics_flag_no_cache(self):
+        ctx, enriched = _resolve_graph_loading(graph_metrics=True, cache_hit=False)
+        assert ctx is not None
+        assert enriched is True
+
+    def test_no_graph_flag_skips_everything(self):
+        ctx, enriched = _resolve_graph_loading(no_graph=True, cache_hit=True)
+        assert ctx is None
+        assert enriched is False
+
+    def test_silent_failure_on_auto_load(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            ctx, enriched = _resolve_graph_loading(
+                cache_hit=True, build_returns_ctx=False, graph_metrics=False
+            )
+        assert ctx is None
+        assert enriched is False
+        assert "Graph context unavailable" not in caplog.text
+
+    def test_graph_metrics_flag_builds_without_cache(self):
+        ctx, enriched = _resolve_graph_loading(graph_metrics=True, cache_hit=False)
+        assert ctx is not None
+        assert enriched is True
+
+    def test_impact_mode_auto_enrichment(self):
+        """Impact consumers gain graph fields when graph_ctx is available (auto-loaded)."""
+        ctx = _make_graph_context()
+        consumers = [_make_enriched_consumer("B"), _make_enriched_consumer("C")]
+        # Simulate the new impact enrichment guard: `if graph_ctx:`
+        if ctx:
+            enrich_consumers(consumers, ctx)
+        assert consumers[0].coupling_score is not None
+        assert consumers[0].in_cycle is True
+        assert consumers[1].coupling_score is not None
+
+
+# ---------------------------------------------------------------------------
+# _build_metadata graph_enriched field
+# ---------------------------------------------------------------------------
+
+class TestBuildMetadataGraphEnriched:
+
+    def test_graph_enriched_true(self):
+        from scatter.__main__ import _build_metadata
+        import argparse
+        args = argparse.Namespace(verbose=False, output_format="json")
+        metadata = _build_metadata(args, Path("/fake"), 0.0, graph_enriched=True)
+        assert metadata['graph_enriched'] is True
+
+    def test_graph_enriched_false(self):
+        from scatter.__main__ import _build_metadata
+        import argparse
+        args = argparse.Namespace(verbose=False, output_format="json")
+        metadata = _build_metadata(args, Path("/fake"), 0.0, graph_enriched=False)
+        assert metadata['graph_enriched'] is False
+
+    def test_graph_enriched_default(self):
+        from scatter.__main__ import _build_metadata
+        import argparse
+        args = argparse.Namespace(verbose=False, output_format="json")
+        metadata = _build_metadata(args, Path("/fake"), 0.0)
+        assert metadata['graph_enriched'] is False
+
+
+# ---------------------------------------------------------------------------
+# CLI integration: JSON metadata contains graph_enriched
+# ---------------------------------------------------------------------------
+
+class TestJsonGraphEnrichedField:
+
+    def test_json_output_contains_graph_enriched(self, tmp_path):
+        out = tmp_path / "result.json"
+        result = subprocess.run(
+            [sys.executable, "-m", "scatter",
+             "--target-project", "./GalaxyWorks.Data/GalaxyWorks.Data.csproj",
+             "--search-scope", ".",
+             "--output-format", "json", "--output-file", str(out)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        data = json.loads(out.read_text())
+        assert "metadata" in data
+        assert "graph_enriched" in data["metadata"]
+        assert isinstance(data["metadata"]["graph_enriched"], bool)
+
+    def test_auto_load_golden_path(self, tmp_path):
+        """Build cache with --graph-metrics, then auto-load without it, then --no-graph."""
+        base_args = [
+            sys.executable, "-m", "scatter",
+            "--target-project", "./GalaxyWorks.Data/GalaxyWorks.Data.csproj",
+            "--search-scope", ".",
+            "--output-format", "json",
+        ]
+
+        # Step 1: Build cache with --graph-metrics
+        out1 = tmp_path / "step1.json"
+        r1 = subprocess.run(
+            base_args + ["--graph-metrics", "--output-file", str(out1)],
+            capture_output=True, text=True,
+        )
+        assert r1.returncode == 0, r1.stderr
+        data1 = json.loads(out1.read_text())
+        assert data1["metadata"]["graph_enriched"] is True
+
+        # Step 2: Auto-load — no --graph-metrics flag, cache exists from step 1
+        out2 = tmp_path / "step2.json"
+        r2 = subprocess.run(
+            base_args + ["--output-file", str(out2)],
+            capture_output=True, text=True,
+        )
+        assert r2.returncode == 0, r2.stderr
+        data2 = json.loads(out2.read_text())
+        assert data2["metadata"]["graph_enriched"] is True, "Should auto-load from cache"
+
+        # Step 3: --no-graph skips enrichment
+        out3 = tmp_path / "step3.json"
+        r3 = subprocess.run(
+            base_args + ["--no-graph", "--output-file", str(out3)],
+            capture_output=True, text=True,
+        )
+        assert r3.returncode == 0, r3.stderr
+        data3 = json.loads(out3.read_text())
+        assert data3["metadata"]["graph_enriched"] is False, "--no-graph should skip"

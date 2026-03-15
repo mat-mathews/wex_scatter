@@ -277,6 +277,29 @@ class TestDefaultCachePath:
 
 
 # ===========================================================================
+# TestCacheExists
+# ===========================================================================
+class TestCacheExists:
+    def test_cache_exists_true(self, tmp_path):
+        from scatter.store.graph_cache import cache_exists
+        cache_dir = tmp_path / ".scatter"
+        cache_dir.mkdir()
+        (cache_dir / "graph_cache.json").write_text("{}")
+        assert cache_exists(tmp_path) is True
+
+    def test_cache_exists_false(self, tmp_path):
+        from scatter.store.graph_cache import cache_exists
+        assert cache_exists(tmp_path) is False
+
+    def test_cache_exists_with_config_dir(self, tmp_path):
+        from scatter.store.graph_cache import cache_exists
+        custom_dir = tmp_path / "custom_cache"
+        custom_dir.mkdir()
+        (custom_dir / "graph_cache.json").write_text("{}")
+        assert cache_exists(tmp_path, config_cache_dir=str(custom_dir)) is True
+
+
+# ===========================================================================
 # TestGraphConfig
 # ===========================================================================
 class TestGraphConfig:
