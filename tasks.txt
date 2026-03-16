@@ -312,15 +312,17 @@ CONFIGURATION SYSTEM ✅ COMPLETED (PHASE 5)
 - [ ] Budget config: max_tokens_per_run, warn_at_tokens, cache_ttl_hours (deferred — depends on ai/budget.py)
 
 INITIATIVE 3 TESTING — PARTIAL ✅
-- [ ] Unit tests for each scanner module (file, project, namespace, type, sproc)
-- [ ] Unit tests for AI provider protocol compliance (mock providers)
+- [~] Unit tests for each scanner module — PARTIAL: type (48 tests), sproc/db (36 tests),
+      project (implicit in test_graph.py/test_new_samples.py). File and namespace scanners untested.
+- [~] Unit tests for AI provider protocol compliance — PARTIAL: mock providers tested in
+      test_config.py (24 tests) and test_summarize_consumers.py (7 tests). No dedicated protocol test file.
 - [x] Unit tests for AI task router (6 tests: default provider, no credentials, task overrides, caching, unsupported task, unknown provider)
 - [ ] Unit tests for token budget manager (chunking, estimation) — depends on ai/budget.py
 - [ ] Unit tests for AI response cache (TTL, invalidation) — depends on ai/cache.py
 - [x] Unit tests for config system (15 tests: yaml loading, precedence, env vars, CLI overrides, malformed yaml, partial config, credentials, task overrides, multiprocessing)
 - [x] Unit tests for _build_cli_overrides (3 tests: empty flags, explicit defaults captured, all flags)
 - [x] Integration test: full v1 workflow through modularized code (all 132 tests pass)
-- [ ] Integration test: AI summarization through new provider system
+- [x] Integration test: AI summarization through new provider system (7 tests in test_summarize_consumers.py)
 - [x] Backward compatibility: all existing tests pass without modification (132 total)
 
 ============================================================================
@@ -832,11 +834,17 @@ AI CONTRACT GENERATION (LOW PRIORITY)
 - [ ] Draft interface definitions for extraction boundaries
 - [ ] Generate based on actual API surface detected by analysis
 
-MERMAID OUTPUT (LOW PRIORITY — partially covered by Markdown reporter Phase 4)
-- [ ] Implement scatter/reports/mermaid_reporter.py (standalone --output-format mermaid)
-- [ ] Dependency diagrams as Mermaid markup
-- [ ] Suitable for embedding in Confluence, wikis, READMEs
-- [ ] Support cluster grouping in Mermaid subgraphs
+MERMAID OUTPUT ✅ COMPLETED (2026-03-16)
+Core rendering shipped in Initiative 5 Phase 6 (generate_mermaid() in graph_reporter.py).
+CLI wiring completed: --output-format mermaid in graph mode, stdout or --output-file.
+- [x] generate_mermaid() in scatter/reports/graph_reporter.py (shipped Phase 6)
+- [x] --output-format mermaid added to CLI choices
+- [x] Graph mode dispatch: stdout or file output
+- [x] Non-graph mode rejection with early validation
+- [x] Dependency diagrams as Mermaid markup
+- [x] Suitable for embedding in Confluence, wikis, READMEs
+- [x] Support cluster grouping in Mermaid subgraphs (shipped Phase 6)
+- [x] 3 new tests in test_reporters.py (file output, clusters, CLI rejection)
 
 INITIATIVE 6 TESTING
 - [x] Unit tests for JSON serialization fixes (Phase 1) — 24 tests in test_report_quality.py
@@ -848,7 +856,7 @@ INITIATIVE 6 TESTING
 - [ ] Unit tests for baseline save/load (roundtrip, versioning)
 - [ ] Unit tests for baseline diff (known deltas)
 - [ ] Unit tests for HTML report generation (valid HTML, sections present)
-- [ ] Unit tests for Mermaid output (valid Mermaid syntax)
+- [x] Unit tests for Mermaid output (valid Mermaid syntax) — 5 tests in test_reporters.py (Phase 6) + 3 new (file output, clusters, CLI)
 - [ ] Integration test: `scatter extract` against example projects
 - [ ] Integration test: baseline save → make changes → baseline diff
 - [ ] Integration test: full HTML report generation from analysis results
@@ -886,12 +894,14 @@ Ref: docs/CLAUDE_INTEGRATION_EVALUATION.md
 - [ ] Create .claude/skills/scatter-branch/SKILL.md
 - [ ] Test each skill interactively with Claude Code
 
-DEPLOYMENT CHECKLIST / SCATTER PIPELINES SHORTCUT (HIGH PRIORITY — ~2 hours)
-Ref: docs/USE_CASE_REVIEW.md, Use Case #9
-- [ ] Add --output-format pipelines or scatter pipelines subcommand
-      Output: unique pipeline names, one per line, suitable for piping to deployment scripts
-- [ ] Support with --branch-name, --target-project, --sow modes
-- [ ] Clean output (no headers, no decoration) for scripting
+DEPLOYMENT CHECKLIST / SCATTER PIPELINES SHORTCUT ✅ COMPLETED (2026-03-15)
+Ref: docs/USE_CASE_REVIEW.md, Use Case #9; docs/PIPELINES_SHORTCUT_PLAN.md
+Merged: PR #2 (feature/pipelines-shortcut), commit fd58bfb
+- [x] Add --output-format pipelines (sorted unique pipeline names, one per line)
+- [x] Support with --branch-name, --target-project, --sow modes
+- [x] Clean output (no headers, no decoration) for scripting
+- [x] Graph mode rejection with early validation
+- [x] 14 tests in test_pipeline_reporter.py
 
 ============================================================================
 INITIATIVE 7: CI/CD INTEGRATION & WORKFLOW (v2.0 — Tier 2, promoted)
@@ -913,7 +923,7 @@ Ref: OUTPUT_REPORT_EVALUATION.md, Addendum Section F
       --fail-on consumers:20        (consumer count exceeds threshold)
       Multiple --fail-on flags can be combined (all evaluated, first violation triggers exit 1).
       Reports are still produced normally so the developer can see what triggered the failure.
-- [ ] --output-format json for structured consumption by pipeline scripts
+- [x] --output-format json for structured consumption by pipeline scripts (already implemented in json_reporter.py, works across all modes)
 - [ ] Configurable thresholds via .scatter.yaml:
       ci:
         fail_on:

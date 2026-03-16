@@ -1,5 +1,7 @@
 """Tests for Initiative 5 Phase 6: Graph Reporters + Health Dashboard."""
 import csv
+import subprocess
+import sys
 from io import StringIO
 from pathlib import Path
 
@@ -374,3 +376,48 @@ class TestGraphJsonTopologyFlag:
         metrics = _sample_metrics()
         result = build_graph_json(g, metrics, [], [])
         assert "health_dashboard" not in result
+
+
+# ===========================================================================
+# TestMermaidFileOutput
+# ===========================================================================
+
+
+class TestMermaidFileOutput:
+    def test_write_mermaid_to_file(self, tmp_path):
+        """generate_mermaid output can be written to a file."""
+        g = _sample_graph()
+        out = tmp_path / "diagram.mmd"
+        mermaid_output = generate_mermaid(g)
+        out.write_text(mermaid_output, encoding="utf-8")
+        content = out.read_text(encoding="utf-8")
+        assert content.startswith("graph TD")
+        assert "A --> B" in content
+
+    def test_write_mermaid_with_clusters(self, tmp_path):
+        g = _sample_graph()
+        clusters = [_make_cluster("MyCluster", ["A", "B"])]
+        out = tmp_path / "diagram.mmd"
+        mermaid_output = generate_mermaid(g, clusters=clusters)
+        out.write_text(mermaid_output, encoding="utf-8")
+        content = out.read_text(encoding="utf-8")
+        assert "subgraph" in content
+        assert "MyCluster" in content
+
+
+# ===========================================================================
+# TestMermaidCLI
+# ===========================================================================
+
+
+class TestMermaidCLI:
+    def test_non_graph_mode_rejects_mermaid_format(self):
+        """Mermaid format should be rejected outside of graph mode."""
+        result = subprocess.run(
+            [sys.executable, "-m", "scatter",
+             "--target-project", "Fake.csproj", "--search-scope", ".",
+             "--output-format", "mermaid"],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 2
+        assert "only supported in graph mode" in result.stderr

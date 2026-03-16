@@ -335,8 +335,8 @@ def main():
     )
     common_group.add_argument(
         "--output-format", default="console",
-        choices=['console', 'csv', 'json', 'markdown', 'pipelines'],
-        help="Format for the output. 'console' prints to screen. 'csv', 'json', or 'markdown' writes to --output-file (markdown also prints to stdout if no file given). 'pipelines' prints sorted unique pipeline names, one per line."
+        choices=['console', 'csv', 'json', 'markdown', 'mermaid', 'pipelines'],
+        help="Format for the output. 'console' prints to screen. 'csv', 'json', or 'markdown' writes to --output-file (markdown also prints to stdout if no file given). 'mermaid' outputs a Mermaid dependency diagram (graph mode only). 'pipelines' prints sorted unique pipeline names, one per line."
     )
 
     # Multiprocessing options
@@ -382,6 +382,9 @@ def main():
 
     if is_graph_mode and args.output_format == 'pipelines':
         parser.error("Pipeline output format is not supported in graph mode.")
+
+    if not is_graph_mode and args.output_format == 'mermaid':
+        parser.error("Mermaid output format is only supported in graph mode (--graph).")
 
     if args.output_format == 'pipelines' and not args.pipeline_csv:
         logging.warning("--output-format pipelines was requested without --pipeline-csv; output will be empty.")
@@ -1073,6 +1076,17 @@ def main():
                     graph, metrics, ranked, cycles,
                     clusters=clusters, metadata=md_metadata, dashboard=dashboard,
                 ))
+
+        elif args.output_format == "mermaid":
+            from scatter.reports.graph_reporter import generate_mermaid
+            mermaid_output = generate_mermaid(graph, clusters=clusters)
+            if args.output_file:
+                output_path = Path(args.output_file)
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_text(mermaid_output, encoding="utf-8")
+                logging.info(f"Mermaid diagram written to {args.output_file}")
+            else:
+                print(mermaid_output)
 
         else:
             print_graph_report(graph, ranked, cycles, clusters=clusters, dashboard=dashboard)
