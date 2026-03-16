@@ -578,34 +578,29 @@ FILES CHANGED (10 modified, 2 new):
             scatter/analyzers/graph_builder.py, scatter/analyzers/graph_enrichment.py,
             scatter/__main__.py, test_graph_cache.py
 
-TRANSPARENT GRAPH ACCELERATION (DECISION PENDING — architectural)
+TRANSPARENT GRAPH ACCELERATION ✅ ALL PHASES COMPLETED
 Ref: docs/ADR_TRANSPARENT_GRAPH.md
-Today find_consumers() rescans the filesystem on every run, even when a valid graph cache
-exists that could answer the same question in milliseconds. The --graph-metrics flag adds
-enrichment but doesn't accelerate the core lookup. CLI flag count is growing.
-Decision: which phases to implement, and in what order.
 
-Phase A — Auto graph loading (~0.5 day, low risk):
-- [ ] Load graph cache automatically on every run (no flag needed)
-- [ ] Enrich results transparently when graph is available
-- [ ] Deprecate --graph-metrics (redefine as "eager build on first run")
-- [ ] Add "graph_enriched" field to JSON metadata for downstream parsers
+Phase A — Auto graph loading ✅ COMPLETED
+- [x] Load graph cache automatically on every run (no flag needed)
+- [x] Enrich results transparently when graph is available
+- [x] Add "graph_enriched" field to JSON metadata for downstream parsers
+- [x] --no-graph escape hatch to skip auto-loading
 
-Phase B — Graph-accelerated consumer lookup (~2 days, medium risk):
-- [ ] Add graph: Optional[DependencyGraph] parameter to find_consumers()
-- [ ] When graph available, skip discovery/project_ref/namespace filesystem stages
-- [ ] Class/method text-search still runs on candidate set
-- [ ] --verify-graph diagnostic flag (run both paths, warn on divergence)
-- [ ] Property tests: graph path == filesystem path for all sample scenarios
-- [ ] Audit namespace matching divergence (RootNamespace vs using statements)
+Phase B — Graph-accelerated consumer lookup ✅ COMPLETED
+- [x] Add graph: Optional[DependencyGraph] parameter to find_consumers()
+- [x] When graph available, replace stages 1-2 with O(1) reverse lookup
+- [x] Class/method text-search still runs on candidate set
+- [x] Target-not-in-graph fallback to filesystem
+- [x] FilterStage.source field ("filesystem" or "graph") with [graph] annotation
+- [x] Parametrized integration tests for correctness verification
 
-Phase C — First-run graph build (~0.5 day, low risk):
-- [ ] After find_consumers() completes, build graph cache if none exists
-- [ ] Cost is ~same as find_consumers() (same files scanned)
-- [ ] Future runs get fast path automatically
-
-Recommended: A → C → B (safe first, biggest win last with most testing)
-Alternative: A only, defer B/C until concrete performance complaint
+Phase C — First-run graph build ✅ COMPLETED
+- [x] After find_consumers() completes, build graph cache if none exists
+- [x] _ensure_graph_context() idempotent helper at all 4 enrichment sites
+- [x] Enrich results on very first run (no second run needed)
+- [x] --no-graph escape hatch prevents first-run build
+- [x] Silent failure (DEBUG log) if build fails
 
 DEFERRED TO FUTURE INITIATIVE:
 - [ ] diff(baseline, current) -> GraphDiff — needs clear use case + full GraphDiff spec
@@ -1115,25 +1110,27 @@ RECOMMENDED EXECUTION ORDER (reprioritized 2026-03-13):
       content hash early cutoff, project-level edge attribution, property-based testing.
       Ref: docs/INCREMENTAL_GRAPH_PLAN.md. 49 tests.
 
-  TIER 1.75: TRANSPARENT GRAPH (makes graph the default fast path)
+  TIER 1.75: TRANSPARENT GRAPH ✅ ALL PHASES COMPLETE (makes graph the default fast path)
   Ref: docs/ADR_TRANSPARENT_GRAPH.md
   15. Phase A — Auto graph loading ✅ DONE
       Auto-load graph when cache exists (no --graph-metrics flag needed).
       Add --no-graph escape hatch. "graph_enriched" metadata field. 15 tests.
       Ref: docs/TRANSPARENT_GRAPH_PHASE_A_PLAN.md
-  16. Phase B — Graph-accelerated consumer lookup (MEDIUM RISK, HIGH VALUE)
+  16. Phase B — Graph-accelerated consumer lookup ✅ DONE
       Use graph reverse lookup to replace stages 1-2 of find_consumers().
       Graph becomes the primary lookup engine, not a bolt-on enrichment layer.
       Stages 3-5 (namespace/class/method) still run on graph consumer set.
-      Target-not-in-graph fallback to filesystem. FilterStage.source field.
+      Target-not-in-graph fallback to filesystem. FilterStage.source field. 14 tests.
       Ref: docs/TRANSPARENT_GRAPH_PHASE_B_PLAN.md
   16a. DEFERRED: --verify-graph diagnostic flag
       Runs both graph and filesystem paths, logs divergence. Deferred from
       Phase B — parametrized integration tests provide correctness verification.
       Add if divergence is reported in practice.
-  17. Phase C — First-run graph build (LOW RISK, MEDIUM VALUE)
-      Build graph during first analysis run and cache it. Every subsequent run
-      gets the fast path automatically (synchronous or background).
+  17. Phase C — First-run graph build ✅ DONE
+      Build graph on first analysis run via _ensure_graph_context() idempotent
+      helper at all 4 enrichment sites (branch, target, sproc, impact). Enrich
+      results on very first run. --no-graph skips build. 7 tests.
+      Ref: docs/TRANSPARENT_GRAPH_PHASE_C_PLAN.md
 
   TIER 2: CI/CD GOVERNANCE (makes scatter infrastructure, not optional)
   18. Initiative 7: CI/CD exit codes --fail-on (HIGH — turns scatter into an
@@ -1207,3 +1204,10 @@ KEY FINDINGS:
       Sorted unique pipeline names, one per line. Works in legacy + impact modes. Early rejection
       in graph mode via parser.error(). Warns on stderr without --pipeline-csv. 14 tests.
       601 total tests (600 pass, 1 xfail).
+  21. Transparent Graph Phase B shipped (2026-03-16): graph-accelerated consumer lookup
+      replaces stages 1-2 of find_consumers() with O(1) reverse lookup. Target-not-in-graph
+      fallback to filesystem. FilterStage.source field with [graph] annotation. 14 tests.
+  22. Transparent Graph Phase C shipped (2026-03-16): first-run graph build via
+      _ensure_graph_context() idempotent helper at all 4 enrichment sites. Graph built and
+      cached on first analysis run, results enriched immediately. --no-graph escape hatch.
+      7 tests. 637 total tests (all pass, 1 xfail). All 3 transparent graph phases complete.
