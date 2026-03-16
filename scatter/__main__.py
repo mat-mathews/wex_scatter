@@ -663,7 +663,8 @@ def main():
                             chunk_size=args.chunk_size,
                             disable_multiprocessing=args.disable_multiprocessing,
                             cs_analysis_chunk_size=args.cs_analysis_chunk_size,
-                            csproj_analysis_chunk_size=args.csproj_analysis_chunk_size
+                            csproj_analysis_chunk_size=args.csproj_analysis_chunk_size,
+                            graph=graph_ctx.graph if graph_ctx else None,
                         )
 
                         # Keep the first pipeline that produced results; fall back to last
@@ -727,7 +728,8 @@ def main():
             chunk_size=args.chunk_size,
             disable_multiprocessing=args.disable_multiprocessing,
             cs_analysis_chunk_size=args.cs_analysis_chunk_size,
-            csproj_analysis_chunk_size=args.csproj_analysis_chunk_size
+            csproj_analysis_chunk_size=args.csproj_analysis_chunk_size,
+            graph=graph_ctx.graph if graph_ctx else None,
         )
 
         if final_consumers_data:
@@ -828,7 +830,8 @@ def main():
                     chunk_size=args.chunk_size,
                     disable_multiprocessing=args.disable_multiprocessing,
                     cs_analysis_chunk_size=args.cs_analysis_chunk_size,
-                    csproj_analysis_chunk_size=args.csproj_analysis_chunk_size
+                    csproj_analysis_chunk_size=args.csproj_analysis_chunk_size,
+                    graph=graph_ctx.graph if graph_ctx else None,
                 )
 
                 # Keep the first pipeline that produced results; fall back to last
@@ -894,6 +897,7 @@ def main():
             disable_multiprocessing=args.disable_multiprocessing,
             cs_analysis_chunk_size=args.cs_analysis_chunk_size,
             csproj_analysis_chunk_size=args.csproj_analysis_chunk_size,
+            graph=graph_ctx.graph if graph_ctx else None,
         )
 
         # Enrich consumers with graph metrics if available

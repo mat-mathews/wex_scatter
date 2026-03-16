@@ -2,7 +2,7 @@
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 from scatter.core.models import (
     DEFAULT_MAX_WORKERS, DEFAULT_CHUNK_SIZE,
@@ -16,6 +16,89 @@ from scatter.core.parallel import (
     analyze_cs_files_parallel,
 )
 
+if TYPE_CHECKING:
+    from scatter.core.graph import DependencyGraph
+
+
+def _lookup_consumers_from_graph(
+    graph: "DependencyGraph",
+    target_csproj_path: Path,
+) -> Optional[Dict[Path, Dict[str, Union[str, List[Path]]]]]:
+    """Stages 1-2 via graph reverse lookup. Returns None if target not in graph.
+
+    Filters to project_reference edges only — the graph has 4 edge types
+    (project_reference, namespace_usage, type_usage, sproc_shared) but
+    stage 2 semantics only check <ProjectReference> in .csproj XML.
+    Using all edge types would widen the consumer set beyond what the
+    filesystem path finds, causing correctness divergence.
+    """
+    target_name = target_csproj_path.stem
+
+    # Target not in graph → caller should fall back to filesystem.
+    # This handles stale cache, scope mismatch, or new projects.
+    if graph.get_node(target_name) is None:
+        logging.debug(f"Target '{target_name}' not found in graph, falling back to filesystem.")
+        return None
+
+    direct_consumers: Dict[Path, Dict[str, Union[str, List[Path]]]] = {}
+    for edge in graph.get_edges_to(target_name):
+        if edge.edge_type == "project_reference":
+            node = graph.get_node(edge.source)
+            if node:
+                direct_consumers[node.path.resolve()] = {
+                    'consumer_name': edge.source,
+                    'relevant_files': []
+                }
+    return direct_consumers
+
+
+def _discover_consumers_from_filesystem(
+    target_csproj_path: Path,
+    search_scope_path: Path,
+    max_workers: int,
+    chunk_size: int,
+    disable_multiprocessing: bool,
+    csproj_analysis_chunk_size: int,
+) -> Tuple[Dict[Path, Dict[str, Union[str, List[Path]]]], int, List[Path]]:
+    """Stages 1-2 via filesystem scan + XML parsing.
+
+    Returns (direct_consumers, total_scanned, potential_consumers).
+    Raises OSError if the search scope cannot be scanned.
+    """
+    all_csproj_files = find_files_with_pattern_parallel(
+        search_scope_path, '*.csproj',
+        max_workers=max_workers,
+        chunk_size=chunk_size,
+        disable_multiprocessing=disable_multiprocessing
+    )
+    logging.debug(f'Found {len(all_csproj_files)} total .csproj files in scope.')
+    potential_consumers = [
+        p.resolve() for p in all_csproj_files if p.resolve() != target_csproj_path
+    ]
+    logging.debug(f"Found {len(potential_consumers)} potential consumer project(s) to check.")
+
+    # --- step 2: identify direct consumers (parallel csproj parsing) ---
+    logging.debug("Checking for direct project references to target...")
+    csproj_parse_results = parse_csproj_files_parallel(
+        potential_consumers,
+        target_csproj_path,
+        max_workers=max_workers,
+        csproj_analysis_chunk_size=csproj_analysis_chunk_size,
+        disable_multiprocessing=disable_multiprocessing
+    )
+
+    direct_consumers: Dict[Path, Dict[str, Union[str, List[Path]]]] = {}
+    for consumer_csproj_abs in potential_consumers:
+        result = csproj_parse_results.get(str(consumer_csproj_abs))
+        if result and result['is_consumer']:
+            direct_consumers[consumer_csproj_abs] = {
+                'consumer_name': result['consumer_name'],
+                'relevant_files': []
+            }
+
+    logging.debug(f"Found {len(direct_consumers)} direct consumer(s) via ProjectReference.")
+    return direct_consumers, len(all_csproj_files), potential_consumers
+
 
 def find_consumers(
     target_csproj_path: Path,
@@ -27,11 +110,16 @@ def find_consumers(
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     disable_multiprocessing: bool = False,
     cs_analysis_chunk_size: int = 50,
-    csproj_analysis_chunk_size: int = 25
+    csproj_analysis_chunk_size: int = 25,
+    graph: Optional["DependencyGraph"] = None,
 ) -> Tuple[List[Dict[str, Union[Path, str, List[Path]]]], FilterPipeline]:
     """
     Finds consuming projects based on ProjectReference, namespace usage,
     and optional class/method usage checks. Tracks the specific files causing matches.
+
+    When ``graph`` is provided, stages 1-2 (discovery + project reference) use
+    O(1) graph reverse lookup instead of filesystem scanning. Stages 3-5
+    (namespace, class, method) still run on the candidate set.
 
     Returns a tuple of (consumer_results, filter_pipeline).
     """
@@ -49,62 +137,56 @@ def find_consumers(
         method_filter=method_name,
     )
 
-    potential_consumers: List[Path] = []
     direct_consumers: Dict[Path, Dict[str, Union[str, List[Path]]]] = {}
     namespace_consumers: Dict[Path, Dict[str, Union[str, List[Path]]]] = {}
     class_consumers: Dict[Path, Dict[str, Union[str, List[Path]]]] = {}
     method_consumers: Dict[Path, Dict[str, Union[str, List[Path]]]] = {}
     cs_file_cache: Dict[Path, List[Path]] = {}
 
-    # --- step 1: find potential consumers ---
-    try:
-        all_csproj_files = find_files_with_pattern_parallel(
-            search_scope_path, '*.csproj',
-            max_workers=max_workers,
-            chunk_size=chunk_size,
-            disable_multiprocessing=disable_multiprocessing
-        )
-        logging.debug(f'Found {len(all_csproj_files)} total .csproj files in scope.')
-        potential_consumers = [
-            p.resolve() for p in all_csproj_files if p.resolve() != target_csproj_path
-        ]
-        logging.debug(f"Found {len(potential_consumers)} potential consumer project(s) to check.")
+    # --- stages 1-2: discover consumers via graph or filesystem ---
+    used_graph = False
+    if graph is not None:
+        graph_result = _lookup_consumers_from_graph(graph, target_csproj_path)
+        if graph_result is not None:
+            direct_consumers = graph_result
+            used_graph = True
+            logging.info(f"Using graph-accelerated consumer lookup ({len(direct_consumers)} direct consumer(s)).")
+            pipeline.total_projects_scanned = graph.node_count
+            pipeline.stages.append(FilterStage(
+                name=STAGE_DISCOVERY,
+                input_count=graph.node_count,
+                output_count=graph.node_count - 1,
+                source="graph",
+            ))
+            pipeline.stages.append(FilterStage(
+                name=STAGE_PROJECT_REFERENCE,
+                input_count=graph.node_count - 1,
+                output_count=len(direct_consumers),
+                source="graph",
+            ))
 
-        pipeline.total_projects_scanned = len(all_csproj_files)
-        pipeline.stages.append(FilterStage(
-            name=STAGE_DISCOVERY,
-            input_count=len(all_csproj_files),
-            output_count=len(potential_consumers),
-        ))
-    except OSError as e:
-        logging.error(f"Error scanning search scope '{search_scope_path}': {e}")
-        return [], pipeline
-
-    # --- step 2: identify direct consumers (parallel csproj parsing) ---
-    logging.debug("Checking for direct project references to target...")
-    csproj_parse_results = parse_csproj_files_parallel(
-        potential_consumers,
-        target_csproj_path,
-        max_workers=max_workers,
-        csproj_analysis_chunk_size=csproj_analysis_chunk_size,
-        disable_multiprocessing=disable_multiprocessing
-    )
-
-    for consumer_csproj_abs in potential_consumers:
-        result = csproj_parse_results.get(str(consumer_csproj_abs))
-        if result and result['is_consumer']:
-            direct_consumers[consumer_csproj_abs] = {
-                'consumer_name': result['consumer_name'],
-                'relevant_files': []
-            }
-
-    logging.debug(f"Found {len(direct_consumers)} direct consumer(s) via ProjectReference.")
-
-    pipeline.stages.append(FilterStage(
-        name=STAGE_PROJECT_REFERENCE,
-        input_count=len(potential_consumers),
-        output_count=len(direct_consumers),
-    ))
+    if not used_graph:
+        # Filesystem path: stages 1-2 as before
+        try:
+            direct_consumers, total_scanned, potential_consumers = _discover_consumers_from_filesystem(
+                target_csproj_path, search_scope_path,
+                max_workers, chunk_size, disable_multiprocessing,
+                csproj_analysis_chunk_size,
+            )
+            pipeline.total_projects_scanned = total_scanned
+            pipeline.stages.append(FilterStage(
+                name=STAGE_DISCOVERY,
+                input_count=total_scanned,
+                output_count=len(potential_consumers),
+            ))
+            pipeline.stages.append(FilterStage(
+                name=STAGE_PROJECT_REFERENCE,
+                input_count=len(potential_consumers),
+                output_count=len(direct_consumers),
+            ))
+        except OSError as e:
+            logging.error(f"Error scanning search scope '{search_scope_path}': {e}")
+            return [], pipeline
 
     if not direct_consumers:
         logging.info("No projects directly referencing the target were found.")

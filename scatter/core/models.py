@@ -142,6 +142,7 @@ class FilterStage:
     name: str           # STAGE_DISCOVERY, STAGE_PROJECT_REFERENCE, etc.
     input_count: int    # projects entering this stage
     output_count: int   # projects passing this stage
+    source: str = "filesystem"  # "filesystem" or "graph"
 
     @property
     def dropped_count(self) -> int:
@@ -169,6 +170,8 @@ class FilterPipeline:
                 parts.append(str(stage.input_count))
             label = STAGE_LABELS.get(stage.name, stage.name)
             if label:
+                if stage.source == "graph":
+                    label += "[graph]"
                 parts.append(f"{stage.output_count} {label}")
         return " \u2192 ".join(parts)
 
