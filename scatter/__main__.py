@@ -154,6 +154,30 @@ def _build_cli_overrides(args) -> Dict[str, Any]:
 _REDACTED_CLI_KEYS = frozenset({'google_api_key'})
 
 
+def _ensure_graph_context(graph_ctx, graph_enriched, args, search_scope_abs, config):
+    """Build graph on first run if not already loaded. Returns (graph_ctx, graph_enriched).
+
+    Idempotent: returns immediately if graph_ctx is already set, --no-graph is passed,
+    or search_scope_abs is not available. On failure, logs at DEBUG and returns unchanged.
+
+    Note: callers are responsible for not invoking this in graph mode (--graph),
+    which has its own build/display path and never reaches the enrichment sites.
+    """
+    if graph_ctx is not None or args.no_graph or not search_scope_abs:
+        return graph_ctx, graph_enriched
+    from scatter.analyzers.graph_enrichment import build_graph_context
+    try:
+        logging.info("Building dependency graph cache for future acceleration...")
+        graph_ctx = build_graph_context(search_scope_abs, config, args)
+        if graph_ctx:
+            graph_enriched = True
+        else:
+            logging.debug("First-run graph build returned no context (no .csproj files in scope?)")
+    except Exception as e:
+        logging.debug(f"First-run graph build failed (non-fatal): {e}")
+    return graph_ctx, graph_enriched
+
+
 def _build_metadata(args, search_scope_abs, start_time, *, graph_enriched=False):
     """Build metadata dict for JSON report output."""
     cli_args = {k: v for k, v in vars(args).items() if k not in _REDACTED_CLI_KEYS}
@@ -530,19 +554,17 @@ def main():
     # Build graph context: auto-load from cache, or build if --graph-metrics requested.
     # Scope mismatch or corrupt cache → build_graph_context() returns None silently,
     # which is expected — auto-load is best-effort, not guaranteed.
+    # Phase C: if no cache exists, graph is built after find_consumers() via _ensure_graph_context().
     graph_ctx = None
     graph_enriched = False
     if not args.no_graph and search_scope_abs and not is_graph_mode:
         from scatter.store.graph_cache import cache_exists
-        should_load_graph = args.graph_metrics or cache_exists(
-            search_scope_abs, config.graph.cache_dir
+        from scatter.analyzers.graph_enrichment import (
+            build_graph_context,
+            enrich_legacy_results,
+            enrich_consumers,
         )
-        if should_load_graph:
-            from scatter.analyzers.graph_enrichment import (
-                build_graph_context,
-                enrich_legacy_results,
-                enrich_consumers,
-            )
+        if args.graph_metrics or cache_exists(search_scope_abs, config.graph.cache_dir):
             graph_ctx = build_graph_context(search_scope_abs, config, args)
             if graph_ctx:
                 graph_enriched = True
@@ -697,6 +719,9 @@ def main():
                         else:
                             logging.info(f"     No consumers found for type '{type_name_to_check}' in project '{target_project_name_git_mode}'.")
 
+        graph_ctx, graph_enriched = _ensure_graph_context(
+            graph_ctx, graph_enriched, args, search_scope_abs, config
+        )
         if graph_ctx and all_results:
             enrich_legacy_results(all_results, graph_ctx)
 
@@ -763,6 +788,9 @@ def main():
         else:
             logging.info(f"No consuming projects matching the criteria were found for target '{target_project_name}'.")
 
+        graph_ctx, graph_enriched = _ensure_graph_context(
+            graph_ctx, graph_enriched, args, search_scope_abs, config
+        )
         if graph_ctx and all_results:
             enrich_legacy_results(all_results, graph_ctx)
 
@@ -855,6 +883,9 @@ def main():
                         final_consumers_data, all_results,
                         ai_provider, search_scope_abs, results_before)
 
+        graph_ctx, graph_enriched = _ensure_graph_context(
+            graph_ctx, graph_enriched, args, search_scope_abs, config
+        )
         if graph_ctx and all_results:
             enrich_legacy_results(all_results, graph_ctx)
 
@@ -901,6 +932,9 @@ def main():
         )
 
         # Enrich consumers with graph metrics if available
+        graph_ctx, graph_enriched = _ensure_graph_context(
+            graph_ctx, graph_enriched, args, search_scope_abs, config
+        )
         if graph_ctx:
             for ti in impact_report.targets:
                 enrich_consumers(ti.consumers, graph_ctx)
