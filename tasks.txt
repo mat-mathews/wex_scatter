@@ -1122,10 +1122,15 @@ RECOMMENDED EXECUTION ORDER (reprioritized 2026-03-13):
       Add --no-graph escape hatch. "graph_enriched" metadata field. 15 tests.
       Ref: docs/TRANSPARENT_GRAPH_PHASE_A_PLAN.md
   16. Phase B — Graph-accelerated consumer lookup (MEDIUM RISK, HIGH VALUE)
-      Use graph.get_consumers() to replace first 2-3 stages of find_consumers().
+      Use graph reverse lookup to replace stages 1-2 of find_consumers().
       Graph becomes the primary lookup engine, not a bolt-on enrichment layer.
-      Requires correctness audit: namespace matching divergence between graph
-      builder and find_consumers(). Add --verify-graph diagnostic flag.
+      Stages 3-5 (namespace/class/method) still run on graph consumer set.
+      Target-not-in-graph fallback to filesystem. FilterStage.source field.
+      Ref: docs/TRANSPARENT_GRAPH_PHASE_B_PLAN.md
+  16a. DEFERRED: --verify-graph diagnostic flag
+      Runs both graph and filesystem paths, logs divergence. Deferred from
+      Phase B — parametrized integration tests provide correctness verification.
+      Add if divergence is reported in practice.
   17. Phase C — First-run graph build (LOW RISK, MEDIUM VALUE)
       Build graph during first analysis run and cache it. Every subsequent run
       gets the fast path automatically (synchronous or background).

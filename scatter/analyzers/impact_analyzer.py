@@ -34,6 +34,7 @@ def run_impact_analysis(
     disable_multiprocessing: bool = False,
     cs_analysis_chunk_size: int = 50,
     csproj_analysis_chunk_size: int = 25,
+    graph=None,
 ) -> ImpactReport:
     """Orchestrate the full impact analysis pipeline.
 
@@ -73,6 +74,7 @@ def run_impact_analysis(
             disable_multiprocessing=disable_multiprocessing,
             cs_analysis_chunk_size=cs_analysis_chunk_size,
             csproj_analysis_chunk_size=csproj_analysis_chunk_size,
+            graph=graph,
         )
         report.targets.append(target_impact)
 
@@ -140,6 +142,7 @@ def _analyze_single_target(
     disable_multiprocessing: bool,
     cs_analysis_chunk_size: int,
     csproj_analysis_chunk_size: int,
+    graph=None,
 ) -> TargetImpact:
     """Analyze a single target: find direct consumers, trace transitively."""
     impact = TargetImpact(target=target)
@@ -166,6 +169,7 @@ def _analyze_single_target(
         disable_multiprocessing=disable_multiprocessing,
         cs_analysis_chunk_size=cs_analysis_chunk_size,
         csproj_analysis_chunk_size=csproj_analysis_chunk_size,
+        graph=graph,
     )
 
     if not direct_consumers_data:
@@ -186,6 +190,7 @@ def _analyze_single_target(
         disable_multiprocessing=disable_multiprocessing,
         cs_analysis_chunk_size=cs_analysis_chunk_size,
         csproj_analysis_chunk_size=csproj_analysis_chunk_size,
+        graph=graph,
     )
 
     impact.consumers = all_consumers
@@ -207,6 +212,7 @@ def trace_transitive_impact(
     disable_multiprocessing: bool = False,
     cs_analysis_chunk_size: int = 50,
     csproj_analysis_chunk_size: int = 25,
+    graph=None,
 ) -> List[EnrichedConsumer]:
     """BFS transitive tracing with confidence decay and cycle detection.
 
@@ -276,6 +282,7 @@ def trace_transitive_impact(
                         disable_multiprocessing=disable_multiprocessing,
                         cs_analysis_chunk_size=cs_analysis_chunk_size,
                         csproj_analysis_chunk_size=csproj_analysis_chunk_size,
+                        graph=graph,
                     )
                     for td in transitive_data:
                         td_path = td['consumer_path']
