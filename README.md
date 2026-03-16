@@ -1,18 +1,36 @@
 # Scatter
 
-*A .NET source code dependency analyzer and impact assessment tool*
+*A .NET dependency graph engine and impact analysis tool*
 
-Scatter answers questions like "If I change this class, which other projects are actually using it?" and "What's the blast radius of this work request?" It analyzes .NET codebases to find consumers of code changes, trace transitive dependencies, and produce AI-enriched impact reports for project scoping.
+Scatter builds a dependency graph of your .NET codebase and uses it to answer questions like "If I change this class, which projects are actually affected?" and "What's the blast radius of this work request?"
 
-It works in five modes:
+### Zero-Config Graph Acceleration
 
-* **Git Branch Analysis**: Compares a feature branch against a base branch, extracts type declarations from changed `.cs` files, and finds consuming projects.
-* **Target Project Analysis**: Analyzes a specific `.csproj` file to find all projects that reference and use its types.
-* **Stored Procedure Analysis**: Finds C# projects that reference a specific stored procedure and traces their consumers.
-* **Impact Analysis**: Accepts a natural language work request, uses AI to identify affected components, traces transitive blast radius, and produces a risk-rated impact report with complexity estimates.
-* **Dependency Graph Analysis**: Builds a full project dependency graph, computes coupling metrics, detects circular dependencies, and identifies domain clusters with extraction feasibility scoring.
+On first run, Scatter automatically builds a dependency graph from your `.csproj` and `.cs` files, caches it, and uses it to accelerate every subsequent analysis. No flags to learn, no setup steps — it just works.
 
-The repository includes a set of sample .NET projects that form a realistic dependency graph, making it possible to test all analysis modes without an external codebase.
+```
+First run:  filesystem scan → build graph → cache → enriched results  (~3-5s one-time cost)
+Second run: load cache → O(1) graph lookup → enriched results         (~400-900ms faster)
+Later runs: incremental patch via git diff → graph lookup              (~10ms for typical PRs)
+```
+
+The graph tracks four edge types — **project references**, **namespace usage**, **type usage**, and **shared stored procedures** — giving Scatter a complete picture of how your projects are connected. Consumer lookups that previously scanned every `.csproj` and `.cs` file on disk now resolve in microseconds via reverse-index lookup.
+
+Every analysis result is automatically enriched with graph-derived metrics: **coupling score**, **fan-in/out**, **instability index**, and **circular dependency membership**. These appear in all output formats (console, JSON, CSV, markdown) with no extra flags.
+
+Use `--no-graph` to skip graph operations entirely. Use `--rebuild-graph` to force a fresh build.
+
+### Analysis Modes
+
+Scatter works in five modes:
+
+* **Git Branch Analysis** (`--branch-name`): Extracts type declarations from changed `.cs` files and finds consuming projects
+* **Target Project Analysis** (`--target-project`): Finds all projects that reference and use a specific `.csproj`
+* **Stored Procedure Analysis** (`--stored-procedure`): Traces C# consumers of a stored procedure
+* **Impact Analysis** (`--sow`): Accepts a natural language work request, uses AI to trace transitive blast radius with risk ratings
+* **Dependency Graph Analysis** (`--graph`): Full graph visualization with coupling metrics, cycle detection, and domain cluster extraction
+
+The repository includes 8 sample .NET projects that form a realistic dependency graph, making it possible to test all analysis modes without an external codebase.
 
 ---
 
@@ -157,18 +175,19 @@ python scatter.py \
 
 1. [Quick Start](#quick-start)
 2. [Sample Project Structure](#sample-project-structure)
-3. [Analysis Modes](#analysis-modes)
-4. [Workflow Examples](#workflow-examples) — End-to-end scenarios for common use cases
-5. [AI Features](#ai-features)
-6. [Impact Analysis (Mode 4)](#impact-analysis-mode-4)
-7. [Parallel Processing](#parallel-processing)
-8. [Configuration & Mapping](#configuration--mapping) — YAML config files, precedence, env vars
-9. [Command-Line Reference](#command-line-reference)
-10. [Output Formats](#output-formats)
-11. [Testing](#testing) — Test suite, benchmarking (full build, incremental, parallel vs sequential)
-12. [Technical Details](#technical-details)
-13. [Dependency Graph](#dependency-graph) — Architecture, performance, incremental updates, construction pipeline, programmatic API
-14. [Roadmap](#roadmap)
+3. [How the Graph Engine Works](#how-the-graph-engine-works) — Build pipeline, acceleration, incremental updates, metrics
+4. [Analysis Modes](#analysis-modes)
+5. [Workflow Examples](#workflow-examples) — End-to-end scenarios for common use cases
+6. [AI Features](#ai-features)
+7. [Impact Analysis (Mode 4)](#impact-analysis-mode-4)
+8. [Parallel Processing](#parallel-processing)
+9. [Configuration & Mapping](#configuration--mapping) — YAML config files, precedence, env vars
+10. [Command-Line Reference](#command-line-reference)
+11. [Output Formats](#output-formats)
+12. [Testing](#testing) — Test suite, benchmarking (full build, incremental, parallel vs sequential)
+13. [Technical Details](#technical-details)
+14. [Dependency Graph Reference](#dependency-graph) — Programmatic API, serialization, construction pipeline details
+15. [Roadmap](#roadmap)
 
 ---
 
@@ -220,6 +239,94 @@ MyDotNetApp2.Exclude                (standalone — no references, tests exclusi
 | Build dependency graph with domain clusters | `--graph --search-scope .` |
 | Graph analysis with JSON output | `--graph --search-scope . --output-format json --output-file graph.json` |
 | Graph analysis as markdown (with Mermaid diagram) | `--graph --search-scope . --output-format markdown --output-file graph.md` |
+
+---
+
+## How the Graph Engine Works
+
+Scatter's graph engine is the core of its performance and intelligence. Rather than scanning the filesystem from scratch on every run, Scatter builds a persistent dependency graph that serves as the single source of truth for all project relationships.
+
+### The Three-Phase Lifecycle
+
+**Phase 1: Build (first run only)**
+
+On first analysis, after the filesystem-based consumer lookup completes, Scatter builds a full dependency graph in a single pass over all `.csproj` and `.cs` files:
+
+```
+search_scope/
+  ├─ Discover .csproj files → parse project references, namespace, framework
+  ├─ Discover .cs files → map to parent project via reverse directory index
+  ├─ Extract type declarations, using statements, sproc references
+  └─ Build edges: project_reference, namespace_usage, type_usage, sproc_shared
+```
+
+The graph is saved as a v2 JSON cache (`.scatter/graph_cache.json`) with per-file content hashes and per-project facts, enabling incremental updates on subsequent runs.
+
+**Phase 2: Accelerate (every subsequent run)**
+
+When a cache exists, consumer lookups bypass the filesystem entirely. Instead of scanning every `.csproj` for `<ProjectReference>` tags and every `.cs` for `using` statements, Scatter resolves consumers via O(1) reverse-index lookup on the graph:
+
+```
+Filesystem path:  O(P + F) — scan P projects, grep F files     (~2-5s)
+Graph path:       O(1) reverse lookup via get_edges_to()        (~μs)
+```
+
+Stages 1-2 of the 5-stage filter pipeline (discovery + project reference matching) are replaced entirely. Stages 3-5 (namespace, class, method filtering) still run on the graph-sourced candidate set for precision.
+
+**Phase 3: Patch (incremental updates)**
+
+On runs after the first, Scatter uses `git diff` to identify files changed since the last build and surgically patches the graph instead of rebuilding:
+
+```
+git diff --name-only <cached_head> HEAD -- *.cs *.csproj
+  ├─ Content hash early cutoff (unchanged hash → skip)
+  ├─ Declaration early cutoff (same types → edge-only rebuild)
+  └─ Safety valves: >50 projects or >30% files → full rebuild
+```
+
+| Scenario | 100 projects | 250 projects |
+|----------|-------------|-------------|
+| Full rebuild | 1.1s | 9.5s |
+| 1 file change (body edit) | 10ms (110x faster) | 10ms (954x faster) |
+| 10 file changes | 70ms (16x) | 315ms (30x) |
+| 1 csproj modified | 9ms (122x) | 38ms (253x) |
+
+### Automatic Enrichment
+
+Every consumer result — in all five analysis modes — is automatically enriched with graph-derived metrics when the graph is available:
+
+| Metric | What it tells you |
+|--------|------------------|
+| **Coupling Score** | Overall interconnectedness intensity (weighted sum of all edge types) |
+| **Fan-In** | How many projects depend on this one (build-time risk indicator) |
+| **Fan-Out** | How many projects this one depends on |
+| **Instability** | 0.0 = stable core, 1.0 = volatile leaf (Martin's instability index) |
+| **In Cycle** | Whether this project participates in a circular dependency |
+
+These metrics appear in console output, JSON, CSV, and markdown reports. No `--graph-metrics` flag needed — enrichment happens automatically when graph data is available.
+
+### Edge Types
+
+The graph captures four types of relationships:
+
+| Edge Type | What it represents | Weight |
+|-----------|-------------------|--------|
+| `project_reference` | `<ProjectReference>` in `.csproj` — hard compile-time dependency | 1.0 |
+| `namespace_usage` | `using` statement matching a project's namespace | 0.5 |
+| `type_usage` | Direct reference to a type declared in another project | 0.3 |
+| `sproc_shared` | Stored procedure referenced by multiple projects (shared mutable state) | 0.8 |
+
+Weights are configurable in `.scatter.yaml` under `graph.coupling_weights`.
+
+### Controlling Graph Behavior
+
+| Flag | Effect |
+|------|--------|
+| *(default)* | Auto-build on first run, auto-load from cache, incremental patching |
+| `--no-graph` | Skip all graph operations (build, load, enrich) |
+| `--rebuild-graph` | Force a full graph rebuild, ignoring the cache |
+| `--graph` | Dedicated graph analysis mode with coupling metrics, cycles, and domain clusters |
+| `--graph-metrics` | Explicitly request graph enrichment (redundant now — enrichment is automatic) |
 
 ---
 
@@ -642,29 +749,9 @@ Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
 
 ### Graph Metrics Enrichment
 
-When `--graph-metrics` is enabled, Scatter builds (or loads from cache) a dependency graph of the search scope and enriches each consumer result with structural metrics from the graph:
+Graph metrics are **automatic** — Scatter builds or loads the dependency graph on every run and enriches consumer results with structural metrics. No flags needed. See [How the Graph Engine Works](#how-the-graph-engine-works) for the full story.
 
-- **Coupling Score** — Weighted composite of fan-in, fan-out, and shared database density
-- **Fan-In / Fan-Out** — Number of incoming/outgoing project references
-- **Instability** — Martin's instability index (fan-out / (fan-in + fan-out))
-- **In Cycle** — Whether the consumer participates in a circular dependency
-
-This works in all analysis modes (git, target, sproc, impact) and with all output formats. Consumers outside the graph's scope show `—` / `null` for graph columns.
-
-```bash
-# Target analysis with graph metrics
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
-  --graph-metrics
-
-# Impact analysis with graph metrics in JSON
-python scatter.py --sow "Add caching to PortalDataService" --search-scope . \
-  --google-api-key $GOOGLE_API_KEY --graph-metrics \
-  --output-format json --output-file impact_with_graph.json
-
-# Combine with AI summarization
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
-  --graph-metrics --summarize-consumers --google-api-key $GOOGLE_API_KEY
-```
+Use `--no-graph` to disable graph operations entirely.
 
 **Example console output with graph metrics:**
 
@@ -1995,9 +2082,7 @@ The `feasibility_details` dict breaks down each penalty, making it actionable �
 - **`--graph-metrics` enrichment** — `GraphContext` dataclass in `scatter/analyzers/graph_enrichment.py` bridges the dependency graph into all analysis modes. Post-processing enrichment injects coupling score, fan-in/out, instability, and cycle membership into consumer results. Schema stability: reporters include graph columns when the flag is present, regardless of match. 17 tests
 - **Incremental Graph Updates** — `scatter/store/graph_patcher.py` replaces all-or-nothing cache invalidation with surgical per-file patching. Git diff identifies changed files, content hash and declaration early cutoffs minimize re-extraction, and edge rebuild is scoped to affected projects. Safety valves (>50 projects, >30% files, structural changes) fall back to full rebuild. Shared regex patterns in `scatter/core/patterns.py`. v2 cache format with per-file/project facts and automatic v1→v2 migration. Benchmarked: 10-954x speedup for usage-only changes, 122-253x for csproj modifications. 49 tests + performance benchmark harness (`tools/benchmark_incremental.py`)
 - **Pipeline Output Format** — `--output-format pipelines` prints sorted unique pipeline names to stdout, one per line, for release managers and deployment scripts. Works in legacy modes (git, target, sproc) and impact mode (sow). Early rejection in graph mode via `parser.error()`. Warns on stderr when used without `--pipeline-csv`. `scatter/reports/pipeline_reporter.py` with 14 tests
-- **Transparent Graph Phase A** — Auto-load graph from cache when `.scatter/graph_cache.json` exists, eliminating the need for `--graph-metrics`. Reporter columns driven by actual enrichment state (`graph_enriched` metadata field) rather than flag state. `--no-graph` escape hatch to skip auto-loading. 15 tests including golden path integration test
-- **Transparent Graph Phase B** — Graph-accelerated consumer lookup replaces stages 1-2 of `find_consumers()` with O(1) reverse lookup via `graph.get_edges_to()`. Stages 3-5 (namespace/class/method) still run on the graph-sourced candidate set. Target-not-in-graph fallback to filesystem. `FilterStage.source` field with `[graph]` annotation in arrow chain. 14 tests
-- **Transparent Graph Phase C** — First-run graph build: automatically build and cache the dependency graph on the first analysis run when no cache exists. `_ensure_graph_context()` idempotent helper wired at all 4 enrichment sites (branch, target, sproc, impact). Results enriched with graph metrics on the very first run — no flags needed, no second run required. `--no-graph` escape hatch. 7 tests
+- **Transparent Graph Acceleration (Phases A-C)** — The graph is now the default fast path for all analysis modes, with zero configuration required. Phase A: auto-load graph from cache, `graph_enriched` metadata field, `--no-graph` escape hatch (15 tests). Phase B: O(1) reverse-index consumer lookup replaces filesystem stages 1-2 of `find_consumers()`, with target-not-in-graph fallback and `FilterStage.source` tracking (14 tests). Phase C: first-run graph build via idempotent `_ensure_graph_context()` at all 4 enrichment sites — results enriched on the very first run with no flags needed (7 tests). See [How the Graph Engine Works](#how-the-graph-engine-works)
 
 ### Next (Tier 1: Credibility & Adoption)
 
