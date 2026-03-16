@@ -1,4 +1,5 @@
 """Tests for graph metrics enrichment in legacy and impact modes."""
+import argparse
 import csv
 import json
 import logging
@@ -7,8 +8,11 @@ import sys
 from io import StringIO
 from pathlib import Path
 from typing import Dict, List
+from unittest.mock import patch as mock_patch
 
 import pytest
+
+from scatter.__main__ import _ensure_graph_context
 
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.core.models import EnrichedConsumer
@@ -412,3 +416,110 @@ class TestJsonGraphEnrichedField:
         assert r3.returncode == 0, r3.stderr
         data3 = json.loads(out3.read_text())
         assert data3["metadata"]["graph_enriched"] is False, "--no-graph should skip"
+
+
+# ---------------------------------------------------------------------------
+# Phase C: First-run graph build (_ensure_graph_context)
+# ---------------------------------------------------------------------------
+
+class TestEnsureGraphContext:
+    """Unit tests for the _ensure_graph_context() idempotent helper."""
+
+    def test_idempotent_when_graph_already_loaded(self):
+        """Returns immediately if graph_ctx is already set — no build triggered."""
+        existing_ctx = _make_graph_context()
+        args = argparse.Namespace(no_graph=False)
+
+        ctx, enriched = _ensure_graph_context(
+            existing_ctx, True, args, Path("/fake/scope"), None,
+        )
+        assert ctx is existing_ctx
+        assert enriched is True
+
+    def test_skips_when_no_graph_flag(self):
+        """--no-graph prevents first-run build."""
+        args = argparse.Namespace(no_graph=True)
+        ctx, enriched = _ensure_graph_context(
+            None, False, args, Path("/fake/scope"), None,
+        )
+        assert ctx is None
+        assert enriched is False
+
+    def test_skips_when_no_search_scope(self):
+        """No search scope means nothing to build from."""
+        args = argparse.Namespace(no_graph=False)
+        ctx, enriched = _ensure_graph_context(None, False, args, None, None)
+        assert ctx is None
+        assert enriched is False
+
+    def test_build_failure_is_silent(self, caplog):
+        """If build_graph_context raises, logs DEBUG and returns unchanged."""
+        args = argparse.Namespace(no_graph=False)
+        with mock_patch(
+            "scatter.analyzers.graph_enrichment.build_graph_context",
+            side_effect=RuntimeError("boom"),
+        ):
+            with caplog.at_level(logging.DEBUG):
+                ctx, enriched = _ensure_graph_context(
+                    None, False, args, Path("/fake/scope"), object(),
+                )
+        assert ctx is None
+        assert enriched is False
+        assert "boom" in caplog.text
+
+    def test_build_success_sets_enriched(self):
+        """Successful build returns graph_ctx and sets graph_enriched=True."""
+        fake_ctx = _make_graph_context()
+        args = argparse.Namespace(no_graph=False)
+        with mock_patch(
+            "scatter.analyzers.graph_enrichment.build_graph_context",
+            return_value=fake_ctx,
+        ):
+            ctx, enriched = _ensure_graph_context(
+                None, False, args, Path("/fake/scope"), object(),
+            )
+        assert ctx is fake_ctx
+        assert enriched is True
+
+
+class TestFirstRunIntegration:
+    """CLI integration: first run with no cache builds graph and enriches.
+
+    Note: these tests use --search-scope . which reads the repo's .scatter/ cache
+    if it exists. The first-run build path is exercised when no cache is present;
+    if a cache already exists (from prior runs or other tests), the test still passes
+    because graph_enriched=True either way (auto-load or first-run build).
+    """
+
+    def test_first_run_builds_and_enriches(self, tmp_path):
+        """First run without any cache should build graph and enrich results."""
+        out = tmp_path / "result.json"
+        result = subprocess.run(
+            [sys.executable, "-m", "scatter",
+             "--target-project", "./GalaxyWorks.Data/GalaxyWorks.Data.csproj",
+             "--search-scope", ".",
+             "--output-format", "json", "--output-file", str(out)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        data = json.loads(out.read_text())
+        assert data["metadata"]["graph_enriched"] is True, \
+            "First run should build graph and enrich"
+        # Verify enrichment fields present on results
+        if data.get("all_results"):
+            first = data["all_results"][0]
+            assert "CouplingScore" in first
+
+    def test_first_run_no_graph_skips_build(self, tmp_path):
+        """--no-graph on first run should not build or enrich."""
+        out = tmp_path / "result.json"
+        result = subprocess.run(
+            [sys.executable, "-m", "scatter",
+             "--target-project", "./GalaxyWorks.Data/GalaxyWorks.Data.csproj",
+             "--search-scope", ".", "--no-graph",
+             "--output-format", "json", "--output-file", str(out)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        data = json.loads(out.read_text())
+        assert data["metadata"]["graph_enriched"] is False
