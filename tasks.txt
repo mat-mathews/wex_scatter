@@ -976,6 +976,89 @@ PHASE 5 TESTING
 - [ ] Integration test: watch mode detects file changes and re-runs
 
 ============================================================================
+INITIATIVE 8: PRODUCTION READINESS — CLI DECOMPOSITION, PACKAGING & CI (v2.0)
+Goal: Make scatter installable, testable in CI, and containerized.
+Dependency: None (can start immediately, but Tier 2 CI/CD gates depend on this).
+============================================================================
+
+PHASE 1: DECOMPOSE __main__.py MONOLITH (HIGH PRIORITY — prerequisite for Phases 2-3)
+Target: Reduce __main__.py from ~1161 lines to ~50-100 lines (parse args, load config, dispatch).
+- [ ] Extract CLI argument parser into scatter/cli/parser.py (build_parser() → argparse.ArgumentParser)
+- [ ] Extract branch-analysis mode into scatter/cli/commands/branch.py
+- [ ] Extract target-project mode into scatter/cli/commands/target.py
+- [ ] Extract stored-procedure mode into scatter/cli/commands/sproc.py
+- [ ] Extract impact/SOW mode into scatter/cli/commands/impact.py
+- [ ] Extract graph-only mode into scatter/cli/commands/graph.py
+- [ ] Extract graph orchestration (build/cache/patch) into scatter/cli/graph_orchestration.py
+- [ ] Extract summarization orchestration (_summarize_consumer_files) into scatter/cli/summarization.py
+- [ ] Slim __main__.py to: parse args → load config → dispatch to command
+- [ ] Verify `python -m scatter` and `python scatter.py` still work identically
+- [ ] Add tests for each extracted command module (at least 1 per module)
+- [ ] No behavioral changes — pure refactor, all existing tests still pass
+
+PHASE 2: PYTHON PACKAGING WITH UV (HIGH PRIORITY)
+Target: `uv run scatter` works. `uv sync` installs everything. No more manual venv management.
+- [x] Create pyproject.toml with pytest and coverage config
+- [x] Pin dependency versions in requirements.txt (compatible ranges)
+- [x] Add missing implicit dependencies (PyYAML, pandas, pytest, pytest-cov)
+- [ ] Install/verify uv available (curl -LsSf https://astral.sh/uv/install.sh | sh)
+- [ ] Run `uv init` to scaffold full pyproject.toml, then customize:
+      - Project metadata (name="wex-scatter", version from __version__.py, description, license)
+      - Dependencies: google-generativeai, GitPython, PyYAML
+      - Dev dependency group: pytest, pytest-cov, ruff, mypy
+      - [project.scripts] entry point: scatter = "scatter.__main__:main"
+- [ ] Run `uv add google-generativeai gitpython pyyaml` to populate deps + generate uv.lock
+- [ ] Run `uv add --group dev pytest pytest-cov ruff mypy` for dev tooling
+- [ ] Add py.typed marker (PEP 561) for type-checking support
+- [ ] Delete requirements.txt (replaced by pyproject.toml + uv.lock)
+- [ ] Commit uv.lock to repo (reproducible installs)
+- [ ] Add .python-version file (e.g., 3.12) for uv to auto-detect
+- [ ] Verify `uv sync` creates venv + installs all deps
+- [ ] Verify `uv run scatter --version` works
+- [ ] Verify `uv run pytest` runs all tests
+- [ ] Update CLAUDE.md setup instructions to use uv
+
+PHASE 3: CI PIPELINE (HIGH PRIORITY)
+Target: GitHub Actions runs tests, linting, and type checking on every push/PR.
+- [x] Create .github/workflows/ci.yml with:
+      - Install uv via `astral-sh/setup-uv@v4` action
+      - Test stage: pytest with coverage reporting (74.45% baseline, fail_under=70%)
+      - Matrix: Python 3.11, 3.12
+      - Trigger: push to main + all PRs
+      - [ ] Add lint stage: `uv run ruff check scatter/` + `uv run ruff format --check scatter/`
+      - [ ] Add type check stage: `uv run mypy scatter/`
+      - [ ] Add uv cache via actions/cache (uv has built-in cache dir)
+      - [ ] Migrate CI to use uv (astral-sh/setup-uv@v4) once Phase 2 packaging complete
+- [ ] Create conftest.py with shared fixtures:
+      - REPO_ROOT path
+      - Sample graph builder (used by multiple test files)
+      - Temp directory fixtures for cache tests
+- [ ] Configure ruff baseline (pyproject.toml [tool.ruff])
+- [ ] Configure mypy baseline (pyproject.toml [tool.mypy]) — allow initial error baseline
+- [ ] All 641+ existing tests pass in CI
+- [ ] Badge in README for CI status
+
+PHASE 4: DOCKER SUPPORT (MEDIUM PRIORITY)
+Target: `docker build -t scatter .` and run against mounted repos.
+- [ ] Create Dockerfile:
+      - Multi-stage build (builder + runtime)
+      - Based on python:3.12-slim
+      - Install uv in builder stage (COPY --from=ghcr.io/astral-sh/uv:latest)
+      - `uv sync --frozen --no-dev` for production deps only
+      - Default entrypoint: scatter (via uv run or direct venv path)
+      - Mount point for repo-under-analysis at /workspace
+      - Git installed in runtime image (needed for git analysis + cache invalidation)
+- [ ] Create .dockerignore (exclude .git, __pycache__, .venv, test data, benchmarks, docs)
+- [ ] Verify: docker run -v /path/to/repo:/workspace scatter --target-project ... works
+- [ ] Add Docker usage example to README
+
+PHASE 5: INITIATIVE 8 TESTING
+- [ ] Integration test: `scatter` CLI entry point invoked via subprocess
+- [ ] Integration test: each command module independently callable
+- [ ] Test: `uv run scatter --version` works after fresh `uv sync`
+- [ ] Test: Docker build succeeds (can be manual or CI)
+
+============================================================================
 PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-14)
 ============================================================================
 
@@ -1088,6 +1171,7 @@ IN PROGRESS (v2.0 — reprioritized 2026-03-14):
 
 NOT STARTED (v2.0):
   Initiative 7 — CI/CD Integration & Workflow (v2.0 Phase 5)
+  Initiative 8 — Production Readiness: CLI Decomposition, Packaging & CI (v2.0)
 
 RECOMMENDED EXECUTION ORDER (reprioritized 2026-03-13):
 
@@ -1142,34 +1226,45 @@ RECOMMENDED EXECUTION ORDER (reprioritized 2026-03-13):
       results on very first run. --no-graph skips build. 7 tests.
       Ref: docs/TRANSPARENT_GRAPH_PHASE_C_PLAN.md
 
+  TIER 1.9: PRODUCTION READINESS (prerequisite for CI/CD governance)
+  18. Initiative 8 Phase 1: Decompose __main__.py monolith (HIGH — 1161-line god
+      module into cli/parser + cli/commands/* + cli/graph_orchestration; prerequisite
+      for testable CI and clean packaging)
+  19. Initiative 8 Phase 2: Python packaging with uv — pyproject.toml + uv.lock,
+      `uv run scatter`, dev dependency groups, delete requirements.txt
+  20. Initiative 8 Phase 3: CI pipeline — GitHub Actions (pytest + ruff + mypy,
+      Python 3.10/3.11/3.12 matrix, shared conftest.py, coverage reporting)
+  21. Initiative 8 Phase 4: Docker support — multi-stage Dockerfile, .dockerignore,
+      mount /workspace for repo-under-analysis
+
   TIER 2: CI/CD GOVERNANCE (makes scatter infrastructure, not optional)
-  18. Initiative 7: CI/CD exit codes --fail-on (HIGH — turns scatter into an
+  22. Initiative 7: CI/CD exit codes --fail-on (HIGH — turns scatter into an
       architecture governance gate; cycles, risk:high, coupling:N, consumers:N)
-  19. Initiative 7: PR blast radius comments GitHub/ADO (HIGH — visible to reviewers
+  23. Initiative 7: PR blast radius comments GitHub/ADO (HIGH — visible to reviewers
       without anyone remembering to run scatter; combined with skills = two always-on
       touchpoints)
 
   TIER 3: STRATEGIC FEATURES (do after adoption is established)
-  20. Baselines + diff reports (Initiative 6 Phase 6 — needs real usage data first;
+  24. Baselines + diff reports (Initiative 6 Phase 6 — needs real usage data first;
       without baseline history from actual users, diff engine is built against
       synthetic data)
-  21. Extraction planning mode (HIGH strategic value but needs graph integration
+  25. Extraction planning mode (HIGH strategic value but needs graph integration
       from #11 and real-world validation of coupling metrics)
-  22. HTML reports (polish — markdown already covers "paste into ticket" workflow;
+  26. HTML reports (polish — markdown already covers "paste into ticket" workflow;
       vis-network.js pattern from CODEGRAPHCONTEXT_COMPARISON is good reference)
 
   TIER 4: DEFERRED (build when concrete demand materializes)
-  23. Initiative 6 Phase 5: Unified AnalysisReport data model (internal refactor
+  27. Initiative 6 Phase 5: Unified AnalysisReport data model (internal refactor
       no user sees; do when a 5th output format is needed or schema inconsistency
       blocks something concrete)
-  24. Watch mode (graph cache makes repeat runs <2s; no user has asked for this)
-  25. Additional AI providers — Anthropic, OpenAI, Azure, Ollama (Gemini works;
+  28. Watch mode (graph cache makes repeat runs <2s; no user has asked for this)
+  29. Additional AI providers — Anthropic, OpenAI, Azure, Ollama (Gemini works;
       build WEX AI Platform provider when it exists; others are speculative)
-  26. AI response caching + token budget manager (premature optimization; AI calls
+  30. AI response caching + token budget manager (premature optimization; AI calls
       are infrequent and cheap)
-  27. MCP server (per CLAUDE_INTEGRATION_EVALUATION: skills first, MCP when
+  31. MCP server (per CLAUDE_INTEGRATION_EVALUATION: skills first, MCP when
       cross-client demand materializes)
-  28. Streaming progress / tqdm (nice DX but graph cache means most runs <2s)
+  32. Streaming progress / tqdm (nice DX but graph cache means most runs <2s)
 
 KEY FINDINGS:
   1. All 5 steps of find_consumers() are now parallelized (steps 2-5 use

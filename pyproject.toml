@@ -1,0 +1,12 @@
+[tool.pytest.ini_options]
+testpaths = ["."]
+python_files = "test_*.py"
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["scatter"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+fail_under = 70
