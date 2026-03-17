@@ -12,7 +12,7 @@ from unittest.mock import patch as mock_patch
 
 import pytest
 
-from scatter.__main__ import _ensure_graph_context
+from scatter.cli import _ensure_graph_context
 
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.core.models import EnrichedConsumer
@@ -336,21 +336,21 @@ class TestAutoGraphLoading:
 class TestBuildMetadataGraphEnriched:
 
     def test_graph_enriched_true(self):
-        from scatter.__main__ import _build_metadata
+        from scatter.cli import _build_metadata
         import argparse
         args = argparse.Namespace(verbose=False, output_format="json")
         metadata = _build_metadata(args, Path("/fake"), 0.0, graph_enriched=True)
         assert metadata['graph_enriched'] is True
 
     def test_graph_enriched_false(self):
-        from scatter.__main__ import _build_metadata
+        from scatter.cli import _build_metadata
         import argparse
         args = argparse.Namespace(verbose=False, output_format="json")
         metadata = _build_metadata(args, Path("/fake"), 0.0, graph_enriched=False)
         assert metadata['graph_enriched'] is False
 
     def test_graph_enriched_default(self):
-        from scatter.__main__ import _build_metadata
+        from scatter.cli import _build_metadata
         import argparse
         args = argparse.Namespace(verbose=False, output_format="json")
         metadata = _build_metadata(args, Path("/fake"), 0.0)
@@ -423,63 +423,51 @@ class TestJsonGraphEnrichedField:
 # ---------------------------------------------------------------------------
 
 class TestEnsureGraphContext:
-    """Unit tests for the _ensure_graph_context() idempotent helper."""
+    """Unit tests for the _ensure_graph_context() idempotent helper.
 
-    def test_idempotent_when_graph_already_loaded(self):
+    _ensure_graph_context mutates ctx.graph_ctx and ctx.graph_enriched in place.
+    """
+
+    def test_idempotent_when_graph_already_loaded(self, make_mode_context):
         """Returns immediately if graph_ctx is already set — no build triggered."""
         existing_ctx = _make_graph_context()
-        args = argparse.Namespace(no_graph=False)
+        mode_ctx = make_mode_context(graph_ctx=existing_ctx, graph_enriched=True)
 
-        ctx, enriched = _ensure_graph_context(
-            existing_ctx, True, args, Path("/fake/scope"), None,
-        )
-        assert ctx is existing_ctx
-        assert enriched is True
+        _ensure_graph_context(mode_ctx)
+        assert mode_ctx.graph_ctx is existing_ctx
+        assert mode_ctx.graph_enriched is True
 
-    def test_skips_when_no_graph_flag(self):
+    def test_skips_when_no_graph_flag(self, make_mode_context):
         """--no-graph prevents first-run build."""
-        args = argparse.Namespace(no_graph=True)
-        ctx, enriched = _ensure_graph_context(
-            None, False, args, Path("/fake/scope"), None,
-        )
-        assert ctx is None
-        assert enriched is False
+        mode_ctx = make_mode_context(no_graph=True)
+        _ensure_graph_context(mode_ctx)
+        assert mode_ctx.graph_ctx is None
+        assert mode_ctx.graph_enriched is False
 
-    def test_skips_when_no_search_scope(self):
-        """No search scope means nothing to build from."""
-        args = argparse.Namespace(no_graph=False)
-        ctx, enriched = _ensure_graph_context(None, False, args, None, None)
-        assert ctx is None
-        assert enriched is False
-
-    def test_build_failure_is_silent(self, caplog):
+    def test_build_failure_is_silent(self, make_mode_context, caplog):
         """If build_graph_context raises, logs DEBUG and returns unchanged."""
-        args = argparse.Namespace(no_graph=False)
+        mode_ctx = make_mode_context(no_graph=False)
         with mock_patch(
             "scatter.analyzers.graph_enrichment.build_graph_context",
             side_effect=RuntimeError("boom"),
         ):
             with caplog.at_level(logging.DEBUG):
-                ctx, enriched = _ensure_graph_context(
-                    None, False, args, Path("/fake/scope"), object(),
-                )
-        assert ctx is None
-        assert enriched is False
+                _ensure_graph_context(mode_ctx)
+        assert mode_ctx.graph_ctx is None
+        assert mode_ctx.graph_enriched is False
         assert "boom" in caplog.text
 
-    def test_build_success_sets_enriched(self):
+    def test_build_success_sets_enriched(self, make_mode_context):
         """Successful build returns graph_ctx and sets graph_enriched=True."""
         fake_ctx = _make_graph_context()
-        args = argparse.Namespace(no_graph=False)
+        mode_ctx = make_mode_context(no_graph=False)
         with mock_patch(
             "scatter.analyzers.graph_enrichment.build_graph_context",
             return_value=fake_ctx,
         ):
-            ctx, enriched = _ensure_graph_context(
-                None, False, args, Path("/fake/scope"), object(),
-            )
-        assert ctx is fake_ctx
-        assert enriched is True
+            _ensure_graph_context(mode_ctx)
+        assert mode_ctx.graph_ctx is fake_ctx
+        assert mode_ctx.graph_enriched is True
 
 
 class TestFirstRunIntegration:

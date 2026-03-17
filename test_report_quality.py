@@ -271,7 +271,7 @@ class TestMetadataRedaction:
     """Verify _build_metadata does not leak sensitive CLI args."""
 
     def test_google_api_key_excluded(self):
-        from scatter.__main__ import _build_metadata
+        from scatter.cli import _build_metadata
         args = argparse.Namespace(
             target_project='x',
             google_api_key='SECRET_KEY_12345',
@@ -282,7 +282,7 @@ class TestMetadataRedaction:
         assert 'SECRET_KEY_12345' not in json.dumps(meta)
 
     def test_non_sensitive_args_preserved(self):
-        from scatter.__main__ import _build_metadata
+        from scatter.cli import _build_metadata
         args = argparse.Namespace(
             target_project='Lib.Core',
             google_api_key='SECRET',

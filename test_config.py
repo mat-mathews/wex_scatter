@@ -201,7 +201,7 @@ class TestBuildCliOverrides:
 
     def test_no_flags_produces_empty(self):
         """When user passes no relevant flags, overrides dict is empty."""
-        from scatter.__main__ import _build_cli_overrides
+        from scatter.cli_parser import _build_cli_overrides
         args = Namespace(
             google_api_key=None,
             gemini_model=None,
@@ -212,7 +212,7 @@ class TestBuildCliOverrides:
 
     def test_explicit_default_value_still_overrides(self):
         """User explicitly passing the default value IS captured as override."""
-        from scatter.__main__ import _build_cli_overrides
+        from scatter.cli_parser import _build_cli_overrides
         args = Namespace(
             google_api_key=None,
             gemini_model="gemini-1.5-flash",  # same as config default
@@ -225,7 +225,7 @@ class TestBuildCliOverrides:
 
     def test_all_flags_populated(self):
         """All override-able flags captured."""
-        from scatter.__main__ import _build_cli_overrides
+        from scatter.cli_parser import _build_cli_overrides
         args = Namespace(
             google_api_key="my-key",
             gemini_model="gemini-2.0-flash",

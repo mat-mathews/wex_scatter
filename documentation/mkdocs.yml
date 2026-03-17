@@ -1,0 +1,60 @@
+site_name: Scatter
+site_description: .NET dependency analyzer — trace blast radius across projects
+site_url: ""
+repo_url: ""
+use_directory_urls: false
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+  palette:
+    scheme: slate
+    primary: indigo
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [..]
+          options:
+            show_source: true
+            show_root_heading: true
+            heading_level: 2
+            members_order: source
+            docstring_style: google
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Usage Guide: usage.md
+  - Configuration: configuration.md
+  - API Reference:
+      - Overview: api/index.md
+      - Core Models: api/core.md
+      - Analyzers: api/analyzers.md
+      - Scanners: api/scanners.md
+      - Reports: api/reports.md
+      - Graph Store: api/store.md
+      - AI Integration: api/ai.md
+      - Configuration: api/config.md

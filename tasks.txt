@@ -1316,3 +1316,69 @@ KEY FINDINGS:
       _ensure_graph_context() idempotent helper at all 4 enrichment sites. Graph built and
       cached on first analysis run, results enriched immediately. --no-graph escape hatch.
       7 tests. 637 total tests (all pass, 1 xfail). All 3 transparent graph phases complete.
+  23. Leadership design review completed (2026-03-17): Priya (Architect) + Marcus (Principal)
+      reviewed full codebase. Key findings: untyped result dicts, __init__.py over-exports,
+      double file read in graph builder, no E2E CLI tests, no AI call budget cap, hardcoded
+      pipeline names, graph._nodes accessed directly bypassing public API.
+      Ref: docs/LEADERSHIP_DESIGN_REVIEW.md
+
+============================================================================
+INITIATIVE 7: STRUCTURAL IMPROVEMENTS (Leadership Review Findings)
+Ref: docs/LEADERSHIP_DESIGN_REVIEW.md (2026-03-17)
+Priority: Address during or immediately after feature/decompose-main
+============================================================================
+
+PHASE 1: Type Safety & API Surface (HIGH PRIORITY — highest leverage)
+----------------------------------------------------------------------
+- [ ] Create ConsumerResult dataclass to replace Dict[str, Union[str, Dict, List[str]]]
+      Replace all string-key dict construction in v1_bridge._process_consumer_summaries_and_append_results
+      Update all 7 reporters to consume the typed dataclass instead of dict key lookups
+- [ ] Fix lowercase `any` type hints in parallel.py (lines 295, 381-385) → typing.Any
+- [ ] Add __contains__ method to DependencyGraph (or has_node(name) -> bool)
+      Replace all graph._nodes direct access in graph_builder.py (6 callsites)
+- [ ] Extract hardcoded "cdh-batchprocesses-az-cd" from v1_bridge.py into config
+
+PHASE 2: CLI Subcommands (HIGH PRIORITY — enables independent mode testing)
+----------------------------------------------------------------------
+- [ ] Introduce argparse subcommands: scatter git, scatter target, scatter sproc,
+      scatter impact, scatter graph
+- [ ] Extract shared setup (config, AI provider, solution cache, pipeline CSV) into
+      a common setup() function
+- [ ] Each subcommand gets its own handler — eliminate if/elif chain in __main__.py
+- [ ] Move impact mode and graph mode output dispatch into their respective handlers
+      (currently inline in __main__.py)
+
+PHASE 3: Graph Builder Performance (MEDIUM PRIORITY)
+----------------------------------------------------------------------
+- [ ] Eliminate double file read: cache extracted identifiers (dict[Path, set[str]])
+      during step 4, reuse in step 5c type_usage edge construction
+- [ ] Drop indent=2 from graph cache JSON serialization (graph_cache.py save_graph)
+- [ ] Evaluate compact serialization (msgpack or non-indented JSON) for large graphs
+- [ ] Fix parallel file discovery overlapping directory dedup — filter child dirs
+      before chunking instead of deduping results after
+
+PHASE 4: Test Infrastructure (MEDIUM PRIORITY — refactoring safety net)
+----------------------------------------------------------------------
+- [ ] Add end-to-end CLI tests: invoke main() with real args against sample .NET
+      projects, capture stdout/stderr, assert output format correctness
+- [ ] Add equivalence test: graph builder and consumer analyzer produce same consumer
+      set for known inputs (shared fixture validates no drift)
+- [ ] Move test files into tests/ directory (tests/unit/, tests/integration/)
+- [ ] Wire benchmark suite into CI as a non-blocking performance regression check
+
+PHASE 5: AI Call Safety (MEDIUM PRIORITY)
+----------------------------------------------------------------------
+- [ ] Add --max-ai-calls flag (default: 50) to cap summarization API calls
+- [ ] Log total planned API calls before starting summarization loop
+- [ ] Add per-call timeout to AI provider (prevent individual call hangs)
+- [ ] Add exponential backoff on AI call failures (currently retries immediately)
+
+PHASE 6: Cleanup (LOW PRIORITY — do when convenient)
+----------------------------------------------------------------------
+- [ ] Gut __init__.py re-exports: move to explicit imports everywhere
+      Create scatter.api module with stable public surface if needed
+- [ ] Delete _legacy.py wrappers (configure_gemini, gemini_model, etc.)
+- [ ] Remove types.SimpleNamespace shim in _ensure_graph_context — make
+      build_graph_context accept explicit parameters
+- [ ] Converge consumer_analyzer and graph_builder on shared ReferenceResolver
+      for .csproj ProjectReference resolution

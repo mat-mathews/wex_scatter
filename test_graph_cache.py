@@ -383,7 +383,7 @@ class TestCLIArgParsing:
 
     def test_rebuild_graph_maps_to_config(self, tmp_path):
         """--rebuild-graph CLI flag flows through to config.graph.rebuild."""
-        from scatter.__main__ import _build_cli_overrides
+        from scatter.cli_parser import _build_cli_overrides
         import argparse
         ns = argparse.Namespace(
             google_api_key=None,
