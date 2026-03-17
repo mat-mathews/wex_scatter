@@ -521,7 +521,7 @@ class TestNarrativeSectionsAbsent:
 class TestCLIDispatch:
     def test_require_output_file_exits_for_json(self):
         """_require_output_file exits when --output-file is missing."""
-        from scatter.__main__ import _require_output_file
+        from scatter.cli import _require_output_file
 
         class FakeArgs:
             output_file = None
@@ -532,7 +532,7 @@ class TestCLIDispatch:
 
     def test_require_output_file_returns_path(self):
         """_require_output_file returns Path when --output-file is set."""
-        from scatter.__main__ import _require_output_file
+        from scatter.cli import _require_output_file
 
         class FakeArgs:
             output_file = "/tmp/report.json"

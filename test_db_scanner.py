@@ -374,7 +374,7 @@ db:
 
     def test_include_db_cli_override(self, tmp_path):
         """--include-db CLI flag flows through to config.db.include_db_edges."""
-        from scatter.__main__ import _build_cli_overrides
+        from scatter.cli_parser import _build_cli_overrides
         import argparse
 
         ns = argparse.Namespace(
