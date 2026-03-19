@@ -35,7 +35,7 @@ class TestScatterConfig:
         """Defaults are sensible."""
         config = ScatterConfig()
         assert config.ai.default_provider == "gemini"
-        assert config.ai.gemini_model == "gemini-1.5-flash"
+        assert config.ai.gemini_model == "gemini-2.0-flash"
         assert config.max_depth == 2
         assert config.disable_multiprocessing is False
         assert config.max_workers is None
@@ -135,7 +135,7 @@ class TestScatterConfig:
         (tmp_path / ".scatter.yaml").write_text("ai:\n  default_provider: anthropic\n")
         config = load_config(repo_root=tmp_path)
         assert config.ai.default_provider == "anthropic"
-        assert config.ai.gemini_model == "gemini-1.5-flash"
+        assert config.ai.gemini_model == "gemini-2.0-flash"
         assert config.max_depth == 2
 
     def test_exclude_patterns_from_config(self, tmp_path):
@@ -215,12 +215,12 @@ class TestBuildCliOverrides:
         from scatter.cli_parser import _build_cli_overrides
         args = Namespace(
             google_api_key=None,
-            gemini_model="gemini-1.5-flash",  # same as config default
+            gemini_model="gemini-2.0-flash",  # same as config default
             disable_multiprocessing=False,
             max_depth=2,  # same as config default
         )
         overrides = _build_cli_overrides(args)
-        assert overrides["ai.gemini_model"] == "gemini-1.5-flash"
+        assert overrides["ai.gemini_model"] == "gemini-2.0-flash"
         assert overrides["search.max_depth"] == 2
 
     def test_all_flags_populated(self):

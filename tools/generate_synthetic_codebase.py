@@ -15,6 +15,7 @@ import shutil
 import sys
 import textwrap
 import time
+import uuid
 from pathlib import Path
 
 
@@ -57,6 +58,18 @@ FRAMEWORKS = ["net8.0", "net6.0", "net48", "v4.7.2", "v4.6.1"]
 FRAMEWORK_WEIGHTS = [0.30, 0.20, 0.25, 0.15, 0.10]
 
 OUTPUT_TYPES = ["Library", "Exe", "Library", "Library", "Library"]  # mostly libraries
+
+# Solution naming — mimics real .NET team/domain solutions
+SOLUTION_PREFIXES = [
+    "GalaxyWorks", "Portal", "Billing", "Auth", "Reporting",
+    "Integration", "Notifications", "Admin", "Scheduling",
+    "DataAccess", "Security", "Workflow", "BatchJobs",
+]
+
+SOLUTION_SUFFIXES = ["", ".All", ".Build", ".CI", ".Deploy"]
+
+# The standard GUID for C# projects in .sln files
+CSHARP_PROJECT_TYPE_GUID = "FAE04EC0-301F-11D3-BF4B-00C04F79EFBC"
 
 SPROC_PREFIXES = ["sp_", "usp_"]
 SPROC_VERBS = ["Get", "Insert", "Update", "Delete", "Find", "Search", "Process", "Validate"]
@@ -596,6 +609,170 @@ def generate_type_usage_file(
 
 
 # ---------------------------------------------------------------------------
+# Solution file generation
+# ---------------------------------------------------------------------------
+
+def _make_guid() -> str:
+    """Generate a deterministic-looking GUID string (seeded by random)."""
+    return str(uuid.UUID(int=random.getrandbits(128))).upper()
+
+
+def generate_sln_content(solution_name: str, project_entries: list[tuple[str, str]]) -> str:
+    """Generate a .sln file.
+
+    project_entries is a list of (project_name, relative_csproj_path) tuples.
+    """
+    lines = [
+        "",
+        "Microsoft Visual Studio Solution File, Format Version 12.00",
+        "# Visual Studio Version 17",
+        "VisualStudioVersion = 17.8.34525.116",
+        "MinimumVisualStudioVersion = 10.0.40219.1",
+    ]
+
+    project_guids = []
+    for proj_name, rel_path in project_entries:
+        guid = _make_guid()
+        project_guids.append(guid)
+        lines.append(
+            f'Project("{{{CSHARP_PROJECT_TYPE_GUID}}}") = "{proj_name}", '
+            f'"{rel_path}", "{{{guid}}}"'
+        )
+        lines.append("EndProject")
+
+    # Global section with build configurations
+    lines.append("Global")
+    lines.append("\tGlobalSection(SolutionConfigurationPlatforms) = preSolution")
+    lines.append("\t\tDebug|Any CPU = Debug|Any CPU")
+    lines.append("\t\tRelease|Any CPU = Release|Any CPU")
+    lines.append("\tEndGlobalSection")
+    lines.append("\tGlobalSection(ProjectConfigurationPlatforms) = postSolution")
+    for guid in project_guids:
+        lines.append(f"\t\t{{{guid}}}.Debug|Any CPU.ActiveCfg = Debug|Any CPU")
+        lines.append(f"\t\t{{{guid}}}.Debug|Any CPU.Build.0 = Debug|Any CPU")
+        lines.append(f"\t\t{{{guid}}}.Release|Any CPU.ActiveCfg = Release|Any CPU")
+        lines.append(f"\t\t{{{guid}}}.Release|Any CPU.Build.0 = Release|Any CPU")
+    lines.append("\tEndGlobalSection")
+    lines.append("EndGlobal")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+def generate_solutions(
+    output_dir: Path,
+    project_names: list[str],
+    project_refs: dict[str, list[str]],
+) -> dict:
+    """Generate .sln files that group projects into realistic solutions.
+
+    Creates three tiers of solutions:
+    1. Domain solutions — each domain (first dot-segment) gets a solution
+       containing its projects plus their direct dependencies.
+    2. Master solutions — 1-3 large solutions containing 30-50% of all projects,
+       like the "everything" solution every monolith has.
+    3. Team solutions — small random groupings of 5-15 projects with deps,
+       simulating team-scoped build solutions.
+
+    Returns stats dict with counts.
+    """
+    num_projects = len(project_names)
+    solutions_written = 0
+    total_sln_bytes = 0
+
+    # --- Tier 1: Domain solutions ---
+    # Group projects by first dot-segment (e.g., "Billing.Core" -> "Billing")
+    domain_groups: dict[str, list[str]] = {}
+    for pname in project_names:
+        domain = pname.split(".")[0]
+        domain_groups.setdefault(domain, []).append(pname)
+
+    for domain, members in domain_groups.items():
+        if len(members) < 2:
+            continue  # skip trivial single-project domains
+
+        # Include direct dependencies so the solution actually builds
+        all_projects = set(members)
+        for m in members:
+            for dep in project_refs.get(m, []):
+                all_projects.add(dep)
+
+        entries = [
+            (p, f"{p}\\{p}.csproj") for p in sorted(all_projects)
+        ]
+
+        sln_name = domain
+        suffix = random.choice(SOLUTION_SUFFIXES)
+        content = generate_sln_content(f"{sln_name}{suffix}", entries)
+        sln_path = output_dir / f"{sln_name}{suffix}.sln"
+        sln_path.write_text(content, encoding="utf-8")
+        solutions_written += 1
+        total_sln_bytes += len(content.encode())
+
+    # --- Tier 2: Master solutions (1-3 big ones) ---
+    num_master = min(3, max(1, num_projects // 100))
+    for i in range(num_master):
+        # Each master solution gets 30-50% of all projects
+        sample_size = random.randint(
+            int(num_projects * 0.30), int(num_projects * 0.50)
+        )
+        sample_size = min(sample_size, num_projects)
+        master_projects = set(random.sample(project_names, sample_size))
+
+        # Pull in all deps so it's buildable
+        for p in list(master_projects):
+            for dep in project_refs.get(p, []):
+                master_projects.add(dep)
+
+        entries = [
+            (p, f"{p}\\{p}.csproj") for p in sorted(master_projects)
+        ]
+
+        name = f"Master{'.Build' if i == 0 else f'.Build{i + 1}'}"
+        content = generate_sln_content(name, entries)
+        sln_path = output_dir / f"{name}.sln"
+        sln_path.write_text(content, encoding="utf-8")
+        solutions_written += 1
+        total_sln_bytes += len(content.encode())
+
+    # --- Tier 3: Team solutions (small groupings) ---
+    num_team_solutions = max(3, num_projects // 30)
+    remaining = list(project_names)
+    random.shuffle(remaining)
+
+    for i in range(num_team_solutions):
+        if not remaining:
+            break
+
+        team_size = random.randint(5, min(15, len(remaining)))
+        team_projects = set(remaining[:team_size])
+        remaining = remaining[team_size:]
+
+        # Pull in deps
+        for p in list(team_projects):
+            for dep in project_refs.get(p, []):
+                team_projects.add(dep)
+
+        entries = [
+            (p, f"{p}\\{p}.csproj") for p in sorted(team_projects)
+        ]
+
+        # Pick a name from the team's projects
+        representative = sorted(team_projects)[0].split(".")[0]
+        name = f"{representative}.Team{i + 1}"
+        content = generate_sln_content(name, entries)
+        sln_path = output_dir / f"{name}.sln"
+        sln_path.write_text(content, encoding="utf-8")
+        solutions_written += 1
+        total_sln_bytes += len(content.encode())
+
+    return {
+        "sln_files": solutions_written,
+        "sln_bytes": total_sln_bytes,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Main generation logic
 # ---------------------------------------------------------------------------
 
@@ -763,11 +940,16 @@ def generate_codebase(
             total_cs_files += 1
             total_bytes += len(content.encode())
 
+    # Generate solution files
+    sln_stats = generate_solutions(output_dir, project_names, project_refs)
+    total_bytes += sln_stats["sln_bytes"]
+
     return {
         "projects": num_projects,
         "csproj_files": total_csproj_files,
         "cs_files": total_cs_files,
-        "total_files": total_csproj_files + total_cs_files,
+        "sln_files": sln_stats["sln_files"],
+        "total_files": total_csproj_files + total_cs_files + sln_stats["sln_files"],
         "total_bytes": total_bytes,
         "total_types": len(all_types),
         "total_sprocs": len(sproc_pool),
@@ -846,6 +1028,7 @@ def main():
     print(f"  Projects:     {stats['projects']}")
     print(f"  .csproj files: {stats['csproj_files']}")
     print(f"  .cs files:    {stats['cs_files']}")
+    print(f"  .sln files:   {stats['sln_files']}")
     print(f"  Total size:   {stats['total_bytes'] / 1024 / 1024:.1f} MB")
     print(f"  Unique types: {stats['total_types']}")
     print(f"  Sproc pool:   {stats['total_sprocs']}")

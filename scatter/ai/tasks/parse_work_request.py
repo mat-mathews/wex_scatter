@@ -2,7 +2,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 from scatter.core.models import AnalysisTarget, CONFIDENCE_HIGH
 from scatter.core.parallel import find_files_with_pattern_parallel
@@ -12,15 +12,23 @@ def parse_work_request(
     sow_text: str,
     ai_provider,
     search_scope: Path,
+    codebase_index=None,
 ) -> List[AnalysisTarget]:
     """Parse SOW text into structured targets, resolving project names to csproj paths on disk."""
     if not ai_provider:
         logging.error("AI provider required for work request parsing.")
         return []
 
-    raw_targets = parse_work_request_with_model(ai_provider.model, sow_text)
+    raw_targets = parse_work_request_with_model(
+        ai_provider.model, sow_text, codebase_index=codebase_index,
+    )
     if not raw_targets:
         return []
+
+    # Build set of names present in the index for validation
+    index_names: Optional[Set[str]] = None
+    if codebase_index and codebase_index.text:
+        index_names = _extract_index_names(codebase_index.text)
 
     # Resolve project names to .csproj paths
     csproj_cache: Optional[List[Path]] = None
@@ -32,9 +40,18 @@ def parse_work_request(
         class_name = item.get("class_name")
         method_name = item.get("method_name")
         confidence = float(item.get("confidence", CONFIDENCE_HIGH))
+        match_evidence = item.get("match_evidence")
 
         if not name:
             continue
+
+        # Validate name against index — halve confidence for names not found
+        if index_names is not None and name not in index_names:
+            logging.warning(
+                f"Target '{name}' not found in codebase index — "
+                f"confidence reduced from {confidence:.2f} to {confidence * 0.5:.2f}"
+            )
+            confidence *= 0.5
 
         csproj_path = None
         namespace = None
@@ -56,25 +73,47 @@ def parse_work_request(
             class_name=class_name,
             method_name=method_name,
             confidence=confidence,
+            match_evidence=match_evidence,
         ))
 
     return targets
 
 
-def parse_work_request_with_model(model_instance, sow_text: str) -> Optional[List[Dict]]:
+def parse_work_request_with_model(
+    model_instance,
+    sow_text: str,
+    codebase_index=None,
+) -> Optional[List[Dict]]:
     """Module-level function accepting any model with generate_content().
 
     Returns raw parsed JSON list of target dicts, or None on failure.
     """
+    # Build optional index section
+    index_section = ""
+    if codebase_index and codebase_index.text:
+        index_section = f"""
+The following codebase index lists all known projects, types, and stored procedures:
+===
+{codebase_index.text}
+===
+IMPORTANT: ONLY return names that appear in the codebase index above. Match domain
+language in the work request to actual project/class/sproc names from the index.
+"""
+    else:
+        logging.warning(
+            "No codebase index available — target identification will be less accurate"
+        )
+
     prompt = f"""Analyze the following work request / statement of work and extract the .NET projects,
 classes, stored procedures, or components that will be modified or affected.
-
+{index_section}
 Return a JSON array of objects. Each object should have:
 - "type": one of "project", "sproc", or "class"
 - "name": the project name (e.g., "GalaxyWorks.Data"), stored procedure name (e.g., "dbo.sp_InsertPortalConfiguration"), or class name
 - "class_name": (optional) specific class being modified, if mentioned
 - "method_name": (optional) specific method being modified, if mentioned
 - "confidence": a number 0.0 to 1.0 indicating how confident you are this is a real target
+- "match_evidence": one sentence explaining why you identified this as a target
 
 Rules:
 - Extract ALL identifiable targets from the work request
@@ -113,6 +152,42 @@ Return ONLY the JSON array:"""
     except Exception as e:
         logging.warning(f"AI work request parsing failed: {e}")
         return None
+
+
+def _extract_index_names(index_text: str) -> Set[str]:
+    """Extract project names, type names, and sproc names from index text.
+
+    Parses the compact one-line-per-project format:
+        P:Name T:Type1,Type2 SP:sproc1,sproc2
+    """
+    names: Set[str] = set()
+    for line in index_text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("P:"):
+            continue
+        # Parse space-separated key:value fields
+        for field in stripped.split():
+            if ":" not in field:
+                continue
+            key, _, value = field.partition(":")
+            if not value:
+                continue
+            if key == "P":
+                names.add(value)
+            elif key == "T":
+                # Strip trailing "..." from truncated lists
+                if value.endswith("..."):
+                    value = value[:-3]
+                for t in value.split(","):
+                    t = t.strip()
+                    if t:
+                        names.add(t)
+            elif key == "SP":
+                for s in value.split(","):
+                    s = s.strip()
+                    if s:
+                        names.add(s)
+    return names
 
 
 def _resolve_project_name(name: str, csproj_files: List[Path]) -> Optional[Path]:

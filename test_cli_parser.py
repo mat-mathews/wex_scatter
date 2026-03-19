@@ -77,10 +77,12 @@ class TestBuildParser:
                 "--search-scope", "/tmp",
             ])
 
-    def test_mode_required(self):
+    def test_no_mode_parses_without_error(self):
+        """Mode group is optional at parser level (validated in __main__.py for --dump-index support)."""
         parser = build_parser()
-        with pytest.raises(SystemExit):
-            parser.parse_args(["--search-scope", "/tmp"])
+        args = parser.parse_args(["--search-scope", "/tmp"])
+        assert args.branch_name is None
+        assert args.target_project is None
 
 
 class TestBuildCliOverrides:

@@ -46,6 +46,51 @@ def main():
     is_sproc_mode = args.stored_procedure is not None
     is_impact_mode = args.sow is not None or args.sow_file is not None
     is_graph_mode = args.graph
+    is_dump_index = getattr(args, 'dump_index', False)
+
+    # Handle --dump-index standalone mode
+    if is_dump_index:
+        if not args.search_scope:
+            parser.error("--dump-index requires --search-scope.")
+        search_scope_abs = Path(args.search_scope).resolve(strict=True)
+        cli_overrides = _build_cli_overrides(args)
+        config = load_config(repo_root=search_scope_abs, cli_overrides=cli_overrides)
+
+        from scatter.analyzers.graph_builder import build_dependency_graph
+        from scatter.store.graph_cache import cache_exists, get_default_cache_path, load_and_validate, save_graph
+        from scatter.ai.codebase_index import build_codebase_index
+
+        # Try cached graph first, build if needed
+        if config.graph.cache_dir:
+            cache_path = Path(config.graph.cache_dir) / "graph_cache.json"
+        else:
+            cache_path = get_default_cache_path(search_scope_abs)
+
+        graph = None
+        cache_result = load_and_validate(cache_path, search_scope_abs, config.graph.invalidation)
+        if cache_result is not None:
+            graph = cache_result[0]
+            logging.info("Using cached dependency graph.")
+
+        if graph is None:
+            logging.info("Building dependency graph...")
+            graph = build_dependency_graph(
+                search_scope_abs,
+                disable_multiprocessing=args.disable_multiprocessing,
+                exclude_patterns=config.exclude_patterns,
+            )
+            save_graph(graph, cache_path, search_scope_abs)
+
+        index = build_codebase_index(graph, search_scope_abs)
+        print(index.text)
+        print(f"\n# {index.project_count} projects, {index.type_count} types, "
+              f"{index.sproc_count} sprocs, {index.file_count} files, "
+              f"{index.size_bytes:,} bytes")
+        return
+
+    # Validate that a mode was selected (since mode_group is not required for --dump-index)
+    if not any([is_git_mode, is_target_mode, is_sproc_mode, is_impact_mode, is_graph_mode]):
+        parser.error("A mode (--branch-name, --target-project, --stored-procedure, --sow, --sow-file, or --graph) must be selected, or use --dump-index.")
 
     if is_graph_mode and args.output_format == 'pipelines':
         parser.error("Pipeline output format is not supported in graph mode.")
@@ -334,6 +379,7 @@ def main():
             cs_analysis_chunk_size=args.cs_analysis_chunk_size,
             csproj_analysis_chunk_size=args.csproj_analysis_chunk_size,
             graph=ctx.graph_ctx.graph if ctx.graph_ctx else None,
+            min_confidence=args.sow_min_confidence,
         )
 
         # Enrich consumers with graph metrics if available

@@ -1,0 +1,110 @@
+# Testing
+
+Is this thing well-tested? Yes. Can you verify that yourself in under a minute? Also yes.
+
+## Running the tests
+
+```bash
+python -m pytest -v
+```
+
+```
+683 passed, 1 xfailed in 9.12s
+```
+
+683 tests across 25 files. The single xfail is an intentional marker for a tracked edge case, not a failing test someone gave up on.
+
+For a quieter run:
+
+```bash
+python -m pytest -q
+```
+
+## What the tests cover
+
+The short version, without the file-by-file inventory:
+
+- **All five analysis modes** -- target project, git branch, stored procedure, impact analysis, dependency graph. Each mode has its own test file plus integration tests that run the full pipeline.
+- **Graph construction and caching** -- build, serialize, deserialize, roundtrip. Smart git-based cache invalidation with mtime fallback.
+- **Incremental updates** -- the patch algorithm is property-tested: for 6 mutation types (usage edits, declaration changes, new files, deleted files, csproj changes), incremental patching produces identical results to a full rebuild.
+- **Coupling metrics** -- fan-in, fan-out, instability index, coupling score, shared database density. Cycle detection across project-reference edges.
+- **Domain clustering** -- connected components, label propagation, cluster naming, extraction feasibility scoring.
+- **Every output format** -- console, JSON, CSV, markdown, mermaid, pipelines. Column validation, escaping edge cases, empty report handling.
+- **AI integration** -- all mocked. No real API calls, ever. Mocks cover valid responses, empty responses, invalid JSON, markdown fence stripping, API exceptions, and graceful fallback when no provider is configured.
+- **Parallel vs sequential consistency** -- every parallel operation is verified to produce identical results when run with `--disable-multiprocessing`.
+
+No flaky tests. No sleeps. No network calls.
+
+## Smoke-testing against sample projects
+
+The repo ships with 8 sample .NET projects. Use them to verify Scatter works end-to-end on your machine.
+
+### GalaxyWorks.Data should have 4 consumers
+
+```bash
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
+```
+
+Look for: `Found 4 consumer(s)` in the output.
+
+### MyDotNetApp should have 1 consumer
+
+```bash
+python scatter.py --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .
+```
+
+Look for: `Found 1 consumer(s)`.
+
+### MyDotNetApp2.Exclude should have 0 consumers
+
+```bash
+python scatter.py --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .
+```
+
+Look for: `Found 0 consumer(s)`. This one is intentionally isolated -- it validates that Scatter doesn't report false positives.
+
+### Stored procedure tracing works
+
+```bash
+python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .
+```
+
+Should find the sproc in `PortalDataService` and trace its consumers.
+
+### Graph mode works
+
+```bash
+python scatter.py --graph --search-scope .
+```
+
+Should produce a health dashboard with project counts, edge counts, coupling metrics, and domain clusters. No errors, no warnings.
+
+## Testing AI features
+
+These require a `$GOOGLE_API_KEY` environment variable. If you don't have one, the smoke tests above cover everything that matters for day-to-day use.
+
+### Summarization
+
+```bash
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+  --summarize-consumers --google-api-key $GOOGLE_API_KEY
+```
+
+### Hybrid git analysis
+
+```bash
+python scatter.py --branch-name feature/your-branch --repo-path . --search-scope . \
+  --enable-hybrid-git --google-api-key $GOOGLE_API_KEY -v
+```
+
+### Impact analysis
+
+```bash
+python scatter.py \
+  --sow "Modify PortalDataService in GalaxyWorks.Data to add a new parameter" \
+  --search-scope . --google-api-key $GOOGLE_API_KEY
+```
+
+## Want to go deeper?
+
+See [Test Architecture](reference/test-architecture.md) for the full 25-file test inventory, fixture design, mock patterns, and how to add new tests.
