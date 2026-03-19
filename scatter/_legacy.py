@@ -15,7 +15,7 @@ from scatter.ai.providers.gemini_provider import (
 gemini_model = None
 
 
-def configure_gemini(api_key: Optional[str] = None, model_name: str = "gemini-1.5-flash") -> bool:
+def configure_gemini(api_key: Optional[str] = None, model_name: str = "gemini-2.0-flash") -> bool:
     """Backward-compatible wrapper. Creates a GeminiProvider and stores its model globally."""
     global gemini_model
     if gemini_model:

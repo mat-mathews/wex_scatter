@@ -1237,34 +1237,49 @@ RECOMMENDED EXECUTION ORDER (reprioritized 2026-03-13):
   21. Initiative 8 Phase 4: Docker support — multi-stage Dockerfile, .dockerignore,
       mount /workspace for repo-under-analysis
 
+  TIER 1.9b: SOLUTION-AWARE GRAPH + SOW INDEX (analysis quality for real monoliths)
+  22. Initiative 9: Solution-aware graph integration — 5 phases:
+      Phase 1: Parse .sln properly (replace text search with structural parsing)
+      Phase 2: Add solutions to ProjectNode + graph build + reporters
+      Phase 3: Cross-solution coupling metrics + health observations
+      Phase 4: Solution-informed domain clustering (affinity bonus + alignment score)
+      Phase 5: Wire together, end-to-end validation
+      Ref: docs/SOLUTION_AWARE_GRAPH_PLAN.md
+  22b. Initiative 10: SOW codebase index — 4 phases: ✅ SHIPPED 2026-03-19
+      Phase 1: Build compact index from graph (names, types, sprocs)
+      Phase 2: Rewrite SOW prompt with index as ground truth context
+      Phase 3: Ambiguity detection, match evidence, --sow-min-confidence filter
+      Phase 4: Wire into pipeline, --dump-index debug flag
+      Ref: docs/SOW_CODEBASE_INDEX_PLAN.md
+
   TIER 2: CI/CD GOVERNANCE (makes scatter infrastructure, not optional)
-  22. Initiative 7: CI/CD exit codes --fail-on (HIGH — turns scatter into an
+  23. Initiative 7: CI/CD exit codes --fail-on (HIGH — turns scatter into an
       architecture governance gate; cycles, risk:high, coupling:N, consumers:N)
-  23. Initiative 7: PR blast radius comments GitHub/ADO (HIGH — visible to reviewers
+  24. Initiative 7: PR blast radius comments GitHub/ADO (HIGH — visible to reviewers
       without anyone remembering to run scatter; combined with skills = two always-on
       touchpoints)
 
   TIER 3: STRATEGIC FEATURES (do after adoption is established)
-  24. Baselines + diff reports (Initiative 6 Phase 6 — needs real usage data first;
+  25. Baselines + diff reports (Initiative 6 Phase 6 — needs real usage data first;
       without baseline history from actual users, diff engine is built against
       synthetic data)
-  25. Extraction planning mode (HIGH strategic value but needs graph integration
+  26. Extraction planning mode (HIGH strategic value but needs graph integration
       from #11 and real-world validation of coupling metrics)
-  26. HTML reports (polish — markdown already covers "paste into ticket" workflow;
+  27. HTML reports (polish — markdown already covers "paste into ticket" workflow;
       vis-network.js pattern from CODEGRAPHCONTEXT_COMPARISON is good reference)
 
   TIER 4: DEFERRED (build when concrete demand materializes)
-  27. Initiative 6 Phase 5: Unified AnalysisReport data model (internal refactor
+  28. Initiative 6 Phase 5: Unified AnalysisReport data model (internal refactor
       no user sees; do when a 5th output format is needed or schema inconsistency
       blocks something concrete)
-  28. Watch mode (graph cache makes repeat runs <2s; no user has asked for this)
-  29. Additional AI providers — Anthropic, OpenAI, Azure, Ollama (Gemini works;
+  29. Watch mode (graph cache makes repeat runs <2s; no user has asked for this)
+  30. Additional AI providers — Anthropic, OpenAI, Azure, Ollama (Gemini works;
       build WEX AI Platform provider when it exists; others are speculative)
-  30. AI response caching + token budget manager (premature optimization; AI calls
+  31. AI response caching + token budget manager (premature optimization; AI calls
       are infrequent and cheap)
-  31. MCP server (per CLAUDE_INTEGRATION_EVALUATION: skills first, MCP when
+  32. MCP server (per CLAUDE_INTEGRATION_EVALUATION: skills first, MCP when
       cross-client demand materializes)
-  32. Streaming progress / tqdm (nice DX but graph cache means most runs <2s)
+  33. Streaming progress / tqdm (nice DX but graph cache means most runs <2s)
 
 KEY FINDINGS:
   1. All 5 steps of find_consumers() are now parallelized (steps 2-5 use
@@ -1321,6 +1336,10 @@ KEY FINDINGS:
       double file read in graph builder, no E2E CLI tests, no AI call budget cap, hardcoded
       pipeline names, graph._nodes accessed directly bypassing public API.
       Ref: docs/LEADERSHIP_DESIGN_REVIEW.md
+  24. __main__.py decomposition merged (2026-03-17): cli.py (766 lines), cli_parser.py
+      (197 lines), conftest.py, 3 new test files (test_cli_parser, test_cli_modes,
+      test_cli_dispatch). __main__.py reduced from 790 to 67 lines.
+      683 total tests (all pass, 1 xfail).
 
 ============================================================================
 INITIATIVE 7: STRUCTURAL IMPROVEMENTS (Leadership Review Findings)
@@ -1382,3 +1401,162 @@ PHASE 6: Cleanup (LOW PRIORITY — do when convenient)
       build_graph_context accept explicit parameters
 - [ ] Converge consumer_analyzer and graph_builder on shared ReferenceResolver
       for .csproj ProjectReference resolution
+
+============================================================================
+INITIATIVE 9: SOLUTION-AWARE GRAPH INTEGRATION (v2.0)
+Goal: Make the dependency graph aware of .sln solution files — use solution
+membership as a signal for clustering, coupling metrics, and health analysis.
+Ref: docs/SOLUTION_AWARE_GRAPH_PLAN.md
+Priority: Tier 1.9 — ships alongside or immediately after production readiness
+Estimated effort: 3-4 days across 5 phases
+============================================================================
+
+PHASE 1: PARSE SOLUTIONS PROPERLY (~0.5 day)
+----------------------------------------------------------------------
+- [ ] Create scatter/scanners/solution_scanner.py
+      SolutionInfo dataclass (path, name, project_entries, project_paths)
+      parse_solution_file() — regex-based parser for Project("...") lines
+      scan_solutions() — discover + parse all .sln files in search scope
+      build_project_to_solutions() — reverse index: project_name -> [solution_names]
+- [ ] Migrate v1_bridge.find_solutions_for_project() to use parsed index
+      Accept optional solution_index parameter for O(1) lookup
+      Fall back to text search when index not provided (backward compat)
+- [ ] Tests: SDK-style .sln parsing, backslash/forward-slash paths, nested
+      solution folders, malformed .sln handling, empty .sln, reverse index
+      correctness, backward compat migration
+
+PHASE 2: SOLUTION MEMBERSHIP IN THE GRAPH (~0.5 day)
+----------------------------------------------------------------------
+- [ ] Add solutions: List[str] field to ProjectNode in scatter/core/graph.py
+- [ ] Populate ProjectNode.solutions during graph build in graph_builder.py
+      Call scan_solutions() + build_project_to_solutions() after project discovery
+      Set node.solutions from the reverse index
+- [ ] Verify solutions survive to_dict/from_dict roundtrip (no cache bump needed)
+- [ ] Add Solutions column to graph CSV reporter (semicolon-delimited)
+- [ ] Add solutions field to graph JSON node output
+- [ ] Tests: ProjectNode.solutions populated, cache roundtrip, CSV column, JSON field,
+      graceful handling when no .sln files exist
+
+PHASE 3: CROSS-SOLUTION COUPLING METRICS (~1 day)
+----------------------------------------------------------------------
+- [ ] Create SolutionMetrics dataclass in coupling_analyzer.py
+      name, project_count, internal_edges, external_edges, cross_solution_ratio,
+      incoming_solutions, outgoing_solutions, shared_sprocs
+- [ ] Implement compute_solution_metrics(graph, project_to_solutions)
+- [ ] Add classify_edge() helper: intra-solution / cross-solution / unaffiliated
+- [ ] Add health observations to health_analyzer.py:
+      high_cross_solution_coupling: solution with cross_solution_ratio > 0.5
+      solution_bridge_project: project in 3+ solutions with high fan-in
+- [ ] Surface solution metrics in graph console and JSON output
+- [ ] Tests: SolutionMetrics computation, cross-solution ratio edge cases (0, 1),
+      bridge project detection, unaffiliated projects, health observations
+
+PHASE 4: SOLUTION-INFORMED DOMAIN CLUSTERING (~1 day)
+----------------------------------------------------------------------
+- [ ] Add project_to_solutions and solution_affinity_weight params to find_clusters()
+- [ ] Implement solution affinity bonus in label propagation:
+      When neighbor shares a solution with current node, multiply vote weight by
+      solution_affinity_weight (default 1.5x). Gentle bias, not hard constraint.
+- [ ] Add solution_alignment: float and dominant_solution: Optional[str] to Cluster
+      solution_alignment = fraction of members sharing dominant solution (0.0-1.0)
+- [ ] Surface alignment in console Clusters table, JSON output, CSV
+- [ ] Tests: affinity produces different clusters than without, alignment = 1.0 when
+      all members share solution, alignment = 0.0 when none do, dominant solution
+      identification, no-solution-data graceful degradation
+
+PHASE 5: WIRE EVERYTHING TOGETHER (~0.5 day)
+----------------------------------------------------------------------
+- [ ] Update __main__.py / cli.py: replace raw sln file cache with scan_solutions()
+      Build project_to_solutions index early, pass through to all analysis paths
+- [ ] Update graph_enrichment.py to include solution data in GraphContext
+- [ ] End-to-end test: synthetic codebase -> --graph -> verify solution data in output
+- [ ] End-to-end test: --target-project -> verify ConsumingSolutions populated
+- [ ] Backward compat test: codebase with zero .sln files produces same output
+- [ ] Verify synthetic codebase generator .sln files work through full pipeline
+
+INITIATIVE 9 — NOT IN SCOPE (build later on this foundation):
+- Solution-level blast radius ("which solutions need rebuilding?")
+- Solution dependency graph (solutions as nodes)
+- Solution-level CI/CD gates (depends on Initiative 7)
+- .sln file modification (scatter reads, never writes)
+
+============================================================================
+INITIATIVE 10: SOW CODEBASE INDEX — ACCURATE TARGET IDENTIFICATION (v2.0)
+Goal: Fix --sow mode's target identification by giving the LLM a compact
+codebase index as prompt context. The LLM matches domain language to real
+code artifacts instead of hallucinating project names.
+Ref: docs/SOW_CODEBASE_INDEX_PLAN.md
+Priority: Tier 1.9 — critical for --sow mode credibility
+Estimated effort: 2-3 days across 4 phases
+Depends on: Dependency graph (shipped), optionally Initiative 9 (solutions)
+============================================================================
+
+PHASE 1: BUILD THE CODEBASE INDEX (~0.5 day)
+----------------------------------------------------------------------
+- [x] Create scatter/ai/codebase_index.py
+      CodebaseIndex dataclass (text, project_count, type_count, sproc_count,
+      file_count, size_bytes)
+      build_codebase_index(graph, search_scope) -> CodebaseIndex
+      Compact one-line-per-project format: P:Name T:types SP:sprocs
+      Namespace omitted when same as project name. File stems excluded from
+      prompt (metrics-only). Shared sproc cross-reference section.
+      Progressive truncation: cap types at 10/project if >100KB.
+- [x] File stems NOT added to ProjectNode — collected on-demand during index
+      build, keeps graph schema unchanged (Tomás's minimalist approach).
+- [x] Tests: index contains all sample project names, types, sprocs.
+      Index size < 100KB for 500 projects. Empty graph = empty index.
+      Truncation tested with patched MAX_INDEX_SIZE.
+
+PHASE 2: REWRITE THE SOW PROMPT (~0.5 day)
+----------------------------------------------------------------------
+- [x] Update parse_work_request_with_model() to accept optional CodebaseIndex
+      Single template prompt with optional index section between === delimiters
+      Instructs LLM: "ONLY return names that appear in the codebase index"
+      Requires match_evidence per target (why this SOW language matched this artifact)
+- [x] Backward compat: when index is None, index section omitted from prompt
+      Log warning: "No codebase index available — target identification less accurate"
+- [x] Response validation: names not in index get confidence *= 0.5 with warning
+- [x] Tests: prompt includes index when provided, falls back when None,
+      mock LLM returns match_evidence, names not in index get halved confidence
+
+PHASE 3: AMBIGUITY DETECTION & EVIDENCE SURFACING (~1 day)
+----------------------------------------------------------------------
+- [x] Add match_evidence: Optional[str] to AnalysisTarget in scatter/core/models.py
+- [x] Inline ambiguity computation (no formal dataclass — Tomás):
+      _compute_ambiguity_label(targets) -> "clear"/"moderate"/"vague"
+      Added ambiguity_level + avg_target_confidence fields to ImpactReport
+- [x] Surface in impact report: "Target Quality: moderate (7 targets, avg confidence 0.62)"
+      Show per-target match evidence in console output
+      No-index warning when no targets have match_evidence
+- [x] Add --sow-min-confidence flag (default: 0.3) to filter low-confidence targets
+      Filtered targets logged with threshold value
+      Ambiguity computed from full list before filtering
+- [x] match_evidence and ambiguity flow through asdict() to JSON output
+- [x] Tests: quality computed correctly for clear/moderate/vague, ambiguity in
+      console, --sow-min-confidence filters targets, JSON includes evidence
+
+PHASE 4: WIRE INTO THE PIPELINE (~0.5 day)
+----------------------------------------------------------------------
+- [x] In run_impact_analysis(): build index from graph before parse_work_request()
+      Analyzer builds its own index (Priya) — keeps __main__.py thin
+- [x] Add --dump-index flag: prints codebase index to stdout and exits
+      Mode group changed to required=False; validated in __main__.py
+- [x] Wire --dump-index and --sow-min-confidence into cli_parser.py and __main__.py
+- [ ] End-to-end test: domain-language SOW against sample projects, verify targets
+      (requires live Gemini API — tested manually with docs/sample_sow.md)
+- [ ] End-to-end test: explicit-name SOW still works (regression)
+      (requires live Gemini API)
+- [x] --dump-index verified: all 11 sample projects appear with types/sprocs
+
+INITIATIVE 10 — SHIPPED (2026-03-19):
+Compact index format: 1,922 bytes for 11 projects (28% smaller than initial
+verbose format after Sam's one-line-per-project compression).
+41 dedicated tests, 724 total passing, 0 regressions.
+
+INITIATIVE 10 — NOT IN SCOPE (build later if needed):
+- RAG / vector search (index fits in single prompt at our scale)
+- Code content in index (names + structure only, not method bodies)
+- Multi-turn LLM refinement (start with single-shot)
+- Index caching (derived from graph in milliseconds, no need to persist)
+- Smarter truncation at scale (keep types matching SOW keywords — Priya)
+- Hallucination rate telemetry (structured log of index validation — Marcus)

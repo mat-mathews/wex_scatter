@@ -1,60 +1,41 @@
-site_name: Scatter
-site_description: .NET dependency analyzer — trace blast radius across projects
-site_url: ""
-repo_url: ""
+site_name: "Scatter // Athena"
+site_description: ".NET dependency graph engine — trace blast radius before you ship"
 use_directory_urls: false
 
 theme:
-  name: material
-  features:
-    - navigation.sections
-    - navigation.expand
-    - navigation.top
-    - search.highlight
-    - content.code.copy
-  palette:
-    scheme: slate
-    primary: indigo
-
-plugins:
-  - search
-  - mkdocstrings:
-      handlers:
-        python:
-          paths: [..]
-          options:
-            show_source: true
-            show_root_heading: true
-            heading_level: 2
-            members_order: source
-            docstring_style: google
+  name: solar
 
 markdown_extensions:
   - admonition
-  - pymdownx.details
-  - pymdownx.superfences:
-      custom_fences:
-        - name: mermaid
-          class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
-  - pymdownx.highlight:
-      anchor_linenums: true
-  - pymdownx.tabbed:
-      alternate_style: true
   - toc:
       permalink: true
+  - tables
+  - fenced_code
 
 nav:
-  - Home: index.md
-  - Getting Started: getting-started.md
-  - Usage Guide: usage.md
-  - Configuration: configuration.md
-  - API Reference:
-      - Overview: api/index.md
-      - Core Models: api/core.md
-      - Analyzers: api/analyzers.md
-      - Scanners: api/scanners.md
-      - Reports: api/reports.md
-      - Graph Store: api/store.md
-      - AI Integration: api/ai.md
-      - Configuration: api/config.md
+  - User Guide:
+      - Home: index.md
+      - Getting Started: getting-started.md
+      - Target Project Analysis: usage/target-project.md
+      - Git Branch Analysis: usage/git-branch.md
+      - Stored Procedure Analysis: usage/stored-procedure.md
+      - Impact Analysis: usage/impact-analysis.md
+      - Dependency Graph: usage/dependency-graph.md
+      - Output Formats: output-formats.md
+      - Workflows: workflows.md
+      - AI Features: ai-features.md
+      - Configuration: configuration.md
+      - CLI Reference: cli-reference.md
+      - Testing: testing.md
+  - Technical Reference:
+      - Architecture Overview: reference/architecture.md
+      - Graph Engine: reference/graph-engine.md
+      - Incremental Updates: reference/incremental-updates.md
+      - Coupling & Cycle Detection: reference/coupling-and-cycles.md
+      - Domain Clustering: reference/domain-clustering.md
+      - Consumer Detection Pipeline: reference/consumer-pipeline.md
+      - Type Extraction: reference/type-extraction.md
+      - Test Architecture: reference/test-architecture.md
+      - Benchmarks: reference/benchmarks.md
+      - Sample Projects: reference/sample-projects.md
+      - Contributing: reference/contributing.md

@@ -109,7 +109,7 @@ Full persona definitions live in **[docs/PERSONAS.md](docs/PERSONAS.md)**. Read 
 | **Devon Park** | Mid-Senior (8 yrs) | Performance, algorithms, naming, finds the hidden O(n²) |
 | **Fatima Al-Rashidi** | Mid-Senior (7 yrs) | Resilience, failure modes, async, API contracts |
 | **Jake Okonkwo** | Mid (5 yrs) | Security, input validation, type hints, reads the RFC first |
-| **Sam Nguyen** | Mid (4 yrs) | Refactoring, readability, "can we simplify this?" |
+| **Sam Nguyen** | Mid (4 yrs) | Refactoring, readability, "can we simplify this?", brilliantly lazy |
 | **Kai Brennan** | Junior-Mid (3 yrs) | Tooling, automation, asks the brilliant "dumb" questions |
 
 ### How to Use

@@ -1,68 +1,166 @@
 # Configuration
 
-Scatter uses a layered configuration system. Settings are resolved in order of precedence:
+Scatter uses a layered configuration system. You can configure nothing and it works. You can configure everything and it still works. The layers merge top-down, so a CLI flag always wins.
 
-**CLI flags > repo config > user config > environment variables > defaults**
+## Precedence
 
-## Config Files
+| Priority | Source | Path / Mechanism |
+|----------|--------|------------------|
+| 1 (highest) | CLI flags | `--max-depth 3`, `--google-api-key ...`, etc. |
+| 2 | Repo config | `.scatter.yaml` in the repo root |
+| 3 | User config | `~/.scatter/config.yaml` |
+| 4 | Environment variables | `GOOGLE_API_KEY`, `SCATTER_DEFAULT_PROVIDER` |
+| 5 (lowest) | Built-in defaults | Hardcoded in `scatter/config.py` |
 
-| Location | Scope |
-|----------|-------|
-| `.scatter.yaml` | Repository-level (checked into source) |
-| `.scatter/config.yaml` | User-level (local to machine) |
+Missing config files are silently ignored. You do not need `.scatter.yaml` in your repo. You do not need `~/.scatter/config.yaml` at home. Scatter checks for them, shrugs if they are absent, and moves on. No warnings, no errors.
 
-## Configuration Reference
-
-### Top-Level
-
-```yaml
-max_depth: 3              # Maximum transitive dependency depth
-multiprocessing: true      # Enable parallel processing
-exclude_patterns:          # Glob patterns to exclude from scanning
-  - "**/bin/**"
-  - "**/obj/**"
-  - "**/test/**"
-```
-
-### Graph Settings
+## Full .scatter.yaml Schema
 
 ```yaml
+# AI provider settings
+ai:
+  default_provider: gemini              # Only "gemini" supported today
+  gemini_model: gemini-1.5-flash        # Model for summarization and impact analysis
+  task_overrides:                       # Route specific AI tasks to different models
+    risk_assess: gemini-1.5-pro         # e.g., use a stronger model for risk assessment
+  credentials:
+    gemini:
+      api_key: your-key-here            # Or use env var / CLI flag instead
+
+# Search behavior
+search:
+  max_depth: 2                          # Transitive tracing depth for impact analysis
+  exclude_patterns:                     # Glob patterns to skip during file discovery
+    - "*/bin/*"                         # NOTE: this REPLACES the defaults entirely.
+    - "*/obj/*"                         # If you add custom patterns, re-list bin/obj
+    - "*/node_modules/*"               # or they will no longer be excluded.
+
+# Parallel processing
+multiprocessing:
+  disabled: false                       # Set true to force sequential execution
+  max_workers: 14                       # Upper bound on worker processes
+  chunk_size: 75                        # Directories per worker batch
+
+# Dependency graph
 graph:
-  cache_dir: .scatter       # Cache directory for graph data
-  rebuild: false            # Force full graph rebuild (ignore cache)
-  invalidation: mtime       # Cache invalidation strategy
-  coupling_weights:          # Weights for coupling score calculation
-    direct: 1.0
-    transitive: 0.5
+  cache_dir: null                       # Override default .scatter/ cache location
+  rebuild: false                        # Force full rebuild (ignore cache)
+  invalidation: git                     # "git" (default) or "mtime" fallback
+  coupling_weights:                     # Override edge type weights for coupling score
+    project_reference: 1.0
+    namespace_usage: 0.5
+    type_usage: 0.3
+    sproc_shared: 0.8
+
+# Database dependency scanning
+db:
+  sproc_prefixes:                       # Prefixes that identify stored procedures
+    - "sp_"
+    - "usp_"
+  include_db_edges: true                # Add sproc_shared edges to the graph
 ```
 
-### AI Settings
+## Typical Setup
+
+Most teams land on a two-file setup: one user-level config that holds your API key, one repo-level config that holds repo-specific defaults. CLI flags for one-off experiments.
+
+### User-level config (`~/.scatter/config.yaml`)
+
+Set your API key once. Every Scatter run in every repo picks it up.
 
 ```yaml
 ai:
-  default_provider: gemini
-  gemini_model: gemini-pro
   credentials:
-    google_api_key: ${GOOGLE_API_KEY}   # Supports env var interpolation
-  task_overrides:
-    summarization:
-      provider: gemini
+    gemini:
+      api_key: AIzaSy...your-key-here
 ```
 
-### Database Scanning
+### Repo-level config (`.scatter.yaml`)
+
+Repo-specific defaults. Committed to source control so the whole team shares them.
 
 ```yaml
+search:
+  max_depth: 3
+  exclude_patterns:
+    - "*/bin/*"
+    - "*/obj/*"
+    - "*/test-fixtures/*"
+
+graph:
+  invalidation: git
+
 db:
-  sproc_prefixes:            # Stored procedure prefixes to detect
-    - "dbo.sp_"
-    - "dbo.usp_"
-  include_db_edges: true     # Add DB dependencies to the graph
+  sproc_prefixes:
+    - "sp_"
+    - "usp_"
+    - "proc_"
+```
+
+### CLI overrides
+
+For one-off runs, just pass flags. They override everything.
+
+```bash
+python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope . --max-depth 4
 ```
 
 ## Environment Variables
 
-| Variable | Maps To |
-|----------|---------|
-| `GOOGLE_API_KEY` | `ai.credentials.google_api_key` |
-| `SCATTER_MAX_WORKERS` | `max_workers` CLI flag |
-| `SCATTER_CACHE_DIR` | `graph.cache_dir` |
+| Variable | What it does |
+|----------|-------------|
+| `GOOGLE_API_KEY` | Google API key for Gemini. Used when no key is provided via CLI flag or config file. |
+| `SCATTER_DEFAULT_PROVIDER` | Override the default AI provider (currently only `gemini` is supported). |
+
+## Google API Key Setup
+
+Three ways to provide it, in order of precedence:
+
+1. **CLI flag**: `--google-api-key YOUR_KEY` -- highest priority, useful for CI/CD
+2. **Config file**: Set in `~/.scatter/config.yaml` or `.scatter.yaml` under `ai.credentials.gemini.api_key`
+3. **Environment variable**: `export GOOGLE_API_KEY=YOUR_KEY`
+
+You only need an API key for AI features: `--summarize-consumers`, `--enable-hybrid-git`, `--sow`, and `--sow-file`. All other Scatter functionality works without one.
+
+## Pipeline Mapping
+
+Map consumer projects to their CI/CD pipelines using `--pipeline-csv`:
+
+```bash
+python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope . \
+  --pipeline-csv build/pipeline_to_app_mapping.csv
+```
+
+The CSV needs two columns: `Application Name` and `Pipeline Name`. Scatter matches discovered consumer project names against the Application Name column and includes pipeline information in the output.
+
+## Multiprocessing Tuning
+
+| Flag | Default | What it does |
+|------|---------|-------------|
+| `--disable-multiprocessing` | `false` | Force sequential processing. Useful for debugging or environments where fork is problematic. |
+| `--max-workers` | `14` | Upper bound on worker processes. Actual count may be lower (see adaptive scaling below). |
+| `--chunk-size` | `75` | Number of directories processed per worker batch during file discovery. |
+| `--cs-analysis-chunk-size` | `50` | Number of `.cs` files per worker batch for content analysis. |
+| `--csproj-analysis-chunk-size` | `25` | Number of `.csproj` files per worker batch for XML parsing. |
+
+### Adaptive Worker Scaling
+
+Scatter does not blindly spin up `--max-workers` processes. It scales based on workload:
+
+- Less than 200 files: 4 workers
+- 200 to 999 files: 8 workers
+- 1000+ files: up to `--max-workers`
+
+This prevents the overhead of process creation from exceeding the work being parallelized. For the sample projects (dozens of files), you will see 4 workers. For a 500-project monolith, you will see the full pool.
+
+## Graph Behavior
+
+| Flag | Effect |
+|------|--------|
+| *(default)* | Auto-build graph on first run, auto-load from cache on subsequent runs, incremental patching via git diff |
+| `--no-graph` | Skip all graph operations -- no build, no load, no enrichment. Pure filesystem analysis. |
+| `--rebuild-graph` | Force a full graph rebuild, ignoring the existing cache. Useful after major refactors. |
+| `--graph` | Dedicated graph analysis mode. Builds graph, computes coupling metrics, detects cycles, identifies domain clusters. |
+| `--graph-metrics` | Explicitly request graph enrichment. Redundant now -- enrichment happens automatically when a cache exists. |
+
+> **How this works:** Configuration merging, adaptive scaling, and graph caching are handled by the config and graph engine subsystems. See [Architecture Overview](reference/architecture.md) for details.

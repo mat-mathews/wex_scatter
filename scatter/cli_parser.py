@@ -39,7 +39,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # --- mode selection ---
-    mode_group = parser.add_mutually_exclusive_group(required=True)
+    # required=False to allow --dump-index standalone; validated in __main__.py
+    mode_group = parser.add_mutually_exclusive_group(required=False)
     mode_group.add_argument(
         "--target-project",
         help="MODE: Target Project Analysis. Path to the .csproj file or directory of the specific project to analyze."
@@ -125,6 +126,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Maximum transitive tracing depth for impact analysis (default: 2)."
     )
     common_group.add_argument(
+        "--sow-min-confidence", type=float, default=0.3,
+        help="Minimum confidence threshold for SOW-extracted targets (default: 0.3)."
+    )
+    common_group.add_argument(
+        "--dump-index", action="store_true",
+        help="Build dependency graph, print codebase index to stdout, and exit. Requires --search-scope."
+    )
+    common_group.add_argument(
         "--app-config-path",
         help="(Optional) Path to the 'health-benefits-app-config' repository to resolve specific batch job names."
     )
@@ -163,7 +172,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     summarize_group.add_argument(
         "--gemini-model", default=None,
-        help="The Gemini model to use for summarization (default: gemini-1.5-flash)."
+        help="The Gemini model to use for summarization (default: gemini-2.0-flash)."
     )
     common_group.add_argument(
         "--output-format", default="console",

@@ -22,6 +22,26 @@ from scatter.core.parallel import find_files_with_pattern_parallel
 from scatter.compat.v1_bridge import find_solutions_for_project
 
 
+def _compute_ambiguity_label(targets: List[AnalysisTarget]) -> str:
+    """Classify target parse quality as clear/moderate/vague.
+
+    clear: <=5 targets, avg confidence >= 0.7
+    moderate: 6-10 targets, or avg confidence 0.4-0.7
+    vague: >10 targets, or avg confidence < 0.4
+    """
+    if not targets:
+        return "vague"
+
+    avg_conf = sum(t.confidence for t in targets) / len(targets)
+    count = len(targets)
+
+    if count > 10 or avg_conf < 0.4:
+        return "vague"
+    if count > 5 or avg_conf < 0.7:
+        return "moderate"
+    return "clear"
+
+
 def run_impact_analysis(
     sow_text: str,
     search_scope: Path,
@@ -35,6 +55,7 @@ def run_impact_analysis(
     cs_analysis_chunk_size: int = 50,
     csproj_analysis_chunk_size: int = 25,
     graph=None,
+    min_confidence: float = 0.3,
 ) -> ImpactReport:
     """Orchestrate the full impact analysis pipeline.
 
@@ -49,16 +70,56 @@ def run_impact_analysis(
 
     report = ImpactReport(sow_text=sow_text)
 
+    # Build codebase index from graph if available
+    codebase_index = None
+    if graph is not None:
+        from scatter.ai.codebase_index import build_codebase_index
+        codebase_index = build_codebase_index(graph, search_scope)
+        logging.info(
+            f"Built codebase index: {codebase_index.project_count} projects, "
+            f"{codebase_index.type_count} types, {codebase_index.sproc_count} sprocs, "
+            f"{codebase_index.size_bytes:,} bytes"
+        )
+
     # Step 1: Parse work request into targets
     logging.info("Step 1: Parsing work request into analysis targets...")
     from scatter.ai.tasks.parse_work_request import parse_work_request
-    targets = parse_work_request(sow_text, ai_provider, search_scope)
+    targets = parse_work_request(
+        sow_text, ai_provider, search_scope, codebase_index=codebase_index,
+    )
 
     if not targets:
         logging.warning("No analysis targets could be extracted from the work request.")
         return report
 
     logging.info(f"Extracted {len(targets)} analysis target(s) from work request.")
+
+    # Compute ambiguity from full list (before filtering)
+    report.ambiguity_level = _compute_ambiguity_label(targets)
+    report.avg_target_confidence = sum(t.confidence for t in targets) / len(targets)
+    logging.info(
+        f"Target quality: {report.ambiguity_level} "
+        f"({len(targets)} targets, avg confidence {report.avg_target_confidence:.2f})"
+    )
+
+    # Filter low-confidence targets
+    filtered_targets = []
+    for target in targets:
+        if target.confidence < min_confidence:
+            logging.info(
+                f"Excluded target '{target.name}' "
+                f"(confidence {target.confidence:.2f}, threshold {min_confidence:.2f})"
+            )
+        else:
+            filtered_targets.append(target)
+
+    if not filtered_targets:
+        logging.warning(
+            f"All {len(targets)} targets excluded by confidence threshold {min_confidence:.2f}."
+        )
+        return report
+
+    targets = filtered_targets
 
     # Step 2: For each target, find consumers and trace transitively
     for target in targets:

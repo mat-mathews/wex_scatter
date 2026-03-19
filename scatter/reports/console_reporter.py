@@ -161,12 +161,27 @@ def print_impact_report(report: ImpactReport) -> None:
     effort_str = f" ({report.effort_estimate})" if report.effort_estimate else ""
     print(f"Overall Risk: {risk_str} | Complexity: {complexity_str}{effort_str}")
 
+    if report.ambiguity_level:
+        target_count = sum(len(ti.consumers) for ti in report.targets) if report.targets else 0
+        avg_conf = report.avg_target_confidence or 0.0
+        print(f"Target Quality: {report.ambiguity_level} "
+              f"({len(report.targets or [])} targets, avg confidence {avg_conf:.2f})")
+
+    # Detect no-index scenario: no match_evidence on any target
+    has_evidence = any(
+        ti.target.match_evidence for ti in (report.targets or [])
+    )
+    if report.targets and not has_evidence:
+        print("Note: Running without codebase index — results may be less accurate.")
+
     if not report.targets:
         print("\nNo analysis targets were identified.")
         return
 
     for ti in report.targets:
         print(f"\n--- Target: {ti.target.name} ---")
+        if ti.target.match_evidence:
+            print(f"Evidence: {ti.target.match_evidence}")
         print(f"Direct Consumers: {ti.total_direct} | Transitive: {ti.total_transitive}")
 
         if ti.consumers:

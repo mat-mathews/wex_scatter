@@ -1,38 +1,61 @@
 # Scatter
 
-**Scatter** is a .NET dependency analyzer that answers the question: *"If I change this, what else is affected?"*
-
-It traces blast radius across C# projects by analyzing project references, namespace usage, and type/method consumption — then reports which projects, pipelines, and batch jobs are impacted.
-
-## Analysis Modes
-
-Scatter operates in three modes:
-
-| Mode | Use Case |
-|------|----------|
-| **Git Branch** | Compare a feature branch against its base and find consumers of changed types |
-| **Target Project** | Find all projects that reference and use types from a specific `.csproj` |
-| **Stored Procedure** | Find C# projects that reference specific database stored procedures |
-
-## Key Features
-
-- **Dependency graph** with caching and incremental per-file patching
-- **Multi-format output** — console, JSON, CSV, Markdown, Mermaid diagrams
-- **AI-powered analysis** — optional Gemini integration for code summarization, risk assessment, and complexity estimation
-- **Pipeline mapping** — maps consumer projects to their CI/CD pipelines
-- **Parallel processing** — multiprocessing support for large codebases
-- **Configurable** — YAML-based config with CLI / env / file layering
-
-## Quick Start
+You changed a class. Which projects just broke?
 
 ```bash
-pip install -r requirements.txt
-
-# Find consumers of a target project
-python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope .
-
-# Analyze a feature branch
-python scatter.py --branch-name feature/new-widget --repo-path .
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
 ```
 
-See the [Getting Started](getting-started.md) guide for full setup instructions.
+```
+Search scope: /code/wex_scatter (scanned 11 projects, 42 files)
+Filter: 11 -> 10 project refs -> 7 namespace -> 4 class match
+
+Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (4 consumer(s))
+    Type/Level: PortalDataService
+         -> Consumed by: MyGalaxyConsumerApp (MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj)
+         -> Consumed by: MyGalaxyConsumerApp2 (MyGalaxyConsumerApp2/MyGalaxyConsumerApp2.csproj)
+         -> Consumed by: GalaxyWorks.Api (GalaxyWorks.Api/GalaxyWorks.Api.csproj)
+         -> Consumed by: GalaxyWorks.BatchProcessor (GalaxyWorks.BatchProcessor/GalaxyWorks.BatchProcessor.csproj)
+
+--- Total Consuming Relationships Found: 4 ---
+```
+
+That took about three seconds. Now you know who to warn before you merge.
+
+**Ready to try it?** [Getting Started](getting-started.md) gets you running in five minutes.
+
+## Five analysis modes
+
+| Flag | What it does |
+|------|-------------|
+| `--target-project` | Point at a `.csproj`, find every project consuming its types |
+| `--branch-name` | Diff a feature branch, extract changed C# types, trace their consumers |
+| `--stored-procedure` | Find C# projects calling a specific sproc, then trace their consumers |
+| `--sow` / `--sow-file` | Describe a change in plain English, let AI identify targets and trace the blast radius |
+| `--graph` | Build the full dependency graph with coupling metrics, cycles, and domain clusters |
+
+Each mode feeds into the same enrichment pipeline. Same quality of output regardless of entry point.
+
+## The graph builds itself
+
+First time you run Scatter against a codebase, it constructs a full dependency graph. Takes roughly 3-5 seconds depending on repo size. That graph gets cached to disk automatically.
+
+Second run loads from cache: under 1 second.
+
+After that, Scatter detects what changed via `git diff` and patches incrementally: around 10 milliseconds.
+
+You never pass a flag for this. You never configure it. It just happens.
+
+> **How this works:** Scatter maintains a content-hashed graph cache with git-aware invalidation. See [Graph Engine](reference/graph-engine.md) for the full story.
+
+## Built to last
+
+724 tests. Modular Python package. Actively developed by team Athena.
+
+## Where to go from here
+
+- [Getting Started](getting-started.md) -- installation, first run, walkthrough
+- [Output Formats](output-formats.md) -- console, JSON, CSV, markdown, mermaid, pipelines
+- [CLI Reference](cli-reference.md) -- every flag, every option
+- [Workflows](workflows.md) -- real-world scenarios chaining modes together
+- [Configuration](configuration.md) -- YAML config, env vars, project-specific overrides

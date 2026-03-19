@@ -59,6 +59,7 @@ class AnalysisTarget:
     class_name: Optional[str] = None
     method_name: Optional[str] = None
     confidence: float = CONFIDENCE_HIGH
+    match_evidence: Optional[str] = None  # LLM explanation of why this target was identified
 
 
 @dataclass
@@ -107,6 +108,8 @@ class ImpactReport:
     complexity_justification: Optional[str] = None
     effort_estimate: Optional[str] = None        # e.g., "3-5 developer-days"
     overall_risk: Optional[str] = None
+    ambiguity_level: Optional[str] = None        # "clear" | "moderate" | "vague"
+    avg_target_confidence: Optional[float] = None
 
 
 # --- Filter pipeline visibility models ---
