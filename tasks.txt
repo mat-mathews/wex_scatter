@@ -1560,3 +1560,70 @@ INITIATIVE 10 — NOT IN SCOPE (build later if needed):
 - Index caching (derived from graph in milliseconds, no need to persist)
 - Smarter truncation at scale (keep types matching SOW keywords — Priya)
 - Hallucination rate telemetry (structured log of index validation — Marcus)
+
+============================================================================
+INITIATIVE 11: FOCUSED SOW INDEX — TWO-TIER SOLUTION-SCOPED INDEX
+Target: Reduce index noise for SOW analysis by scoping to relevant solutions
+Reference: docs/FOCUSED_INDEX_PLAN.md, docs/FOCUSED_INDEX_BRAINSTORM.md
+Depends on: Initiative 9 Phases 1-2 (solution parsing + membership on ProjectNode)
+============================================================================
+
+PHASE 1: SOLUTION SUMMARY BUILDER (~0.5 day)
+----------------------------------------------------------------------
+- [ ] Create scatter/ai/solution_index.py with SolutionSummary dataclass
+      (name, project_count, top_types, top_sprocs, cross_solution_refs)
+- [ ] Implement build_solution_summaries(graph) — groups ProjectNodes by
+      solution membership, aggregates types/sprocs, counts cross-solution edges
+- [ ] Type selection heuristic: prefer types unique to one solution, skip
+      short names, prefer classes/interfaces over enums
+- [ ] Cross-solution edge aggregation: iterate outgoing ProjectReference edges,
+      group by target solution, count — O(edges), no LLM needed
+- [ ] Implement format_solution_index(summaries) -> compact text
+      Format: SOL:Name P:count T:type1,type2 SP:sproc1 REF->OtherSol(N)
+- [ ] Tests: correct project counts, distinctive type selection, edge counts
+      match manual calculation, format under 2KB for 10 solutions
+
+PHASE 2: FOCUSED INDEX FILTER (~0.5 day)
+----------------------------------------------------------------------
+- [ ] Add solution_filter: Optional[Set[str]] parameter to build_codebase_index()
+      Filter graph.get_all_nodes() to nodes whose solutions intersect the filter
+- [ ] Add --solutions CLI flag to cli_parser.py (comma-separated solution names)
+      Compatible with --sow mode only; errors without --sow
+- [ ] Wire --solutions into __main__.py: parse flag, build solution_filter set,
+      pass to build_codebase_index(), skip LLM Pass 1
+- [ ] Tests: filter limits index to matching projects, projects in multiple
+      solutions included if any matches, None filter = full index (backward compat),
+      --solutions without --sow raises error
+
+PHASE 3: LLM PASS 1 — SOLUTION DISCOVERY (~1 day)
+----------------------------------------------------------------------
+- [ ] Create scatter/ai/tasks/select_solutions.py with SolutionSelection dataclass
+      (name, confidence, reason, match_type: "direct"|"coupled"|"semantic")
+- [ ] Implement select_solutions(sow_text, solution_index, ai_provider)
+      Prompt: LLM matches SOW domain concepts to solutions using type names
+      as semantic anchors + cross-solution edge signals
+- [ ] Auto-include coupled solutions: after LLM selection, expand to solutions
+      with cross-solution edge count >= threshold (default: 3) from any selected
+      solution with confidence >= 0.5. Reduced confidence (0.5x source, min 0.3)
+- [ ] Tests: mock LLM returns expected selections, auto-include expands correctly,
+      no double-add, min confidence filter applied
+
+PHASE 4: ORCHESTRATION AND UX (~0.5 day)
+----------------------------------------------------------------------
+- [ ] Two-pass orchestration in __main__.py:
+      Pass 1: build_solution_summaries -> format -> select_solutions -> auto_include
+      Pass 2: build_codebase_index(solution_filter=selected) -> existing impact flow
+- [ ] Console output: show solution discovery results with reasoning
+      "+ AdminPortal (high confidence) — direct semantic match"
+      "! CDEX (medium confidence) — coupled: 6 refs from AdminPortal"
+- [ ] JSON output: add solution_discovery section to ImpactReport
+      (total_solutions, selected_solutions with confidence/reason, reduction_pct)
+- [ ] Backward compat: --sow without --solutions and without .sln files uses full index
+- [ ] Tests: two-pass flow produces correct focused index, --solutions skips Pass 1,
+      console shows reasoning, JSON includes solution_discovery
+
+INITIATIVE 11 — NOT IN SCOPE (build later if needed):
+- Interactive solution selection (TUI pick-list)
+- Solution-level risk scoring
+- Multi-pass recursive expansion (re-analyze if Pass 2 discovers new solutions)
+- Custom solution groupings via manifest file
