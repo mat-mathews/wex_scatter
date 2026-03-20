@@ -289,6 +289,23 @@ class TestGraphConsoleOutput:
         assert "[warning]" in captured
         assert "[critical]" in captured
 
+    def test_console_solution_count_shown(self, capsys):
+        g = _sample_graph()
+        g.get_node("A").solutions = ["GalaxyWorks"]
+        g.get_node("B").solutions = ["GalaxyWorks"]
+        ranked = [("A", _sample_metrics()["A"])]
+        print_graph_report(g, ranked, [])
+        captured = capsys.readouterr().out
+        assert "Solutions: 1" in captured
+
+    def test_console_solution_count_hidden_when_none(self, capsys):
+        g = _sample_graph()
+        # No solutions on any node
+        ranked = [("A", _sample_metrics()["A"])]
+        print_graph_report(g, ranked, [])
+        captured = capsys.readouterr().out
+        assert "Solutions:" not in captured
+
 
 # ===========================================================================
 # TestGraphCsvExport
@@ -304,7 +321,7 @@ class TestGraphCsvExport:
         with open(out, newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
-        assert len(reader.fieldnames) == 13
+        assert len(reader.fieldnames) == 14  # includes Solutions column
         assert len(rows) == 3  # A, B, C
 
     def test_csv_cluster_column(self, tmp_path):
@@ -320,6 +337,26 @@ class TestGraphCsvExport:
         assert a_row["Cluster"] == "MyCluster"
         c_row = next(r for r in rows if r["Project"] == "C")
         assert c_row["Cluster"] == ""
+
+    def test_csv_solutions_column(self, tmp_path):
+        g = _sample_graph()
+        # Set solutions on nodes
+        g.get_node("A").solutions = ["GalaxyWorks", "Master"]
+        g.get_node("B").solutions = ["GalaxyWorks"]
+        # C has no solutions
+        metrics = _sample_metrics()
+        out = tmp_path / "graph.csv"
+        write_graph_csv_report(g, metrics, out)
+        with open(out, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+        assert "Solutions" in reader.fieldnames
+        a_row = next(r for r in rows if r["Project"] == "A")
+        assert a_row["Solutions"] == "GalaxyWorks;Master"
+        b_row = next(r for r in rows if r["Project"] == "B")
+        assert b_row["Solutions"] == "GalaxyWorks"
+        c_row = next(r for r in rows if r["Project"] == "C")
+        assert c_row["Solutions"] == ""
 
 
 # ===========================================================================
@@ -376,6 +413,23 @@ class TestGraphJsonTopologyFlag:
         metrics = _sample_metrics()
         result = build_graph_json(g, metrics, [], [])
         assert "health_dashboard" not in result
+
+    def test_json_metrics_includes_solutions(self):
+        g = _sample_graph()
+        g.get_node("A").solutions = ["GalaxyWorks"]
+        g.get_node("B").solutions = []
+        metrics = _sample_metrics()
+        result = build_graph_json(g, metrics, [], [])
+        assert result["metrics"]["A"]["solutions"] == ["GalaxyWorks"]
+        assert result["metrics"]["B"]["solutions"] == []
+        assert result["metrics"]["C"]["solutions"] == []
+
+    def test_json_topology_includes_solutions(self):
+        g = _sample_graph()
+        g.get_node("A").solutions = ["Sol1", "Sol2"]
+        metrics = _sample_metrics()
+        result = build_graph_json(g, metrics, [], [], include_topology=True)
+        assert result["graph"]["nodes"]["A"]["solutions"] == ["Sol1", "Sol2"]
 
 
 # ===========================================================================

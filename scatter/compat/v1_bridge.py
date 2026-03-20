@@ -89,7 +89,8 @@ def _process_consumer_summaries_and_append_results(
     pipeline_map_dict: Dict[str, str],
     solution_file_cache: List[Path],
     batch_job_map: Dict[str, List[str]],
-    search_scope_path_abs: Path) -> None:
+    search_scope_path_abs: Path,
+    solution_index: Optional[Dict] = None) -> None:
     """
     Helper to process summaries for consumer files and append to the main results list.
     Generates a row for EACH unique pipeline found for a consumer.
@@ -109,7 +110,9 @@ def _process_consumer_summaries_and_append_results(
         except ValueError:
             consumer_rel_path_str = consumer_abs_path.as_posix()
 
-        solutions_for_consumer_paths = find_solutions_for_project(consumer_abs_path, solution_file_cache)
+        solutions_for_consumer_paths = find_solutions_for_project(
+            consumer_abs_path, solution_file_cache, solution_index=solution_index
+        )
         solutions_for_consumer_names = [p.name for p in solutions_for_consumer_paths]
         logging.debug(f"   Found {len(solutions_for_consumer_names)} solutions for consumer '{consumer_name_stem}': {solutions_for_consumer_names}")
 

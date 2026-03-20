@@ -20,9 +20,23 @@ from scatter.cli import (
 
 from scatter.core.parallel import find_files_with_pattern_parallel
 from scatter.compat.v1_bridge import map_batch_jobs_from_config_repo
+from scatter.scanners.solution_scanner import (
+    SolutionInfo,
+    scan_solutions,
+    build_project_to_solutions,
+)
 
 from scatter.config import load_config
 from scatter.ai.router import AIRouter
+
+
+def _populate_graph_solutions(graph, solution_index):
+    """Post-process: set node.solutions from the solution reverse index."""
+    if not solution_index:
+        return
+    for node in graph.get_all_nodes():
+        matches = solution_index.get(node.name, [])
+        node.solutions = sorted(set(si.name for si in matches))
 
 
 def main():
@@ -79,6 +93,10 @@ def main():
                 disable_multiprocessing=args.disable_multiprocessing,
                 exclude_patterns=config.exclude_patterns,
             )
+            # Populate solutions before caching
+            dump_solutions = scan_solutions(search_scope_abs)
+            dump_sol_index = build_project_to_solutions(dump_solutions)
+            _populate_graph_solutions(graph, dump_sol_index)
             save_graph(graph, cache_path, search_scope_abs)
 
         index = build_codebase_index(graph, search_scope_abs)
@@ -195,19 +213,18 @@ def main():
         logging.error(f"Unexpected error during input validation: {e}")
         sys.exit(1)
 
-    # --- Step 1: Cache all solution files ---
+    # --- Step 1: Parse solution files ---
     logging.info(f"\n--- Caching solution files ---")
+    solution_infos: List[SolutionInfo] = []
+    solution_index: Dict = {}
     solution_file_cache: List[Path] = []
     if search_scope_abs:
         logging.info(f"Scanning for .sln files within '{search_scope_abs}'...")
         try:
-            solution_file_cache = find_files_with_pattern_parallel(
-                search_scope_abs, '*.sln',
-                max_workers=args.max_workers,
-                chunk_size=args.chunk_size,
-                disable_multiprocessing=args.disable_multiprocessing
-            )
-            logging.info(f"Found {len(solution_file_cache)} solution files")
+            solution_infos = scan_solutions(search_scope_abs)
+            solution_index = build_project_to_solutions(solution_infos)
+            solution_file_cache = [si.path for si in solution_infos]
+            logging.info(f"Found {len(solution_infos)} solution files")
         except Exception as e:
             logging.error(f"An error occurred while scanning for solution files: {e}")
     else:
@@ -275,7 +292,7 @@ def main():
         from scatter.store.graph_cache import cache_exists
         from scatter.analyzers.graph_enrichment import build_graph_context
         if args.graph_metrics or cache_exists(search_scope_abs, config.graph.cache_dir):
-            graph_ctx = build_graph_context(search_scope_abs, config, args)
+            graph_ctx = build_graph_context(search_scope_abs, config, args, solution_index=solution_index)
             if graph_ctx:
                 graph_enriched = True
             elif args.graph_metrics:
@@ -291,6 +308,7 @@ def main():
         batch_job_map=batch_job_map,
         ai_provider=ai_provider,
         graph_ctx=graph_ctx,
+        solution_index=solution_index,
         graph_enriched=graph_enriched,
         class_name=args.class_name,
         method_name=args.method_name,
@@ -380,6 +398,7 @@ def main():
             csproj_analysis_chunk_size=args.csproj_analysis_chunk_size,
             graph=ctx.graph_ctx.graph if ctx.graph_ctx else None,
             min_confidence=args.sow_min_confidence,
+            solution_index=solution_index,
         )
 
         # Enrich consumers with graph metrics if available
@@ -472,6 +491,7 @@ def main():
                 include_db_dependencies=config.db.include_db_edges,
                 sproc_prefixes=config.db.sproc_prefixes,
             )
+            _populate_graph_solutions(graph, solution_index)
             save_graph(graph, cache_path, search_scope_abs)
 
         # Compute metrics

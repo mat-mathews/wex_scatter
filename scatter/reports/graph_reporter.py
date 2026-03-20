@@ -99,7 +99,7 @@ def write_graph_csv_report(
 ) -> None:
     """Write graph metrics as CSV."""
     fieldnames = [
-        "Project", "Namespace", "FanIn", "FanOut", "Instability",
+        "Project", "Namespace", "Solutions", "FanIn", "FanOut", "Instability",
         "CouplingScore", "AfferentCoupling", "EfferentCoupling",
         "SharedDbDensity", "TypeExportCount", "ConsumerCount",
         "Cluster", "ExtractionFeasibility",
@@ -119,9 +119,11 @@ def write_graph_csv_report(
             node = graph.get_node(name)
             namespace = node.namespace if node else ""
             clu_name, feasibility = cluster_lookup.get(name, ("", ""))
+            solutions_str = ";".join(node.solutions) if node else ""
             writer.writerow({
                 "Project": name,
                 "Namespace": namespace or "",
+                "Solutions": solutions_str,
                 "FanIn": m.fan_in,
                 "FanOut": m.fan_out,
                 "Instability": round(m.instability, 3),
@@ -149,6 +151,11 @@ def print_graph_report(
     print(f"{'='*60}")
     print(f"  Projects: {graph.node_count}")
     print(f"  Dependencies: {graph.edge_count}")
+    solution_names = set()
+    for node in graph.get_all_nodes():
+        solution_names.update(node.solutions)
+    if solution_names:
+        print(f"  Solutions: {len(solution_names)}")
     print(f"  Connected components: {len(graph.connected_components)}")
     print(f"  Circular dependencies: {len(cycles)}")
     print()
@@ -240,6 +247,8 @@ def build_graph_json(
                 "shared_db_density": round(m.shared_db_density, 3),
                 "type_export_count": m.type_export_count,
                 "consumer_count": m.consumer_count,
+                "solutions": (graph.get_node(name).solutions
+                              if graph.get_node(name) else []),
             }
             for name, m in sorted(metrics.items())
         },

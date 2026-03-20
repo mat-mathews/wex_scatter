@@ -545,3 +545,105 @@ class TestGraphBuilder:
         g2 = DependencyGraph.from_dict(data)
         assert g2.node_count == graph.node_count
         assert g2.edge_count == graph.edge_count
+
+
+# === Initiative 9 Phase 2: Solution membership on ProjectNode ===
+
+
+class TestProjectNodeSolutions:
+    def test_default_empty(self):
+        node = _make_node("A")
+        assert node.solutions == []
+
+    def test_solutions_set(self):
+        node = _make_node("A", solutions=["GalaxyWorks", "Master"])
+        assert node.solutions == ["GalaxyWorks", "Master"]
+
+    def test_to_dict_includes_solutions(self):
+        g = DependencyGraph()
+        g.add_node(_make_node("A", solutions=["Sol1", "Sol2"]))
+        data = g.to_dict()
+        assert data["nodes"]["A"]["solutions"] == ["Sol1", "Sol2"]
+
+    def test_from_dict_with_solutions(self):
+        g = DependencyGraph()
+        g.add_node(_make_node("A", solutions=["Sol1"]))
+        data = g.to_dict()
+        g2 = DependencyGraph.from_dict(data)
+        assert g2.get_node("A").solutions == ["Sol1"]
+
+    def test_from_dict_without_solutions(self):
+        """Old cache without solutions field → empty list (backward compat)."""
+        data = {
+            "nodes": {
+                "A": {
+                    "path": "/fake/A/A.csproj",
+                    "name": "A",
+                    "namespace": None,
+                    "framework": None,
+                    "project_style": "sdk",
+                    "output_type": None,
+                    "file_count": 0,
+                    "type_declarations": [],
+                    "sproc_references": [],
+                    # no "solutions" key
+                }
+            },
+            "edges": [],
+        }
+        g = DependencyGraph.from_dict(data)
+        assert g.get_node("A").solutions == []
+
+    def test_roundtrip_preserves_solutions(self):
+        g = DependencyGraph()
+        g.add_node(_make_node("A", solutions=["GalaxyWorks"]))
+        g.add_node(_make_node("B", solutions=["GalaxyWorks", "Master"]))
+        g.add_node(_make_node("C"))  # no solutions
+        data = g.to_dict()
+        g2 = DependencyGraph.from_dict(data)
+        assert g2.get_node("A").solutions == ["GalaxyWorks"]
+        assert g2.get_node("B").solutions == ["GalaxyWorks", "Master"]
+        assert g2.get_node("C").solutions == []
+
+
+class TestSolutionPopulationIntegration:
+    """Integration: build graph + populate solutions from real .sln files."""
+
+    def test_populate_from_sample_projects(self):
+        from scatter.analyzers.graph_builder import build_dependency_graph
+        from scatter.scanners.solution_scanner import scan_solutions, build_project_to_solutions
+
+        repo_root = Path(__file__).parent
+        graph = build_dependency_graph(repo_root, disable_multiprocessing=True)
+        solutions = scan_solutions(repo_root)
+        sol_index = build_project_to_solutions(solutions)
+
+        # Post-process
+        for node in graph.get_all_nodes():
+            matches = sol_index.get(node.name, [])
+            node.solutions = sorted(set(si.name for si in matches))
+
+        # GalaxyWorks.Data should be in GalaxyWorks solution
+        data_node = graph.get_node("GalaxyWorks.Data")
+        assert data_node is not None
+        assert "GalaxyWorks" in data_node.solutions
+
+        # MyDotNetApp2.Exclude is also in GalaxyWorks.sln
+        exclude_node = graph.get_node("MyDotNetApp2.Exclude")
+        assert exclude_node is not None
+        assert "GalaxyWorks" in exclude_node.solutions
+
+    def test_populate_no_sln_files(self, tmp_path):
+        """No .sln files → all nodes have empty solutions."""
+        from scatter.scanners.solution_scanner import scan_solutions, build_project_to_solutions
+
+        solutions = scan_solutions(tmp_path)
+        sol_index = build_project_to_solutions(solutions)
+
+        g = DependencyGraph()
+        g.add_node(_make_node("A"))
+        for node in g.get_all_nodes():
+            matches = sol_index.get(node.name, [])
+            node.solutions = sorted(set(si.name for si in matches))
+
+        assert g.get_node("A").solutions == []

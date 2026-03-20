@@ -56,6 +56,7 @@ def run_impact_analysis(
     csproj_analysis_chunk_size: int = 25,
     graph=None,
     min_confidence: float = 0.3,
+    solution_index=None,
 ) -> ImpactReport:
     """Orchestrate the full impact analysis pipeline.
 
@@ -136,6 +137,7 @@ def run_impact_analysis(
             cs_analysis_chunk_size=cs_analysis_chunk_size,
             csproj_analysis_chunk_size=csproj_analysis_chunk_size,
             graph=graph,
+            solution_index=solution_index,
         )
         report.targets.append(target_impact)
 
@@ -204,6 +206,7 @@ def _analyze_single_target(
     cs_analysis_chunk_size: int,
     csproj_analysis_chunk_size: int,
     graph=None,
+    solution_index=None,
 ) -> TargetImpact:
     """Analyze a single target: find direct consumers, trace transitively."""
     impact = TargetImpact(target=target)
@@ -252,6 +255,7 @@ def _analyze_single_target(
         cs_analysis_chunk_size=cs_analysis_chunk_size,
         csproj_analysis_chunk_size=csproj_analysis_chunk_size,
         graph=graph,
+        solution_index=solution_index,
     )
 
     impact.consumers = all_consumers
@@ -274,6 +278,7 @@ def trace_transitive_impact(
     cs_analysis_chunk_size: int = 50,
     csproj_analysis_chunk_size: int = 25,
     graph=None,
+    solution_index=None,
 ) -> List[EnrichedConsumer]:
     """BFS transitive tracing with confidence decay and cycle detection.
 
@@ -308,8 +313,10 @@ def trace_transitive_impact(
 
             # Resolve solutions
             solutions = []
-            if solution_file_cache:
-                sol_paths = find_solutions_for_project(consumer_path, solution_file_cache)
+            if solution_index is not None or solution_file_cache:
+                sol_paths = find_solutions_for_project(
+                    consumer_path, solution_file_cache, solution_index=solution_index
+                )
                 solutions = [s.stem for s in sol_paths]
 
             # Resolve pipeline

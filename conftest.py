@@ -25,6 +25,7 @@ def make_mode_context():
             batch_job_map={},
             ai_provider=None,
             graph_ctx=None,
+            solution_index=None,
             graph_enriched=False,
             class_name=None,
             method_name=None,

@@ -26,6 +26,7 @@ class ProjectNode:
     file_count: int = 0
     type_declarations: List[str] = field(default_factory=list)
     sproc_references: List[str] = field(default_factory=list)
+    solutions: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -320,6 +321,7 @@ class DependencyGraph:
                 "file_count": node.file_count,
                 "type_declarations": node.type_declarations,
                 "sproc_references": node.sproc_references,
+                "solutions": node.solutions,
             }
 
         edges = []
@@ -353,6 +355,7 @@ class DependencyGraph:
                 file_count=node_data.get("file_count", 0),
                 type_declarations=node_data.get("type_declarations", []),
                 sproc_references=node_data.get("sproc_references", []),
+                solutions=node_data.get("solutions", []),
             )
             graph.add_node(node)
 

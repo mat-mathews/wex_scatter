@@ -33,6 +33,7 @@ class ModeContext:
     batch_job_map: Dict[str, List[str]]
     ai_provider: Optional[AIProvider]
     graph_ctx: Optional["GraphContext"] = None  # mutable, updated by _apply_graph_enrichment
+    solution_index: Optional[Dict] = None
     graph_enriched: bool = False                # mutable, updated by _apply_graph_enrichment
 
     # Resolved from args — only fields mode handlers actually read
@@ -378,6 +379,7 @@ def run_target_analysis(ctx: ModeContext, target_csproj: Path) -> ModeResult:
             solution_file_cache=ctx.solution_file_cache,
             batch_job_map=ctx.batch_job_map,
             search_scope_path_abs=ctx.search_scope,
+            solution_index=ctx.solution_index,
         )
 
         if ctx.summarize_consumers and ctx.ai_provider:

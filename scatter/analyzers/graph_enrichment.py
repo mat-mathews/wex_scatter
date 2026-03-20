@@ -29,7 +29,7 @@ class GraphContext:
     cycle_members: Set[str]
 
 
-def build_graph_context(search_scope, config, args) -> Optional["GraphContext"]:
+def build_graph_context(search_scope, config, args, solution_index=None) -> Optional["GraphContext"]:
     """Build or load a cached dependency graph and compute metrics.
 
     Returns GraphContext on success, None on failure. Caller should
@@ -128,6 +128,11 @@ def build_graph_context(search_scope, config, args) -> Optional["GraphContext"]:
                 capture_facts=True,
             )
             graph, file_facts, project_facts = build_result
+            # Post-process: populate solution membership
+            if solution_index:
+                for node in graph.get_all_nodes():
+                    matches = solution_index.get(node.name, [])
+                    node.solutions = sorted(set(si.name for si in matches))
             save_graph(graph, cache_path, search_scope, file_facts, project_facts)
 
         logging.info(
