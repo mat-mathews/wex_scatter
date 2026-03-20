@@ -504,9 +504,17 @@ def main():
         from scatter.analyzers.domain_analyzer import find_clusters
         clusters = find_clusters(graph, min_cluster_size=2, metrics=metrics, cycles=cycles)
 
+        # Solution metrics
+        from scatter.analyzers.coupling_analyzer import compute_solution_metrics
+        sol_metrics, bridge_projs = compute_solution_metrics(graph)
+
         # Health dashboard
         from scatter.analyzers.health_analyzer import compute_health_dashboard
-        dashboard = compute_health_dashboard(graph, metrics, cycles, clusters=clusters)
+        dashboard = compute_health_dashboard(
+            graph, metrics, cycles, clusters=clusters,
+            solution_metrics=sol_metrics if sol_metrics else None,
+            bridge_projects=bridge_projs if bridge_projs else None,
+        )
 
         # Output
         if args.output_format == "json":
@@ -517,6 +525,8 @@ def main():
                 metadata=_build_metadata(args, search_scope_abs, start_time, graph_enriched=True),
                 include_topology=args.include_graph_topology,
                 dashboard=dashboard,
+                solution_metrics=sol_metrics if sol_metrics else None,
+                bridge_projects=bridge_projs if bridge_projs else None,
             )
             logging.info(f"Graph report written to {args.output_file}")
 
@@ -553,7 +563,10 @@ def main():
                 print(mermaid_output)
 
         else:
-            print_graph_report(graph, ranked, cycles, clusters=clusters, dashboard=dashboard)
+            print_graph_report(
+                graph, ranked, cycles, clusters=clusters, dashboard=dashboard,
+                solution_metrics=sol_metrics if sol_metrics else None,
+            )
 
         node_count = graph.node_count
         edge_count = graph.edge_count

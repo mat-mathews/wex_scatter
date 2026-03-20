@@ -338,3 +338,101 @@ def _shortest_cycle_in_scc(
                     queue.append(neighbor)
 
     return best_cycle if best_cycle is not None else scc[:2]
+
+
+# --- Solution-level metrics (Initiative 9 Phase 3) ---
+
+
+@dataclass
+class SolutionMetrics:
+    """Coupling metrics for a single solution."""
+
+    name: str
+    project_count: int
+    internal_edges: int          # edges where both endpoints are in this solution
+    external_edges: int          # edges where one endpoint is outside this solution
+    cross_solution_ratio: float  # external / (internal + external), 0.0 if no edges
+    incoming_solutions: List[str]  # other solutions with edges INTO this one
+    outgoing_solutions: List[str]  # other solutions this one has edges TO
+
+
+def compute_solution_metrics(
+    graph: DependencyGraph,
+) -> Tuple[Dict[str, SolutionMetrics], List[str]]:
+    """Compute coupling metrics at the solution level.
+
+    Uses ProjectNode.solutions to classify each edge as intra-solution or
+    cross-solution. Returns (metrics_by_solution, bridge_projects).
+
+    Single-pass O(E) algorithm with O(1) set lookups per edge.
+    """
+    # Build lookup: node_name -> set of solution names
+    node_solutions: Dict[str, Set[str]] = {}
+    solution_to_projects: Dict[str, Set[str]] = defaultdict(set)
+
+    for node in graph.get_all_nodes():
+        sols = set(node.solutions)
+        node_solutions[node.name] = sols
+        for sol in sols:
+            solution_to_projects[sol].add(node.name)
+
+    if not solution_to_projects:
+        return {}, []
+
+    # Per-solution accumulators
+    internal: Dict[str, int] = defaultdict(int)
+    external: Dict[str, int] = defaultdict(int)
+    incoming: Dict[str, Set[str]] = defaultdict(set)
+    outgoing: Dict[str, Set[str]] = defaultdict(set)
+
+    # Single pass over all edges
+    for edge in graph.all_edges:
+        source_sols = node_solutions.get(edge.source, set())
+        target_sols = node_solutions.get(edge.target, set())
+
+        if not source_sols and not target_sols:
+            continue  # both unaffiliated
+
+        # For each solution the source belongs to
+        for sol in source_sols:
+            if sol in target_sols:
+                internal[sol] += 1
+            else:
+                external[sol] += 1
+                # Record which solutions the target belongs to as outgoing
+                for target_sol in target_sols:
+                    outgoing[sol].add(target_sol)
+
+        # For each solution the target belongs to (that source is NOT in)
+        for sol in target_sols:
+            if sol not in source_sols:
+                external[sol] += 1
+                # Record which solutions the source belongs to as incoming
+                for source_sol in source_sols:
+                    incoming[sol].add(source_sol)
+
+    # Build SolutionMetrics
+    metrics: Dict[str, SolutionMetrics] = {}
+    for sol_name, projects in sorted(solution_to_projects.items()):
+        int_count = internal[sol_name]
+        ext_count = external[sol_name]
+        total = int_count + ext_count
+        ratio = ext_count / total if total > 0 else 0.0
+
+        metrics[sol_name] = SolutionMetrics(
+            name=sol_name,
+            project_count=len(projects),
+            internal_edges=int_count,
+            external_edges=ext_count,
+            cross_solution_ratio=ratio,
+            incoming_solutions=sorted(incoming[sol_name]),
+            outgoing_solutions=sorted(outgoing[sol_name]),
+        )
+
+    # Bridge projects: projects in 3+ solutions (global, not per-solution)
+    bridge_projects = sorted(
+        name for name, sols in node_solutions.items()
+        if len(sols) >= 3
+    )
+
+    return metrics, bridge_projects

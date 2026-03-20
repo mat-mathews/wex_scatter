@@ -9,7 +9,9 @@ from scatter.analyzers.coupling_analyzer import (
     DEFAULT_CYCLE_EDGE_TYPES,
     CycleGroup,
     ProjectMetrics,
+    SolutionMetrics,
     compute_all_metrics,
+    compute_solution_metrics,
     detect_cycles,
     rank_by_coupling,
 )
@@ -395,3 +397,217 @@ class TestCycleGroup:
         assert cg.size == 2
         cg2 = CycleGroup(projects=["A"], shortest_cycle=["A"], edge_count=1)
         assert cg2.size == 1
+
+
+# === Initiative 9 Phase 3: Solution-level metrics ===
+
+
+def _make_node(name, solutions=None):
+    return ProjectNode(
+        path=Path(f"/fake/{name}/{name}.csproj"),
+        name=name,
+        solutions=solutions or [],
+    )
+
+
+def _sol_graph():
+    """Two solutions: X has {A, B}, Y has {C, D}. A→C crosses, A→B is internal."""
+    g = DependencyGraph()
+    g.add_node(_make_node("A", solutions=["X"]))
+    g.add_node(_make_node("B", solutions=["X"]))
+    g.add_node(_make_node("C", solutions=["Y"]))
+    g.add_node(_make_node("D", solutions=["Y"]))
+    g.add_edge(DependencyEdge(source="A", target="B", edge_type="project_reference"))
+    g.add_edge(DependencyEdge(source="A", target="C", edge_type="project_reference"))
+    g.add_edge(DependencyEdge(source="C", target="D", edge_type="project_reference"))
+    return g
+
+
+class TestSolutionMetrics:
+    def test_two_solutions_basic(self):
+        g = _sol_graph()
+        metrics, bridges = compute_solution_metrics(g)
+
+        assert "X" in metrics
+        assert "Y" in metrics
+
+        x = metrics["X"]
+        assert x.project_count == 2
+        assert x.internal_edges == 1  # A→B
+        assert x.external_edges == 1  # A→C
+        assert 0.4 < x.cross_solution_ratio < 0.6  # 1/2 = 0.5
+
+        y = metrics["Y"]
+        assert y.project_count == 2
+        assert y.internal_edges == 1  # C→D
+        assert y.external_edges == 1  # A→C (external for Y)
+
+    def test_all_intra_solution(self):
+        g = DependencyGraph()
+        g.add_node(_make_node("A", solutions=["X"]))
+        g.add_node(_make_node("B", solutions=["X"]))
+        g.add_edge(DependencyEdge(source="A", target="B", edge_type="project_reference"))
+
+        metrics, _ = compute_solution_metrics(g)
+        assert metrics["X"].cross_solution_ratio == 0.0
+        assert metrics["X"].internal_edges == 1
+        assert metrics["X"].external_edges == 0
+
+    def test_all_cross_solution(self):
+        g = DependencyGraph()
+        g.add_node(_make_node("A", solutions=["X"]))
+        g.add_node(_make_node("B", solutions=["Y"]))
+        g.add_edge(DependencyEdge(source="A", target="B", edge_type="project_reference"))
+
+        metrics, _ = compute_solution_metrics(g)
+        assert metrics["X"].cross_solution_ratio == 1.0
+        assert metrics["Y"].cross_solution_ratio == 1.0
+
+    def test_multi_solution_edge_classification(self):
+        """Edge A→B where A is in {X,Y} and B is in {X} only.
+        Internal to X, external to Y (Fatima)."""
+        g = DependencyGraph()
+        g.add_node(_make_node("A", solutions=["X", "Y"]))
+        g.add_node(_make_node("B", solutions=["X"]))
+        g.add_edge(DependencyEdge(source="A", target="B", edge_type="project_reference"))
+
+        metrics, _ = compute_solution_metrics(g)
+
+        # X: A and B both in X → internal
+        assert metrics["X"].internal_edges == 1
+        assert metrics["X"].external_edges == 0
+        assert metrics["X"].cross_solution_ratio == 0.0
+
+        # Y: A is in Y, B is not → external
+        assert metrics["Y"].internal_edges == 0
+        assert metrics["Y"].external_edges == 1
+        assert metrics["Y"].cross_solution_ratio == 1.0
+
+    def test_unaffiliated_projects_skipped(self):
+        g = DependencyGraph()
+        g.add_node(_make_node("A", solutions=[]))  # unaffiliated
+        g.add_node(_make_node("B", solutions=[]))
+        g.add_edge(DependencyEdge(source="A", target="B", edge_type="project_reference"))
+
+        metrics, _ = compute_solution_metrics(g)
+        assert metrics == {}
+
+    def test_incoming_outgoing_solutions(self):
+        g = _sol_graph()  # X={A,B}, Y={C,D}, A→C crosses
+        metrics, _ = compute_solution_metrics(g)
+
+        assert "Y" in metrics["X"].outgoing_solutions
+        assert "X" in metrics["Y"].incoming_solutions
+
+
+class TestBridgeProjects:
+    def test_bridge_detected(self):
+        g = DependencyGraph()
+        g.add_node(_make_node("Shared", solutions=["X", "Y", "Z"]))
+        g.add_node(_make_node("A", solutions=["X"]))
+        g.add_edge(DependencyEdge(source="A", target="Shared", edge_type="project_reference"))
+
+        _, bridges = compute_solution_metrics(g)
+        assert "Shared" in bridges
+
+    def test_no_bridge_below_threshold(self):
+        g = DependencyGraph()
+        g.add_node(_make_node("TwoSols", solutions=["X", "Y"]))
+        g.add_node(_make_node("A", solutions=["X"]))
+        g.add_edge(DependencyEdge(source="A", target="TwoSols", edge_type="project_reference"))
+
+        _, bridges = compute_solution_metrics(g)
+        assert "TwoSols" not in bridges
+
+
+class TestSolutionHealthObservations:
+    def test_high_cross_solution_observation(self):
+        from scatter.analyzers.health_analyzer import compute_health_dashboard
+
+        g = DependencyGraph()
+        g.add_node(_make_node("A", solutions=["X"]))
+        g.add_node(_make_node("B", solutions=["Y"]))
+        g.add_edge(DependencyEdge(source="A", target="B", edge_type="project_reference"))
+
+        proj_metrics = compute_all_metrics(g)
+        cycles = detect_cycles(g)
+        sol_metrics, bridges = compute_solution_metrics(g)
+
+        dashboard = compute_health_dashboard(
+            g, proj_metrics, cycles,
+            solution_metrics=sol_metrics, bridge_projects=bridges,
+        )
+
+        rules = [o.rule for o in dashboard.observations]
+        assert "high_cross_solution_coupling" in rules
+
+    def test_no_observation_below_threshold(self):
+        from scatter.analyzers.health_analyzer import compute_health_dashboard
+
+        g = DependencyGraph()
+        g.add_node(_make_node("A", solutions=["X"]))
+        g.add_node(_make_node("B", solutions=["X"]))
+        g.add_node(_make_node("C", solutions=["X"]))
+        # All internal edges
+        g.add_edge(DependencyEdge(source="A", target="B", edge_type="project_reference"))
+        g.add_edge(DependencyEdge(source="B", target="C", edge_type="project_reference"))
+
+        proj_metrics = compute_all_metrics(g)
+        cycles = detect_cycles(g)
+        sol_metrics, bridges = compute_solution_metrics(g)
+
+        dashboard = compute_health_dashboard(
+            g, proj_metrics, cycles,
+            solution_metrics=sol_metrics, bridge_projects=bridges,
+        )
+
+        rules = [o.rule for o in dashboard.observations]
+        assert "high_cross_solution_coupling" not in rules
+
+    def test_bridge_project_observation(self):
+        from scatter.analyzers.health_analyzer import compute_health_dashboard
+
+        g = DependencyGraph()
+        g.add_node(_make_node("Core", solutions=["X", "Y", "Z"]))
+        # Add 5 projects depending on Core for fan_in >= 5
+        for i in range(5):
+            name = f"Consumer{i}"
+            g.add_node(_make_node(name, solutions=["X"]))
+            g.add_edge(DependencyEdge(source=name, target="Core", edge_type="project_reference"))
+
+        proj_metrics = compute_all_metrics(g)
+        cycles = detect_cycles(g)
+        sol_metrics, bridges = compute_solution_metrics(g)
+
+        dashboard = compute_health_dashboard(
+            g, proj_metrics, cycles,
+            solution_metrics=sol_metrics, bridge_projects=bridges,
+        )
+
+        rules = [o.rule for o in dashboard.observations]
+        assert "solution_bridge_project" in rules
+        bridge_obs = [o for o in dashboard.observations if o.rule == "solution_bridge_project"]
+        assert bridge_obs[0].project == "Core"
+
+    def test_bridge_no_observation_low_fan_in(self):
+        from scatter.analyzers.health_analyzer import compute_health_dashboard
+
+        g = DependencyGraph()
+        g.add_node(_make_node("Core", solutions=["X", "Y", "Z"]))
+        # Only 2 consumers — fan_in < 5
+        for i in range(2):
+            name = f"Consumer{i}"
+            g.add_node(_make_node(name, solutions=["X"]))
+            g.add_edge(DependencyEdge(source=name, target="Core", edge_type="project_reference"))
+
+        proj_metrics = compute_all_metrics(g)
+        cycles = detect_cycles(g)
+        sol_metrics, bridges = compute_solution_metrics(g)
+
+        dashboard = compute_health_dashboard(
+            g, proj_metrics, cycles,
+            solution_metrics=sol_metrics, bridge_projects=bridges,
+        )
+
+        rules = [o.rule for o in dashboard.observations]
+        assert "solution_bridge_project" not in rules

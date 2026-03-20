@@ -6,7 +6,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-from scatter.analyzers.coupling_analyzer import CycleGroup, ProjectMetrics
+from scatter.analyzers.coupling_analyzer import CycleGroup, ProjectMetrics, SolutionMetrics
 from scatter.core.graph import DependencyGraph
 
 # --- Thresholds (module constants) ---
@@ -50,6 +50,8 @@ def compute_health_dashboard(
     metrics: Dict[str, ProjectMetrics],
     cycles: List[CycleGroup],
     clusters: Optional[List] = None,
+    solution_metrics: Optional[Dict[str, SolutionMetrics]] = None,
+    bridge_projects: Optional[List[str]] = None,
 ) -> HealthDashboard:
     """Build a HealthDashboard from graph data and computed metrics."""
     n = len(metrics)
@@ -85,8 +87,20 @@ def compute_health_dashboard(
         sproc for sproc, projs in sproc_to_projects.items() if len(projs) >= 3
     )
 
+    # Build node_solutions lookup for bridge project observations
+    node_solutions_lookup: Optional[Dict[str, List[str]]] = None
+    if bridge_projects:
+        node_solutions_lookup = {
+            node.name: node.solutions
+            for node in graph.get_all_nodes()
+            if node.solutions
+        }
+
     observations = _generate_observations(
-        metrics, cycles, clusters, sproc_to_projects
+        metrics, cycles, clusters, sproc_to_projects,
+        solution_metrics=solution_metrics,
+        bridge_projects=bridge_projects,
+        node_solutions=node_solutions_lookup,
     )
 
     return HealthDashboard(
@@ -110,6 +124,9 @@ def _generate_observations(
     cycles: List[CycleGroup],
     clusters: Optional[List],
     sproc_to_projects: Dict[str, List[str]],
+    solution_metrics: Optional[Dict[str, SolutionMetrics]] = None,
+    bridge_projects: Optional[List[str]] = None,
+    node_solutions: Optional[Dict[str, List[str]]] = None,
 ) -> List[Observation]:
     """Apply deterministic rules to generate observations."""
     obs: List[Observation] = []
@@ -166,5 +183,37 @@ def _generate_observations(
                 message=f"{sproc}: shared by {len(projs)} projects \u2014 database coupling hotspot",
                 severity="info",
             ))
+
+    # Solution coupling rules
+    if solution_metrics:
+        for sol_name, sm in sorted(solution_metrics.items()):
+            if sm.cross_solution_ratio > 0.5:
+                total = sm.internal_edges + sm.external_edges
+                obs.append(Observation(
+                    project=sol_name,
+                    rule="high_cross_solution_coupling",
+                    message=(
+                        f"{sol_name}: high cross-solution coupling "
+                        f"(ratio {sm.cross_solution_ratio:.2f}, "
+                        f"{sm.external_edges} of {total} edges cross solution boundary)"
+                    ),
+                    severity="warning",
+                ))
+
+    if bridge_projects and node_solutions:
+        for name in bridge_projects:
+            m = metrics.get(name)
+            if m and m.fan_in >= HIGH_FAN_IN_THRESHOLD:
+                sols = node_solutions.get(name, [])
+                sol_str = ", ".join(sols) if sols else "multiple"
+                obs.append(Observation(
+                    project=name,
+                    rule="solution_bridge_project",
+                    message=(
+                        f"{name}: bridge project across {len(sols)} solutions "
+                        f"({sol_str}) with {m.fan_in} incoming dependencies"
+                    ),
+                    severity="info",
+                ))
 
     return obs

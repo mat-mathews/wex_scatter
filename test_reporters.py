@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
-from scatter.analyzers.coupling_analyzer import CycleGroup, ProjectMetrics
+from scatter.analyzers.coupling_analyzer import CycleGroup, ProjectMetrics, SolutionMetrics
 from scatter.analyzers.health_analyzer import (
     HealthDashboard,
     Observation,
@@ -430,6 +430,59 @@ class TestGraphJsonTopologyFlag:
         metrics = _sample_metrics()
         result = build_graph_json(g, metrics, [], [], include_topology=True)
         assert result["graph"]["nodes"]["A"]["solutions"] == ["Sol1", "Sol2"]
+
+    def test_json_solution_metrics_section(self):
+        g = _sample_graph()
+        g.get_node("A").solutions = ["Sol1"]
+        g.get_node("B").solutions = ["Sol1"]
+        metrics = _sample_metrics()
+        sol_metrics = {
+            "Sol1": SolutionMetrics(
+                name="Sol1", project_count=2, internal_edges=1,
+                external_edges=1, cross_solution_ratio=0.5,
+                incoming_solutions=[], outgoing_solutions=["Sol2"],
+            ),
+        }
+        result = build_graph_json(
+            g, metrics, [], [], solution_metrics=sol_metrics,
+            bridge_projects=["A"],
+        )
+        assert "solution_metrics" in result
+        assert result["solution_metrics"]["Sol1"]["project_count"] == 2
+        assert result["solution_metrics"]["Sol1"]["cross_solution_ratio"] == 0.5
+        assert result["bridge_projects"] == ["A"]
+
+    def test_json_no_solution_metrics_when_empty(self):
+        g = _sample_graph()
+        metrics = _sample_metrics()
+        result = build_graph_json(g, metrics, [], [])
+        assert "solution_metrics" not in result
+        assert "bridge_projects" not in result
+
+
+class TestSolutionCouplingConsole:
+    def test_console_solution_coupling_shown(self, capsys):
+        g = _sample_graph()
+        g.get_node("A").solutions = ["Sol1"]
+        ranked = [("A", _sample_metrics()["A"])]
+        sol_metrics = {
+            "Sol1": SolutionMetrics(
+                name="Sol1", project_count=2, internal_edges=3,
+                external_edges=1, cross_solution_ratio=0.25,
+                incoming_solutions=[], outgoing_solutions=[],
+            ),
+        }
+        print_graph_report(g, ranked, [], solution_metrics=sol_metrics)
+        captured = capsys.readouterr().out
+        assert "Solution Coupling" in captured
+        assert "Sol1" in captured
+
+    def test_console_no_section_without_solutions(self, capsys):
+        g = _sample_graph()
+        ranked = [("A", _sample_metrics()["A"])]
+        print_graph_report(g, ranked, [])
+        captured = capsys.readouterr().out
+        assert "Solution Coupling" not in captured
 
 
 # ===========================================================================

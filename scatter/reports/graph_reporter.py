@@ -144,6 +144,7 @@ def print_graph_report(
     cycles: List[CycleGroup],
     clusters: Optional[List] = None,
     dashboard=None,
+    solution_metrics: Optional[Dict] = None,
 ) -> None:
     """Print graph analysis summary to console."""
     print(f"\n{'='*60}")
@@ -188,6 +189,14 @@ def print_graph_report(
             print(f"    Members: {', '.join(members)}{suffix}")
         print()
 
+    if solution_metrics:
+        print(f"  Solution Coupling:")
+        print(f"  {'Solution':<30} {'Projects':>8} {'Internal':>10} {'External':>10} {'Ratio':>8}")
+        print(f"  {'-'*30} {'-'*8} {'-'*10} {'-'*10} {'-'*8}")
+        for sm in solution_metrics.values():
+            print(f"  {sm.name:<30} {sm.project_count:>8} {sm.internal_edges:>10} {sm.external_edges:>10} {sm.cross_solution_ratio:>8.2f}")
+        print()
+
     if dashboard and dashboard.observations:
         print(f"  Observations:")
         for obs in dashboard.observations:
@@ -204,6 +213,8 @@ def build_graph_json(
     metadata: Optional[Dict] = None,
     include_topology: bool = True,
     dashboard=None,
+    solution_metrics: Optional[Dict] = None,
+    bridge_projects: Optional[List[str]] = None,
 ) -> dict:
     """Build JSON-serializable dict for graph report."""
     report = {}
@@ -274,6 +285,20 @@ def build_graph_json(
             }
             for clu in clusters
         ]
+    if solution_metrics:
+        report["solution_metrics"] = {
+            name: {
+                "project_count": sm.project_count,
+                "internal_edges": sm.internal_edges,
+                "external_edges": sm.external_edges,
+                "cross_solution_ratio": round(sm.cross_solution_ratio, 3),
+                "incoming_solutions": sm.incoming_solutions,
+                "outgoing_solutions": sm.outgoing_solutions,
+            }
+            for name, sm in sorted(solution_metrics.items())
+        }
+    if bridge_projects:
+        report["bridge_projects"] = bridge_projects
     if dashboard is not None:
         report["health_dashboard"] = dataclasses.asdict(dashboard)
     return report
@@ -289,12 +314,15 @@ def write_graph_json_report(
     metadata: Optional[Dict] = None,
     include_topology: bool = True,
     dashboard=None,
+    solution_metrics=None,
+    bridge_projects=None,
 ) -> None:
     """Write graph analysis report as JSON."""
     report = build_graph_json(
         graph, metrics, ranked, cycles,
         clusters=clusters, metadata=metadata,
         include_topology=include_topology, dashboard=dashboard,
+        solution_metrics=solution_metrics, bridge_projects=bridge_projects,
     )
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
