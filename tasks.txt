@@ -885,14 +885,23 @@ INTEGRATE DEPENDENCY GRAPH INTO ANALYSIS MODES ✅ COMPLETED (2026-03-14)
 - [x] Graceful degradation: graph failure → warning, analysis continues
 - [x] 17 tests in test_graph_enrichment.py
 
-CLAUDE CODE SKILLS (HIGH PRIORITY — 1 day, zero new Python code)
-Ref: docs/CLAUDE_INTEGRATION_EVALUATION.md
-- [ ] Create .claude/skills/scatter-graph/SKILL.md
-- [ ] Create .claude/skills/scatter-consumers/SKILL.md
-- [ ] Create .claude/skills/scatter-impact/SKILL.md
-- [ ] Create .claude/skills/scatter-sproc/SKILL.md
-- [ ] Create .claude/skills/scatter-branch/SKILL.md
-- [ ] Test each skill interactively with Claude Code
+CLAUDE CODE SKILLS ✅ COMPLETED (2026-03-19)
+Ref: docs/CLAUDE_INTEGRATION_EVALUATION.md, docs/CLAUDE_SKILLS.md
+- [x] Create tools/claude-skills/scatter-graph/SKILL.md
+- [x] Create tools/claude-skills/scatter-consumers/SKILL.md
+- [x] Create tools/claude-skills/scatter-impact/SKILL.md
+- [x] Create tools/claude-skills/scatter-sproc/SKILL.md
+- [x] Create tools/claude-skills/scatter-branch/SKILL.md
+- [x] Setup script: tools/setup-claude-skills.sh (symlinks into .claude/skills/)
+- [x] Smoke test: tools/smoke-test-claude-skills.sh (4/4 pass, impact skipped without API key)
+- [x] Documentation: docs/CLAUDE_SKILLS.md
+- [x] Team review: dropped stdout (JSON requires --output-file), added $$ to temp filenames,
+      shell injection fix (--sow-file instead of inline --sow), error handling on all skills,
+      disable-model-invocation on sproc/branch to avoid auto-pick confusion,
+      broader trigger phrases in descriptions
+Note: Skills live in tools/claude-skills/ (visible, versionable) and are symlinked into
+.claude/skills/ via setup script. scatter-graph, scatter-consumers, scatter-impact are
+auto-invoked by Claude; scatter-sproc and scatter-branch are manual-only slash commands.
 
 DEPLOYMENT CHECKLIST / SCATTER PIPELINES SHORTCUT ✅ COMPLETED (2026-03-15)
 Ref: docs/USE_CASE_REVIEW.md, Use Case #9; docs/PIPELINES_SHORTCUT_PLAN.md
@@ -1155,11 +1164,11 @@ COMPLETED (v2.0 — continued):
      when flag present), graceful degradation on graph failure.
 
 IN PROGRESS (v2.0 — reprioritized 2026-03-14):
-  Tier 1 — Credibility & Adoption (2 of 4 shipped):
+  Tier 1 — Credibility & Adoption (4 of 4 shipped):
     - ✅ Fix --summarize-consumers wiring
     - ✅ Integrate dependency graph into analysis modes (--graph-metrics)
-    - Claude Code skills in .claude/skills/
-    - Deployment checklist / scatter pipelines shortcut
+    - ✅ Claude Code skills in tools/claude-skills/ (5 skills + setup + smoke test)
+    - ✅ Deployment checklist / scatter pipelines shortcut
   Tier 1.5 — Incremental Graph Updates (prerequisite for Tier 2 CI/CD):
     - Per-file facts cache + lazy git-diff patching (~3-4 days)
     - Ref: docs/INCREMENTAL_GRAPH_PLAN.md
@@ -1195,8 +1204,9 @@ RECOMMENDED EXECUTION ORDER (reprioritized 2026-03-13):
   TIER 1: CREDIBILITY & ADOPTION (highest ROI, lowest effort)
   10. ✅ DONE — Fix --summarize-consumers wiring (7 tests)
   11. ✅ DONE — Integrate dependency graph into analysis modes via --graph-metrics (17 tests)
-  12. Claude Code skills in .claude/skills/ (HIGH — 1 day, zero new Python code,
-      collapses adoption barrier; engineers ask Claude instead of learning CLI)
+  12. ✅ DONE — Claude Code skills in tools/claude-skills/ (5 skills, setup script,
+      smoke test, docs/CLAUDE_SKILLS.md. Team review: shell injection fix, auto-pick
+      scoping, error handling, trigger phrase expansion)
   13. ✅ DONE — Deployment checklist / `--output-format pipelines` (14 tests)
 
   TIER 1.5: INCREMENTAL GRAPH UPDATES (prerequisite for CI/CD — 3-4 days)

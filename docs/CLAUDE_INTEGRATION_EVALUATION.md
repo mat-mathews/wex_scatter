@@ -365,22 +365,25 @@ This is already Claude-friendly. No additional formatting layer needed.
 
 ---
 
-## 10. Recommended Next Steps (updated 2026-03-13)
+## 10. Recommended Next Steps (updated 2026-03-19)
 
-Resequenced to align with adoption-driven priorities. Claude skills and
-credibility fixes are the highest-leverage items across the entire scatter
-roadmap — not just the Claude integration track.
+Resequenced to align with adoption-driven priorities.
 
-1. **This week:** Fix `--summarize-consumers` wiring (~1 hour) — P0 credibility bug
-2. **This week:** Integrate dependency graph into `--sow` / `--target-project` modes (~4 hours) — 5x perf win for the core workflow Claude will invoke
-3. **This week:** Create 5 Claude Code skills in `.claude/skills/` (1 day) — collapses adoption barrier entirely
-4. **This week:** Add `scatter pipelines` shortcut / deployment checklist mode (~2 hours) — #1 release-night use case
-5. **Next week:** Demo to 2-3 team members (30 min each)
-6. **Next week:** Use scatter+Claude on a real CSE scoping
-7. **Month 2:** Ship Initiative 7 CI/CD exit codes (`--fail-on`) — makes scatter an architecture governance gate
-8. **Month 2:** PR blast radius comments (GitHub/ADO) — second always-on touchpoint alongside skills
-9. **Month 3:** Evaluate MCP server based on adoption patterns
-10. **Month 3:** Baseline tracking + trend analysis (needs real usage history)
+1. ~~**Fix `--summarize-consumers` wiring**~~ — ✅ shipped 2026-03-14
+2. ~~**Integrate dependency graph into analysis modes**~~ — ✅ shipped 2026-03-14
+3. ~~**Create 5 Claude Code skills**~~ — ✅ shipped 2026-03-19
+   Skills live in `tools/claude-skills/`, symlinked via `tools/setup-claude-skills.sh`.
+   Three auto-invoked (graph, consumers, impact), two manual (sproc, branch).
+   Team review: shell injection fix, auto-pick scoping, error handling, smoke tests.
+   See [CLAUDE_SKILLS.md](CLAUDE_SKILLS.md).
+4. ~~**`scatter pipelines` shortcut**~~ — ✅ shipped 2026-03-15
+5. **Next:** Demo to 2-3 team members (30 min each)
+6. **Next:** Use scatter+Claude on a real CSE scoping
+7. **Soon:** Ship Initiative 7 CI/CD exit codes (`--fail-on`) — makes scatter an architecture governance gate
+8. **Soon:** PR blast radius comments (GitHub/ADO) — second always-on touchpoint alongside skills
+9. **Later:** Evaluate MCP server based on adoption patterns
+10. **Later:** Baseline tracking + trend analysis (needs real usage history)
 
-The fastest path to value is credibility fixes + skills + grassroots adoption.
-CI/CD gates make it sticky. Everything else follows from engineers seeing it work.
+All four Tier 1 credibility/adoption items are shipped. The focus shifts to
+grassroots adoption (demos, real CSE usage) and then CI/CD governance to make
+scatter sticky infrastructure.

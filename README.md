@@ -52,6 +52,22 @@ source .venv/bin/activate       # macOS/Linux
 pip install -r requirements.txt
 ```
 
+### Using with Claude Code
+
+If you have Claude Code, you can use scatter through natural language instead of CLI flags:
+
+```bash
+# One-time setup: symlink skills into .claude/skills/
+bash tools/setup-claude-skills.sh
+```
+
+Then ask Claude directly:
+- "Show me the dependency health of this codebase"
+- "Who uses GalaxyWorks.Data?"
+- "What's the blast radius of adding tenant isolation to portal configuration?"
+
+See [docs/CLAUDE_SKILLS.md](docs/CLAUDE_SKILLS.md) for all available skills and example prompts.
+
 ### Try It with the Included Sample Projects
 
 The repository ships with 8 sample .NET projects that form two dependency chains (see [Sample Project Structure](#sample-project-structure) for the full graph). You can run every analysis mode against them immediately — no external codebase needed.
@@ -173,7 +189,7 @@ python scatter.py \
 
 ## Table of Contents
 
-1. [Quick Start](#quick-start)
+1. [Quick Start](#quick-start) — Installation, Claude Code integration, sample projects
 2. [Sample Project Structure](#sample-project-structure)
 3. [How the Graph Engine Works](#how-the-graph-engine-works) — Build pipeline, acceleration, incremental updates, metrics
 4. [Analysis Modes](#analysis-modes)
@@ -2083,10 +2099,12 @@ The `feasibility_details` dict breaks down each penalty, making it actionable �
 - **Incremental Graph Updates** — `scatter/store/graph_patcher.py` replaces all-or-nothing cache invalidation with surgical per-file patching. Git diff identifies changed files, content hash and declaration early cutoffs minimize re-extraction, and edge rebuild is scoped to affected projects. Safety valves (>50 projects, >30% files, structural changes) fall back to full rebuild. Shared regex patterns in `scatter/core/patterns.py`. v2 cache format with per-file/project facts and automatic v1→v2 migration. Benchmarked: 10-954x speedup for usage-only changes, 122-253x for csproj modifications. 49 tests + performance benchmark harness (`tools/benchmark_incremental.py`)
 - **Pipeline Output Format** — `--output-format pipelines` prints sorted unique pipeline names to stdout, one per line, for release managers and deployment scripts. Works in legacy modes (git, target, sproc) and impact mode (sow). Early rejection in graph mode via `parser.error()`. Warns on stderr when used without `--pipeline-csv`. `scatter/reports/pipeline_reporter.py` with 14 tests
 - **Transparent Graph Acceleration (Phases A-C)** — The graph is now the default fast path for all analysis modes, with zero configuration required. Phase A: auto-load graph from cache, `graph_enriched` metadata field, `--no-graph` escape hatch (15 tests). Phase B: O(1) reverse-index consumer lookup replaces filesystem stages 1-2 of `find_consumers()`, with target-not-in-graph fallback and `FilterStage.source` tracking (14 tests). Phase C: first-run graph build via idempotent `_ensure_graph_context()` at all 4 enrichment sites — results enriched on the very first run with no flags needed (7 tests). See [How the Graph Engine Works](#how-the-graph-engine-works)
+- **Claude Code Skills** — Five skills in `tools/claude-skills/` that let engineers use scatter through natural language in Claude Code. Three auto-invoked skills (graph health, consumer lookup, SOW impact analysis) and two manual slash commands (stored procedure tracing, git branch analysis). Setup: `bash tools/setup-claude-skills.sh`. See [docs/CLAUDE_SKILLS.md](docs/CLAUDE_SKILLS.md)
 
-### Next (Tier 1: Credibility & Adoption)
+### Next (Tier 1.9: Solution-Aware Analysis)
 
-- **Claude Code skills** — `.claude/skills/` slash commands so engineers can ask Claude about dependencies without learning the CLI
+- **Solution-aware graph** — Parse `.sln` files, add solution membership to graph nodes, cross-solution coupling metrics
+- **Focused SOW index** — Two-tier solution-scoped index for `--sow` mode, `--solutions` filter, LLM-driven solution discovery
 
 ### Planned (Tier 2: CI/CD Governance)
 
