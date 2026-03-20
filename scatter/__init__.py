@@ -108,6 +108,12 @@ from scatter.analyzers.health_analyzer import (
     compute_health_dashboard,
 )
 from scatter.reports.graph_reporter import generate_mermaid, write_graph_csv_report
+from scatter.scanners.solution_scanner import (
+    SolutionInfo,
+    parse_solution_file,
+    scan_solutions,
+    build_project_to_solutions,
+)
 
 # Re-export stdlib modules that tests access via scatter.X
 import argparse

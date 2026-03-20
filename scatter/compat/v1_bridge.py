@@ -5,10 +5,26 @@ from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 
-def find_solutions_for_project(csproj_path: Path, solution_cache: List[Path]) -> List[Path]:
+def find_solutions_for_project(
+    csproj_path: Path,
+    solution_cache: List[Path],
+    solution_index: Optional[Dict] = None,
+) -> List[Path]:
+    """Finds .sln files that reference a given .csproj file.
+
+    When solution_index is provided (Dict[str, List[SolutionInfo]] from
+    build_project_to_solutions), uses O(1) lookup by project stem.
+    Otherwise falls back to the legacy text-search approach.
     """
-    Finds .sln files that reference a given .csproj file by performing a text search.
-    """
+    # New path: structured index lookup
+    if solution_index is not None:
+        stem = csproj_path.stem
+        matches = solution_index.get(stem, [])
+        if matches:
+            logging.debug(f"  -> Found {len(matches)} solution(s) for '{stem}' via index")
+        return [si.path for si in matches]
+
+    # Legacy path: substring text search
     found_in_solutions: List[Path] = []
     project_filename = csproj_path.name
 
