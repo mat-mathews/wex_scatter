@@ -5,6 +5,7 @@ from pathlib import Path
 
 from scatter.core.models import (
     AnalysisTarget,
+    ConsumerResult,
     EnrichedConsumer,
     ImpactReport,
     TargetImpact,
@@ -24,24 +25,40 @@ from scatter.reports.pipeline_reporter import (
 class TestExtractPipelineNames:
     def test_extracts_unique_sorted(self):
         results = [
-            {'PipelineName': 'deploy-api'},
-            {'PipelineName': 'deploy-web'},
-            {'PipelineName': 'deploy-api'},
+            ConsumerResult(target_project_name='T', target_project_path='T.csproj',
+                           triggering_type='C', consumer_project_name='A',
+                           consumer_project_path='A.csproj', pipeline_name='deploy-api'),
+            ConsumerResult(target_project_name='T', target_project_path='T.csproj',
+                           triggering_type='C', consumer_project_name='B',
+                           consumer_project_path='B.csproj', pipeline_name='deploy-web'),
+            ConsumerResult(target_project_name='T', target_project_path='T.csproj',
+                           triggering_type='C', consumer_project_name='C',
+                           consumer_project_path='C.csproj', pipeline_name='deploy-api'),
         ]
         assert extract_pipeline_names(results) == ['deploy-api', 'deploy-web']
 
     def test_empty_results(self):
         assert extract_pipeline_names([]) == []
 
-    def test_no_pipeline_field(self):
-        results = [{'ConsumerProjectName': 'foo'}]
+    def test_no_pipeline(self):
+        results = [
+            ConsumerResult(target_project_name='T', target_project_path='T.csproj',
+                           triggering_type='C', consumer_project_name='foo',
+                           consumer_project_path='foo.csproj'),
+        ]
         assert extract_pipeline_names(results) == []
 
     def test_skips_none_values(self):
         results = [
-            {'PipelineName': None},
-            {'PipelineName': ''},
-            {'PipelineName': 'deploy-api'},
+            ConsumerResult(target_project_name='T', target_project_path='T.csproj',
+                           triggering_type='C', consumer_project_name='A',
+                           consumer_project_path='A.csproj', pipeline_name=None),
+            ConsumerResult(target_project_name='T', target_project_path='T.csproj',
+                           triggering_type='C', consumer_project_name='B',
+                           consumer_project_path='B.csproj', pipeline_name=''),
+            ConsumerResult(target_project_name='T', target_project_path='T.csproj',
+                           triggering_type='C', consumer_project_name='C',
+                           consumer_project_path='C.csproj', pipeline_name='deploy-api'),
         ]
         assert extract_pipeline_names(results) == ['deploy-api']
 

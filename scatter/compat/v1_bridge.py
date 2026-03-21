@@ -4,6 +4,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
+from scatter.core.models import ConsumerResult
+
 
 def find_solutions_for_project(
     csproj_path: Path,
@@ -85,7 +87,7 @@ def _process_consumer_summaries_and_append_results(
     target_project_rel_path_str: str,
     triggering_info: str,
     final_consumers_data: List[Dict[str, Union[Path, str, List[Path]]]],
-    all_results_list: List[Dict[str, Union[str, Dict, List[str]]]],
+    all_results_list: List[ConsumerResult],
     pipeline_map_dict: Dict[str, str],
     solution_file_cache: List[Path],
     batch_job_map: Dict[str, List[str]],
@@ -138,27 +140,25 @@ def _process_consumer_summaries_and_append_results(
                     else:
                         batch_job_verification = "Unverified"
 
-                all_results_list.append({
-                    'TargetProjectName': target_project_name,
-                    'TargetProjectPath': target_project_rel_path_str,
-                    'TriggeringType': triggering_info,
-                    'ConsumerProjectName': consumer_name_stem,
-                    'ConsumerProjectPath': consumer_rel_path_str,
-                    'ConsumingSolutions': solutions_for_consumer_names,
-                    'PipelineName': pipeline_name,
-                    'BatchJobVerification': batch_job_verification,
-                    'ConsumerFileSummaries': consumer_summaries_dict
-                })
+                all_results_list.append(ConsumerResult(
+                    target_project_name=target_project_name,
+                    target_project_path=target_project_rel_path_str,
+                    triggering_type=triggering_info,
+                    consumer_project_name=consumer_name_stem,
+                    consumer_project_path=consumer_rel_path_str,
+                    consuming_solutions=solutions_for_consumer_names,
+                    pipeline_name=pipeline_name,
+                    batch_job_verification=batch_job_verification,
+                    consumer_file_summaries=consumer_summaries_dict,
+                ))
         else:
             logging.debug(f"   No pipeline mapping found for consumer '{consumer_name_stem}' via its solutions.")
-            all_results_list.append({
-                'TargetProjectName': target_project_name,
-                'TargetProjectPath': target_project_rel_path_str,
-                'TriggeringType': triggering_info,
-                'ConsumerProjectName': consumer_name_stem,
-                'ConsumerProjectPath': consumer_rel_path_str,
-                'ConsumingSolutions': solutions_for_consumer_names,
-                'PipelineName': None,
-                'BatchJobVerification': None,
-                'ConsumerFileSummaries': consumer_summaries_dict
-            })
+            all_results_list.append(ConsumerResult(
+                target_project_name=target_project_name,
+                target_project_path=target_project_rel_path_str,
+                triggering_type=triggering_info,
+                consumer_project_name=consumer_name_stem,
+                consumer_project_path=consumer_rel_path_str,
+                consuming_solutions=solutions_for_consumer_names,
+                consumer_file_summaries=consumer_summaries_dict,
+            ))

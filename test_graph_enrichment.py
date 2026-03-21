@@ -15,7 +15,7 @@ import pytest
 from scatter.cli import _ensure_graph_context
 
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
-from scatter.core.models import EnrichedConsumer
+from scatter.core.models import ConsumerResult, EnrichedConsumer
 from scatter.analyzers.coupling_analyzer import (
     CycleGroup,
     ProjectMetrics,
@@ -58,18 +58,14 @@ def _make_graph_context() -> GraphContext:
     return GraphContext(graph=graph, metrics=metrics, cycles=cycles, cycle_members=cycle_members)
 
 
-def _make_result(consumer_name: str) -> Dict:
-    return {
-        "TargetProjectName": "Target",
-        "TargetProjectPath": "Target/Target.csproj",
-        "TriggeringType": "SomeClass",
-        "ConsumerProjectName": consumer_name,
-        "ConsumerProjectPath": f"{consumer_name}/{consumer_name}.csproj",
-        "ConsumingSolutions": [],
-        "PipelineName": None,
-        "BatchJobVerification": None,
-        "ConsumerFileSummaries": {},
-    }
+def _make_result(consumer_name: str) -> ConsumerResult:
+    return ConsumerResult(
+        target_project_name="Target",
+        target_project_path="Target/Target.csproj",
+        triggering_type="SomeClass",
+        consumer_project_name=consumer_name,
+        consumer_project_path=f"{consumer_name}/{consumer_name}.csproj",
+    )
 
 
 def _make_enriched_consumer(name: str) -> EnrichedConsumer:
@@ -111,35 +107,35 @@ class TestEnrichLegacyResults:
         results = [_make_result("B")]
         enrich_legacy_results(results, ctx)
 
-        assert results[0]["CouplingScore"] is not None
-        assert results[0]["FanIn"] is not None
-        assert results[0]["FanOut"] is not None
-        assert results[0]["Instability"] is not None
-        assert results[0]["InCycle"] is True
+        assert results[0].coupling_score is not None
+        assert results[0].fan_in is not None
+        assert results[0].fan_out is not None
+        assert results[0].instability is not None
+        assert results[0].in_cycle is True
 
     def test_non_cycle_member(self):
         ctx = _make_graph_context()
         results = [_make_result("A")]
         enrich_legacy_results(results, ctx)
 
-        assert results[0]["InCycle"] is False
+        assert results[0].in_cycle is False
 
     def test_unknown_consumer(self):
         ctx = _make_graph_context()
         results = [_make_result("Unknown")]
         enrich_legacy_results(results, ctx)
 
-        assert results[0]["CouplingScore"] is None
-        assert results[0]["FanIn"] is None
-        assert results[0]["InCycle"] is None
+        assert results[0].coupling_score is None
+        assert results[0].fan_in is None
+        assert results[0].in_cycle is None
 
     def test_idempotent(self):
         ctx = _make_graph_context()
         results = [_make_result("B")]
         enrich_legacy_results(results, ctx)
-        score_first = results[0]["CouplingScore"]
+        score_first = results[0].coupling_score
         enrich_legacy_results(results, ctx)
-        assert results[0]["CouplingScore"] == score_first
+        assert results[0].coupling_score == score_first
 
 
 # ---------------------------------------------------------------------------
@@ -190,15 +186,17 @@ class TestNoGraphRegression:
 
     def test_csv_no_graph(self, tmp_path):
         results = [_make_result("B")]
+        detailed = prepare_detailed_results(results, graph_metrics_requested=False)
         out_file = tmp_path / "out.csv"
-        write_csv_report(results, out_file, graph_metrics_requested=False)
+        write_csv_report(detailed, out_file, graph_metrics_requested=False)
         header = out_file.read_text().splitlines()[0]
         assert "CouplingScore" not in header
         assert "FanIn" not in header
 
     def test_markdown_no_graph(self):
         results = [_make_result("B")]
-        md = build_markdown(results, graph_metrics_requested=False)
+        detailed = prepare_detailed_results(results, graph_metrics_requested=False)
+        md = build_markdown(detailed, graph_metrics_requested=False)
         assert "Coupling" not in md
         assert "Fan-In" not in md
 
@@ -220,8 +218,9 @@ class TestSchemaWithGraphMetrics:
 
     def test_csv_columns_present_for_unmatched(self, tmp_path):
         results = [_make_result("Unknown")]
+        detailed = prepare_detailed_results(results, graph_metrics_requested=True)
         out_file = tmp_path / "out.csv"
-        write_csv_report(results, out_file, graph_metrics_requested=True)
+        write_csv_report(detailed, out_file, graph_metrics_requested=True)
         lines = out_file.read_text().splitlines()
         header = lines[0]
         assert "CouplingScore" in header
@@ -240,7 +239,8 @@ class TestSchemaWithGraphMetrics:
         ctx = _make_graph_context()
         results = [_make_result("B")]
         enrich_legacy_results(results, ctx)
-        md = build_markdown(results, graph_metrics_requested=True)
+        detailed = prepare_detailed_results(results, graph_metrics_requested=True)
+        md = build_markdown(detailed, graph_metrics_requested=True)
         assert "Coupling" in md
         assert "Fan-In" in md
         assert "Instability" in md

@@ -6,6 +6,7 @@ import pytest
 
 from scatter.cli import _summarize_consumer_files
 from scatter.ai.base import AITaskType, AnalysisResult
+from scatter.core.models import ConsumerResult
 
 
 # ---------------------------------------------------------------------------
@@ -21,19 +22,20 @@ def _make_consumer(name: str, files: list[Path], base: Path = Path('/repo')) -> 
 
 
 def _make_result(consumer_name: str, consumer_path: Path = None,
-                 search_scope: Path = Path('/repo')) -> dict:
+                 search_scope: Path = Path('/repo')) -> ConsumerResult:
     if consumer_path is None:
         consumer_path = search_scope / consumer_name / f'{consumer_name}.csproj'
     try:
         rel = consumer_path.relative_to(search_scope).as_posix()
     except ValueError:
         rel = consumer_path.as_posix()
-    return {
-        'TargetProjectName': 'Target',
-        'ConsumerProjectName': consumer_name,
-        'ConsumerProjectPath': rel,
-        'ConsumerFileSummaries': {},
-    }
+    return ConsumerResult(
+        target_project_name='Target',
+        target_project_path='Target/Target.csproj',
+        triggering_type='SomeClass',
+        consumer_project_name=consumer_name,
+        consumer_project_path=rel,
+    )
 
 
 def _mock_provider(supports=True, response="This file does X."):
@@ -62,7 +64,7 @@ class TestSummarizeConsumerFiles:
 
         _summarize_consumer_files(consumers, results, provider, tmp_path, 0)
 
-        summaries = results[0]['ConsumerFileSummaries']
+        summaries = results[0].consumer_file_summaries
         assert len(summaries) == 1
         assert summaries["Service.cs"] == "Service handles business logic."
         provider.analyze.assert_called_once()
@@ -75,7 +77,7 @@ class TestSummarizeConsumerFiles:
 
         _summarize_consumer_files(consumers, results, None, Path("/repo"), 0)
 
-        assert results[0]['ConsumerFileSummaries'] == {}
+        assert results[0].consumer_file_summaries == {}
 
     def test_unsupported_task_type(self, tmp_path):
         """When provider doesn't support SUMMARIZATION, skip gracefully."""
@@ -88,7 +90,7 @@ class TestSummarizeConsumerFiles:
 
         _summarize_consumer_files(consumers, results, provider, tmp_path, 0)
 
-        assert results[0]['ConsumerFileSummaries'] == {}
+        assert results[0].consumer_file_summaries == {}
         provider.analyze.assert_not_called()
 
     def test_partial_failure(self, tmp_path):
@@ -110,7 +112,7 @@ class TestSummarizeConsumerFiles:
 
         _summarize_consumer_files(consumers, results, provider, tmp_path, 0)
 
-        summaries = results[0]['ConsumerFileSummaries']
+        summaries = results[0].consumer_file_summaries
         assert len(summaries) == 1
         assert summaries["Good.cs"] == "Good does things."
 
@@ -122,7 +124,7 @@ class TestSummarizeConsumerFiles:
 
         _summarize_consumer_files(consumers, results, provider, Path("/repo"), 0)
 
-        assert results[0]['ConsumerFileSummaries'] == {}
+        assert results[0].consumer_file_summaries == {}
         provider.analyze.assert_not_called()
 
     def test_results_start_index(self, tmp_path):
@@ -137,8 +139,8 @@ class TestSummarizeConsumerFiles:
 
         _summarize_consumer_files(consumers, results, provider, tmp_path, 1)
 
-        assert results[0]['ConsumerFileSummaries'] == {}
-        assert len(results[1]['ConsumerFileSummaries']) == 1
+        assert results[0].consumer_file_summaries == {}
+        assert len(results[1].consumer_file_summaries) == 1
 
     def test_same_stem_different_paths(self, tmp_path):
         """Two consumers with the same name but different paths get independent summaries."""
@@ -163,10 +165,16 @@ class TestSummarizeConsumerFiles:
         rel_a = path_a.relative_to(tmp_path).as_posix()
         rel_b = path_b.relative_to(tmp_path).as_posix()
         results = [
-            {'TargetProjectName': 'T', 'ConsumerProjectName': 'Worker',
-             'ConsumerProjectPath': rel_a, 'ConsumerFileSummaries': {}},
-            {'TargetProjectName': 'T', 'ConsumerProjectName': 'Worker',
-             'ConsumerProjectPath': rel_b, 'ConsumerFileSummaries': {}},
+            ConsumerResult(
+                target_project_name='T', target_project_path='T/T.csproj',
+                triggering_type='SomeClass', consumer_project_name='Worker',
+                consumer_project_path=rel_a,
+            ),
+            ConsumerResult(
+                target_project_name='T', target_project_path='T/T.csproj',
+                triggering_type='SomeClass', consumer_project_name='Worker',
+                consumer_project_path=rel_b,
+            ),
         ]
 
         provider = MagicMock()
@@ -178,5 +186,5 @@ class TestSummarizeConsumerFiles:
 
         _summarize_consumer_files(consumers, results, provider, tmp_path, 0)
 
-        assert results[0]['ConsumerFileSummaries']["A.cs"] == "A summary"
-        assert results[1]['ConsumerFileSummaries']["B.cs"] == "B summary"
+        assert results[0].consumer_file_summaries["A.cs"] == "A summary"
+        assert results[1].consumer_file_summaries["B.cs"] == "B summary"

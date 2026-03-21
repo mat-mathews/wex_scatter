@@ -43,44 +43,40 @@ def print_console_report(all_results: List[Dict[str, Union[str, Dict, List[str]]
     else:
         print("\n--- Consuming Relationships Found ---")
         group_counts = Counter(
-            (item['TargetProjectName'], item['TriggeringType']) for item in all_results
+            (r.target_project_name, r.triggering_type) for r in all_results
         )
         last_target_type = None
-        for item in all_results:
-            current_target_type = (item['TargetProjectName'], item['TriggeringType'])
+        for r in all_results:
+            current_target_type = (r.target_project_name, r.triggering_type)
             if current_target_type != last_target_type:
                 count = group_counts[current_target_type]
-                print(f"\nTarget: {item['TargetProjectName']} ({item['TargetProjectPath']}) ({count} consumer(s))")
-                if 'N/A' not in item['TriggeringType']:
-                    print(f"    Type/Level: {item['TriggeringType']}")
+                print(f"\nTarget: {r.target_project_name} ({r.target_project_path}) ({count} consumer(s))")
+                if 'N/A' not in r.triggering_type:
+                    print(f"    Type/Level: {r.triggering_type}")
                 last_target_type = current_target_type
 
-            pipeline_info = f" [Pipeline: {item.get('PipelineName', 'N/A')}]" if item.get('PipelineName') else ""
-            print(f"         -> Consumed by: {item['ConsumerProjectName']} ({item['ConsumerProjectPath']}){pipeline_info}")
+            pipeline_info = f" [Pipeline: {r.pipeline_name}]" if r.pipeline_name else ""
+            print(f"         -> Consumed by: {r.consumer_project_name} ({r.consumer_project_path}){pipeline_info}")
 
-            solutions = item.get('ConsumingSolutions', [])
-            if solutions:
-                print(f"           Solutions: {', '.join(solutions)}")
+            if r.consuming_solutions:
+                print(f"           Solutions: {', '.join(r.consuming_solutions)}")
 
-            verification = item.get('BatchJobVerification')
-            if verification:
-                print(f"           Batch Job Status: {verification} in app-config")
+            if r.batch_job_verification:
+                print(f"           Batch Job Status: {r.batch_job_verification} in app-config")
 
-            summaries = item.get('ConsumerFileSummaries', {})
-            if summaries:
+            if r.consumer_file_summaries:
                 print("           Summaries:")
-                for file_rel_path, summary in summaries.items():
+                for file_rel_path, summary in r.consumer_file_summaries.items():
                     indented_summary = textwrap.indent(summary, ' ' * 14)
                     print(f"             File: {file_rel_path}\n{indented_summary}")
 
             if graph_metrics_requested:
-                cs = item.get('CouplingScore')
-                if cs is not None:
-                    fi = item.get('FanIn', 0)
-                    fo = item.get('FanOut', 0)
-                    inst = item.get('Instability', 0.0)
-                    cycle = "yes" if item.get('InCycle') else "no"
-                    print(f"           Graph: coupling={cs}, fan-in={fi}, fan-out={fo}, instability={inst:.3f}, in-cycle={cycle}")
+                if r.coupling_score is not None:
+                    fi = r.fan_in or 0
+                    fo = r.fan_out or 0
+                    inst = r.instability or 0.0
+                    cycle = "yes" if r.in_cycle else "no"
+                    print(f"           Graph: coupling={r.coupling_score}, fan-in={fi}, fan-out={fo}, instability={inst:.3f}, in-cycle={cycle}")
                 else:
                     print("           Graph: (not in graph)")
 

@@ -53,7 +53,7 @@ class ModeContext:
 class ModeResult:
     """Return type for legacy mode handlers (git, target, sproc)."""
 
-    all_results: List[Dict] = field(default_factory=list)
+    all_results: list = field(default_factory=list)
     filter_pipeline: Optional[FilterPipeline] = None
     graph_enriched: bool = False
 
@@ -83,7 +83,7 @@ def _require_output_file(args, format_name: str) -> Path:
 
 
 def dispatch_legacy_output(
-    all_results: List[Dict],
+    all_results: list,
     filter_pipeline: Optional[FilterPipeline],
     args,
     search_scope: Optional[Path],
@@ -104,9 +104,9 @@ def dispatch_legacy_output(
     else:
         logging.info(f"Overall analysis complete. Found {len(all_results)} consuming relationship(s) matching the criteria.")
         all_results.sort(key=lambda x: (
-            x.get('TargetProjectName', ''),
-            x.get('TriggeringType', ''),
-            x.get('ConsumerProjectName', ''),
+            x.target_project_name,
+            x.triggering_type,
+            x.consumer_project_name,
         ))
 
     # Handle JSON Output
@@ -165,7 +165,7 @@ def dispatch_legacy_output(
             graph_metrics_requested=graph_enriched,
         )
 
-    target_names = {item['TargetProjectName'] for item in all_results}
+    target_names = {r.target_project_name for r in all_results} if all_results else set()
     if args.output_format != 'pipelines':
         print(f"\nAnalysis complete. {len(all_results)} consumer(s) found across {len(target_names)} target(s).\n")
 
@@ -250,16 +250,16 @@ def _summarize_consumer_files(
                 file_counter += 1
                 logging.warning(f"Summarization failed for {rel_path}: {e}")
 
-    # Inject summaries into result dicts by matching ConsumerProjectPath
-    for result_dict in all_results[results_start_index:]:
-        consumer_rel = result_dict.get('ConsumerProjectPath', '')
+    # Inject summaries into ConsumerResult objects by matching consumer_project_path
+    for result in all_results[results_start_index:]:
+        consumer_rel = result.consumer_project_path
         for consumer_abs, summaries in summaries_by_path.items():
             try:
                 expected_rel = consumer_abs.relative_to(search_scope).as_posix()
             except ValueError:
                 expected_rel = consumer_abs.as_posix()
             if consumer_rel == expected_rel:
-                result_dict['ConsumerFileSummaries'] = summaries
+                result.consumer_file_summaries = summaries
                 break
 
 

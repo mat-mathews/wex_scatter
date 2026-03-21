@@ -11,6 +11,7 @@ import scatter
 
 from scatter.core.models import (
     AnalysisTarget,
+    ConsumerResult,
     EnrichedConsumer,
     TargetImpact,
     ImpactReport,
@@ -880,20 +881,16 @@ class TestQuickStartOutputFormatExamples:
         )
         assert len(consumers) > 0
 
-        # Build results in the same format as __main__.py
+        # Build results as ConsumerResult objects
         all_results = []
         for c in consumers:
-            all_results.append({
-                "TargetProjectName": "GalaxyWorks.Data",
-                "TargetProjectPath": str(self.galaxy_csproj),
-                "TriggeringType": "TargetProject",
-                "ConsumerProjectName": c["consumer_name"],
-                "ConsumerProjectPath": str(c["consumer_path"]),
-                "ConsumingSolutions": [],
-                "PipelineName": "",
-                "BatchJobVerification": "",
-                "ConsumerFileSummaries": {},
-            })
+            all_results.append(ConsumerResult(
+                target_project_name="GalaxyWorks.Data",
+                target_project_path=str(self.galaxy_csproj),
+                triggering_type="TargetProject",
+                consumer_project_name=c["consumer_name"],
+                consumer_project_path=str(c["consumer_path"]),
+            ))
 
         detailed = prepare_detailed_results(all_results)
         output_file = tmp_path / "results.json"
@@ -920,20 +917,17 @@ class TestQuickStartOutputFormatExamples:
 
         all_results = []
         for c in consumers:
-            all_results.append({
-                "TargetProjectName": "GalaxyWorks.Data",
-                "TargetProjectPath": str(self.galaxy_csproj),
-                "TriggeringType": "TargetProject",
-                "ConsumerProjectName": c["consumer_name"],
-                "ConsumerProjectPath": str(c["consumer_path"]),
-                "ConsumingSolutions": ", ".join([]),
-                "PipelineName": "",
-                "BatchJobVerification": "",
-                "ConsumerFileSummaries": "",
-            })
+            all_results.append(ConsumerResult(
+                target_project_name="GalaxyWorks.Data",
+                target_project_path=str(self.galaxy_csproj),
+                triggering_type="TargetProject",
+                consumer_project_name=c["consumer_name"],
+                consumer_project_path=str(c["consumer_path"]),
+            ))
 
+        from scatter.reports.json_reporter import prepare_detailed_results as _prep
         output_file = tmp_path / "results.csv"
-        write_csv_report(all_results, output_file)
+        write_csv_report(_prep(all_results), output_file)
         assert output_file.exists()
         with open(output_file, newline="") as f:
             reader = csv.DictReader(f)

@@ -5,11 +5,11 @@ from typing import Dict, List
 from scatter.core.models import ImpactReport
 
 
-def extract_pipeline_names(detailed_results: List[Dict]) -> List[str]:
-    """Extract sorted unique pipeline names from legacy result dicts."""
+def extract_pipeline_names(results: list) -> List[str]:
+    """Extract sorted unique pipeline names from ConsumerResult objects."""
     return sorted(set(
-        name for item in detailed_results
-        if (name := item.get('PipelineName'))
+        r.pipeline_name for r in results
+        if r.pipeline_name
     ))
 
 

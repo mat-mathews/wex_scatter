@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 
 from scatter.cli import dispatch_legacy_output, _build_metadata, _require_output_file
+from scatter.core.models import ConsumerResult
 
 
 def _fake_args(**overrides):
@@ -49,12 +50,25 @@ def _fake_args(**overrides):
     return types.SimpleNamespace(**defaults)
 
 
+def _cr(**overrides):
+    """Build a minimal ConsumerResult for dispatch testing."""
+    defaults = dict(
+        target_project_name="A",
+        target_project_path="A/A.csproj",
+        triggering_type="T",
+        consumer_project_name="C",
+        consumer_project_path="C/C.csproj",
+    )
+    defaults.update(overrides)
+    return ConsumerResult(**defaults)
+
+
 class TestDispatchLegacyOutput:
 
     @patch("scatter.cli.print_console_report")
     def test_console_format(self, mock_console):
         args = _fake_args(output_format="console")
-        results = [{"TargetProjectName": "A", "TriggeringType": "T", "ConsumerProjectName": "C"}]
+        results = [_cr()]
         dispatch_legacy_output(results, None, args, Path("/tmp"), 0.0, False)
         mock_console.assert_called_once()
 
@@ -105,7 +119,7 @@ class TestDispatchLegacyOutput:
     @patch("scatter.reports.pipeline_reporter.format_pipeline_output", return_value="pipe-a")
     def test_pipelines_format_to_stdout(self, mock_format, mock_extract, capsys):
         args = _fake_args(output_format="pipelines", output_file=None)
-        results = [{"TargetProjectName": "A"}]
+        results = [_cr()]
         dispatch_legacy_output(results, None, args, Path("/tmp"), 0.0, False)
         mock_extract.assert_called_once()
         captured = capsys.readouterr()
@@ -116,20 +130,20 @@ class TestDispatchLegacyOutput:
     def test_pipelines_format_to_file(self, mock_write, mock_extract, tmp_path):
         out = tmp_path / "pipes.txt"
         args = _fake_args(output_format="pipelines", output_file=str(out))
-        results = [{"TargetProjectName": "A"}]
+        results = [_cr()]
         dispatch_legacy_output(results, None, args, Path("/tmp"), 0.0, False)
         mock_write.assert_called_once()
 
     def test_results_are_sorted(self):
         args = _fake_args(output_format="console")
         results = [
-            {"TargetProjectName": "B", "TriggeringType": "T", "ConsumerProjectName": "Z"},
-            {"TargetProjectName": "A", "TriggeringType": "T", "ConsumerProjectName": "Y"},
+            _cr(target_project_name="B", consumer_project_name="Z"),
+            _cr(target_project_name="A", consumer_project_name="Y"),
         ]
         with patch("scatter.cli.print_console_report"):
             dispatch_legacy_output(results, None, args, Path("/tmp"), 0.0, False)
-        assert results[0]["TargetProjectName"] == "A"
-        assert results[1]["TargetProjectName"] == "B"
+        assert results[0].target_project_name == "A"
+        assert results[1].target_project_name == "B"
 
 
 class TestBuildMetadata:

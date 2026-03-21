@@ -9,24 +9,28 @@ from scatter.core.models import FilterPipeline, ImpactReport
 from scatter.core.tree import build_adjacency, CONFIDENCE_LABEL_RANK
 
 
-def prepare_detailed_results(all_results: List[Dict[str, Union[str, Dict, List[str]]]],
+def prepare_detailed_results(all_results: list,
                              graph_metrics_requested: bool = False) -> List[Dict]:
-    """Normalize result dicts for JSON output (coerce empty optional fields to None)."""
+    """Convert ConsumerResult objects to PascalCase dicts for JSON output."""
     detailed_results = []
-    for item in all_results:
+    for r in all_results:
         result = {
-            **item,
-            'ConsumingSolutions': item.get('ConsumingSolutions', []),
-            'ConsumerFileSummaries': item.get('ConsumerFileSummaries', {}),
-            'PipelineName': item.get('PipelineName') or None,
-            'BatchJobVerification': item.get('BatchJobVerification') or None,
+            'TargetProjectName': r.target_project_name,
+            'TargetProjectPath': r.target_project_path,
+            'TriggeringType': r.triggering_type,
+            'ConsumerProjectName': r.consumer_project_name,
+            'ConsumerProjectPath': r.consumer_project_path,
+            'ConsumingSolutions': r.consuming_solutions,
+            'PipelineName': r.pipeline_name or None,
+            'BatchJobVerification': r.batch_job_verification or None,
+            'ConsumerFileSummaries': r.consumer_file_summaries,
         }
         if graph_metrics_requested:
-            result.setdefault('CouplingScore', None)
-            result.setdefault('FanIn', None)
-            result.setdefault('FanOut', None)
-            result.setdefault('Instability', None)
-            result.setdefault('InCycle', None)
+            result['CouplingScore'] = r.coupling_score
+            result['FanIn'] = r.fan_in
+            result['FanOut'] = r.fan_out
+            result['Instability'] = r.instability
+            result['InCycle'] = r.in_cycle
         detailed_results.append(result)
     return detailed_results
 

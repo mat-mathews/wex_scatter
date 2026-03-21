@@ -15,6 +15,7 @@ from scatter.reports.csv_reporter import write_csv_report, write_impact_csv_repo
 from scatter.reports.graph_reporter import build_graph_json
 from scatter.core.models import (
     AnalysisTarget,
+    ConsumerResult,
     EnrichedConsumer,
     TargetImpact,
     ImpactReport,
@@ -25,20 +26,33 @@ from scatter.core.models import (
 
 
 def _make_result(**overrides):
-    """Build a single legacy result dict with sane defaults."""
-    base = {
-        'TargetProjectName': 'Lib.Core',
-        'TargetProjectPath': 'src/Lib.Core/Lib.Core.csproj',
-        'TriggeringType': 'MyClass',
-        'ConsumerProjectName': 'App.Web',
-        'ConsumerProjectPath': 'src/App.Web/App.Web.csproj',
-        'ConsumingSolutions': ['Sol1.sln', 'Sol2.sln'],
-        'PipelineName': 'my-pipeline',
-        'BatchJobVerification': 'Verified',
-        'ConsumerFileSummaries': {'Startup.cs': 'Registers DI.'},
+    """Build a single ConsumerResult with sane defaults."""
+    # Map PascalCase override keys to snake_case for backward compat with test call sites
+    _KEY_MAP = {
+        'TargetProjectName': 'target_project_name',
+        'TargetProjectPath': 'target_project_path',
+        'TriggeringType': 'triggering_type',
+        'ConsumerProjectName': 'consumer_project_name',
+        'ConsumerProjectPath': 'consumer_project_path',
+        'ConsumingSolutions': 'consuming_solutions',
+        'PipelineName': 'pipeline_name',
+        'BatchJobVerification': 'batch_job_verification',
+        'ConsumerFileSummaries': 'consumer_file_summaries',
     }
-    base.update(overrides)
-    return base
+    defaults = dict(
+        target_project_name='Lib.Core',
+        target_project_path='src/Lib.Core/Lib.Core.csproj',
+        triggering_type='MyClass',
+        consumer_project_name='App.Web',
+        consumer_project_path='src/App.Web/App.Web.csproj',
+        consuming_solutions=['Sol1.sln', 'Sol2.sln'],
+        pipeline_name='my-pipeline',
+        batch_job_verification='Verified',
+        consumer_file_summaries={'Startup.cs': 'Registers DI.'},
+    )
+    for k, v in overrides.items():
+        defaults[_KEY_MAP.get(k, k)] = v
+    return ConsumerResult(**defaults)
 
 
 def _make_impact_report(solutions=None, coupling_vectors=None):

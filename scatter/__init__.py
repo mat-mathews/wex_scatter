@@ -9,6 +9,7 @@ from scatter.core.models import (
     DEFAULT_CHUNK_SIZE,
     MULTIPROCESSING_ENABLED,
     TYPE_DECLARATION_PATTERN,
+    ConsumerResult,
     AnalysisTarget,
     EnrichedConsumer,
     TargetImpact,

@@ -163,38 +163,33 @@ def build_graph_context(search_scope, config, args, solution_index=None) -> Opti
 
 
 def enrich_legacy_results(
-    all_results: List[Dict],
+    all_results: list,
     graph_ctx: GraphContext,
 ) -> None:
-    """Inject graph metrics into legacy result dicts.
+    """Inject graph metrics into ConsumerResult objects.
 
-    Matches on ConsumerProjectName (csproj stem) — consistent with
+    Matches on consumer_project_name (csproj stem) — consistent with
     the graph's own node identity (DependencyGraph.nodes keyed by name).
 
     Idempotent: safe to call multiple times on the same results.
     """
     unmatched: Set[str] = set()
 
-    for result_dict in all_results:
-        consumer_name = result_dict.get("ConsumerProjectName")
+    for result in all_results:
+        consumer_name = result.consumer_project_name
         if not consumer_name:
             continue
 
         m = graph_ctx.metrics.get(consumer_name)
         if m is None:
             unmatched.add(consumer_name)
-            result_dict.setdefault("CouplingScore", None)
-            result_dict.setdefault("FanIn", None)
-            result_dict.setdefault("FanOut", None)
-            result_dict.setdefault("Instability", None)
-            result_dict.setdefault("InCycle", None)
             continue
 
-        result_dict["CouplingScore"] = round(m.coupling_score, 2)
-        result_dict["FanIn"] = m.fan_in
-        result_dict["FanOut"] = m.fan_out
-        result_dict["Instability"] = round(m.instability, 3)
-        result_dict["InCycle"] = consumer_name in graph_ctx.cycle_members
+        result.coupling_score = round(m.coupling_score, 2)
+        result.fan_in = m.fan_in
+        result.fan_out = m.fan_out
+        result.instability = round(m.instability, 3)
+        result.in_cycle = consumer_name in graph_ctx.cycle_members
 
     if unmatched:
         logging.warning(

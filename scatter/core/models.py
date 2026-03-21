@@ -3,7 +3,7 @@ import re
 import multiprocessing
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 # multiprocessing configuration
 DEFAULT_MAX_WORKERS = min(32, (multiprocessing.cpu_count() or 1) + 4)
@@ -45,6 +45,32 @@ def _confidence_label(confidence: float) -> str:
     elif confidence >= CONFIDENCE_MEDIUM:
         return "MEDIUM"
     return "LOW"
+
+
+# --- Consumer result data model ---
+
+@dataclass
+class ConsumerResult:
+    """A consuming relationship between a target project and a consumer project.
+
+    Constructed by v1_bridge._process_consumer_summaries_and_append_results().
+    Graph enrichment fields are set by graph_enrichment.enrich_legacy_results().
+    """
+    target_project_name: str
+    target_project_path: str
+    triggering_type: str       # class name, method, or "N/A (Project Reference)"
+    consumer_project_name: str
+    consumer_project_path: str
+    consuming_solutions: List[str] = field(default_factory=list)
+    pipeline_name: Optional[str] = None
+    batch_job_verification: Optional[str] = None
+    consumer_file_summaries: Dict[str, str] = field(default_factory=dict)
+    # Graph enrichment fields (optional — set when graph context available)
+    coupling_score: Optional[float] = None
+    fan_in: Optional[int] = None
+    fan_out: Optional[int] = None
+    instability: Optional[float] = None
+    in_cycle: Optional[bool] = None
 
 
 # --- Impact analysis data models ---

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from scatter.cli import ModeContext
+from scatter.core.models import ConsumerResult
 
 
 @pytest.fixture
@@ -40,4 +41,26 @@ def make_mode_context():
         )
         defaults.update(overrides)
         return ModeContext(**defaults)
+    return _factory
+
+
+@pytest.fixture
+def make_consumer_result():
+    """Factory fixture for building ConsumerResult with sensible test defaults.
+
+    Usage::
+
+        def test_something(make_consumer_result):
+            r = make_consumer_result(consumer_project_name="MyApp")
+    """
+    def _factory(**overrides) -> ConsumerResult:
+        defaults = dict(
+            target_project_name="TargetProject",
+            target_project_path="TargetProject/TargetProject.csproj",
+            triggering_type="SomeClass",
+            consumer_project_name="ConsumerProject",
+            consumer_project_path="ConsumerProject/ConsumerProject.csproj",
+        )
+        defaults.update(overrides)
+        return ConsumerResult(**defaults)
     return _factory
