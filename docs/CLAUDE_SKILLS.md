@@ -61,5 +61,5 @@ Set `GOOGLE_API_KEY` to include the impact analysis test.
 ## Prerequisites
 
 - scatter must be runnable via `python -m scatter` in the repo
-- Dependencies installed (`pip install -r requirements.txt` or `uv sync`)
+- Dependencies installed (`uv sync` or `pip install .`)
 - For AI-enriched features (risk assessment, complexity): set `GOOGLE_API_KEY` env var

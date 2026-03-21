@@ -1005,27 +1005,24 @@ Target: Reduce __main__.py from ~1161 lines to ~50-100 lines (parse args, load c
 - [ ] Add tests for each extracted command module (at least 1 per module)
 - [ ] No behavioral changes — pure refactor, all existing tests still pass
 
-PHASE 2: PYTHON PACKAGING WITH UV (HIGH PRIORITY)
+PHASE 2: PYTHON PACKAGING WITH UV ✅ COMPLETED (2026-03-21)
 Target: `uv run scatter` works. `uv sync` installs everything. No more manual venv management.
+Ref: docs/UV_PACKAGING_PLAN.md
 - [x] Create pyproject.toml with pytest and coverage config
 - [x] Pin dependency versions in requirements.txt (compatible ranges)
 - [x] Add missing implicit dependencies (PyYAML, pandas, pytest, pytest-cov)
-- [ ] Install/verify uv available (curl -LsSf https://astral.sh/uv/install.sh | sh)
-- [ ] Run `uv init` to scaffold full pyproject.toml, then customize:
-      - Project metadata (name="wex-scatter", version from __version__.py, description, license)
-      - Dependencies: google-generativeai, GitPython, PyYAML
-      - Dev dependency group: pytest, pytest-cov, ruff, mypy
-      - [project.scripts] entry point: scatter = "scatter.__main__:main"
-- [ ] Run `uv add google-generativeai gitpython pyyaml` to populate deps + generate uv.lock
-- [ ] Run `uv add --group dev pytest pytest-cov ruff mypy` for dev tooling
-- [ ] Add py.typed marker (PEP 561) for type-checking support
-- [ ] Delete requirements.txt (replaced by pyproject.toml + uv.lock)
-- [ ] Commit uv.lock to repo (reproducible installs)
-- [ ] Add .python-version file (e.g., 3.12) for uv to auto-detect
-- [ ] Verify `uv sync` creates venv + installs all deps
-- [ ] Verify `uv run scatter --version` works
-- [ ] Verify `uv run pytest` runs all tests
-- [ ] Update CLAUDE.md setup instructions to use uv
+- [x] Expand pyproject.toml: [build-system] hatchling, [project] metadata,
+      dependencies, [project.scripts] entry point, [dependency-groups] dev,
+      [tool.hatch.build.targets.wheel] packages = ["scatter"]
+- [x] pandas moved to [project.optional-dependencies] pipeline-tools
+      (30MB dep used only by parse_pipeline_artifacts.py utility — Fatima, Tomás)
+- [x] Generate uv.lock (58 packages resolved, committed for reproducibility)
+- [x] Add .python-version (3.11 — development default, requires-python >= 3.10)
+- [x] Delete requirements.txt (replaced by pyproject.toml + uv.lock)
+- [x] Verify uv sync, uv run scatter, uv run python scatter.py, uv run pytest
+- [x] Update CLAUDE.md, getting-started.md, CLAUDE_SKILLS.md, claude-skills ref
+- [x] Version consistency test: pyproject.toml matches __version__.py (Anya)
+- [x] 789 tests passing, 0 regressions
 
 PHASE 3: CI PIPELINE (HIGH PRIORITY)
 Target: GitHub Actions runs tests, linting, and type checking on every push/PR.
@@ -1240,8 +1237,9 @@ RECOMMENDED EXECUTION ORDER (reprioritized 2026-03-13):
   18. Initiative 8 Phase 1: Decompose __main__.py monolith (HIGH — 1161-line god
       module into cli/parser + cli/commands/* + cli/graph_orchestration; prerequisite
       for testable CI and clean packaging)
-  19. Initiative 8 Phase 2: Python packaging with uv — pyproject.toml + uv.lock,
-      `uv run scatter`, dev dependency groups, delete requirements.txt
+  19. ✅ DONE — Initiative 8 Phase 2: Python packaging with uv (2026-03-21)
+      pyproject.toml + uv.lock, hatchling build backend, `uv run scatter`,
+      pandas to optional deps, version consistency test. 789 tests.
   20. Initiative 8 Phase 3: CI pipeline — GitHub Actions (pytest + ruff + mypy,
       Python 3.10/3.11/3.12 matrix, shared conftest.py, coverage reporting)
   21. Initiative 8 Phase 4: Docker support — multi-stage Dockerfile, .dockerignore,

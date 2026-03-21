@@ -1,3 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wex-scatter"
+version = "2.1.0"  # keep in sync with scatter/__version__.py
+description = ".NET dependency graph engine — trace blast radius before you ship"
+requires-python = ">=3.10"
+dependencies = [
+    "gitpython>=3.1,<4",
+    "google-generativeai>=0.8,<1",
+    "pyyaml>=6,<7",
+]
+
+[project.optional-dependencies]
+pipeline-tools = ["pandas>=1.5,<3"]
+
+[project.scripts]
+scatter = "scatter.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["scatter"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9,<10",
+    "pytest-cov>=7,<8",
+    "ruff",
+    "mypy",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["."]
 python_files = "test_*.py"

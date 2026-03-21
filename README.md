@@ -43,13 +43,14 @@ The repository includes 8 sample .NET projects that form a realistic dependency 
 git clone <repository_url>
 cd scatter
 
-# Create and activate virtual environment
-python -m venv .venv
-source .venv/bin/activate       # macOS/Linux
-.\.venv\Scripts\Activate.ps1    # Windows
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install dependencies
-pip install -r requirements.txt
+# Install all dependencies (creates .venv automatically)
+uv sync
+
+# Or without uv:
+pip install .
 ```
 
 ### Using with Claude Code
@@ -2101,11 +2102,13 @@ The `feasibility_details` dict breaks down each penalty, making it actionable �
 - **Transparent Graph Acceleration (Phases A-C)** — The graph is now the default fast path for all analysis modes, with zero configuration required. Phase A: auto-load graph from cache, `graph_enriched` metadata field, `--no-graph` escape hatch (15 tests). Phase B: O(1) reverse-index consumer lookup replaces filesystem stages 1-2 of `find_consumers()`, with target-not-in-graph fallback and `FilterStage.source` tracking (14 tests). Phase C: first-run graph build via idempotent `_ensure_graph_context()` at all 4 enrichment sites — results enriched on the very first run with no flags needed (7 tests). See [How the Graph Engine Works](#how-the-graph-engine-works)
 - **Claude Code Skills** — Five skills in `tools/claude-skills/` that let engineers use scatter through natural language in Claude Code. Three auto-invoked skills (graph health, consumer lookup, SOW impact analysis) and two manual slash commands (stored procedure tracing, git branch analysis). Setup: `bash tools/setup-claude-skills.sh`. See [docs/CLAUDE_SKILLS.md](docs/CLAUDE_SKILLS.md)
 - **Solution-Aware Graph (Initiative 9)** — Structural `.sln` parsing via `scatter/scanners/solution_scanner.py` (GUID whitelist, path resolution, BOM tolerance). `ProjectNode.solutions` field with backward-compatible cache serialization. Cross-solution coupling metrics (`SolutionMetrics` dataclass, single-pass O(E) algorithm, bridge project detection). Solution alignment scoring on domain clusters (post-hoc, no clustering bias — low alignment surfaces accidental cross-team coupling). Two new health observations: `high_cross_solution_coupling` (warning) and `solution_bridge_project` (info). Console shows Solutions count, Solution Coupling table, and Align column. JSON/CSV include solution data throughout. 64 tests across 5 phases
+- **ConsumerResult Dataclass** — Replaced untyped `Dict[str, Union[str, Dict, List[str]]]` with typed `ConsumerResult` dataclass throughout the consumer analysis pipeline. 14 fields, ~58 access sites migrated across 8 production files. PascalCase JSON/CSV output preserved for backward compatibility via explicit mapping in reporters. `make_consumer_result` factory fixture for tests
+- **Python Packaging with uv** — `uv sync` installs everything, `uv run scatter` runs the tool, `uv.lock` for reproducible installs. Hatchling build backend, `pip install .` fallback for non-uv users. pandas moved to optional `pipeline-tools` dependency group. Version consistency test ensures `pyproject.toml` matches `__version__.py`
 
 ### Next
 
 - **Focused SOW index** — Two-tier solution-scoped index for `--sow` mode, `--solutions` filter, LLM-driven solution discovery with cross-solution edge counts as the discovery signal
-- **Production readiness** — Python packaging with uv, CI pipeline (GitHub Actions), type safety (`ConsumerResult` dataclass)
+- **CI pipeline** — GitHub Actions with pytest + ruff + mypy, Python 3.10/3.11/3.12 matrix, coverage reporting
 
 ### Planned (Tier 2: CI/CD Governance)
 

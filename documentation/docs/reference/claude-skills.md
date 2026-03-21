@@ -55,5 +55,5 @@ This runs each scatter command (without Claude) against the sample projects. Set
 ## Prerequisites
 
 - Scatter runnable via `python -m scatter`
-- Dependencies installed (`pip install -r requirements.txt` or `uv sync`)
+- Dependencies installed (`uv sync` or `pip install .`)
 - For AI-enriched features: set `GOOGLE_API_KEY` env var

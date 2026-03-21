@@ -6,13 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Python Environment Setup
 ```bash
-# Create and activate virtual environment
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1  # Windows
-source .venv/bin/activate     # macOS/Linux
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install dependencies
-pip install -r requirements.txt
+# Install all dependencies (creates .venv automatically)
+uv sync
+
+# Or without uv:
+pip install .
 ```
 
 ### Running the Main Analysis Tool

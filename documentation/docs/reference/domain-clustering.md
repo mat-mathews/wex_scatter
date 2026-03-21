@@ -1,6 +1,6 @@
 # Domain Clustering
 
-This page covers the domain boundary detection algorithm and extraction feasibility scoring. Both live in `analyzers/domain_analyzer.py` as standalone free functions. The goal: given a dependency graph, find natural service boundaries and tell you how hard it would be to extract each cluster as an independent service.
+This page covers the domain boundary detection algorithm and extraction feasibility scoring. Both live in `analyzers/domain_analyzer.py` as standalone free functions. I call this the Blake460 workflow. The goal: given a dependency graph, find natural service boundaries and tell you how hard it would be to extract each cluster as an independent service.
 
 ---
 

@@ -15,11 +15,17 @@ That's it. The repo ships with 8 sample .NET projects, so you don't need a produ
 git clone <repo-url>
 cd wex_scatter
 
-python -m venv .venv
-source .venv/bin/activate   # macOS/Linux
-# .venv\Scripts\Activate.ps1  # Windows
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-pip install -r requirements.txt
+# Install all dependencies (creates .venv automatically)
+uv sync
+```
+
+If you don't have uv, you can use pip directly:
+
+```bash
+pip install .
 ```
 
 ## Using with Claude Code
@@ -43,7 +49,7 @@ See [Claude Code Skills documentation](reference/claude-skills.md) for details.
 ## Verify it works
 
 ```bash
-python scatter.py --help
+uv run scatter --help
 ```
 
 You should see the five analysis modes (`--target-project`, `--branch-name`, `--stored-procedure`, `--sow`, `--graph`) and all the common options. If you see that, you're good.
@@ -142,7 +148,7 @@ Meanwhile, Scatter quietly built a dependency graph and cached it to disk. You d
 Run the test suite to confirm everything is wired correctly:
 
 ```bash
-python -m pytest -q
+uv run pytest
 ```
 
 Expected output:
