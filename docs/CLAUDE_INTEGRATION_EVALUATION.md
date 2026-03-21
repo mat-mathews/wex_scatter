@@ -384,6 +384,11 @@ Resequenced to align with adoption-driven priorities.
 9. **Later:** Evaluate MCP server based on adoption patterns
 10. **Later:** Baseline tracking + trend analysis (needs real usage history)
 
-All four Tier 1 credibility/adoption items are shipped. The focus shifts to
-grassroots adoption (demos, real CSE usage) and then CI/CD governance to make
-scatter sticky infrastructure.
+All four Tier 1 credibility/adoption items are shipped. Initiative 9
+(solution-aware graph) shipped 2026-03-20 — the graph now includes solution
+membership, cross-solution coupling metrics, and alignment scoring. This
+enriches the skills' output (graph health now shows solution coupling and
+alignment) and enables the focused SOW index (Initiative 11).
+
+The focus shifts to grassroots adoption (demos, real CSE usage) and then
+CI/CD governance to make scatter sticky infrastructure.

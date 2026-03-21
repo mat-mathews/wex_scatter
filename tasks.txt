@@ -1248,13 +1248,11 @@ RECOMMENDED EXECUTION ORDER (reprioritized 2026-03-13):
       mount /workspace for repo-under-analysis
 
   TIER 1.9b: SOLUTION-AWARE GRAPH + SOW INDEX (analysis quality for real monoliths)
-  22. Initiative 9: Solution-aware graph integration — 5 phases:
-      Phase 1: Parse .sln properly (replace text search with structural parsing)
-      Phase 2: Add solutions to ProjectNode + graph build + reporters
-      Phase 3: Cross-solution coupling metrics + health observations
-      Phase 4: Solution-informed domain clustering (affinity bonus + alignment score)
-      Phase 5: Wire together, end-to-end validation
-      Ref: docs/SOLUTION_AWARE_GRAPH_PLAN.md
+  22. ✅ DONE — Initiative 9: Solution-aware graph — all 5 phases (2026-03-20)
+      64 new tests. Solution scanner, ProjectNode.solutions, cross-solution coupling
+      metrics (SolutionMetrics, bridge projects), solution alignment in clusters,
+      6 e2e validation tests. Team decisions: no label propagation affinity (Tomás),
+      single-pass O(E) algorithm (Marcus), post-hoc alignment (Devon).
   22b. Initiative 10: SOW codebase index — 4 phases: ✅ SHIPPED 2026-03-19
       Phase 1: Build compact index from graph (names, types, sprocs)
       Phase 2: Rewrite SOW prompt with index as ground truth context
@@ -1413,76 +1411,71 @@ PHASE 6: Cleanup (LOW PRIORITY — do when convenient)
       for .csproj ProjectReference resolution
 
 ============================================================================
-INITIATIVE 9: SOLUTION-AWARE GRAPH INTEGRATION (v2.0)
+INITIATIVE 9: SOLUTION-AWARE GRAPH INTEGRATION ✅ ALL 5 PHASES COMPLETED (2026-03-20)
 Goal: Make the dependency graph aware of .sln solution files — use solution
 membership as a signal for clustering, coupling metrics, and health analysis.
-Ref: docs/SOLUTION_AWARE_GRAPH_PLAN.md
-Priority: Tier 1.9 — ships alongside or immediately after production readiness
-Estimated effort: 3-4 days across 5 phases
+Ref: docs/SOLUTION_AWARE_GRAPH_PLAN.md, docs/INITIATIVE_9_PHASE{1-5}_PLAN.md
+Branch: feature/solution-aware-graph (merged to main)
+64 new tests, 788 total passing, 0 regressions.
 ============================================================================
 
-PHASE 1: PARSE SOLUTIONS PROPERLY (~0.5 day)
+PHASE 1: PARSE SOLUTIONS PROPERLY ✅ COMPLETED
 ----------------------------------------------------------------------
-- [ ] Create scatter/scanners/solution_scanner.py
-      SolutionInfo dataclass (path, name, project_entries, project_paths)
-      parse_solution_file() — regex-based parser for Project("...") lines
+- [x] Create scatter/scanners/solution_scanner.py
+      SolutionInfo dataclass (path, name, project_entries, project_paths as resolved Paths)
+      parse_solution_file() — regex parser with C# GUID whitelist (FAE04EC0, 9A19103F)
       scan_solutions() — discover + parse all .sln files in search scope
-      build_project_to_solutions() — reverse index: project_name -> [solution_names]
-- [ ] Migrate v1_bridge.find_solutions_for_project() to use parsed index
-      Accept optional solution_index parameter for O(1) lookup
-      Fall back to text search when index not provided (backward compat)
-- [ ] Tests: SDK-style .sln parsing, backslash/forward-slash paths, nested
-      solution folders, malformed .sln handling, empty .sln, reverse index
-      correctness, backward compat migration
+      build_project_to_solutions() — reverse index: project_name -> List[SolutionInfo]
+      BOM tolerance (utf-8-sig), deduplication, format detection, stem collision warnings
+- [x] Migrate v1_bridge.find_solutions_for_project() with optional solution_index param
+- [x] 21 tests in test_solution_scanner.py (parsing, GUID filtering, path resolution,
+      edge cases, reverse index, migration, false-positive prevention)
 
-PHASE 2: SOLUTION MEMBERSHIP IN THE GRAPH (~0.5 day)
+PHASE 2: SOLUTION MEMBERSHIP IN THE GRAPH ✅ COMPLETED
 ----------------------------------------------------------------------
-- [ ] Add solutions: List[str] field to ProjectNode in scatter/core/graph.py
-- [ ] Populate ProjectNode.solutions during graph build in graph_builder.py
-      Call scan_solutions() + build_project_to_solutions() after project discovery
-      Set node.solutions from the reverse index
-- [ ] Verify solutions survive to_dict/from_dict roundtrip (no cache bump needed)
-- [ ] Add Solutions column to graph CSV reporter (semicolon-delimited)
-- [ ] Add solutions field to graph JSON node output
-- [ ] Tests: ProjectNode.solutions populated, cache roundtrip, CSV column, JSON field,
-      graceful handling when no .sln files exist
+- [x] Add solutions: List[str] field to ProjectNode (default empty list, no cache bump)
+- [x] to_dict()/from_dict() serialize solutions (old caches gracefully default to [])
+- [x] Post-process population via _populate_graph_solutions() after graph build
+      (not in graph builder — Tomás: builder shouldn't know about solutions)
+- [x] scan_solutions() replaces raw find_files_with_pattern_parallel('*.sln') in __main__.py
+      Single scan, solution_index threaded through ModeContext, v1_bridge, impact_analyzer,
+      graph_enrichment
+- [x] CSV: Solutions column (semicolon-delimited). JSON: solutions in metrics + topology
+- [x] Console: "Solutions: N" in summary (suppressed when zero)
+- [x] 13 tests (model, serialization, integration, reporters)
 
-PHASE 3: CROSS-SOLUTION COUPLING METRICS (~1 day)
+PHASE 3: CROSS-SOLUTION COUPLING METRICS ✅ COMPLETED
 ----------------------------------------------------------------------
-- [ ] Create SolutionMetrics dataclass in coupling_analyzer.py
+- [x] SolutionMetrics dataclass in coupling_analyzer.py
       name, project_count, internal_edges, external_edges, cross_solution_ratio,
-      incoming_solutions, outgoing_solutions, shared_sprocs
-- [ ] Implement compute_solution_metrics(graph, project_to_solutions)
-- [ ] Add classify_edge() helper: intra-solution / cross-solution / unaffiliated
-- [ ] Add health observations to health_analyzer.py:
-      high_cross_solution_coupling: solution with cross_solution_ratio > 0.5
-      solution_bridge_project: project in 3+ solutions with high fan-in
-- [ ] Surface solution metrics in graph console and JSON output
-- [ ] Tests: SolutionMetrics computation, cross-solution ratio edge cases (0, 1),
-      bridge project detection, unaffiliated projects, health observations
+      incoming_solutions, outgoing_solutions
+- [x] compute_solution_metrics(graph) -> (Dict[str, SolutionMetrics], List[str] bridge_projects)
+      Single-pass O(E) algorithm (Marcus) with set intersection per edge
+      Bridge projects computed globally, not per-solution (Devon)
+- [x] Health observations: high_cross_solution_coupling (warning, ratio > 0.5),
+      solution_bridge_project (info, 3+ solutions AND fan_in >= 5)
+- [x] Console: Solution Coupling table (after clusters, before observations — Sam)
+- [x] JSON: solution_metrics section + bridge_projects list
+- [x] 16 tests (metrics, bridges, health observations, reporters)
 
-PHASE 4: SOLUTION-INFORMED DOMAIN CLUSTERING (~1 day)
+PHASE 4: SOLUTION ALIGNMENT IN DOMAIN CLUSTERS ✅ COMPLETED
 ----------------------------------------------------------------------
-- [ ] Add project_to_solutions and solution_affinity_weight params to find_clusters()
-- [ ] Implement solution affinity bonus in label propagation:
-      When neighbor shares a solution with current node, multiply vote weight by
-      solution_affinity_weight (default 1.5x). Gentle bias, not hard constraint.
-- [ ] Add solution_alignment: float and dominant_solution: Optional[str] to Cluster
-      solution_alignment = fraction of members sharing dominant solution (0.0-1.0)
-- [ ] Surface alignment in console Clusters table, JSON output, CSV
-- [ ] Tests: affinity produces different clusters than without, alignment = 1.0 when
-      all members share solution, alignment = 0.0 when none do, dominant solution
-      identification, no-solution-data graceful degradation
+- [x] solution_alignment: float and dominant_solution: Optional[str] on Cluster
+- [x] Post-hoc computation via _compute_solution_alignment() — no label propagation changes
+      Team decision: dropped affinity bonus — biasing clustering toward solutions
+      suppresses the divergence signal architects need (Tomás, Priya, Marcus)
+- [x] Multi-solution project counts via set membership (Fatima)
+- [x] Console: Align column + dominant on Members line (Sam)
+- [x] JSON: solution_alignment + dominant_solution on cluster objects
+- [x] 8 tests (alignment computation, integration, reporters)
 
-PHASE 5: WIRE EVERYTHING TOGETHER (~0.5 day)
+PHASE 5: END-TO-END VALIDATION ✅ COMPLETED
 ----------------------------------------------------------------------
-- [ ] Update __main__.py / cli.py: replace raw sln file cache with scan_solutions()
-      Build project_to_solutions index early, pass through to all analysis paths
-- [ ] Update graph_enrichment.py to include solution data in GraphContext
-- [ ] End-to-end test: synthetic codebase -> --graph -> verify solution data in output
-- [ ] End-to-end test: --target-project -> verify ConsumingSolutions populated
-- [ ] Backward compat test: codebase with zero .sln files produces same output
-- [ ] Verify synthetic codebase generator .sln files work through full pipeline
+- [x] All wiring completed in Phases 2-4 — Phase 5 is validation only
+- [x] 6 e2e tests in test_solution_e2e.py:
+      --graph console (Solutions, Solution Coupling, Align), JSON (solution_metrics,
+      node solutions, cluster alignment), CSV (Solutions column),
+      --target-project (ConsumingSolutions populated), no-.sln backward compat, --no-graph
 
 INITIATIVE 9 — NOT IN SCOPE (build later on this foundation):
 - Solution-level blast radius ("which solutions need rebuilding?")

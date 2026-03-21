@@ -2100,11 +2100,12 @@ The `feasibility_details` dict breaks down each penalty, making it actionable �
 - **Pipeline Output Format** — `--output-format pipelines` prints sorted unique pipeline names to stdout, one per line, for release managers and deployment scripts. Works in legacy modes (git, target, sproc) and impact mode (sow). Early rejection in graph mode via `parser.error()`. Warns on stderr when used without `--pipeline-csv`. `scatter/reports/pipeline_reporter.py` with 14 tests
 - **Transparent Graph Acceleration (Phases A-C)** — The graph is now the default fast path for all analysis modes, with zero configuration required. Phase A: auto-load graph from cache, `graph_enriched` metadata field, `--no-graph` escape hatch (15 tests). Phase B: O(1) reverse-index consumer lookup replaces filesystem stages 1-2 of `find_consumers()`, with target-not-in-graph fallback and `FilterStage.source` tracking (14 tests). Phase C: first-run graph build via idempotent `_ensure_graph_context()` at all 4 enrichment sites — results enriched on the very first run with no flags needed (7 tests). See [How the Graph Engine Works](#how-the-graph-engine-works)
 - **Claude Code Skills** — Five skills in `tools/claude-skills/` that let engineers use scatter through natural language in Claude Code. Three auto-invoked skills (graph health, consumer lookup, SOW impact analysis) and two manual slash commands (stored procedure tracing, git branch analysis). Setup: `bash tools/setup-claude-skills.sh`. See [docs/CLAUDE_SKILLS.md](docs/CLAUDE_SKILLS.md)
+- **Solution-Aware Graph (Initiative 9)** — Structural `.sln` parsing via `scatter/scanners/solution_scanner.py` (GUID whitelist, path resolution, BOM tolerance). `ProjectNode.solutions` field with backward-compatible cache serialization. Cross-solution coupling metrics (`SolutionMetrics` dataclass, single-pass O(E) algorithm, bridge project detection). Solution alignment scoring on domain clusters (post-hoc, no clustering bias — low alignment surfaces accidental cross-team coupling). Two new health observations: `high_cross_solution_coupling` (warning) and `solution_bridge_project` (info). Console shows Solutions count, Solution Coupling table, and Align column. JSON/CSV include solution data throughout. 64 tests across 5 phases
 
-### Next (Tier 1.9: Solution-Aware Analysis)
+### Next
 
-- **Solution-aware graph** — Parse `.sln` files, add solution membership to graph nodes, cross-solution coupling metrics
-- **Focused SOW index** — Two-tier solution-scoped index for `--sow` mode, `--solutions` filter, LLM-driven solution discovery
+- **Focused SOW index** — Two-tier solution-scoped index for `--sow` mode, `--solutions` filter, LLM-driven solution discovery with cross-solution edge counts as the discovery signal
+- **Production readiness** — Python packaging with uv, CI pipeline (GitHub Actions), type safety (`ConsumerResult` dataclass)
 
 ### Planned (Tier 2: CI/CD Governance)
 
