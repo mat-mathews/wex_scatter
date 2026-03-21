@@ -1024,25 +1024,29 @@ Ref: docs/UV_PACKAGING_PLAN.md
 - [x] Version consistency test: pyproject.toml matches __version__.py (Anya)
 - [x] 789 tests passing, 0 regressions
 
-PHASE 3: CI PIPELINE (HIGH PRIORITY)
+PHASE 3: CI PIPELINE — COMPLETED (2026-03-21)
 Target: GitHub Actions runs tests, linting, and type checking on every push/PR.
 - [x] Create .github/workflows/ci.yml with:
-      - Install uv via `astral-sh/setup-uv@v4` action
-      - Test stage: pytest with coverage reporting (74.45% baseline, fail_under=70%)
-      - Matrix: Python 3.11, 3.12
+      - Install uv via `astral-sh/setup-uv@v4` action with `enable-cache: true`
+      - Test job: pytest with coverage (matrix: Python 3.10, 3.11)
+      - Lint job: `uv run ruff check scatter/` + `uv run ruff format --check scatter/`
+      - Type-check job: `uv run mypy scatter --ignore-missing-imports`
       - Trigger: push to main + all PRs
-      - [ ] Add lint stage: `uv run ruff check scatter/` + `uv run ruff format --check scatter/`
-      - [ ] Add type check stage: `uv run mypy scatter/`
-      - [ ] Add uv cache via actions/cache (uv has built-in cache dir)
-      - [ ] Migrate CI to use uv (astral-sh/setup-uv@v4) once Phase 2 packaging complete
-- [ ] Create conftest.py with shared fixtures:
-      - REPO_ROOT path
-      - Sample graph builder (used by multiple test files)
-      - Temp directory fixtures for cache tests
-- [ ] Configure ruff baseline (pyproject.toml [tool.ruff])
-- [ ] Configure mypy baseline (pyproject.toml [tool.mypy]) — allow initial error baseline
-- [ ] All 641+ existing tests pass in CI
+      - Three parallel jobs (test, lint, type-check)
+- [x] Configure ruff baseline (pyproject.toml [tool.ruff]):
+      - target-version py310, line-length 100
+      - select E/F/W, ignore E501 (long strings) + E741 (ambiguous names)
+      - __init__.py F401 per-file ignore (barrel re-exports)
+      - Auto-fixed 113 unused imports, 20 f-string, 3 unused vars
+      - Formatted 44 files
+- [x] Configure mypy baseline (pyproject.toml [tool.mypy]) — 0 errors
+- [x] All 789 tests pass in CI (verified on 3.10 and 3.11)
+- [x] .git-blame-ignore-revs for formatting commit (GitHub respects automatically)
+- [x] Developer experience scripts:
+      - tools/setup.sh: one-time bootstrap (python check, uv check, deps, git config, skills)
+      - tools/check.sh: local CI mirror (--quick for lint-only ~2s)
 - [ ] Badge in README for CI status
+- [ ] Create conftest.py with shared fixtures (deferred — not blocking)
 
 PHASE 4: DOCKER SUPPORT (MEDIUM PRIORITY)
 Target: `docker build -t scatter .` and run against mounted repos.

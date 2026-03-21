@@ -7,22 +7,22 @@ The page Anya asked for. How to add features, tests, and scanners to Scatter wit
 ## Development Setup
 
 ```bash
-# Clone and enter
 git clone <repo-url>
 cd wex_scatter
 
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # macOS/Linux
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Verify everything works
-python -m pytest -v
+# One-command setup
+bash tools/setup.sh
 ```
 
-You should see 683 tests pass (1 xfail) in about 9 seconds. If anything fails, fix your environment before writing code.
+This checks Python >= 3.10, installs dependencies via [uv](https://docs.astral.sh/uv/), configures git, and links Claude Code skills. It's idempotent — run it again any time.
+
+Verify everything works:
+
+```bash
+bash tools/check.sh
+```
+
+You should see all four checks pass (ruff check, ruff format, mypy, pytest — 789 tests, 1 xfail). If anything fails, fix your environment before writing code.
 
 ---
 
@@ -258,32 +258,71 @@ def test_your_task_api_failure():
 ## Running Tests
 
 ```bash
-# Full suite (quiet mode, ~9s)
-python -m pytest
+# Full local CI check (lint + format + mypy + pytest) — run before pushing
+bash tools/check.sh
 
-# Verbose (see every test name)
-python -m pytest -v
+# Quick lint-only (~2 seconds)
+bash tools/check.sh --quick
+
+# Just the test suite
+uv run pytest
 
 # Specific file
-pytest test_graph.py
+uv run pytest test_graph.py
 
 # Specific test by name
-pytest test_impact_analysis.py -k "test_bfs_depth"
+uv run pytest test_impact_analysis.py -k "test_bfs_depth"
 
 # With coverage
-python -m pytest --cov=scatter
+uv run pytest --cov=scatter --cov-report=term-missing
 
 # Stop on first failure
-python -m pytest -x
+uv run pytest -x
 ```
 
 All AI tests use mocks. If your test needs an AI provider, mock it. The CI environment has no API keys and no network access to AI services.
 
 ---
 
+## Linting & Formatting
+
+Scatter uses [ruff](https://docs.astral.sh/ruff/) for linting and formatting, configured in `pyproject.toml`.
+
+```bash
+# Check for lint errors
+uv run ruff check scatter/
+
+# Auto-fix what ruff can
+uv run ruff check scatter/ --fix
+
+# Format code
+uv run ruff format scatter/
+
+# Check formatting without changing files
+uv run ruff format --check scatter/
+```
+
+Configuration highlights (see `[tool.ruff]` in `pyproject.toml`):
+
+- **Line length 100** — middle ground between 88 and 120
+- **Rules: E, F, W** — pycodestyle errors/warnings + pyflakes
+- **E501 ignored** — long strings are fine; ruff format handles code structure
+- **E741 ignored** — ambiguous variable names are a font problem, not a code problem
+- **F401 ignored in `__init__.py`** — barrel re-exports are intentional
+
+## Type Checking
+
+[mypy](https://mypy.readthedocs.io/) is configured in `pyproject.toml` and runs in CI.
+
+```bash
+uv run mypy scatter --ignore-missing-imports
+```
+
+Current baseline: 0 errors. Keep it that way.
+
 ## Style Guide
 
-No linter is enforced yet (ruff is planned). In the meantime, follow the patterns you see in the existing code:
+Follow the patterns in the existing code:
 
 - **Free functions preferred.** If you're reaching for a class, ask yourself if a function would work. It usually does.
 - **Dataclasses for structured data.** Not dicts, not NamedTuples. Dataclasses give you type hints, defaults, and readability.
@@ -294,17 +333,29 @@ No linter is enforced yet (ruff is planned). In the meantime, follow the pattern
 
 ---
 
+## CI Pipeline
+
+GitHub Actions runs three parallel jobs on every push to `main` and every PR:
+
+| Job | What it runs | Matrix |
+|-----|-------------|--------|
+| **test** | `uv run pytest --cov=scatter` | Python 3.10, 3.11 |
+| **lint** | `uv run ruff check scatter/` + `uv run ruff format --check scatter/` | 3.11 |
+| **type-check** | `uv run mypy scatter --ignore-missing-imports` | 3.11 |
+
+The local `bash tools/check.sh` runs the exact same commands. If it passes locally, CI will pass.
+
 ## PR Checklist
 
 Before opening a PR, verify:
 
-- [ ] All tests pass: `python -m pytest -v`
+- [ ] `bash tools/check.sh` passes (lint + format + mypy + tests)
 - [ ] New code has tests
 - [ ] No hardcoded file paths
 - [ ] No secrets, API keys, or credentials in code
 - [ ] Type hints on public function signatures
 - [ ] `--disable-multiprocessing` produces identical results to parallel mode (if applicable)
-- [ ] Coverage hasn't dropped below 70%: `python -m pytest --cov=scatter`
+- [ ] Coverage hasn't dropped below 70%
 
 ---
 

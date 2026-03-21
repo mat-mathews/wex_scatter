@@ -43,26 +43,27 @@ The repository includes 8 sample .NET projects that form a realistic dependency 
 git clone <repository_url>
 cd scatter
 
-# Install uv (if not already installed)
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# One-command dev setup: installs uv deps, configures git, links Claude skills
+bash tools/setup.sh
+```
 
-# Install all dependencies (creates .venv automatically)
-uv sync
+If you don't have uv yet, the setup script will tell you how to install it.
 
-# Or without uv:
-pip install .
+### Development Workflow
+
+```bash
+# Run the local CI check before pushing (lint + format + mypy + pytest)
+bash tools/check.sh
+
+# Quick lint-only check (~2 seconds)
+bash tools/check.sh --quick
 ```
 
 ### Using with Claude Code
 
-If you have Claude Code, you can use scatter through natural language instead of CLI flags:
+If you have Claude Code, you can use scatter through natural language instead of CLI flags.
+The setup script above already links the skills. Then ask Claude directly:
 
-```bash
-# One-time setup: symlink skills into .claude/skills/
-bash tools/setup-claude-skills.sh
-```
-
-Then ask Claude directly:
 - "Show me the dependency health of this codebase"
 - "Who uses GalaxyWorks.Data?"
 - "What's the blast radius of adding tenant isolation to portal configuration?"
@@ -1252,29 +1253,20 @@ python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --
 ### Running Tests
 
 ```bash
-# Run the full test suite
-python -m pytest -v
+# Full local CI check (lint + format + mypy + pytest)
+bash tools/check.sh
 
-# Run only impact analysis tests
-python -m pytest test_impact_analysis.py -v
+# Quick lint-only check (~2 seconds)
+bash tools/check.sh --quick
 
-# Run only coupling metrics + cycle detection tests
-python -m pytest test_coupling.py -v
+# Run just the test suite
+uv run pytest
 
-# Run only incremental graph update tests
-python -m pytest test_graph_patcher.py -v
+# Run specific test file
+uv run pytest test_impact_analysis.py -v
 
-# Run only domain boundary detection tests
-python -m pytest test_domain.py -v
-
-# Run only multiprocessing tests
-python -m pytest test_multiprocessing_phase1.py -v
-
-# Run only project mapping tests
-python -m pytest test_phase2_3_project_mapping.py -v
-
-# Run with short output
-python -m pytest -q
+# Run with coverage
+uv run pytest --cov=scatter --cov-report=term-missing
 ```
 
 ### Test Suite Overview

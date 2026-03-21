@@ -4,21 +4,31 @@ Is this thing well-tested? Yes. Can you verify that yourself in under a minute? 
 
 ## Running the tests
 
-```bash
-python -m pytest -v
-```
-
-```
-683 passed, 1 xfailed in 9.12s
-```
-
-683 tests across 25 files. The single xfail is an intentional marker for a tracked edge case, not a failing test someone gave up on.
-
-For a quieter run:
+The fastest way to check everything before pushing:
 
 ```bash
-python -m pytest -q
+bash tools/check.sh
 ```
+
+This mirrors CI exactly — ruff lint, ruff format, mypy, then pytest. If `check.sh` passes locally, CI will pass.
+
+For a lint-only check (~2 seconds):
+
+```bash
+bash tools/check.sh --quick
+```
+
+Or run just the test suite:
+
+```bash
+uv run pytest
+```
+
+```
+789 passed, 1 xfailed in ~15s
+```
+
+789 tests across 30 files. The single xfail is an intentional marker for a tracked edge case, not a failing test someone gave up on.
 
 ## What the tests cover
 

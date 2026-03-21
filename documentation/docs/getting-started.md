@@ -15,28 +15,30 @@ That's it. The repo ships with 8 sample .NET projects, so you don't need a produ
 git clone <repo-url>
 cd wex_scatter
 
-# Install uv (if not already installed)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Install all dependencies (creates .venv automatically)
-uv sync
+# One-command dev setup
+bash tools/setup.sh
 ```
 
-If you don't have uv, you can use pip directly:
+The setup script:
 
-```bash
-pip install .
-```
+1. Checks Python >= 3.10 is available
+2. Checks [uv](https://docs.astral.sh/uv/) is installed (prints install command if not)
+3. Runs `uv sync` to install all dependencies
+4. Configures git to use `.git-blame-ignore-revs`
+5. Links Claude Code skills into `.claude/skills/`
+
+It's idempotent — safe to run again any time.
+
+!!! note "Manual setup"
+    If you prefer to set things up yourself:
+    ```bash
+    curl -LsSf https://astral.sh/uv/install.sh | sh   # install uv
+    uv sync                                             # install deps
+    ```
 
 ## Using with Claude Code
 
-If you use Claude Code, you can interact with Scatter through natural language instead of CLI flags.
-
-```bash
-bash tools/setup-claude-skills.sh
-```
-
-This symlinks five analysis skills into `.claude/skills/`. After setup, ask Claude directly:
+If you use Claude Code, the setup script already linked five analysis skills. Ask Claude directly:
 
 - "Show me the dependency health of this codebase"
 - "Who uses GalaxyWorks.Data?"
@@ -145,19 +147,27 @@ Meanwhile, Scatter quietly built a dependency graph and cached it to disk. You d
 
 ## Verifying your installation
 
-Run the test suite to confirm everything is wired correctly:
+Run the local CI check to confirm everything works:
+
+```bash
+bash tools/check.sh
+```
+
+This runs the same checks as GitHub Actions CI: ruff lint, ruff format, mypy, and pytest. You should see all four steps pass.
+
+For a faster check (lint and format only, ~2 seconds):
+
+```bash
+bash tools/check.sh --quick
+```
+
+Or just the test suite:
 
 ```bash
 uv run pytest
 ```
 
-Expected output:
-
-```
-788 passed, 1 xfailed in 9.12s
-```
-
-If you see 788 passed, your installation is solid. The single xfail is intentional -- it marks a known edge case that's tracked but not blocking.
+Expected: 789 passed, 1 xfailed. The single xfail is intentional — a tracked edge case, not a failure.
 
 ## Next steps
 
