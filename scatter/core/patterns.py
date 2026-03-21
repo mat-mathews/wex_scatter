@@ -3,6 +3,7 @@
 Used by both graph_builder (full build) and graph_patcher (incremental updates).
 Keeping these in one place prevents divergence between the two code paths.
 """
+
 import re
 
 # C# identifiers (for inverted-index type matching)

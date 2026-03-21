@@ -7,6 +7,7 @@ Loads settings from (highest to lowest priority):
 4. Environment variables
 5. Hardcoded defaults
 """
+
 import logging
 import os
 from dataclasses import dataclass, field
@@ -97,7 +98,9 @@ def _apply_yaml(config: ScatterConfig, data: Dict[str, Any]) -> None:
     graph = data.get("graph", {})
     if isinstance(graph, dict):
         if "cache_dir" in graph:
-            config.graph.cache_dir = str(graph["cache_dir"]) if graph["cache_dir"] is not None else None
+            config.graph.cache_dir = (
+                str(graph["cache_dir"]) if graph["cache_dir"] is not None else None
+            )
         if "invalidation" in graph:
             config.graph.invalidation = str(graph["invalidation"])
         if "coupling_weights" in graph and isinstance(graph["coupling_weights"], dict):

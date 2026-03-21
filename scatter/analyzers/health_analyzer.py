@@ -2,6 +2,7 @@
 
 Produces deterministic, rule-based observations (no AI) from graph metrics.
 """
+
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
@@ -83,21 +84,20 @@ def compute_health_dashboard(
         for sproc in node.sproc_references:
             sproc_to_projects[sproc].append(node.name)
 
-    db_hotspots = sorted(
-        sproc for sproc, projs in sproc_to_projects.items() if len(projs) >= 3
-    )
+    db_hotspots = sorted(sproc for sproc, projs in sproc_to_projects.items() if len(projs) >= 3)
 
     # Build node_solutions lookup for bridge project observations
     node_solutions_lookup: Optional[Dict[str, List[str]]] = None
     if bridge_projects:
         node_solutions_lookup = {
-            node.name: node.solutions
-            for node in graph.get_all_nodes()
-            if node.solutions
+            node.name: node.solutions for node in graph.get_all_nodes() if node.solutions
         }
 
     observations = _generate_observations(
-        metrics, cycles, clusters, sproc_to_projects,
+        metrics,
+        cycles,
+        clusters,
+        sproc_to_projects,
         solution_metrics=solution_metrics,
         bridge_projects=bridge_projects,
         node_solutions=node_solutions_lookup,
@@ -135,70 +135,85 @@ def _generate_observations(
     for name, m in sorted(metrics.items()):
         # Stable core: high fan_in + low instability
         if m.fan_in >= HIGH_FAN_IN_THRESHOLD and m.instability <= LOW_INSTABILITY_THRESHOLD:
-            obs.append(Observation(
-                project=name,
-                rule="stable_core",
-                message=f"{name}: stable core (fan_in={m.fan_in}, instability={m.instability:.2f}) \u2014 change carefully",
-                severity="warning",
-            ))
+            obs.append(
+                Observation(
+                    project=name,
+                    rule="stable_core",
+                    message=f"{name}: stable core (fan_in={m.fan_in}, instability={m.instability:.2f}) \u2014 change carefully",
+                    severity="warning",
+                )
+            )
 
         # High coupling score
         if m.coupling_score >= HIGH_COUPLING_THRESHOLD:
-            obs.append(Observation(
-                project=name,
-                rule="high_coupling",
-                message=f"{name}: high coupling score ({m.coupling_score:.1f}) \u2014 review dependencies",
-                severity="warning",
-            ))
+            obs.append(
+                Observation(
+                    project=name,
+                    rule="high_coupling",
+                    message=f"{name}: high coupling score ({m.coupling_score:.1f}) \u2014 review dependencies",
+                    severity="warning",
+                )
+            )
 
     # Cycle rules
     cycle_projects: set = set()
     for cg in cycles:
         cycle_projects.update(cg.projects)
     for name in sorted(cycle_projects):
-        obs.append(Observation(
-            project=name,
-            rule="in_cycle",
-            message=f"{name}: participates in circular dependency \u2014 must break before extraction",
-            severity="critical",
-        ))
+        obs.append(
+            Observation(
+                project=name,
+                rule="in_cycle",
+                message=f"{name}: participates in circular dependency \u2014 must break before extraction",
+                severity="critical",
+            )
+        )
 
     # Cluster rules
     if clusters:
         for clu in clusters:
-            if clu.coupling_to_outside >= HIGH_CLUSTER_COUPLING_RATIO and clu.cohesion <= LOW_COHESION_THRESHOLD:
-                obs.append(Observation(
-                    project=clu.name,
-                    rule="low_cohesion_cluster",
-                    message=f"{clu.name}: high coupling + low cohesion ({clu.cohesion:.3f}) \u2014 consider splitting",
-                    severity="warning",
-                ))
+            if (
+                clu.coupling_to_outside >= HIGH_CLUSTER_COUPLING_RATIO
+                and clu.cohesion <= LOW_COHESION_THRESHOLD
+            ):
+                obs.append(
+                    Observation(
+                        project=clu.name,
+                        rule="low_cohesion_cluster",
+                        message=f"{clu.name}: high coupling + low cohesion ({clu.cohesion:.3f}) \u2014 consider splitting",
+                        severity="warning",
+                    )
+                )
 
     # DB hotspot rules
     for sproc, projs in sorted(sproc_to_projects.items()):
         if len(projs) >= 3:
-            obs.append(Observation(
-                project=sproc,
-                rule="db_hotspot",
-                message=f"{sproc}: shared by {len(projs)} projects \u2014 database coupling hotspot",
-                severity="info",
-            ))
+            obs.append(
+                Observation(
+                    project=sproc,
+                    rule="db_hotspot",
+                    message=f"{sproc}: shared by {len(projs)} projects \u2014 database coupling hotspot",
+                    severity="info",
+                )
+            )
 
     # Solution coupling rules
     if solution_metrics:
         for sol_name, sm in sorted(solution_metrics.items()):
             if sm.cross_solution_ratio > 0.5:
                 total = sm.internal_edges + sm.external_edges
-                obs.append(Observation(
-                    project=sol_name,
-                    rule="high_cross_solution_coupling",
-                    message=(
-                        f"{sol_name}: high cross-solution coupling "
-                        f"(ratio {sm.cross_solution_ratio:.2f}, "
-                        f"{sm.external_edges} of {total} edges cross solution boundary)"
-                    ),
-                    severity="warning",
-                ))
+                obs.append(
+                    Observation(
+                        project=sol_name,
+                        rule="high_cross_solution_coupling",
+                        message=(
+                            f"{sol_name}: high cross-solution coupling "
+                            f"(ratio {sm.cross_solution_ratio:.2f}, "
+                            f"{sm.external_edges} of {total} edges cross solution boundary)"
+                        ),
+                        severity="warning",
+                    )
+                )
 
     if bridge_projects and node_solutions:
         for name in bridge_projects:
@@ -206,14 +221,16 @@ def _generate_observations(
             if bridge_m and bridge_m.fan_in >= HIGH_FAN_IN_THRESHOLD:
                 sols = node_solutions.get(name, [])
                 sol_str = ", ".join(sols) if sols else "multiple"
-                obs.append(Observation(
-                    project=name,
-                    rule="solution_bridge_project",
-                    message=(
-                        f"{name}: bridge project across {len(sols)} solutions "
-                        f"({sol_str}) with {bridge_m.fan_in} incoming dependencies"
-                    ),
-                    severity="info",
-                ))
+                obs.append(
+                    Observation(
+                        project=name,
+                        rule="solution_bridge_project",
+                        message=(
+                            f"{name}: bridge project across {len(sols)} solutions "
+                            f"({sol_str}) with {bridge_m.fan_in} incoming dependencies"
+                        ),
+                        severity="info",
+                    )
+                )
 
     return obs

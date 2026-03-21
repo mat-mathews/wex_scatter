@@ -1,4 +1,5 @@
 """Shared tree-building utilities for blast radius rendering."""
+
 from collections import defaultdict
 from typing import Any, Callable, Dict, List, Optional, TypeVar
 

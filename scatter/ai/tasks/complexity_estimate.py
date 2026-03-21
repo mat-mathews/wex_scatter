@@ -1,4 +1,5 @@
 """AI complexity estimate — data-informed complexity rating for CSE scoping."""
+
 import json
 import logging
 from typing import Any, Dict, Optional
@@ -56,8 +57,8 @@ Impact metrics:
 - Number of targets: {len(report.targets)}
 - Total consumers affected: {total_consumers}
 - Maximum transitive depth: {max_depth}
-- Unique pipelines affected: {len(all_pipelines)} ({', '.join(sorted(all_pipelines)) if all_pipelines else 'none'})
-- Risk ratings across consumers: {', '.join(risk_ratings) if risk_ratings else 'none assessed'}
+- Unique pipelines affected: {len(all_pipelines)} ({", ".join(sorted(all_pipelines)) if all_pipelines else "none"})
+- Risk ratings across consumers: {", ".join(risk_ratings) if risk_ratings else "none assessed"}
 
 Return ONLY a JSON object with:
 - "rating": one of "Low", "Medium", "High", "Critical"
@@ -78,16 +79,18 @@ Return ONLY the JSON object:"""
         response_text = response.text.strip()
 
         if response_text.startswith("```"):
-            lines = response_text.split('\n')
+            lines = response_text.split("\n")
             lines = [l for l in lines if not l.startswith("```")]
-            response_text = '\n'.join(lines).strip()
+            response_text = "\n".join(lines).strip()
 
         result = json.loads(response_text)
         if not isinstance(result, dict):
             logging.warning(f"Complexity estimate returned non-dict: {response_text}")
             return None
 
-        logging.info(f"Complexity estimate: {result.get('rating', 'Unknown')} — {result.get('effort_estimate', 'N/A')}")
+        logging.info(
+            f"Complexity estimate: {result.get('rating', 'Unknown')} — {result.get('effort_estimate', 'N/A')}"
+        )
         return result
 
     except json.JSONDecodeError as e:

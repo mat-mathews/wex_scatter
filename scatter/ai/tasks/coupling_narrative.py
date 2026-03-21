@@ -1,4 +1,5 @@
 """AI coupling narrative — explains why a dependency exists."""
+
 import json
 import logging
 from pathlib import Path
@@ -28,7 +29,7 @@ def explain_coupling(
     for f in consumer.relevant_files[:5]:  # Limit to 5 files
         try:
             if f.is_file():
-                content = f.read_text(encoding='utf-8', errors='ignore')
+                content = f.read_text(encoding="utf-8", errors="ignore")
                 file_contexts.append(f"// File: {f.name}\n{content[:5000]}")
         except OSError:
             continue
@@ -36,9 +37,7 @@ def explain_coupling(
     if not file_contexts:
         return None
 
-    return explain_coupling_with_model(
-        ai_provider.model, target, consumer, file_contexts
-    )
+    return explain_coupling_with_model(ai_provider.model, target, consumer, file_contexts)
 
 
 def explain_coupling_with_model(
@@ -71,9 +70,9 @@ Return ONLY the JSON object:"""
         response_text = response.text.strip()
 
         if response_text.startswith("```"):
-            lines = response_text.split('\n')
+            lines = response_text.split("\n")
             lines = [l for l in lines if not l.startswith("```")]
-            response_text = '\n'.join(lines).strip()
+            response_text = "\n".join(lines).strip()
 
         result = json.loads(response_text)
         if not isinstance(result, dict):

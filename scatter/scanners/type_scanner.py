@@ -1,4 +1,5 @@
 """Type extraction and enclosing type detection for C# source files."""
+
 import logging
 import re
 from typing import Optional, Set
@@ -15,8 +16,8 @@ def extract_type_names_from_content(content: str) -> Set[str]:
         for pattern in (TYPE_DECLARATION_PATTERN, DELEGATE_DECLARATION_PATTERN):
             for match in pattern.finditer(content):
                 type_name_full = match.group(1).strip()
-                type_name_base = re.sub(r'<.*', '', type_name_full).strip()
-                type_name_base = type_name_base.split(',')[0].strip()
+                type_name_base = re.sub(r"<.*", "", type_name_full).strip()
+                type_name_base = type_name_base.split(",")[0].strip()
                 if type_name_base:
                     found_types.add(type_name_base)
     except Exception as e:
@@ -32,7 +33,7 @@ def find_enclosing_type_name(content: str, match_start_index: int) -> Optional[s
     enclosing_type_pattern = re.compile(
         r"^\s*(?:(?:public|internal|private|protected)\s+)?(?:(?:static|abstract|sealed|partial|record|readonly|ref)\s+)*"
         r"(class|struct|interface|enum|record)\s+([A-Za-z_][A-Za-z0-9_<>,\s]*)",
-        re.MULTILINE
+        re.MULTILINE,
     )
 
     last_found_type_name: Optional[str] = None
@@ -43,11 +44,13 @@ def find_enclosing_type_name(content: str, match_start_index: int) -> Optional[s
             if match.start() > last_match_start:
                 last_match_start = match.start()
                 type_name_full = match.group(2).strip()
-                type_name_base = re.sub(r'<.*', '', type_name_full).strip()
-                type_name_base = type_name_base.split(',')[0].strip()
+                type_name_base = re.sub(r"<.*", "", type_name_full).strip()
+                type_name_base = type_name_base.split(",")[0].strip()
                 if type_name_base:
                     last_found_type_name = type_name_base
-                    logging.debug(f"  Found potential enclosing type '{last_found_type_name}' at index {match.start()} before index {match_start_index}")
+                    logging.debug(
+                        f"  Found potential enclosing type '{last_found_type_name}' at index {match.start()} before index {match_start_index}"
+                    )
 
     except Exception as e:
         logging.warning(f"Regex error during enclosing type search: {e}")

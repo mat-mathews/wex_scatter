@@ -1,4 +1,5 @@
 """Per-target risk assessment using AI."""
+
 import json
 import logging
 from typing import Any, Dict, List, Optional
@@ -19,7 +20,12 @@ def assess_risk(
         return None
 
     if not consumers:
-        return {"rating": "Low", "justification": "No consumers detected.", "concerns": [], "mitigations": []}
+        return {
+            "rating": "Low",
+            "justification": "No consumers detected.",
+            "concerns": [],
+            "mitigations": [],
+        }
 
     return assess_risk_with_model(ai_provider.model, target, consumers)
 
@@ -69,9 +75,9 @@ Return ONLY the JSON object:"""
         response_text = response.text.strip()
 
         if response_text.startswith("```"):
-            lines = response_text.split('\n')
+            lines = response_text.split("\n")
             lines = [l for l in lines if not l.startswith("```")]
-            response_text = '\n'.join(lines).strip()
+            response_text = "\n".join(lines).strip()
 
         result = json.loads(response_text)
         if not isinstance(result, dict):

@@ -4,7 +4,7 @@ DependencyGraph is a pure data structure — mutation, query, traversal,
 serialization only. All analysis algorithms (cycles, metrics, clustering)
 are standalone functions in their respective analyzer modules.
 """
-import logging
+
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -67,13 +67,9 @@ class DependencyGraph:
     def add_edge(self, edge: DependencyEdge) -> None:
         """Add a dependency edge. Validates nodes exist, caps evidence."""
         if edge.source not in self._nodes:
-            raise ValueError(
-                f"Edge source '{edge.source}' not found in graph"
-            )
+            raise ValueError(f"Edge source '{edge.source}' not found in graph")
         if edge.target not in self._nodes:
-            raise ValueError(
-                f"Edge target '{edge.target}' not found in graph"
-            )
+            raise ValueError(f"Edge target '{edge.target}' not found in graph")
 
         if edge.evidence is not None:
             total = len(edge.evidence)
@@ -88,9 +84,7 @@ class DependencyGraph:
         self._forward[edge.source].add(edge.target)
         self._reverse[edge.target].add(edge.source)
 
-    def remove_edges_from(
-        self, source: str, edge_types: Optional[Set[str]] = None
-    ) -> int:
+    def remove_edges_from(self, source: str, edge_types: Optional[Set[str]] = None) -> int:
         """Remove outgoing edges from source, optionally filtered by edge_type.
 
         Updates _outgoing, _incoming, _forward, _reverse consistently.
@@ -140,9 +134,7 @@ class DependencyGraph:
 
         return len(to_remove)
 
-    def remove_edges_to(
-        self, target: str, edge_types: Optional[Set[str]] = None
-    ) -> int:
+    def remove_edges_to(self, target: str, edge_types: Optional[Set[str]] = None) -> int:
         """Remove incoming edges to target, optionally filtered by edge_type.
 
         Updates _outgoing, _incoming, _forward, _reverse consistently.
@@ -200,19 +192,11 @@ class DependencyGraph:
 
     def get_dependencies(self, name: str) -> List[ProjectNode]:
         """What does this project depend on?"""
-        return [
-            self._nodes[dep]
-            for dep in self._forward.get(name, set())
-            if dep in self._nodes
-        ]
+        return [self._nodes[dep] for dep in self._forward.get(name, set()) if dep in self._nodes]
 
     def get_consumers(self, name: str) -> List[ProjectNode]:
         """What depends on this project?"""
-        return [
-            self._nodes[con]
-            for con in self._reverse.get(name, set())
-            if con in self._nodes
-        ]
+        return [self._nodes[con] for con in self._reverse.get(name, set()) if con in self._nodes]
 
     def get_dependency_names(self, name: str) -> Set[str]:
         """Names of projects this one depends on — O(1) set copy."""
@@ -406,9 +390,7 @@ class DependencyGraph:
             while queue:
                 current = queue.popleft()
                 component.append(current)
-                neighbors = self._forward.get(current, set()) | self._reverse.get(
-                    current, set()
-                )
+                neighbors = self._forward.get(current, set()) | self._reverse.get(current, set())
                 for neighbor in neighbors:
                     if neighbor not in visited:
                         visited.add(neighbor)

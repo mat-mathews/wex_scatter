@@ -1,4 +1,5 @@
 """Scatter CLI entry point — argument parsing and mode dispatch."""
+
 import csv
 import logging
 import sys
@@ -18,7 +19,6 @@ from scatter.cli import (
     _require_output_file,
 )
 
-from scatter.core.parallel import find_files_with_pattern_parallel
 from scatter.compat.v1_bridge import map_batch_jobs_from_config_repo
 from scatter.scanners.solution_scanner import (
     SolutionInfo,
@@ -49,8 +49,8 @@ def main():
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
         level=log_level,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
     if args.verbose:
         logging.debug("Debug logging enabled.")
@@ -60,7 +60,7 @@ def main():
     is_sproc_mode = args.stored_procedure is not None
     is_impact_mode = args.sow is not None or args.sow_file is not None
     is_graph_mode = args.graph
-    is_dump_index = getattr(args, 'dump_index', False)
+    is_dump_index = getattr(args, "dump_index", False)
 
     # Handle --dump-index standalone mode
     if is_dump_index:
@@ -71,7 +71,12 @@ def main():
         config = load_config(repo_root=search_scope_abs, cli_overrides=cli_overrides)
 
         from scatter.analyzers.graph_builder import build_dependency_graph
-        from scatter.store.graph_cache import cache_exists, get_default_cache_path, load_and_validate, save_graph
+        from scatter.store.graph_cache import (
+            cache_exists,
+            get_default_cache_path,
+            load_and_validate,
+            save_graph,
+        )
         from scatter.ai.codebase_index import build_codebase_index
 
         # Try cached graph first, build if needed
@@ -101,29 +106,37 @@ def main():
 
         index = build_codebase_index(graph, search_scope_abs)
         print(index.text)
-        print(f"\n# {index.project_count} projects, {index.type_count} types, "
-              f"{index.sproc_count} sprocs, {index.file_count} files, "
-              f"{index.size_bytes:,} bytes")
+        print(
+            f"\n# {index.project_count} projects, {index.type_count} types, "
+            f"{index.sproc_count} sprocs, {index.file_count} files, "
+            f"{index.size_bytes:,} bytes"
+        )
         return
 
     # Validate that a mode was selected (since mode_group is not required for --dump-index)
     if not any([is_git_mode, is_target_mode, is_sproc_mode, is_impact_mode, is_graph_mode]):
-        parser.error("A mode (--branch-name, --target-project, --stored-procedure, --sow, --sow-file, or --graph) must be selected, or use --dump-index.")
+        parser.error(
+            "A mode (--branch-name, --target-project, --stored-procedure, --sow, --sow-file, or --graph) must be selected, or use --dump-index."
+        )
 
-    if is_graph_mode and args.output_format == 'pipelines':
+    if is_graph_mode and args.output_format == "pipelines":
         parser.error("Pipeline output format is not supported in graph mode.")
 
-    if not is_graph_mode and args.output_format == 'mermaid':
+    if not is_graph_mode and args.output_format == "mermaid":
         parser.error("Mermaid output format is only supported in graph mode (--graph).")
 
-    if args.output_format == 'pipelines' and not args.pipeline_csv:
-        logging.warning("--output-format pipelines was requested without --pipeline-csv; output will be empty.")
+    if args.output_format == "pipelines" and not args.pipeline_csv:
+        logging.warning(
+            "--output-format pipelines was requested without --pipeline-csv; output will be empty."
+        )
 
     # --- load config and configure AI provider ---
     cli_overrides = _build_cli_overrides(args)
     # Resolve without strict=True — config loading tolerates missing dirs.
     # The real path validation with strict=True happens below.
-    config_root = Path(args.search_scope).resolve() if args.search_scope else Path(args.repo_path).resolve()
+    config_root = (
+        Path(args.search_scope).resolve() if args.search_scope else Path(args.repo_path).resolve()
+    )
     config = load_config(repo_root=config_root, cli_overrides=cli_overrides)
     router = AIRouter(config)
 
@@ -172,12 +185,19 @@ def main():
         elif is_graph_mode:
             parser.error("--search-scope is required when using --graph mode.")
         else:
-            parser.error("A mode (--branch-name, --target-project, --stored-procedure, --sow, or --sow-file) must be selected.")
+            parser.error(
+                "A mode (--branch-name, --target-project, --stored-procedure, --sow, or --sow-file) must be selected."
+            )
 
         if is_sproc_mode:
             if args.repo_path != "." or args.base_branch != "main":
-                if args.repo_path != Path(args.search_scope).resolve(strict=True).as_posix() and args.branch_name is None:
-                    logging.warning("Arguments --repo-path and --base-branch are not applicable in --stored-procedure mode and will be ignored.")
+                if (
+                    args.repo_path != Path(args.search_scope).resolve(strict=True).as_posix()
+                    and args.branch_name is None
+                ):
+                    logging.warning(
+                        "Arguments --repo-path and --base-branch are not applicable in --stored-procedure mode and will be ignored."
+                    )
 
         if is_git_mode:
             if not repo_path_abs:
@@ -187,15 +207,19 @@ def main():
             target_path_input = Path(args.target_project).resolve()
             if target_path_input.is_dir():
                 try:
-                    target_csproj_abs_path = next(target_path_input.glob('*.csproj'))
+                    target_csproj_abs_path = next(target_path_input.glob("*.csproj"))
                     logging.info(f"Found target project file: {target_csproj_abs_path}")
                 except StopIteration:
-                    raise FileNotFoundError(f"No .csproj file found in the target directory: {target_path_input}")
-            elif target_path_input.is_file() and target_path_input.suffix.lower() == '.csproj':
+                    raise FileNotFoundError(
+                        f"No .csproj file found in the target directory: {target_path_input}"
+                    )
+            elif target_path_input.is_file() and target_path_input.suffix.lower() == ".csproj":
                 target_csproj_abs_path = target_path_input
                 logging.info(f"Using target project file: {target_csproj_abs_path}")
             else:
-                raise ValueError(f"Invalid target project path: '{args.target_project}'. Must be a .csproj file or a directory containing one.")
+                raise ValueError(
+                    f"Invalid target project path: '{args.target_project}'. Must be a .csproj file or a directory containing one."
+                )
 
         pipeline_csv_path = Path(args.pipeline_csv).resolve() if args.pipeline_csv else None
 
@@ -214,7 +238,7 @@ def main():
         sys.exit(1)
 
     # --- Step 1: Parse solution files ---
-    logging.info(f"\n--- Caching solution files ---")
+    logging.info("\n--- Caching solution files ---")
     solution_infos: List[SolutionInfo] = []
     solution_index: Dict = {}
     solution_file_cache: List[Path] = []
@@ -233,7 +257,7 @@ def main():
     # --- Load batch job mapping if app-config-path is provided ---
     batch_job_map: Dict[str, List[str]] = {}
     if args.app_config_path:
-        logging.info(f"\n--- Loading batch job data from app-config repo ---")
+        logging.info("\n--- Loading batch job data from app-config repo ---")
         try:
             app_config_repo_path = Path(args.app_config_path).resolve(strict=True)
             batch_job_map = map_batch_jobs_from_config_repo(app_config_repo_path)
@@ -243,40 +267,48 @@ def main():
             logging.error(f"An error occurred processing the --app-config-path: {e}")
 
     # --- load pipeline data ---
-    logging.info(f"\n--- Loading pipeline data ---")
+    logging.info("\n--- Loading pipeline data ---")
     pipeline_map: Dict[str, str] = {}
     if pipeline_csv_path:
         if not pipeline_csv_path.is_file():
-            logging.warning(f"Pipeline CSV file not found: {pipeline_csv_path}. Proceeding without pipeline data.")
+            logging.warning(
+                f"Pipeline CSV file not found: {pipeline_csv_path}. Proceeding without pipeline data."
+            )
         else:
             try:
-                with open(pipeline_csv_path, mode='r', newline='', encoding='utf-8-sig') as csvfile:
+                with open(pipeline_csv_path, mode="r", newline="", encoding="utf-8-sig") as csvfile:
                     reader = csv.DictReader(csvfile)
-                    required_headers = {'Application Name', 'Pipeline Name'}
+                    required_headers = {"Application Name", "Pipeline Name"}
                     if not required_headers.issubset(reader.fieldnames or set()):
                         missing = required_headers - set(reader.fieldnames or [])
-                        logging.error(f"Pipeline CSV missing required columns: {', '.join(missing)}. Proceeding without pipeline data.")
+                        logging.error(
+                            f"Pipeline CSV missing required columns: {', '.join(missing)}. Proceeding without pipeline data."
+                        )
                     else:
                         loaded_count = 0
                         duplicate_count = 0
                         for row in reader:
-                            app_name = row.get('Application Name','').strip()
-                            pipe_name = row.get('Pipeline Name','').strip()
+                            app_name = row.get("Application Name", "").strip()
+                            pipe_name = row.get("Pipeline Name", "").strip()
                             if app_name and pipe_name:
                                 if app_name in pipeline_map:
                                     duplicate_count += 1
-                                    logging.debug(f"Duplicate application '{app_name}' in pipeline CSV. Overwriting.")
+                                    logging.debug(
+                                        f"Duplicate application '{app_name}' in pipeline CSV. Overwriting."
+                                    )
                                 pipeline_map[app_name] = pipe_name
                                 loaded_count += 1
                         log_msg = f"Loaded {loaded_count} pipeline mappings."
-                        if duplicate_count > 0: log_msg += f" ({duplicate_count} duplicate application names found, last entry used)."
+                        if duplicate_count > 0:
+                            log_msg += f" ({duplicate_count} duplicate application names found, last entry used)."
                         logging.info(log_msg)
 
             except Exception as e:
-                logging.error(f"Error loading pipeline CSV '{pipeline_csv_path}': {e}. Proceeding without pipeline data.")
+                logging.error(
+                    f"Error loading pipeline CSV '{pipeline_csv_path}': {e}. Proceeding without pipeline data."
+                )
     else:
         logging.info("No pipeline CSV provided.")
-
 
     # --- main logic ---
     all_results: List[Dict[str, Union[str, Dict, List[str]]]] = []
@@ -291,8 +323,11 @@ def main():
     if not args.no_graph and search_scope_abs and not is_graph_mode:
         from scatter.store.graph_cache import cache_exists
         from scatter.analyzers.graph_enrichment import build_graph_context
+
         if args.graph_metrics or cache_exists(search_scope_abs, config.graph.cache_dir):
-            graph_ctx = build_graph_context(search_scope_abs, config, args, solution_index=solution_index)
+            graph_ctx = build_graph_context(
+                search_scope_abs, config, args, solution_index=solution_index
+            )
             if graph_ctx:
                 graph_enriched = True
             elif args.graph_metrics:
@@ -327,7 +362,10 @@ def main():
         assert repo_path_abs is not None and search_scope_abs is not None
         try:
             result = run_git_analysis(
-                ctx, repo_path_abs, args.branch_name, args.base_branch,
+                ctx,
+                repo_path_abs,
+                args.branch_name,
+                args.base_branch,
                 args.enable_hybrid_git,
             )
         except ValueError as e:
@@ -360,13 +398,13 @@ def main():
     # == IMPACT ANALYSIS MODE ==
     elif is_impact_mode:
         assert search_scope_abs is not None
-        logging.info(f"\n--- Running Impact Analysis Mode ---")
+        logging.info("\n--- Running Impact Analysis Mode ---")
 
         # Resolve SOW text
         if args.sow_file:
             try:
                 sow_file_path = Path(args.sow_file).resolve(strict=True)
-                sow_text = sow_file_path.read_text(encoding='utf-8')
+                sow_text = sow_file_path.read_text(encoding="utf-8")
                 logging.info(f"Loaded work request from file: {sow_file_path}")
             except FileNotFoundError:
                 logging.error(f"SOW file not found: {args.sow_file}")
@@ -407,26 +445,47 @@ def main():
 
         # Output impact report (separate from legacy all_results path)
         _gm_impact = graph_enriched
-        if args.output_format == 'json':
+        if args.output_format == "json":
             output_path = _require_output_file(args, "JSON")
-            write_impact_json_report(impact_report, output_path,
-                                     metadata=_build_metadata(args, search_scope_abs, start_time, graph_enriched=graph_enriched))
-        elif args.output_format == 'csv':
+            write_impact_json_report(
+                impact_report,
+                output_path,
+                metadata=_build_metadata(
+                    args, search_scope_abs, start_time, graph_enriched=graph_enriched
+                ),
+            )
+        elif args.output_format == "csv":
             output_path = _require_output_file(args, "CSV")
-            write_impact_csv_report(impact_report, output_path,
-                                    graph_metrics_requested=_gm_impact)
-        elif args.output_format == 'markdown':
-            from scatter.reports.markdown_reporter import build_impact_markdown, write_impact_markdown_report
-            md_metadata = _build_metadata(args, search_scope_abs, start_time, graph_enriched=graph_enriched)
+            write_impact_csv_report(impact_report, output_path, graph_metrics_requested=_gm_impact)
+        elif args.output_format == "markdown":
+            from scatter.reports.markdown_reporter import (
+                build_impact_markdown,
+                write_impact_markdown_report,
+            )
+
+            md_metadata = _build_metadata(
+                args, search_scope_abs, start_time, graph_enriched=graph_enriched
+            )
             if args.output_file:
-                write_impact_markdown_report(impact_report, Path(args.output_file),
-                                             metadata=md_metadata,
-                                             graph_metrics_requested=_gm_impact)
+                write_impact_markdown_report(
+                    impact_report,
+                    Path(args.output_file),
+                    metadata=md_metadata,
+                    graph_metrics_requested=_gm_impact,
+                )
             else:
-                print(build_impact_markdown(impact_report, metadata=md_metadata,
-                                            graph_metrics_requested=_gm_impact))
-        elif args.output_format == 'pipelines':
-            from scatter.reports.pipeline_reporter import extract_impact_pipeline_names, format_pipeline_output, write_pipeline_report
+                print(
+                    build_impact_markdown(
+                        impact_report, metadata=md_metadata, graph_metrics_requested=_gm_impact
+                    )
+                )
+        elif args.output_format == "pipelines":
+            from scatter.reports.pipeline_reporter import (
+                extract_impact_pipeline_names,
+                format_pipeline_output,
+                write_pipeline_report,
+            )
+
             names = extract_impact_pipeline_names(impact_report)
             if args.output_file:
                 write_pipeline_report(names, Path(args.output_file))
@@ -439,15 +498,17 @@ def main():
 
         consumer_count = sum(len(ti.consumers) for ti in impact_report.targets)
         target_count = len(impact_report.targets)
-        if args.output_format != 'pipelines':
-            print(f"\nAnalysis complete. {consumer_count} consumer(s) found across {target_count} target(s).\n")
+        if args.output_format != "pipelines":
+            print(
+                f"\nAnalysis complete. {consumer_count} consumer(s) found across {target_count} target(s).\n"
+            )
         return
 
     # == DEPENDENCY GRAPH ANALYSIS MODE ==
     # --graph-metrics is implicit in graph mode; flag ignored.
     elif is_graph_mode:
         assert search_scope_abs is not None
-        logging.info(f"\n--- Running Dependency Graph Analysis Mode ---")
+        logging.info("\n--- Running Dependency Graph Analysis Mode ---")
 
         from scatter.analyzers.graph_builder import build_dependency_graph
         from scatter.analyzers.coupling_analyzer import (
@@ -478,7 +539,9 @@ def main():
                 cache_path, search_scope_abs, config.graph.invalidation
             )
             if cache_result is not None:
-                graph = cache_result[0]  # (graph, file_facts, project_facts, git_head, project_set_hash)
+                graph = cache_result[
+                    0
+                ]  # (graph, file_facts, project_facts, git_head, project_set_hash)
                 logging.info("Using cached dependency graph.")
 
         # Build if needed
@@ -502,16 +565,22 @@ def main():
 
         # Domain analysis
         from scatter.analyzers.domain_analyzer import find_clusters
+
         clusters = find_clusters(graph, min_cluster_size=2, metrics=metrics, cycles=cycles)
 
         # Solution metrics
         from scatter.analyzers.coupling_analyzer import compute_solution_metrics
+
         sol_metrics, bridge_projs = compute_solution_metrics(graph)
 
         # Health dashboard
         from scatter.analyzers.health_analyzer import compute_health_dashboard
+
         dashboard = compute_health_dashboard(
-            graph, metrics, cycles, clusters=clusters,
+            graph,
+            metrics,
+            cycles,
+            clusters=clusters,
             solution_metrics=sol_metrics if sol_metrics else None,
             bridge_projects=bridge_projs if bridge_projs else None,
         )
@@ -520,7 +589,11 @@ def main():
         if args.output_format == "json":
             output_path = _require_output_file(args, "JSON")
             write_graph_json_report(
-                graph, metrics, ranked, cycles, output_path,
+                graph,
+                metrics,
+                ranked,
+                cycles,
+                output_path,
                 clusters=clusters,
                 metadata=_build_metadata(args, search_scope_abs, start_time, graph_enriched=True),
                 include_topology=args.include_graph_topology,
@@ -533,26 +606,45 @@ def main():
         elif args.output_format == "csv":
             output_path = _require_output_file(args, "CSV")
             from scatter.reports.graph_reporter import write_graph_csv_report
+
             write_graph_csv_report(graph, metrics, output_path, clusters=clusters)
             logging.info(f"Graph CSV report written to {args.output_file}")
 
         elif args.output_format == "markdown":
-            from scatter.reports.markdown_reporter import build_graph_markdown, write_graph_markdown_report
+            from scatter.reports.markdown_reporter import (
+                build_graph_markdown,
+                write_graph_markdown_report,
+            )
+
             md_metadata = _build_metadata(args, search_scope_abs, start_time, graph_enriched=True)
             if args.output_file:
                 write_graph_markdown_report(
-                    graph, metrics, ranked, cycles, Path(args.output_file),
-                    clusters=clusters, metadata=md_metadata, dashboard=dashboard,
+                    graph,
+                    metrics,
+                    ranked,
+                    cycles,
+                    Path(args.output_file),
+                    clusters=clusters,
+                    metadata=md_metadata,
+                    dashboard=dashboard,
                 )
                 logging.info(f"Graph markdown report written to {args.output_file}")
             else:
-                print(build_graph_markdown(
-                    graph, metrics, ranked, cycles,
-                    clusters=clusters, metadata=md_metadata, dashboard=dashboard,
-                ))
+                print(
+                    build_graph_markdown(
+                        graph,
+                        metrics,
+                        ranked,
+                        cycles,
+                        clusters=clusters,
+                        metadata=md_metadata,
+                        dashboard=dashboard,
+                    )
+                )
 
         elif args.output_format == "mermaid":
             from scatter.reports.graph_reporter import generate_mermaid
+
             mermaid_output = generate_mermaid(graph, clusters=clusters)
             if args.output_file:
                 output_path = Path(args.output_file)
@@ -564,20 +656,30 @@ def main():
 
         else:
             print_graph_report(
-                graph, ranked, cycles, clusters=clusters, dashboard=dashboard,
+                graph,
+                ranked,
+                cycles,
+                clusters=clusters,
+                dashboard=dashboard,
                 solution_metrics=sol_metrics if sol_metrics else None,
             )
 
         node_count = graph.node_count
         edge_count = graph.edge_count
         cycle_count = len(cycles)
-        print(f"\nAnalysis complete. {node_count} projects, {edge_count} dependencies, {cycle_count} cycle(s).\n")
+        print(
+            f"\nAnalysis complete. {node_count} projects, {edge_count} dependencies, {cycle_count} cycle(s).\n"
+        )
         return
 
     # --- step: output combined results ---
     dispatch_legacy_output(
-        all_results, filter_pipeline, args,
-        search_scope_abs, start_time, graph_enriched,
+        all_results,
+        filter_pipeline,
+        args,
+        search_scope_abs,
+        start_time,
+        graph_enriched,
     )
 
 

@@ -1,4 +1,5 @@
 """AI task router — selects provider per task type with lazy init and caching."""
+
 import logging
 from typing import Dict, Optional
 

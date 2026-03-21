@@ -1,4 +1,5 @@
 """Multiprocessing infrastructure for Scatter — workers and orchestrators."""
+
 import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -11,7 +12,8 @@ from scatter.core.models import DEFAULT_MAX_WORKERS, DEFAULT_CHUNK_SIZE, MULTIPR
 # --- multiprocessing utilities ---
 def chunk_list(items: List, chunk_size: int = DEFAULT_CHUNK_SIZE) -> List[List]:
     """Split a list into chunks of specified size."""
-    return [items[i:i + chunk_size] for i in range(0, len(items), chunk_size)]
+    return [items[i : i + chunk_size] for i in range(0, len(items), chunk_size)]
+
 
 def find_files_with_pattern_chunk(args: Tuple[Path, str, List[Path]]) -> List[Path]:
     """Worker function to find files matching a pattern in a list of directories."""
@@ -42,7 +44,9 @@ def map_cs_to_projects_batch(args: Tuple[List[str]]) -> Dict[str, Optional[str]]
     """
     (cs_file_paths,) = args
     results = {}
-    dir_to_csproj: Dict[str, Optional[str]] = {}  # Cache: str(directory) -> Optional[str(csproj_path)]
+    dir_to_csproj: Dict[
+        str, Optional[str]
+    ] = {}  # Cache: str(directory) -> Optional[str(csproj_path)]
 
     for cs_file_str in cs_file_paths:
         try:
@@ -62,12 +66,14 @@ def map_cs_to_projects_batch(args: Tuple[List[str]]) -> Dict[str, Optional[str]]
                 dirs_walked.append(dir_key)
 
                 try:
-                    csproj_files = list(current_path.glob('*.csproj'))
+                    csproj_files = list(current_path.glob("*.csproj"))
                     if csproj_files:
                         found_csproj = str(csproj_files[0].resolve())
                         break
                 except Exception as e:
-                    logging.warning(f"Error searching for .csproj in '{current_path}' for '{cs_file.name}': {e}")
+                    logging.warning(
+                        f"Error searching for .csproj in '{current_path}' for '{cs_file.name}': {e}"
+                    )
                     break
 
                 if current_path == current_path.parent:
@@ -106,51 +112,67 @@ def parse_csproj_files_batch(args: Tuple[List[Path], Path]) -> Dict[str, Dict]:
     """
     csproj_batch, target_csproj_path = args
     results = {}
-    consumer_namespaces = {'msb': 'http://schemas.microsoft.com/developer/msbuild/2003'}
+    consumer_namespaces = {"msb": "http://schemas.microsoft.com/developer/msbuild/2003"}
 
     for consumer_csproj_abs in csproj_batch:
         file_result = {
-            'is_consumer': False,
-            'consumer_name': consumer_csproj_abs.stem,
-            'error': None
+            "is_consumer": False,
+            "consumer_name": consumer_csproj_abs.stem,
+            "error": None,
         }
 
         try:
             tree = ET.parse(consumer_csproj_abs)
             root = tree.getroot()
-            refs = root.findall('.//msb:ProjectReference', consumer_namespaces)
+            refs = root.findall(".//msb:ProjectReference", consumer_namespaces)
             if not refs:
-                refs = root.findall('.//ProjectReference')
+                refs = root.findall(".//ProjectReference")
 
             for ref in refs:
-                include_ = ref.get('Include')
+                include_ = ref.get("Include")
                 if include_:
                     # normalize paths so we can run on windows and *nix
-                    include_ = include_.replace('\\', '/')
+                    include_ = include_.replace("\\", "/")
 
                     # ignore stuff that might not be built yet
-                    if '$(' in include_ and ')' in include_:
-                        logging.debug(f"  Skipping ProjectReference with likely MSBuild property: '{include_}'")
+                    if "$(" in include_ and ")" in include_:
+                        logging.debug(
+                            f"  Skipping ProjectReference with likely MSBuild property: '{include_}'"
+                        )
                         continue
 
                     try:
                         ref_path_abs = (consumer_csproj_abs.parent / include_).resolve(strict=False)
 
-                        if ref_path_abs.exists() and target_csproj_path.exists() and ref_path_abs.samefile(target_csproj_path):
-                            file_result['is_consumer'] = True
-                            logging.debug(f"  MATCH: Found direct reference from {consumer_csproj_abs.name}")
+                        if (
+                            ref_path_abs.exists()
+                            and target_csproj_path.exists()
+                            and ref_path_abs.samefile(target_csproj_path)
+                        ):
+                            file_result["is_consumer"] = True
+                            logging.debug(
+                                f"  MATCH: Found direct reference from {consumer_csproj_abs.name}"
+                            )
                             break
                     except OSError as e:
-                        logging.warning(f"Could not resolve or compare reference path '{include_}' in {consumer_csproj_abs.name}: {e}. Skipping reference.")
+                        logging.warning(
+                            f"Could not resolve or compare reference path '{include_}' in {consumer_csproj_abs.name}: {e}. Skipping reference."
+                        )
                     except Exception as e:
-                        logging.warning(f"Error processing reference path '{include_}' in {consumer_csproj_abs.name}: {e}. Skipping reference.")
+                        logging.warning(
+                            f"Error processing reference path '{include_}' in {consumer_csproj_abs.name}: {e}. Skipping reference."
+                        )
 
         except (ET.ParseError, OSError) as e:
-            file_result['error'] = f"{type(e).__name__} - {e}"
-            logging.warning(f"Skipping reference check for {consumer_csproj_abs.name}: {file_result['error']}")
+            file_result["error"] = f"{type(e).__name__} - {e}"
+            logging.warning(
+                f"Skipping reference check for {consumer_csproj_abs.name}: {file_result['error']}"
+            )
         except Exception as e:
-            file_result['error'] = f"Unexpected error: {e}"
-            logging.warning(f"Unexpected error checking references in {consumer_csproj_abs.name}: {e}")
+            file_result["error"] = f"Unexpected error: {e}"
+            logging.warning(
+                f"Unexpected error checking references in {consumer_csproj_abs.name}: {e}"
+            )
 
         # Use string key for cross-process serialization
         results[str(consumer_csproj_abs)] = file_result
@@ -158,11 +180,13 @@ def parse_csproj_files_batch(args: Tuple[List[Path], Path]) -> Dict[str, Dict]:
     return results
 
 
-def parse_csproj_files_parallel(csproj_files: List[Path],
-                                target_csproj_path: Path,
-                                max_workers: int = DEFAULT_MAX_WORKERS,
-                                csproj_analysis_chunk_size: int = 25,
-                                disable_multiprocessing: bool = False) -> Dict[str, Dict]:
+def parse_csproj_files_parallel(
+    csproj_files: List[Path],
+    target_csproj_path: Path,
+    max_workers: int = DEFAULT_MAX_WORKERS,
+    csproj_analysis_chunk_size: int = 25,
+    disable_multiprocessing: bool = False,
+) -> Dict[str, Dict]:
     """
     Parse .csproj files in parallel to check for ProjectReference to target.
 
@@ -177,11 +201,17 @@ def parse_csproj_files_parallel(csproj_files: List[Path],
         Dictionary mapping str(csproj_path) to parse results
     """
     # Force sequential if disabled or few files
-    if disable_multiprocessing or not MULTIPROCESSING_ENABLED or len(csproj_files) < csproj_analysis_chunk_size:
+    if (
+        disable_multiprocessing
+        or not MULTIPROCESSING_ENABLED
+        or len(csproj_files) < csproj_analysis_chunk_size
+    ):
         logging.debug(f"Using sequential csproj parsing for {len(csproj_files)} files")
         return parse_csproj_files_batch((csproj_files, target_csproj_path))
 
-    logging.debug(f"Using parallel csproj parsing for {len(csproj_files)} files with {max_workers} workers")
+    logging.debug(
+        f"Using parallel csproj parsing for {len(csproj_files)} files with {max_workers} workers"
+    )
 
     try:
         file_chunks = chunk_list(csproj_files, csproj_analysis_chunk_size)
@@ -211,7 +241,9 @@ def parse_csproj_files_parallel(csproj_files: List[Path],
                     completed_chunks += 1
 
                     if completed_chunks % 5 == 0 or completed_chunks == len(file_chunks):
-                        logging.debug(f"csproj parsing progress: {completed_chunks}/{len(file_chunks)} chunks completed")
+                        logging.debug(
+                            f"csproj parsing progress: {completed_chunks}/{len(file_chunks)} chunks completed"
+                        )
 
                 except Exception as e:
                     logging.warning(f"Error processing csproj parsing chunk: {e}")
@@ -225,10 +257,12 @@ def parse_csproj_files_parallel(csproj_files: List[Path],
         return parse_csproj_files_batch((csproj_files, target_csproj_path))
 
 
-def map_cs_to_projects_parallel(cs_files: List[Path],
-                                max_workers: int = DEFAULT_MAX_WORKERS,
-                                cs_analysis_chunk_size: int = 50,
-                                disable_multiprocessing: bool = False) -> Dict[str, Optional[str]]:
+def map_cs_to_projects_parallel(
+    cs_files: List[Path],
+    max_workers: int = DEFAULT_MAX_WORKERS,
+    cs_analysis_chunk_size: int = 50,
+    disable_multiprocessing: bool = False,
+) -> Dict[str, Optional[str]]:
     """
     Map .cs files to their parent .csproj files in parallel.
 
@@ -244,11 +278,17 @@ def map_cs_to_projects_parallel(cs_files: List[Path],
     cs_file_strs = [str(f) for f in cs_files]
 
     # Force sequential if disabled or few files
-    if disable_multiprocessing or not MULTIPROCESSING_ENABLED or len(cs_files) < cs_analysis_chunk_size:
+    if (
+        disable_multiprocessing
+        or not MULTIPROCESSING_ENABLED
+        or len(cs_files) < cs_analysis_chunk_size
+    ):
         logging.debug(f"Using sequential project mapping for {len(cs_files)} files")
         return map_cs_to_projects_batch((cs_file_strs,))
 
-    logging.debug(f"Using parallel project mapping for {len(cs_files)} files with {max_workers} workers")
+    logging.debug(
+        f"Using parallel project mapping for {len(cs_files)} files with {max_workers} workers"
+    )
 
     try:
         file_chunks = chunk_list(cs_file_strs, cs_analysis_chunk_size)
@@ -263,12 +303,13 @@ def map_cs_to_projects_parallel(cs_files: List[Path],
         else:
             scaled_workers = max_workers
 
-        logging.debug(f"Processing {len(file_chunks)} project mapping chunks with {scaled_workers} workers")
+        logging.debug(
+            f"Processing {len(file_chunks)} project mapping chunks with {scaled_workers} workers"
+        )
 
         with ProcessPoolExecutor(max_workers=scaled_workers) as executor:
             future_to_chunk = {
-                executor.submit(map_cs_to_projects_batch, (chunk,)): chunk
-                for chunk in file_chunks
+                executor.submit(map_cs_to_projects_batch, (chunk,)): chunk for chunk in file_chunks
             }
 
             for future in as_completed(future_to_chunk):
@@ -278,7 +319,9 @@ def map_cs_to_projects_parallel(cs_files: List[Path],
                     completed_chunks += 1
 
                     if completed_chunks % 5 == 0 or completed_chunks == len(file_chunks):
-                        logging.debug(f"Project mapping progress: {completed_chunks}/{len(file_chunks)} chunks completed")
+                        logging.debug(
+                            f"Project mapping progress: {completed_chunks}/{len(file_chunks)} chunks completed"
+                        )
 
                 except Exception as e:
                     logging.warning(f"Error processing project mapping chunk: {e}")
@@ -321,68 +364,65 @@ def analyze_cs_files_batch(args: Tuple[List[Path], Dict[str, Any]]) -> Dict[Path
     """
     files_batch, analysis_config = args
     results = {}
-    analysis_type = analysis_config.get('analysis_type', 'unknown')
+    analysis_type = analysis_config.get("analysis_type", "unknown")
 
     for cs_file_path in files_batch:
-        file_result = {
-            'matches': [],
-            'has_match': False,
-            'error': None,
-            'content_preview': ''
-        }
+        file_result = {"matches": [], "has_match": False, "error": None, "content_preview": ""}
 
         try:
             # Read file content
-            content = cs_file_path.read_text(encoding='utf-8', errors='ignore')
-            file_result['content_preview'] = content[:200].replace('\n', ' ')
+            content = cs_file_path.read_text(encoding="utf-8", errors="ignore")
+            file_result["content_preview"] = content[:200].replace("\n", " ")
 
             # Perform analysis based on type
-            if analysis_type == 'namespace':
-                using_pattern = analysis_config.get('using_pattern')
+            if analysis_type == "namespace":
+                using_pattern = analysis_config.get("using_pattern")
                 if using_pattern:
                     matches = list(using_pattern.finditer(content))
-                    file_result['matches'] = [match.group() for match in matches]
-                    file_result['has_match'] = len(matches) > 0
+                    file_result["matches"] = [match.group() for match in matches]
+                    file_result["has_match"] = len(matches) > 0
 
-            elif analysis_type == 'class':
-                class_pattern = analysis_config.get('class_pattern')
+            elif analysis_type == "class":
+                class_pattern = analysis_config.get("class_pattern")
                 if class_pattern:
                     matches = list(class_pattern.finditer(content))
-                    file_result['matches'] = [match.group() for match in matches]
-                    file_result['has_match'] = len(matches) > 0
+                    file_result["matches"] = [match.group() for match in matches]
+                    file_result["has_match"] = len(matches) > 0
 
-            elif analysis_type == 'sproc':
-                sproc_pattern = analysis_config.get('sproc_pattern')
+            elif analysis_type == "sproc":
+                sproc_pattern = analysis_config.get("sproc_pattern")
                 if sproc_pattern:
                     matches = list(sproc_pattern.finditer(content))
-                    file_result['matches'] = [(match.group(), match.start()) for match in matches]
-                    file_result['has_match'] = len(matches) > 0
+                    file_result["matches"] = [(match.group(), match.start()) for match in matches]
+                    file_result["has_match"] = len(matches) > 0
 
-            elif analysis_type == 'method':
-                method_pattern = analysis_config.get('method_pattern')
+            elif analysis_type == "method":
+                method_pattern = analysis_config.get("method_pattern")
                 if method_pattern:
                     matches = list(method_pattern.finditer(content))
-                    file_result['matches'] = [match.group() for match in matches]
-                    file_result['has_match'] = len(matches) > 0
+                    file_result["matches"] = [match.group() for match in matches]
+                    file_result["has_match"] = len(matches) > 0
 
             else:
-                file_result['error'] = f"Unknown analysis type: {analysis_type}"
+                file_result["error"] = f"Unknown analysis type: {analysis_type}"
 
         except (OSError, UnicodeDecodeError) as e:
-            file_result['error'] = f"File read error: {str(e)}"
+            file_result["error"] = f"File read error: {str(e)}"
         except Exception as e:
-            file_result['error'] = f"Analysis error: {str(e)}"
+            file_result["error"] = f"Analysis error: {str(e)}"
 
         results[cs_file_path] = file_result
 
     return results
 
 
-def analyze_cs_files_parallel(cs_files: List[Path],
-                             analysis_config: Dict[str, Any],
-                             max_workers: int = DEFAULT_MAX_WORKERS,
-                             cs_analysis_chunk_size: int = 50,
-                             disable_multiprocessing: bool = False) -> Dict[Path, Dict[str, Any]]:
+def analyze_cs_files_parallel(
+    cs_files: List[Path],
+    analysis_config: Dict[str, Any],
+    max_workers: int = DEFAULT_MAX_WORKERS,
+    cs_analysis_chunk_size: int = 50,
+    disable_multiprocessing: bool = False,
+) -> Dict[Path, Dict[str, Any]]:
     """
     Analyze a list of .cs files in parallel for specific patterns.
 
@@ -396,15 +436,21 @@ def analyze_cs_files_parallel(cs_files: List[Path],
     Returns:
         Dictionary mapping file paths to analysis results
     """
-    analysis_type = analysis_config.get('analysis_type', 'unknown')
+    analysis_type = analysis_config.get("analysis_type", "unknown")
 
     # Force sequential if disabled or few files
-    if disable_multiprocessing or not MULTIPROCESSING_ENABLED or len(cs_files) < cs_analysis_chunk_size:
+    if (
+        disable_multiprocessing
+        or not MULTIPROCESSING_ENABLED
+        or len(cs_files) < cs_analysis_chunk_size
+    ):
         logging.debug(f"Using sequential {analysis_type} analysis for {len(cs_files)} files")
         # Process all files in a single batch
         return analyze_cs_files_batch((cs_files, analysis_config))
 
-    logging.debug(f"Using parallel {analysis_type} analysis for {len(cs_files)} files with {max_workers} workers")
+    logging.debug(
+        f"Using parallel {analysis_type} analysis for {len(cs_files)} files with {max_workers} workers"
+    )
 
     try:
         # Split files into chunks
@@ -438,17 +484,23 @@ def analyze_cs_files_parallel(cs_files: List[Path],
 
                     # Progress reporting
                     if completed_chunks % 5 == 0 or completed_chunks == len(file_chunks):
-                        logging.debug(f"{analysis_type} analysis progress: {completed_chunks}/{len(file_chunks)} chunks completed")
+                        logging.debug(
+                            f"{analysis_type} analysis progress: {completed_chunks}/{len(file_chunks)} chunks completed"
+                        )
 
                 except Exception as e:
                     logging.warning(f"Error processing {analysis_type} analysis chunk: {e}")
                     completed_chunks += 1
 
-        logging.debug(f"Parallel {analysis_type} analysis completed: {len(all_results)} files analyzed")
+        logging.debug(
+            f"Parallel {analysis_type} analysis completed: {len(all_results)} files analyzed"
+        )
         return all_results
 
     except Exception as e:
-        logging.warning(f"Parallel {analysis_type} analysis failed: {e}. Falling back to sequential.")
+        logging.warning(
+            f"Parallel {analysis_type} analysis failed: {e}. Falling back to sequential."
+        )
         return analyze_cs_files_batch((cs_files, analysis_config))
 
 
@@ -470,7 +522,7 @@ def estimate_file_count(search_path: Path, pattern: str, sample_dirs: int = 5) -
         dirs_to_sample.append(search_path)
 
         # Add a few subdirectories for sampling
-        for subdir in search_path.rglob('*'):
+        for subdir in search_path.rglob("*"):
             if subdir.is_dir() and len(dirs_to_sample) < sample_dirs:
                 dirs_to_sample.append(subdir)
             if len(dirs_to_sample) >= sample_dirs:
@@ -498,8 +550,10 @@ def estimate_file_count(search_path: Path, pattern: str, sample_dirs: int = 5) -
             # Small directory structure, likely accurate count
             estimated_files = total_files_sampled
 
-        logging.debug(f"File estimation: {total_files_sampled} files in {total_dirs_sampled} sampled dirs, "
-                     f"estimated total: {estimated_files}")
+        logging.debug(
+            f"File estimation: {total_files_sampled} files in {total_dirs_sampled} sampled dirs, "
+            f"estimated total: {estimated_files}"
+        )
 
         return estimated_files
 
@@ -508,9 +562,14 @@ def estimate_file_count(search_path: Path, pattern: str, sample_dirs: int = 5) -
         return 0
 
 
-def find_files_with_pattern_parallel(search_path: Path, pattern: str, max_workers: int = DEFAULT_MAX_WORKERS,
-                                   chunk_size: int = DEFAULT_CHUNK_SIZE, disable_multiprocessing: bool = False,
-                                   parallel_threshold: int = 50) -> List[Path]:
+def find_files_with_pattern_parallel(
+    search_path: Path,
+    pattern: str,
+    max_workers: int = DEFAULT_MAX_WORKERS,
+    chunk_size: int = DEFAULT_CHUNK_SIZE,
+    disable_multiprocessing: bool = False,
+    parallel_threshold: int = 50,
+) -> List[Path]:
     """
     Optimized parallel file discovery with intelligent threshold detection.
 
@@ -541,17 +600,21 @@ def find_files_with_pattern_parallel(search_path: Path, pattern: str, max_worker
 
     # Use sequential for small file counts (avoid overhead)
     if estimated_files < parallel_threshold:
-        logging.debug(f"Using sequential file discovery for pattern '{pattern}' - "
-                     f"estimated {estimated_files} files < {parallel_threshold} threshold")
+        logging.debug(
+            f"Using sequential file discovery for pattern '{pattern}' - "
+            f"estimated {estimated_files} files < {parallel_threshold} threshold"
+        )
         return list(search_path.rglob(pattern))
 
     # For larger file counts, use intelligent parallel processing
-    logging.debug(f"Using parallel file discovery for pattern '{pattern}' - "
-                 f"estimated {estimated_files} files >= {parallel_threshold} threshold")
+    logging.debug(
+        f"Using parallel file discovery for pattern '{pattern}' - "
+        f"estimated {estimated_files} files >= {parallel_threshold} threshold"
+    )
 
     try:
         # NOW enumerate directories (only when we know we'll use parallel)
-        all_dirs = [search_path] + [d for d in search_path.rglob('*') if d.is_dir()]
+        all_dirs = [search_path] + [d for d in search_path.rglob("*") if d.is_dir()]
 
         # Adaptive worker scaling based on work size
         if estimated_files < 200:
@@ -564,8 +627,10 @@ def find_files_with_pattern_parallel(search_path: Path, pattern: str, max_worker
             # Large: Use full worker count
             scaled_workers = max_workers
 
-        logging.debug(f"Parallel processing: {len(all_dirs)} directories, "
-                     f"{scaled_workers} workers, {estimated_files} estimated files")
+        logging.debug(
+            f"Parallel processing: {len(all_dirs)} directories, "
+            f"{scaled_workers} workers, {estimated_files} estimated files"
+        )
 
         # Chunk the directories
         dir_chunks = chunk_list(all_dirs, chunk_size)
@@ -588,7 +653,9 @@ def find_files_with_pattern_parallel(search_path: Path, pattern: str, max_worker
 
                     # Progress reporting every 10 chunks or at completion
                     if completed_chunks % 10 == 0 or completed_chunks == len(dir_chunks):
-                        logging.debug(f"File discovery progress: {completed_chunks}/{len(dir_chunks)} chunks completed")
+                        logging.debug(
+                            f"File discovery progress: {completed_chunks}/{len(dir_chunks)} chunks completed"
+                        )
 
                 except Exception as e:
                     logging.warning(f"Error processing directory chunk: {e}")
@@ -602,7 +669,9 @@ def find_files_with_pattern_parallel(search_path: Path, pattern: str, max_worker
                 seen.add(path)
                 unique_results.append(path)
 
-        logging.debug(f"Parallel file discovery completed: found {len(unique_results)} unique files matching '{pattern}'")
+        logging.debug(
+            f"Parallel file discovery completed: found {len(unique_results)} unique files matching '{pattern}'"
+        )
         return unique_results
 
     except Exception as e:

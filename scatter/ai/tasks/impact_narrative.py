@@ -1,4 +1,5 @@
 """AI impact narrative — manager-friendly summary of the full impact report."""
+
 import json
 import logging
 from typing import Any, Dict, Optional
@@ -18,7 +19,9 @@ def generate_impact_narrative(
         return None
 
     if not report.targets:
-        return {"narrative": "No impact detected. The work request does not appear to affect any known consumers."}
+        return {
+            "narrative": "No impact detected. The work request does not appear to affect any known consumers."
+        }
 
     return generate_narrative_with_model(ai_provider.model, report)
 
@@ -45,7 +48,7 @@ This should be suitable for inclusion in a project scoping email or ticket.
 
 Work Request: {report.sow_text[:500]}
 
-Complexity: {report.complexity_rating or 'Not assessed'}
+Complexity: {report.complexity_rating or "Not assessed"}
 {f"Effort estimate: {report.effort_estimate}" if report.effort_estimate else ""}
 
 Affected targets:
@@ -62,9 +65,9 @@ Return ONLY the JSON object:"""
         response_text = response.text.strip()
 
         if response_text.startswith("```"):
-            lines = response_text.split('\n')
+            lines = response_text.split("\n")
             lines = [l for l in lines if not l.startswith("```")]
-            response_text = '\n'.join(lines).strip()
+            response_text = "\n".join(lines).strip()
 
         result = json.loads(response_text)
         if not isinstance(result, dict):

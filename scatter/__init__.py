@@ -3,6 +3,7 @@
 Re-exports all public functions for backward compatibility.
 Code that does `from scatter import find_consumers` continues to work.
 """
+
 from scatter.__version__ import __version__
 from scatter.core.models import (
     DEFAULT_MAX_WORKERS,
@@ -61,6 +62,7 @@ from scatter.compat.v1_bridge import (
     map_batch_jobs_from_config_repo,
     _process_consumer_summaries_and_append_results,
 )
+
 # AI — backward-compatible wrappers in _legacy, canonical code in ai/providers/
 from scatter._legacy import (
     get_affected_symbols_from_diff,

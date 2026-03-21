@@ -1,4 +1,5 @@
 """Mode handlers, output dispatch, and shared helpers for Scatter CLI."""
+
 import logging
 import sys
 import time
@@ -7,7 +8,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Set
 
 if TYPE_CHECKING:
     from scatter.analyzers.graph_enrichment import GraphContext
@@ -16,7 +17,13 @@ from scatter.__version__ import __version__
 from scatter.ai.base import AIProvider
 from scatter.cli_parser import _REDACTED_CLI_KEYS
 from scatter.config import ScatterConfig
-from scatter.core.models import DEFAULT_MAX_WORKERS, DEFAULT_CHUNK_SIZE, ConsumerResult, FilterPipeline, RawConsumerDict
+from scatter.core.models import (
+    DEFAULT_MAX_WORKERS,
+    DEFAULT_CHUNK_SIZE,
+    ConsumerResult,
+    FilterPipeline,
+    RawConsumerDict,
+)
 from scatter.reports.console_reporter import print_console_report
 from scatter.reports.json_reporter import prepare_detailed_results, write_json_report
 from scatter.reports.csv_reporter import write_csv_report
@@ -34,7 +41,7 @@ class ModeContext:
     ai_provider: Optional[AIProvider]
     graph_ctx: Optional["GraphContext"] = None  # mutable, updated by _apply_graph_enrichment
     solution_index: Optional[Dict] = None
-    graph_enriched: bool = False                # mutable, updated by _apply_graph_enrichment
+    graph_enriched: bool = False  # mutable, updated by _apply_graph_enrichment
 
     # Resolved from args — only fields mode handlers actually read
     class_name: Optional[str] = None
@@ -59,18 +66,21 @@ class ModeResult:
 
 
 def _build_metadata(
-    args, search_scope: Optional[Path], start_time: float,
-    *, graph_enriched: bool = False,
+    args,
+    search_scope: Optional[Path],
+    start_time: float,
+    *,
+    graph_enriched: bool = False,
 ) -> Dict:
     """Build metadata dict for JSON report output."""
     cli_args = {k: v for k, v in vars(args).items() if k not in _REDACTED_CLI_KEYS}
     return {
-        'scatter_version': __version__,
-        'timestamp': datetime.now(timezone.utc).isoformat(),
-        'cli_args': cli_args,
-        'search_scope': str(search_scope) if search_scope else None,
-        'duration_seconds': round(time.monotonic() - start_time, 2),
-        'graph_enriched': graph_enriched,
+        "scatter_version": __version__,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "cli_args": cli_args,
+        "search_scope": str(search_scope) if search_scope else None,
+        "duration_seconds": round(time.monotonic() - start_time, 2),
+        "graph_enriched": graph_enriched,
     }
 
 
@@ -97,59 +107,78 @@ def dispatch_legacy_output(
     ``args`` attributes read: output_format, output_file, and all attributes
     forwarded to ``_build_metadata`` (everything except ``_REDACTED_CLI_KEYS``).
     """
-    logging.info(f"\n\n\n################################################################\n\n")
-    logging.info(f"\n--- Consolidating and reporting results ---")
+    logging.info("\n\n\n################################################################\n\n")
+    logging.info("\n--- Consolidating and reporting results ---")
     if not all_results:
-        logging.info("Overall analysis complete. No consuming relationships matching the criteria were found.")
+        logging.info(
+            "Overall analysis complete. No consuming relationships matching the criteria were found."
+        )
     else:
-        logging.info(f"Overall analysis complete. Found {len(all_results)} consuming relationship(s) matching the criteria.")
-        all_results.sort(key=lambda x: (
-            x.target_project_name,
-            x.triggering_type,
-            x.consumer_project_name,
-        ))
+        logging.info(
+            f"Overall analysis complete. Found {len(all_results)} consuming relationship(s) matching the criteria."
+        )
+        all_results.sort(
+            key=lambda x: (
+                x.target_project_name,
+                x.triggering_type,
+                x.consumer_project_name,
+            )
+        )
 
     # Handle JSON Output
-    if args.output_format == 'json':
+    if args.output_format == "json":
         output_path = _require_output_file(args, "JSON")
         detailed = prepare_detailed_results(all_results, graph_metrics_requested=graph_enriched)
         write_json_report(
-            detailed, output_path,
+            detailed,
+            output_path,
             metadata=_build_metadata(args, search_scope, start_time, graph_enriched=graph_enriched),
             pipeline=filter_pipeline,
         )
 
     # Handle CSV Output
-    elif args.output_format == 'csv':
+    elif args.output_format == "csv":
         output_path = _require_output_file(args, "CSV")
         detailed = prepare_detailed_results(all_results, graph_metrics_requested=graph_enriched)
         write_csv_report(
-            detailed, output_path, pipeline=filter_pipeline,
+            detailed,
+            output_path,
+            pipeline=filter_pipeline,
             graph_metrics_requested=graph_enriched,
         )
 
     # Handle Markdown Output
-    elif args.output_format == 'markdown':
+    elif args.output_format == "markdown":
         from scatter.reports.markdown_reporter import build_markdown, write_markdown_report
+
         detailed = prepare_detailed_results(all_results, graph_metrics_requested=graph_enriched)
         md_metadata = _build_metadata(args, search_scope, start_time, graph_enriched=graph_enriched)
         if args.output_file:
             write_markdown_report(
-                detailed, Path(args.output_file),
-                metadata=md_metadata, pipeline=filter_pipeline,
+                detailed,
+                Path(args.output_file),
+                metadata=md_metadata,
+                pipeline=filter_pipeline,
                 graph_metrics_requested=graph_enriched,
             )
         else:
-            print(build_markdown(
-                detailed, metadata=md_metadata, pipeline=filter_pipeline,
-                graph_metrics_requested=graph_enriched,
-            ))
+            print(
+                build_markdown(
+                    detailed,
+                    metadata=md_metadata,
+                    pipeline=filter_pipeline,
+                    graph_metrics_requested=graph_enriched,
+                )
+            )
 
     # Handle Pipelines Output
-    elif args.output_format == 'pipelines':
+    elif args.output_format == "pipelines":
         from scatter.reports.pipeline_reporter import (
-            extract_pipeline_names, format_pipeline_output, write_pipeline_report,
+            extract_pipeline_names,
+            format_pipeline_output,
+            write_pipeline_report,
         )
+
         names = extract_pipeline_names(all_results)
         if args.output_file:
             write_pipeline_report(names, Path(args.output_file))
@@ -161,13 +190,16 @@ def dispatch_legacy_output(
     # Handle Console Output (Default)
     else:
         print_console_report(
-            all_results, pipeline=filter_pipeline,
+            all_results,
+            pipeline=filter_pipeline,
             graph_metrics_requested=graph_enriched,
         )
 
     target_names = {r.target_project_name for r in all_results} if all_results else set()
-    if args.output_format != 'pipelines':
-        print(f"\nAnalysis complete. {len(all_results)} consumer(s) found across {len(target_names)} target(s).\n")
+    if args.output_format != "pipelines":
+        print(
+            f"\nAnalysis complete. {len(all_results)} consumer(s) found across {len(target_names)} target(s).\n"
+        )
 
 
 def _summarize_consumer_files(
@@ -204,8 +236,8 @@ def _summarize_consumer_files(
     # Build a map keyed by consumer_path (absolute) to avoid stem collisions
     consumer_files_map: Dict[Path, List[Path]] = {}
     for consumer_info in final_consumers_data:
-        consumer_path = consumer_info['consumer_path']
-        files = consumer_info.get('relevant_files', [])
+        consumer_path = consumer_info["consumer_path"]
+        files = consumer_info.get("relevant_files", [])
         if files:
             consumer_files_map[consumer_path] = files
 
@@ -214,7 +246,9 @@ def _summarize_consumer_files(
         return
 
     total_files = sum(len(f) for f in consumer_files_map.values())
-    logging.info(f"Summarizing {total_files} file(s) across {len(consumer_files_map)} consumer(s)...")
+    logging.info(
+        f"Summarizing {total_files} file(s) across {len(consumer_files_map)} consumer(s)..."
+    )
 
     # Summarize each file and build summaries dict per consumer path
     summaries_by_path: Dict[Path, Dict[str, str]] = defaultdict(dict)
@@ -222,7 +256,7 @@ def _summarize_consumer_files(
     for consumer_path, file_paths in consumer_files_map.items():
         for file_path in file_paths:
             try:
-                content = file_path.read_text(encoding='utf-8', errors='ignore')
+                content = file_path.read_text(encoding="utf-8", errors="ignore")
             except OSError as e:
                 logging.warning(f"Could not read {file_path}: {e}")
                 continue
@@ -299,6 +333,7 @@ def _apply_graph_enrichment(all_results: List[ConsumerResult], ctx: ModeContext)
     _ensure_graph_context(ctx)
     if ctx.graph_ctx and all_results:
         from scatter.analyzers.graph_enrichment import enrich_legacy_results
+
         enrich_legacy_results(all_results, ctx.graph_ctx)
 
 
@@ -310,6 +345,7 @@ def apply_impact_graph_enrichment(impact_report, ctx: ModeContext) -> None:
     _ensure_graph_context(ctx)
     if ctx.graph_ctx:
         from scatter.analyzers.graph_enrichment import enrich_consumers
+
         for ti in impact_report.targets:
             enrich_consumers(ti.consumers, ctx.graph_ctx)
 
@@ -323,7 +359,7 @@ def run_target_analysis(ctx: ModeContext, target_csproj: Path) -> ModeResult:
     from scatter.analyzers.consumer_analyzer import find_consumers
     from scatter.compat.v1_bridge import _process_consumer_summaries_and_append_results
 
-    logging.info(f"\n--- Running Target Project Analysis Mode ---")
+    logging.info("\n--- Running Target Project Analysis Mode ---")
     target_project_name = target_csproj.stem
     logging.info(f"Analyzing target project: {target_project_name} ({target_csproj})")
 
@@ -356,8 +392,10 @@ def run_target_analysis(ctx: ModeContext, target_csproj: Path) -> ModeResult:
     all_results: List[ConsumerResult] = []
 
     if final_consumers_data:
-        logging.info(f"Found {len(final_consumers_data)} consumer(s) matching criteria for target '{target_project_name}'.")
-        trigger_level = 'N/A (Project Reference)'
+        logging.info(
+            f"Found {len(final_consumers_data)} consumer(s) matching criteria for target '{target_project_name}'."
+        )
+        trigger_level = "N/A (Project Reference)"
         if ctx.method_name and ctx.class_name:
             trigger_level = f"{ctx.class_name}.{ctx.method_name}"
         elif ctx.class_name:
@@ -384,11 +422,16 @@ def run_target_analysis(ctx: ModeContext, target_csproj: Path) -> ModeResult:
 
         if ctx.summarize_consumers and ctx.ai_provider:
             _summarize_consumer_files(
-                final_consumers_data, all_results,
-                ctx.ai_provider, ctx.search_scope, results_before,
+                final_consumers_data,
+                all_results,
+                ctx.ai_provider,
+                ctx.search_scope,
+                results_before,
             )
     else:
-        logging.info(f"No consuming projects matching the criteria were found for target '{target_project_name}'.")
+        logging.info(
+            f"No consuming projects matching the criteria were found for target '{target_project_name}'."
+        )
 
     _apply_graph_enrichment(all_results, ctx)
 
@@ -417,13 +460,12 @@ def run_git_analysis(
     from scatter.analyzers.consumer_analyzer import find_consumers
     from scatter.compat.v1_bridge import _process_consumer_summaries_and_append_results
 
-    logging.info(f"\n--- Running Git Branch Analysis Mode ---")
+    logging.info("\n--- Running Git Branch Analysis Mode ---")
     logging.info(
-        f"Comparing branch '{branch_name}' against base '{base_branch}' "
-        f"in repo '{repo_path}'"
+        f"Comparing branch '{branch_name}' against base '{base_branch}' in repo '{repo_path}'"
     )
 
-    logging.info(f"Step 1: Analyzing Git changes...")
+    logging.info("Step 1: Analyzing Git changes...")
     changed_projects_dict = analyze_branch_changes(str(repo_path), branch_name, base_branch)
 
     all_results: List[ConsumerResult] = []
@@ -446,17 +488,21 @@ def run_git_analysis(
                 logging.debug(f"   Reading file: {cs_abs_path}")
                 if cs_abs_path.is_file():
                     try:
-                        content = cs_abs_path.read_text(encoding='utf-8', errors='ignore')
+                        content = cs_abs_path.read_text(encoding="utf-8", errors="ignore")
                         extracted = None
 
                         if enable_hybrid and ctx.ai_provider:
                             diff_text = get_diff_for_file(
-                                str(repo_path), cs_rel_path_str,
-                                branch_name, base_branch,
+                                str(repo_path),
+                                cs_rel_path_str,
+                                branch_name,
+                                base_branch,
                             )
                             if diff_text:
                                 extracted = ctx.ai_provider.extract_affected_symbols(
-                                    content, diff_text, cs_rel_path_str,
+                                    content,
+                                    diff_text,
+                                    cs_rel_path_str,
                                 )
                                 if extracted is None:
                                     logging.warning(
@@ -466,8 +512,7 @@ def run_git_analysis(
                                     extracted = extract_type_names_from_content(content)
                             else:
                                 logging.debug(
-                                    f"No diff found for {cs_rel_path_str}, "
-                                    f"using regex extraction."
+                                    f"No diff found for {cs_rel_path_str}, using regex extraction."
                                 )
                                 extracted = extract_type_names_from_content(content)
                         else:
@@ -475,16 +520,14 @@ def run_git_analysis(
 
                         if extracted:
                             logging.debug(
-                                f"     Found types in {cs_rel_path_str}: "
-                                f"{', '.join(extracted)}"
+                                f"     Found types in {cs_rel_path_str}: {', '.join(extracted)}"
                             )
                             project_types.update(extracted)
                     except OSError as e:
                         logging.warning(f"Could not read C# file {cs_abs_path}: {e}")
                 else:
                     logging.warning(
-                        f"Changed C# file not found on disk "
-                        f"(might be deleted/moved): {cs_abs_path}"
+                        f"Changed C# file not found on disk (might be deleted/moved): {cs_abs_path}"
                     )
 
             if project_types:
@@ -503,7 +546,7 @@ def run_git_analysis(
                 f"across {len(types_by_project)} project(s)."
             )
 
-            logging.info(f"\nStep 3: Analyzing consumers...")
+            logging.info("\nStep 3: Analyzing consumers...")
             processed_targets_count = 0
             for target_project_rel_path_str, extracted_types in types_by_project.items():
                 processed_targets_count += 1
@@ -518,8 +561,7 @@ def run_git_analysis(
 
                 if not target_csproj_abs.is_file():
                     logging.warning(
-                        f"Target project file '{target_csproj_abs}' "
-                        f"not found on disk. Skipping."
+                        f"Target project file '{target_csproj_abs}' not found on disk. Skipping."
                     )
                     continue
 
@@ -557,19 +599,13 @@ def run_git_analysis(
                     continue
 
                 for type_name_to_check in sorted(list(types_to_analyze)):
-                    logging.info(
-                        f"   Checking for consumers of type: '{type_name_to_check}'..."
-                    )
+                    logging.info(f"   Checking for consumers of type: '{type_name_to_check}'...")
 
                     method_filter = (
-                        ctx.method_name
-                        if ctx.class_name == type_name_to_check
-                        else None
+                        ctx.method_name if ctx.class_name == type_name_to_check else None
                     )
                     if method_filter:
-                        logging.info(
-                            f"     (Including method filter: '{method_filter}')"
-                        )
+                        logging.info(f"     (Including method filter: '{method_filter}')")
 
                     final_consumers_data, _pipeline = find_consumers(
                         target_csproj_abs,
@@ -591,9 +627,7 @@ def run_git_analysis(
 
                     if final_consumers_data:
                         try:
-                            target_proj_rel = target_csproj_abs.relative_to(
-                                repo_path
-                            ).as_posix()
+                            target_proj_rel = target_csproj_abs.relative_to(repo_path).as_posix()
                         except ValueError:
                             target_proj_rel = target_csproj_abs.as_posix()
 
@@ -612,8 +646,11 @@ def run_git_analysis(
 
                         if ctx.summarize_consumers and ctx.ai_provider:
                             _summarize_consumer_files(
-                                final_consumers_data, all_results,
-                                ctx.ai_provider, ctx.search_scope, results_before,
+                                final_consumers_data,
+                                all_results,
+                                ctx.ai_provider,
+                                ctx.search_scope,
+                                results_before,
                             )
 
                     else:
@@ -647,7 +684,7 @@ def run_sproc_analysis(
     from scatter.analyzers.consumer_analyzer import find_consumers
     from scatter.compat.v1_bridge import _process_consumer_summaries_and_append_results
 
-    logging.info(f"\n--- Running Stored Procedure Analysis Mode ---")
+    logging.info("\n--- Running Stored Procedure Analysis Mode ---")
     logging.info(
         f"Identifying projects/classes referencing stored procedure: "
         f"'{sproc_name}' within scope '{ctx.search_scope}'"
@@ -664,9 +701,7 @@ def run_sproc_analysis(
     )
 
     if not project_class_sproc_map:
-        logging.info(
-            f"No projects/classes found referencing stored procedure '{sproc_name}'."
-        )
+        logging.info(f"No projects/classes found referencing stored procedure '{sproc_name}'.")
         return ModeResult()
 
     total_classes_found = sum(len(classes) for classes in project_class_sproc_map.values())
@@ -755,8 +790,11 @@ def run_sproc_analysis(
 
             if ctx.summarize_consumers and ctx.ai_provider:
                 _summarize_consumer_files(
-                    final_consumers_data, all_results,
-                    ctx.ai_provider, ctx.search_scope, results_before,
+                    final_consumers_data,
+                    all_results,
+                    ctx.ai_provider,
+                    ctx.search_scope,
+                    results_before,
                 )
 
     _apply_graph_enrichment(all_results, ctx)

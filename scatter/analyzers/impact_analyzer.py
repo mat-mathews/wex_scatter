@@ -1,4 +1,5 @@
 """Impact analysis orchestrator — SOW text to ImpactReport pipeline."""
+
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -19,7 +20,6 @@ from scatter.core.models import (
 )
 from scatter.analyzers.consumer_analyzer import find_consumers
 from scatter.scanners.project_scanner import derive_namespace
-from scatter.core.parallel import find_files_with_pattern_parallel
 from scatter.compat.v1_bridge import find_solutions_for_project
 
 
@@ -76,6 +76,7 @@ def run_impact_analysis(
     codebase_index = None
     if graph is not None:
         from scatter.ai.codebase_index import build_codebase_index
+
         codebase_index = build_codebase_index(graph, search_scope)
         logging.info(
             f"Built codebase index: {codebase_index.project_count} projects, "
@@ -86,8 +87,12 @@ def run_impact_analysis(
     # Step 1: Parse work request into targets
     logging.info("Step 1: Parsing work request into analysis targets...")
     from scatter.ai.tasks.parse_work_request import parse_work_request
+
     targets = parse_work_request(
-        sow_text, ai_provider, search_scope, codebase_index=codebase_index,
+        sow_text,
+        ai_provider,
+        search_scope,
+        codebase_index=codebase_index,
     )
 
     if not targets:
@@ -145,6 +150,7 @@ def run_impact_analysis(
     # Step 3: AI risk assessment per target
     logging.info("\nStep 3: Assessing risk per target...")
     from scatter.ai.tasks.risk_assess import assess_risk
+
     for target_impact in report.targets:
         if target_impact.consumers:
             risk_result = assess_risk(target_impact.target, target_impact.consumers, ai_provider)
@@ -157,6 +163,7 @@ def run_impact_analysis(
     # Step 4: AI coupling narrative (optional, per consumer)
     logging.info("Step 4: Generating coupling narratives...")
     from scatter.ai.tasks.coupling_narrative import explain_coupling
+
     for target_impact in report.targets:
         for consumer in target_impact.consumers:
             if consumer.depth == 0 and consumer.relevant_files:
@@ -170,6 +177,7 @@ def run_impact_analysis(
     # Step 5: AI complexity estimate
     logging.info("Step 5: Estimating complexity...")
     from scatter.ai.tasks.complexity_estimate import estimate_complexity
+
     complexity = estimate_complexity(report, ai_provider)
     if complexity:
         report.complexity_rating = complexity.get("rating")
@@ -179,6 +187,7 @@ def run_impact_analysis(
     # Step 6: AI impact narrative
     logging.info("Step 6: Generating impact narrative...")
     from scatter.ai.tasks.impact_narrative import generate_impact_narrative
+
     narrative = generate_impact_narrative(report, ai_provider)
     if narrative:
         report.impact_narrative = narrative.get("narrative")
@@ -305,12 +314,12 @@ def trace_transitive_impact(
         next_level_raw: List[RawConsumerDict] = []
 
         for consumer_data in current_level:
-            consumer_path = consumer_data['consumer_path']
+            consumer_path = consumer_data["consumer_path"]
             if consumer_path in visited:
                 continue
             visited.add(consumer_path)
 
-            consumer_name = str(consumer_data['consumer_name'])
+            consumer_name = str(consumer_data["consumer_name"])
 
             # Resolve solutions
             solutions = []
@@ -326,7 +335,7 @@ def trace_transitive_impact(
             enriched = EnrichedConsumer(
                 consumer_path=consumer_path,
                 consumer_name=consumer_name,
-                relevant_files=list(consumer_data.get('relevant_files', [])),
+                relevant_files=list(consumer_data.get("relevant_files", [])),
                 solutions=solutions,
                 pipeline_name=pipeline_name,
                 depth=depth,
@@ -354,7 +363,7 @@ def trace_transitive_impact(
                         graph=graph,
                     )
                     for td in transitive_data:
-                        td_path = td['consumer_path']
+                        td_path = td["consumer_path"]
                         if td_path not in visited and td_path not in parent_map:
                             parent_map[td_path] = consumer_name
                     next_level_raw.extend(transitive_data)

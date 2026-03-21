@@ -1,8 +1,9 @@
 """Markdown output formatting for analysis results."""
+
 import logging
 from collections import Counter
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 from scatter.analyzers.coupling_analyzer import CycleGroup, ProjectMetrics
 from scatter.analyzers.health_analyzer import HealthDashboard
@@ -15,6 +16,7 @@ from scatter.reports.graph_reporter import generate_mermaid
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
 
 def _escape_cell(value: str) -> str:
     """Sanitize a value for use inside a markdown table cell."""
@@ -36,7 +38,9 @@ def _fmt_pipeline(pipeline: Optional[FilterPipeline]) -> str:
         return ""
     projects = f"{pipeline.total_projects_scanned:,}"
     files = f"{pipeline.total_files_scanned:,}"
-    lines = [f"> **Search scope:** {pipeline.search_scope} (scanned {projects} projects, {files} files)"]
+    lines = [
+        f"> **Search scope:** {pipeline.search_scope} (scanned {projects} projects, {files} files)"
+    ]
     if pipeline.stages:
         lines.append(f"> **Filter:** {pipeline.format_arrow_chain()}")
     return "\n".join(lines) + "\n"
@@ -67,6 +71,7 @@ def _md_table(headers: List[str], rows: List[List[str]]) -> str:
 # ---------------------------------------------------------------------------
 # Legacy mode (git / target / sproc)
 # ---------------------------------------------------------------------------
+
 
 def build_markdown(
     detailed_results: List[Dict[str, Any]],
@@ -106,7 +111,9 @@ def build_markdown(
             if current_target_type != last_target_type:
                 _flush_table()
                 count = group_counts[current_target_type]
-                parts.append(f"## {item['TargetProjectName']} ({item['TargetProjectPath']}) ({count} consumer(s))\n")
+                parts.append(
+                    f"## {item['TargetProjectName']} ({item['TargetProjectPath']}) ({count} consumer(s))\n"
+                )
                 if "N/A" not in item["TriggeringType"]:
                     parts.append(f"Type/Level: {item['TriggeringType']}\n")
                 last_target_type = current_target_type
@@ -122,19 +129,29 @@ def build_markdown(
             ]
             if graph_metrics_requested:
                 cs = item.get("CouplingScore")
-                row.extend([
-                    str(cs) if cs is not None else "\u2014",
-                    str(item.get("FanIn", "\u2014")),
-                    str(item.get("FanOut", "\u2014")),
-                    f"{item['Instability']:.3f}" if item.get("Instability") is not None else "\u2014",
-                    "yes" if item.get("InCycle") else "no" if item.get("InCycle") is not None else "\u2014",
-                ])
+                row.extend(
+                    [
+                        str(cs) if cs is not None else "\u2014",
+                        str(item.get("FanIn", "\u2014")),
+                        str(item.get("FanOut", "\u2014")),
+                        f"{item['Instability']:.3f}"
+                        if item.get("Instability") is not None
+                        else "\u2014",
+                        "yes"
+                        if item.get("InCycle")
+                        else "no"
+                        if item.get("InCycle") is not None
+                        else "\u2014",
+                    ]
+                )
             current_rows.append(row)
 
         _flush_table()
 
         target_names = {item["TargetProjectName"] for item in detailed_results}
-        parts.append(f"---\n**Total:** {len(detailed_results)} consuming relationship(s) across {len(target_names)} target(s).\n")
+        parts.append(
+            f"---\n**Total:** {len(detailed_results)} consuming relationship(s) across {len(target_names)} target(s).\n"
+        )
 
     meta = _fmt_metadata(metadata)
     if meta:
@@ -153,14 +170,19 @@ def write_markdown_report(
     graph_metrics_requested: bool = False,
 ) -> None:
     """Write legacy consumer analysis results as markdown to file."""
-    content = build_markdown(detailed_results, metadata=metadata, pipeline=pipeline,
-                             graph_metrics_requested=graph_metrics_requested)
+    content = build_markdown(
+        detailed_results,
+        metadata=metadata,
+        pipeline=pipeline,
+        graph_metrics_requested=graph_metrics_requested,
+    )
     _write_file(content, output_file_path)
 
 
 # ---------------------------------------------------------------------------
 # Impact mode
 # ---------------------------------------------------------------------------
+
 
 def build_impact_markdown(
     report: ImpactReport,
@@ -185,7 +207,9 @@ def build_impact_markdown(
     else:
         for ti in report.targets:
             parts.append(f"## {ti.target.name}\n")
-            parts.append(f"Direct Consumers: {ti.total_direct} | Transitive: {ti.total_transitive}\n")
+            parts.append(
+                f"Direct Consumers: {ti.total_direct} | Transitive: {ti.total_transitive}\n"
+            )
 
             if ti.consumers:
                 # Blast radius tree in code block
@@ -198,9 +222,19 @@ def build_impact_markdown(
 
                 # Flat consumer detail table
                 parts.append("### Consumer Detail\n")
-                detail_headers = ["Consumer", "Confidence", "Depth", "Via", "Risk", "Pipeline", "Solutions"]
+                detail_headers = [
+                    "Consumer",
+                    "Confidence",
+                    "Depth",
+                    "Via",
+                    "Risk",
+                    "Pipeline",
+                    "Solutions",
+                ]
                 if graph_metrics_requested:
-                    detail_headers.extend(["Coupling", "Fan-In", "Fan-Out", "Instability", "In Cycle"])
+                    detail_headers.extend(
+                        ["Coupling", "Fan-In", "Fan-Out", "Instability", "In Cycle"]
+                    )
                 rows: List[List[str]] = []
                 for c in ti.consumers:
                     depth_display = "direct" if c.depth == 0 else str(c.depth)
@@ -218,13 +252,19 @@ def build_impact_markdown(
                         solutions,
                     ]
                     if graph_metrics_requested:
-                        row.extend([
-                            str(c.coupling_score) if c.coupling_score is not None else "\u2014",
-                            str(c.fan_in) if c.fan_in is not None else "\u2014",
-                            str(c.fan_out) if c.fan_out is not None else "\u2014",
-                            f"{c.instability:.3f}" if c.instability is not None else "\u2014",
-                            "yes" if c.in_cycle else "no" if c.in_cycle is not None else "\u2014",
-                        ])
+                        row.extend(
+                            [
+                                str(c.coupling_score) if c.coupling_score is not None else "\u2014",
+                                str(c.fan_in) if c.fan_in is not None else "\u2014",
+                                str(c.fan_out) if c.fan_out is not None else "\u2014",
+                                f"{c.instability:.3f}" if c.instability is not None else "\u2014",
+                                "yes"
+                                if c.in_cycle
+                                else "no"
+                                if c.in_cycle is not None
+                                else "\u2014",
+                            ]
+                        )
                     rows.append(row)
                 parts.append(_md_table(detail_headers, rows))
                 parts.append("")
@@ -253,14 +293,16 @@ def write_impact_markdown_report(
     graph_metrics_requested: bool = False,
 ) -> None:
     """Write impact analysis report as markdown to file."""
-    content = build_impact_markdown(report, metadata=metadata,
-                                    graph_metrics_requested=graph_metrics_requested)
+    content = build_impact_markdown(
+        report, metadata=metadata, graph_metrics_requested=graph_metrics_requested
+    )
     _write_file(content, output_file_path)
 
 
 # ---------------------------------------------------------------------------
 # Graph mode
 # ---------------------------------------------------------------------------
+
 
 def build_graph_markdown(
     graph: DependencyGraph,
@@ -275,15 +317,17 @@ def build_graph_markdown(
     parts: List[str] = ["# Dependency Graph Analysis\n"]
 
     # Summary stats table
-    parts.append(_md_table(
-        ["Metric", "Value"],
-        [
-            ["Projects", str(graph.node_count)],
-            ["Dependencies", str(graph.edge_count)],
-            ["Connected components", str(len(graph.connected_components))],
-            ["Circular dependencies", str(len(cycles))],
-        ],
-    ))
+    parts.append(
+        _md_table(
+            ["Metric", "Value"],
+            [
+                ["Projects", str(graph.node_count)],
+                ["Dependencies", str(graph.edge_count)],
+                ["Connected components", str(len(graph.connected_components))],
+                ["Circular dependencies", str(len(cycles))],
+            ],
+        )
+    )
     parts.append("")
 
     # Top coupled projects
@@ -291,17 +335,21 @@ def build_graph_markdown(
         parts.append("## Top Coupled Projects\n")
         rows: List[List[str]] = []
         for name, m in ranked:
-            rows.append([
-                name,
-                f"{m.coupling_score:.1f}",
-                str(m.fan_in),
-                str(m.fan_out),
-                f"{m.instability:.2f}",
-            ])
-        parts.append(_md_table(
-            ["Project", "Score", "Fan-In", "Fan-Out", "Instability"],
-            rows,
-        ))
+            rows.append(
+                [
+                    name,
+                    f"{m.coupling_score:.1f}",
+                    str(m.fan_in),
+                    str(m.fan_out),
+                    f"{m.instability:.2f}",
+                ]
+            )
+        parts.append(
+            _md_table(
+                ["Project", "Score", "Fan-In", "Fan-Out", "Instability"],
+                rows,
+            )
+        )
         parts.append("")
 
     # Cycles
@@ -318,17 +366,21 @@ def build_graph_markdown(
         rows = []
         for clu in clusters:
             label = f"{clu.extraction_feasibility} ({clu.feasibility_score:.3f})"
-            rows.append([
-                clu.name,
-                str(len(clu.projects)),
-                f"{clu.cohesion:.3f}",
-                f"{clu.coupling_to_outside:.3f}",
-                label,
-            ])
-        parts.append(_md_table(
-            ["Cluster", "Size", "Cohesion", "Coupling", "Feasibility"],
-            rows,
-        ))
+            rows.append(
+                [
+                    clu.name,
+                    str(len(clu.projects)),
+                    f"{clu.cohesion:.3f}",
+                    f"{clu.coupling_to_outside:.3f}",
+                    label,
+                ]
+            )
+        parts.append(
+            _md_table(
+                ["Cluster", "Size", "Cohesion", "Coupling", "Feasibility"],
+                rows,
+            )
+        )
         parts.append("")
 
     # Observations
@@ -365,7 +417,12 @@ def write_graph_markdown_report(
 ) -> None:
     """Write dependency graph analysis report as markdown to file."""
     content = build_graph_markdown(
-        graph, metrics, ranked, cycles,
-        clusters=clusters, metadata=metadata, dashboard=dashboard,
+        graph,
+        metrics,
+        ranked,
+        cycles,
+        clusters=clusters,
+        metadata=metadata,
+        dashboard=dashboard,
     )
     _write_file(content, output_file_path)

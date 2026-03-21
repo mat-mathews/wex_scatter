@@ -1,4 +1,5 @@
 """Parse a work request (SOW) into structured AnalysisTarget list using AI."""
+
 import json
 import logging
 from pathlib import Path
@@ -20,7 +21,9 @@ def parse_work_request(
         return []
 
     raw_targets = parse_work_request_with_model(
-        ai_provider.model, sow_text, codebase_index=codebase_index,
+        ai_provider.model,
+        sow_text,
+        codebase_index=codebase_index,
     )
     if not raw_targets:
         return []
@@ -65,16 +68,18 @@ def parse_work_request(
             if csproj_path:
                 namespace = csproj_path.stem
 
-        targets.append(AnalysisTarget(
-            target_type=target_type,
-            name=name,
-            csproj_path=csproj_path,
-            namespace=namespace,
-            class_name=class_name,
-            method_name=method_name,
-            confidence=confidence,
-            match_evidence=match_evidence,
-        ))
+        targets.append(
+            AnalysisTarget(
+                target_type=target_type,
+                name=name,
+                csproj_path=csproj_path,
+                namespace=namespace,
+                class_name=class_name,
+                method_name=method_name,
+                confidence=confidence,
+                match_evidence=match_evidence,
+            )
+        )
 
     return targets
 
@@ -100,9 +105,7 @@ IMPORTANT: ONLY return names that appear in the codebase index above. Match doma
 language in the work request to actual project/class/sproc names from the index.
 """
     else:
-        logging.warning(
-            "No codebase index available — target identification will be less accurate"
-        )
+        logging.warning("No codebase index available — target identification will be less accurate")
 
     prompt = f"""Analyze the following work request / statement of work and extract the .NET projects,
 classes, stored procedures, or components that will be modified or affected.
@@ -134,9 +137,9 @@ Return ONLY the JSON array:"""
 
         # Strip markdown code fences if present
         if response_text.startswith("```"):
-            lines = response_text.split('\n')
+            lines = response_text.split("\n")
             lines = [l for l in lines if not l.startswith("```")]
-            response_text = '\n'.join(lines).strip()
+            response_text = "\n".join(lines).strip()
 
         result = json.loads(response_text)
         if not isinstance(result, list):

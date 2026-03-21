@@ -1,4 +1,5 @@
 """Build a compact text index from the dependency graph for LLM context."""
+
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,6 +13,7 @@ MAX_INDEX_SIZE = 100_000  # 100KB safety valve
 @dataclass
 class CodebaseIndex:
     """Compact text representation of codebase artifacts for LLM prompts."""
+
     text: str
     project_count: int
     type_count: int
@@ -33,8 +35,9 @@ def build_codebase_index(
     """
     nodes = graph.get_all_nodes()
     if not nodes:
-        return CodebaseIndex(text="", project_count=0, type_count=0,
-                             sproc_count=0, file_count=0, size_bytes=0)
+        return CodebaseIndex(
+            text="", project_count=0, type_count=0, sproc_count=0, file_count=0, size_bytes=0
+        )
 
     nodes.sort(key=lambda n: n.name)
 
@@ -45,8 +48,7 @@ def build_codebase_index(
             project_dir = node.path.parent
             if project_dir.is_dir():
                 total_file_count += sum(
-                    1 for f in project_dir.glob("*.cs")
-                    if not f.name.startswith(".")
+                    1 for f in project_dir.glob("*.cs") if not f.name.startswith(".")
                 )
 
     total_type_count = sum(len(n.type_declarations) for n in nodes)
@@ -95,9 +97,7 @@ def _build_index_text(
         P:Name NS:DifferentNamespace T:Type1
     """
     lines: List[str] = []
-    lines.append(
-        f"=== Codebase Index ({len(nodes)} projects) ==="
-    )
+    lines.append(f"=== Codebase Index ({len(nodes)} projects) ===")
     lines.append(
         "P=Project NS=Namespace (omitted when same as project name) T=Types SP=StoredProcs"
     )
@@ -124,9 +124,7 @@ def _build_index_text(
 
     # Shared sproc cross-reference: only if any sproc appears in 2+ projects
     shared_sprocs = {
-        sproc: projects
-        for sproc, projects in sproc_to_projects.items()
-        if len(projects) >= 2
+        sproc: projects for sproc, projects in sproc_to_projects.items() if len(projects) >= 2
     }
     if shared_sprocs:
         lines.append("")

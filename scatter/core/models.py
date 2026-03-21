@@ -1,4 +1,5 @@
 """Shared constants and compiled patterns for Scatter."""
+
 import re
 import multiprocessing
 from dataclasses import dataclass, field
@@ -17,16 +18,16 @@ TYPE_DECLARATION_PATTERN = re.compile(
     r"(?:class|struct|interface|enum|record)\s+"  # Type keyword (incl. standalone 'record')
     r"([A-Za-z_][A-Za-z0-9_<>,\s]*?)"  # Capture type name (non-greedy) - handles generics roughly
     r"\s*(?::|{|where|<|\(|;)",  # Look for inheritance colon, opening brace, where clause, generics, positional params, or semicolon
-    re.MULTILINE
+    re.MULTILINE,
 )
 
 DELEGATE_DECLARATION_PATTERN = re.compile(
     r"^\s*(?:public|internal|private|protected)?\s*"  # Optional access modifier
-    r"delegate\s+"                                     # delegate keyword
-    r"[A-Za-z_][A-Za-z0-9_<>,\s\[\]\.]*?\s+"          # Return type (e.g., Task, void, int)
-    r"([A-Za-z_][A-Za-z0-9_]*)"                        # Capture delegate name
-    r"\s*[<(]",                                         # Generic params or parameter list
-    re.MULTILINE
+    r"delegate\s+"  # delegate keyword
+    r"[A-Za-z_][A-Za-z0-9_<>,\s\[\]\.]*?\s+"  # Return type (e.g., Task, void, int)
+    r"([A-Za-z_][A-Za-z0-9_]*)"  # Capture delegate name
+    r"\s*[<(]",  # Generic params or parameter list
+    re.MULTILINE,
 )
 
 
@@ -49,12 +50,14 @@ def _confidence_label(confidence: float) -> str:
 
 class RawConsumerDict(TypedDict):
     """Raw consumer dict returned by find_consumers()."""
+
     consumer_path: Path
     consumer_name: str
     relevant_files: List[Path]
 
 
 # --- Consumer result data model ---
+
 
 @dataclass
 class ConsumerResult:
@@ -63,9 +66,10 @@ class ConsumerResult:
     Constructed by v1_bridge._process_consumer_summaries_and_append_results().
     Graph enrichment fields are set by graph_enrichment.enrich_legacy_results().
     """
+
     target_project_name: str
     target_project_path: str
-    triggering_type: str       # class name, method, or "N/A (Project Reference)"
+    triggering_type: str  # class name, method, or "N/A (Project Reference)"
     consumer_project_name: str
     consumer_project_path: str
     consuming_solutions: List[str] = field(default_factory=list)
@@ -82,11 +86,13 @@ class ConsumerResult:
 
 # --- Impact analysis data models ---
 
+
 @dataclass
 class AnalysisTarget:
     """A single target extracted from a work request (SOW)."""
-    target_type: str           # "project" | "sproc" | "class"
-    name: str                  # e.g., "GalaxyWorks.Data" or "dbo.sp_InsertPortalConfiguration"
+
+    target_type: str  # "project" | "sproc" | "class"
+    name: str  # e.g., "GalaxyWorks.Data" or "dbo.sp_InsertPortalConfiguration"
     csproj_path: Optional[Path] = None
     namespace: Optional[str] = None
     class_name: Optional[str] = None
@@ -98,15 +104,16 @@ class AnalysisTarget:
 @dataclass
 class EnrichedConsumer:
     """A consumer project with AI-enriched metadata."""
+
     consumer_path: Path
     consumer_name: str
     relevant_files: List[Path] = field(default_factory=list)
     solutions: List[str] = field(default_factory=list)
     pipeline_name: str = ""
-    depth: int = 0                          # 0 = direct, 1+ = transitive
+    depth: int = 0  # 0 = direct, 1+ = transitive
     confidence: float = CONFIDENCE_HIGH
     confidence_label: str = "HIGH"
-    risk_rating: Optional[str] = None       # "Low" | "Medium" | "High" | "Critical"
+    risk_rating: Optional[str] = None  # "Low" | "Medium" | "High" | "Critical"
     risk_justification: Optional[str] = None
     coupling_narrative: Optional[str] = None
     coupling_vectors: Optional[List[str]] = None
@@ -124,6 +131,7 @@ class EnrichedConsumer:
 @dataclass
 class TargetImpact:
     """Impact data for a single analysis target."""
+
     target: AnalysisTarget
     consumers: List[EnrichedConsumer] = field(default_factory=list)
     total_direct: int = 0
@@ -134,14 +142,15 @@ class TargetImpact:
 @dataclass
 class ImpactReport:
     """Full impact analysis report."""
+
     sow_text: str
     targets: List[TargetImpact] = field(default_factory=list)
-    impact_narrative: Optional[str] = None       # Manager-friendly summary
-    complexity_rating: Optional[str] = None      # "Low" | "Medium" | "High" | "Critical"
+    impact_narrative: Optional[str] = None  # Manager-friendly summary
+    complexity_rating: Optional[str] = None  # "Low" | "Medium" | "High" | "Critical"
     complexity_justification: Optional[str] = None
-    effort_estimate: Optional[str] = None        # e.g., "3-5 developer-days"
+    effort_estimate: Optional[str] = None  # e.g., "3-5 developer-days"
     overall_risk: Optional[str] = None
-    ambiguity_level: Optional[str] = None        # "clear" | "moderate" | "vague"
+    ambiguity_level: Optional[str] = None  # "clear" | "moderate" | "vague"
     avg_target_confidence: Optional[float] = None
 
 
@@ -156,7 +165,7 @@ STAGE_METHOD = "method"
 
 # Human-readable labels for each stage, keyed by stage name constant.
 STAGE_LABELS = {
-    STAGE_DISCOVERY: None,           # discovery uses input_count as the chain start
+    STAGE_DISCOVERY: None,  # discovery uses input_count as the chain start
     STAGE_PROJECT_REFERENCE: "project refs",
     STAGE_NAMESPACE: "namespace",
     STAGE_CLASS: "class match",
@@ -175,9 +184,10 @@ STAGE_INPUT_LABELS = {
 @dataclass
 class FilterStage:
     """One stage of the consumer detection filter pipeline."""
-    name: str           # STAGE_DISCOVERY, STAGE_PROJECT_REFERENCE, etc.
-    input_count: int    # projects entering this stage
-    output_count: int   # projects passing this stage
+
+    name: str  # STAGE_DISCOVERY, STAGE_PROJECT_REFERENCE, etc.
+    input_count: int  # projects entering this stage
+    output_count: int  # projects passing this stage
     source: str = "filesystem"  # "filesystem" or "graph"
 
     @property
@@ -189,14 +199,15 @@ class FilterStage:
 @dataclass
 class FilterPipeline:
     """Records the filter funnel from consumer detection."""
-    search_scope: str                       # search scope path (for display)
-    total_projects_scanned: int             # .csproj files found in scope
-    total_files_scanned: int                # .cs files analyzed across all stages
+
+    search_scope: str  # search scope path (for display)
+    total_projects_scanned: int  # .csproj files found in scope
+    total_files_scanned: int  # .cs files analyzed across all stages
     stages: List[FilterStage] = field(default_factory=list)
-    target_project: str = ""                # name of the target being analyzed
-    target_namespace: str = ""              # namespace used for filtering
-    class_filter: Optional[str] = None      # class filter if applied
-    method_filter: Optional[str] = None     # method filter if applied
+    target_project: str = ""  # name of the target being analyzed
+    target_namespace: str = ""  # namespace used for filtering
+    class_filter: Optional[str] = None  # class filter if applied
+    method_filter: Optional[str] = None  # method filter if applied
 
     def format_arrow_chain(self) -> str:
         """Build the 'N -> M stage -> ...' arrow notation from stages."""

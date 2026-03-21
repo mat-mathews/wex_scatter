@@ -11,15 +11,16 @@ Strategy:
   4. Declaration early cutoff (types_declared unchanged → cheap path)
   5. Project-level edge attribution (rebuild outgoing edges from affected projects)
 """
+
 import logging
 import subprocess
 import time
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
-from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
+from scatter.core.graph import DependencyEdge, DependencyGraph
 from scatter.core.patterns import IDENT_PATTERN as _IDENT_PATTERN
 from scatter.core.patterns import SPROC_PATTERN as _SPROC_PATTERN
 from scatter.core.patterns import USING_PATTERN as _USING_PATTERN
@@ -67,16 +68,16 @@ def extract_file_facts(
     except OSError:
         rel = str(cs_path.relative_to(search_scope)) if search_scope else str(cs_path)
         return FileFacts(
-            path=rel, project=project_name, content_hash=content_hash,
+            path=rel,
+            project=project_name,
+            content_hash=content_hash,
         )
 
     types = sorted(extract_type_names_from_content(content))
 
     namespaces = sorted(set(m.group(1) for m in _USING_PATTERN.finditer(content)))
 
-    sprocs = sorted(
-        set(m.group().strip("\"'") for m in _SPROC_PATTERN.finditer(content))
-    )
+    sprocs = sorted(set(m.group().strip("\"'") for m in _SPROC_PATTERN.finditer(content)))
 
     try:
         rel = str(cs_path.relative_to(search_scope))
@@ -143,9 +144,14 @@ def get_changed_files(
     try:
         result = subprocess.run(
             [
-                "git", "diff", "--name-only",
-                cached_git_head, "HEAD",
-                "--", "*.csproj", "*.cs",
+                "git",
+                "diff",
+                "--name-only",
+                cached_git_head,
+                "HEAD",
+                "--",
+                "*.csproj",
+                "*.cs",
             ],
             cwd=str(search_scope),
             capture_output=True,
@@ -260,7 +266,6 @@ def patch_graph(
             affected_projects.add(project_name)
 
     # Step 4: Check thresholds
-    total_projects = graph.node_count
     if len(affected_projects) > rebuild_threshold_projects:
         logging.info(
             f"Threshold exceeded: {len(affected_projects)} projects affected "
@@ -369,19 +374,29 @@ def patch_graph(
 
             # Rebuild namespace_usage edges
             _rebuild_namespace_edges(
-                graph, project_name, file_facts, namespace_to_project,
+                graph,
+                project_name,
+                file_facts,
+                namespace_to_project,
                 project_files,
             )
 
             # Rebuild type_usage edges
             _rebuild_type_usage_edges(
-                graph, project_name, file_facts, type_to_projects, search_scope,
+                graph,
+                project_name,
+                file_facts,
+                type_to_projects,
+                search_scope,
                 project_files,
             )
 
             # Rebuild sproc_shared edges
             _rebuild_sproc_edges(
-                graph, project_name, file_facts, project_files,
+                graph,
+                project_name,
+                file_facts,
+                project_files,
             )
 
         # Rebuild project_reference edges for affected projects with .csproj changes
@@ -390,7 +405,10 @@ def patch_graph(
             if project_name in affected_projects:
                 graph.remove_edges_from(project_name, {"project_reference"})
                 _rebuild_project_reference_edges(
-                    graph, project_name, project_facts, search_scope,
+                    graph,
+                    project_name,
+                    project_facts,
+                    search_scope,
                 )
 
         # If namespace changed, rebuild namespace edges for ALL projects
@@ -400,7 +418,10 @@ def patch_graph(
                 if node.name not in affected_projects:
                     graph.remove_edges_from(node.name, {"namespace_usage"})
                     _rebuild_namespace_edges(
-                        graph, node.name, file_facts, namespace_to_project,
+                        graph,
+                        node.name,
+                        file_facts,
+                        namespace_to_project,
                         project_to_files.get(node.name, []),
                     )
 
@@ -411,7 +432,11 @@ def patch_graph(
                 if node.name not in affected_projects:
                     graph.remove_edges_from(node.name, {"type_usage"})
                     _rebuild_type_usage_edges(
-                        graph, node.name, file_facts, type_to_projects, search_scope,
+                        graph,
+                        node.name,
+                        file_facts,
+                        type_to_projects,
+                        search_scope,
                         project_to_files.get(node.name, []),
                     )
 
@@ -561,9 +586,8 @@ def _rebuild_project_reference_edges(
         if source_node:
             try:
                 import os
-                include = os.path.relpath(
-                    str(target_node.path), str(source_node.path.parent)
-                )
+
+                include = os.path.relpath(str(target_node.path), str(source_node.path.parent))
             except (ValueError, TypeError):
                 include = ref_name
         else:
@@ -597,9 +621,7 @@ def _no_patch(graph, file_facts, project_facts, start) -> PatchResult:
     )
 
 
-def _build_project_dir_index(
-    graph: DependencyGraph, search_scope: Path
-) -> List[Tuple[Path, str]]:
+def _build_project_dir_index(graph: DependencyGraph, search_scope: Path) -> List[Tuple[Path, str]]:
     """Build project directory index from graph nodes, sorted deepest first."""
     index = []
     for node in graph.get_all_nodes():
@@ -609,9 +631,7 @@ def _build_project_dir_index(
     return index
 
 
-def _map_file_to_project(
-    file_path: Path, project_dirs: List[Tuple[Path, str]]
-) -> Optional[str]:
+def _map_file_to_project(file_path: Path, project_dirs: List[Tuple[Path, str]]) -> Optional[str]:
     """Find the closest ancestor project for a file."""
     parents = set(file_path.parents)
     for project_dir, project_name in project_dirs:

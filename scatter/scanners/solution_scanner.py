@@ -1,9 +1,10 @@
 """Parse .sln solution files and build project-to-solution indexes."""
+
 import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from scatter.core.parallel import find_files_with_pattern_parallel
 
@@ -27,6 +28,7 @@ _SLN_HEADER = "Microsoft Visual Studio Solution File"
 @dataclass
 class SolutionInfo:
     """Parsed metadata from a .sln file."""
+
     path: Path
     name: str
     project_entries: List[str] = field(default_factory=list)
@@ -76,9 +78,7 @@ def parse_solution_file(sln_path: Path) -> SolutionInfo:
         resolved = (sln_dir / normalized).resolve()
 
         if resolved in seen_paths:
-            logging.warning(
-                f"{sln_path.name}: duplicate project entry '{project_name}' — skipping"
-            )
+            logging.warning(f"{sln_path.name}: duplicate project entry '{project_name}' — skipping")
             continue
         seen_paths.add(resolved)
 

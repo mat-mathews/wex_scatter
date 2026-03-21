@@ -5,6 +5,7 @@ with a generate_content() method. This allows:
 - GeminiProvider methods to delegate to them
 - Backward-compat wrappers to call them with MagicMock in tests
 """
+
 import json
 import logging
 import os
@@ -14,16 +15,21 @@ from typing import Optional, Set
 import google.generativeai as genai
 
 from scatter.ai.base import (
-    AIProvider, AITaskType, AnalysisResult,
-    MAX_SUMMARIZATION_CHARS, SUMMARIZATION_PROMPT_TEMPLATE,
+    AIProvider,
+    AITaskType,
+    AnalysisResult,
+    MAX_SUMMARIZATION_CHARS,
+    SUMMARIZATION_PROMPT_TEMPLATE,
 )
 
 
 # --- Module-level functions (provider-agnostic) ---
 # These accept any object with generate_content() — genai model, MagicMock, etc.
 
-def extract_affected_symbols_from_model(model_instance, file_content: str,
-                                         diff_text: str, file_path: str) -> Optional[Set[str]]:
+
+def extract_affected_symbols_from_model(
+    model_instance, file_content: str, diff_text: str, file_path: str
+) -> Optional[Set[str]]:
     """Analyze a diff to identify meaningfully changed C# type declarations.
 
     Accepts any object with a generate_content() method.
@@ -60,9 +66,9 @@ Return ONLY the JSON array:"""
 
         # Strip markdown code fences if present
         if response_text.startswith("```"):
-            lines = response_text.split('\n')
+            lines = response_text.split("\n")
             lines = [l for l in lines if not l.startswith("```")]
-            response_text = '\n'.join(lines).strip()
+            response_text = "\n".join(lines).strip()
 
         affected = json.loads(response_text)
         if not isinstance(affected, list):
@@ -84,8 +90,7 @@ Return ONLY the JSON array:"""
         return None
 
 
-def summarize_file_with_model(model_instance, csharp_code: str,
-                               file_path: str) -> Optional[str]:
+def summarize_file_with_model(model_instance, csharp_code: str, file_path: str) -> Optional[str]:
     """Summarize a C# file's content using any model with generate_content().
 
     Accepts any object with a generate_content() method.
@@ -107,8 +112,7 @@ def summarize_file_with_model(model_instance, csharp_code: str,
 
         logging.info(f"Requesting summary for {file_path} from Gemini API...")
         safety_settings = [
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-             "threshold": "BLOCK_MEDIUM_AND_ABOVE"}
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"}
         ]
         response = model_instance.generate_content(prompt, safety_settings=safety_settings)
         logging.debug(f"Received Gemini response for {file_path}.")
@@ -126,12 +130,13 @@ def summarize_file_with_model(model_instance, csharp_code: str,
     except Exception as e:
         logging.error(
             f"An error occurred while interacting with the Gemini API for {file_path}: {e}",
-            exc_info=True
+            exc_info=True,
         )
         return "[Error during summarization]"
 
 
 # --- GeminiProvider class ---
+
 
 class GeminiProvider(AIProvider):
     """Encapsulates Google Gemini API configuration and operations.
@@ -141,8 +146,7 @@ class GeminiProvider(AIProvider):
     get_affected_symbols_from_diff) with a single provider instance.
     """
 
-    def __init__(self, api_key: Optional[str] = None,
-                 model_name: str = "gemini-2.0-flash"):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-2.0-flash"):
         self._model_name = model_name
         self._model = None
 
@@ -205,9 +209,8 @@ class GeminiProvider(AIProvider):
         """Summarize a C# file's content."""
         return summarize_file_with_model(self._model, csharp_code, file_path)
 
-    def extract_affected_symbols(self, file_content: str, diff_text: str,
-                                  file_path: str) -> Optional[Set[str]]:
+    def extract_affected_symbols(
+        self, file_content: str, diff_text: str, file_path: str
+    ) -> Optional[Set[str]]:
         """Analyze a diff to identify meaningfully changed C# type declarations."""
-        return extract_affected_symbols_from_model(
-            self._model, file_content, diff_text, file_path
-        )
+        return extract_affected_symbols_from_model(self._model, file_content, diff_text, file_path)

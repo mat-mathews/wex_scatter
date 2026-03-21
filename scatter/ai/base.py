@@ -1,4 +1,5 @@
 """AI Provider protocol and shared types."""
+
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Protocol, Set, runtime_checkable
@@ -49,5 +50,6 @@ class AIProvider(Protocol):
 
     def estimate_tokens(self, context: str) -> int: ...
 
-    def extract_affected_symbols(self, file_content: str, diff_text: str,
-                                  file_path: str) -> Optional[Set[str]]: ...
+    def extract_affected_symbols(
+        self, file_content: str, diff_text: str, file_path: str
+    ) -> Optional[Set[str]]: ...

@@ -8,6 +8,7 @@ Single-pass O(P+F) construction:
 5. Cross-reference namespace usages → build namespace_usage and type_usage edges
 6. Construct DependencyGraph with all nodes and edges
 """
+
 import logging
 from collections import defaultdict
 from pathlib import Path
@@ -143,6 +144,7 @@ def build_dependency_graph(
             # Capture per-file facts inline (single read)
             if captured_file_facts is not None:
                 from scatter.store.graph_cache import FileFacts, compute_content_hash
+
                 try:
                     rel = str(cs_path.relative_to(search_scope))
                 except ValueError:
@@ -188,7 +190,11 @@ def build_dependency_graph(
             continue
         for ns in used_namespaces:
             target_project = namespace_to_project.get(ns)
-            if target_project and target_project != source_project and target_project in graph._nodes:
+            if (
+                target_project
+                and target_project != source_project
+                and target_project in graph._nodes
+            ):
                 evidence = project_namespace_evidence[source_project].get(ns, [])
                 graph.add_edge(
                     DependencyEdge(
@@ -227,9 +233,7 @@ def build_dependency_graph(
             for type_name in matched_types:
                 for owner_project in type_to_projects[type_name]:
                     if owner_project != source_project and owner_project in graph._nodes:
-                        type_usage_evidence[owner_project].append(
-                            f"{cs_path}:{type_name}"
-                        )
+                        type_usage_evidence[owner_project].append(f"{cs_path}:{type_name}")
 
         for target_project, evidence in type_usage_evidence.items():
             graph.add_edge(
@@ -257,9 +261,7 @@ def build_dependency_graph(
         )
         add_db_edges_to_graph(graph, db_deps)
 
-    logging.info(
-        f"Built dependency graph: {graph.node_count} nodes, {graph.edge_count} edges"
-    )
+    logging.info(f"Built dependency graph: {graph.node_count} nodes, {graph.edge_count} edges")
 
     if not capture_facts:
         return graph

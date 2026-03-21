@@ -3,6 +3,7 @@
 All functions are standalone free functions that accept a DependencyGraph
 as input — they are NOT methods on DependencyGraph (SRP).
 """
+
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple
@@ -81,12 +82,8 @@ def compute_all_metrics(
         incoming = graph.get_edges_to(name)
 
         # fan_in / fan_out count only project_reference edges
-        fan_in = sum(
-            1 for e in incoming if e.edge_type == "project_reference"
-        )
-        fan_out = sum(
-            1 for e in outgoing if e.edge_type == "project_reference"
-        )
+        fan_in = sum(1 for e in incoming if e.edge_type == "project_reference")
+        fan_out = sum(1 for e in outgoing if e.edge_type == "project_reference")
 
         total = fan_in + fan_out
         instability = fan_out / total if total > 0 else 0.0
@@ -106,9 +103,7 @@ def compute_all_metrics(
         total_sprocs = len(node.sproc_references)
         if total_sprocs > 0:
             shared_count = sum(
-                1
-                for sproc in node.sproc_references
-                if len(sproc_to_projects.get(sproc, set())) > 1
+                1 for sproc in node.sproc_references if len(sproc_to_projects.get(sproc, set())) > 1
             )
             shared_db_density = shared_count / total_sprocs
         else:
@@ -137,9 +132,7 @@ def rank_by_coupling(
     metrics: Dict[str, ProjectMetrics], top_n: int = 10
 ) -> List[Tuple[str, ProjectMetrics]]:
     """Return the top-N most coupled projects by coupling_score."""
-    ranked = sorted(
-        metrics.items(), key=lambda item: item[1].coupling_score, reverse=True
-    )
+    ranked = sorted(metrics.items(), key=lambda item: item[1].coupling_score, reverse=True)
     return ranked[:top_n]
 
 
@@ -348,8 +341,8 @@ class SolutionMetrics:
 
     name: str
     project_count: int
-    internal_edges: int          # edges where both endpoints are in this solution
-    external_edges: int          # edges where one endpoint is outside this solution
+    internal_edges: int  # edges where both endpoints are in this solution
+    external_edges: int  # edges where one endpoint is outside this solution
     cross_solution_ratio: float  # external / (internal + external), 0.0 if no edges
     incoming_solutions: List[str]  # other solutions with edges INTO this one
     outgoing_solutions: List[str]  # other solutions this one has edges TO
@@ -429,9 +422,6 @@ def compute_solution_metrics(
         )
 
     # Bridge projects: projects in 3+ solutions (global, not per-solution)
-    bridge_projects = sorted(
-        name for name, sols in node_solutions.items()
-        if len(sols) >= 3
-    )
+    bridge_projects = sorted(name for name, sols in node_solutions.items() if len(sols) >= 3)
 
     return metrics, bridge_projects

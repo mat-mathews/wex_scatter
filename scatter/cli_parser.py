@@ -1,11 +1,12 @@
 """CLI argument parser definition for Scatter."""
+
 import argparse
 from typing import Any, Dict
 
 from scatter.core.models import DEFAULT_MAX_WORKERS, DEFAULT_CHUNK_SIZE
 
 
-_REDACTED_CLI_KEYS = frozenset({'google_api_key'})
+_REDACTED_CLI_KEYS = frozenset({"google_api_key"})
 
 
 def _build_cli_overrides(args) -> Dict[str, Any]:
@@ -24,9 +25,9 @@ def _build_cli_overrides(args) -> Dict[str, Any]:
         overrides["multiprocessing.disabled"] = True
     if args.max_depth is not None:
         overrides["search.max_depth"] = args.max_depth
-    if hasattr(args, 'rebuild_graph') and args.rebuild_graph:
+    if hasattr(args, "rebuild_graph") and args.rebuild_graph:
         overrides["graph.rebuild"] = True
-    if hasattr(args, 'include_db') and args.include_db:
+    if hasattr(args, "include_db") and args.include_db:
         overrides["db.include_db_edges"] = True
     return overrides
 
@@ -35,7 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     """Build and return the Scatter CLI argument parser."""
     parser = argparse.ArgumentParser(
         description="Analyzes .NET project consumers based on Git branch changes OR a specific target project. Can optionally summarize consumer files using Gemini API.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
     # --- mode selection ---
@@ -43,164 +44,198 @@ def build_parser() -> argparse.ArgumentParser:
     mode_group = parser.add_mutually_exclusive_group(required=False)
     mode_group.add_argument(
         "--target-project",
-        help="MODE: Target Project Analysis. Path to the .csproj file or directory of the specific project to analyze."
+        help="MODE: Target Project Analysis. Path to the .csproj file or directory of the specific project to analyze.",
     )
     mode_group.add_argument(
         "--branch-name",
-        help="MODE: Git Branch Analysis. Name of the feature branch to analyze changes on."
+        help="MODE: Git Branch Analysis. Name of the feature branch to analyze changes on.",
     )
 
     mode_group.add_argument(
         "--stored-procedure",
         metavar="SPROC_NAME",
-        help="MODE: Stored Procedure Analysis. Name of the stored procedure to find references to (e.g., 'usp_MyProcedure' or 'dbo.usp_MyProcedure'). Requires --search-scope."
+        help="MODE: Stored Procedure Analysis. Name of the stored procedure to find references to (e.g., 'usp_MyProcedure' or 'dbo.usp_MyProcedure'). Requires --search-scope.",
     )
     mode_group.add_argument(
         "--sow",
         metavar="DESCRIPTION",
-        help="MODE: Impact Analysis. Inline work request text describing the change."
+        help="MODE: Impact Analysis. Inline work request text describing the change.",
     )
     mode_group.add_argument(
         "--sow-file",
         metavar="FILE",
-        help="MODE: Impact Analysis. Path to file containing the work request text."
+        help="MODE: Impact Analysis. Path to file containing the work request text.",
     )
     mode_group.add_argument(
         "--graph",
         action="store_true",
         default=False,
-        help="MODE: Dependency Graph Analysis. Build graph, compute coupling metrics, detect cycles."
+        help="MODE: Dependency Graph Analysis. Build graph, compute coupling metrics, detect cycles.",
     )
 
-    #--- sproc group ---
-    sproc_group = parser.add_argument_group('Stored Procedure Analysis Options (Requires --stored-procedure)')
+    # --- sproc group ---
+    sproc_group = parser.add_argument_group(
+        "Stored Procedure Analysis Options (Requires --stored-procedure)"
+    )
     sproc_group.add_argument(
         "--sproc-regex-pattern",
         default=None,
-        help="(Optional) Custom Python regex pattern to find stored procedure names in C# files. If not provided, a default pattern is used. Example: \"MyCustomPatternFor_(?P<sproc>{sproc_name_placeholder})\" where {sproc_name_placeholder} will be replaced by the escaped sproc name."
+        help='(Optional) Custom Python regex pattern to find stored procedure names in C# files. If not provided, a default pattern is used. Example: "MyCustomPatternFor_(?P<sproc>{sproc_name_placeholder})" where {sproc_name_placeholder} will be replaced by the escaped sproc name.',
     )
 
     # --- git mode specific arguments ---
-    git_group = parser.add_argument_group('Git Branch Analysis Options (Requires --branch-name)')
+    git_group = parser.add_argument_group("Git Branch Analysis Options (Requires --branch-name)")
     git_group.add_argument(
-        "-r", "--repo-path", default=".",
-        help="Path to the Git repository (default: current directory)."
+        "-r",
+        "--repo-path",
+        default=".",
+        help="Path to the Git repository (default: current directory).",
     )
     git_group.add_argument(
-        "-b", "--base-branch", default="main",
-        help="Base branch to compare against (default: main)."
+        "-b",
+        "--base-branch",
+        default="main",
+        help="Base branch to compare against (default: main).",
     )
     git_group.add_argument(
-        "--enable-hybrid-git", action="store_true",
-        help="Enable LLM-enhanced diff analysis for more precise symbol extraction (requires Gemini API key)."
+        "--enable-hybrid-git",
+        action="store_true",
+        help="Enable LLM-enhanced diff analysis for more precise symbol extraction (requires Gemini API key).",
     )
 
-    common_group = parser.add_argument_group('Common Options')
+    common_group = parser.add_argument_group("Common Options")
     common_group.add_argument(
         "--search-scope",
-        help="Root directory to search for consuming projects (defaults to --repo-path if Git mode is used and this is omitted, otherwise REQUIRED)."
+        help="Root directory to search for consuming projects (defaults to --repo-path if Git mode is used and this is omitted, otherwise REQUIRED).",
     )
     common_group.add_argument(
-        "--graph-metrics", action="store_true",
+        "--graph-metrics",
+        action="store_true",
         help="Build dependency graph and enrich results with graph metrics (coupling, fan-in/out, instability, cycles). "
-             "When a graph cache already exists, enrichment happens automatically without this flag."
+        "When a graph cache already exists, enrichment happens automatically without this flag.",
     )
     common_group.add_argument(
-        "--no-graph", action="store_true",
-        help="Skip automatic graph loading and enrichment, even when a cache exists."
+        "--no-graph",
+        action="store_true",
+        help="Skip automatic graph loading and enrichment, even when a cache exists.",
     )
     common_group.add_argument(
-        "--rebuild-graph", action="store_true",
-        help="Force graph rebuild, ignoring cached data (only used with --graph)."
+        "--rebuild-graph",
+        action="store_true",
+        help="Force graph rebuild, ignoring cached data (only used with --graph).",
     )
     common_group.add_argument(
-        "--include-db", action="store_true",
-        help="Include database dependency scanning (sprocs, EF models, direct SQL) in --graph mode."
+        "--include-db",
+        action="store_true",
+        help="Include database dependency scanning (sprocs, EF models, direct SQL) in --graph mode.",
     )
     common_group.add_argument(
-        "--include-graph-topology", action="store_true",
-        help="Include raw graph topology (nodes/edges) in JSON output. Omitted by default to reduce file size."
+        "--include-graph-topology",
+        action="store_true",
+        help="Include raw graph topology (nodes/edges) in JSON output. Omitted by default to reduce file size.",
     )
     common_group.add_argument(
-        "--max-depth", type=int, default=None,
-        help="Maximum transitive tracing depth for impact analysis (default: 2)."
+        "--max-depth",
+        type=int,
+        default=None,
+        help="Maximum transitive tracing depth for impact analysis (default: 2).",
     )
     common_group.add_argument(
-        "--sow-min-confidence", type=float, default=0.3,
-        help="Minimum confidence threshold for SOW-extracted targets (default: 0.3)."
+        "--sow-min-confidence",
+        type=float,
+        default=0.3,
+        help="Minimum confidence threshold for SOW-extracted targets (default: 0.3).",
     )
     common_group.add_argument(
-        "--dump-index", action="store_true",
-        help="Build dependency graph, print codebase index to stdout, and exit. Requires --search-scope."
+        "--dump-index",
+        action="store_true",
+        help="Build dependency graph, print codebase index to stdout, and exit. Requires --search-scope.",
     )
     common_group.add_argument(
         "--app-config-path",
-        help="(Optional) Path to the 'health-benefits-app-config' repository to resolve specific batch job names."
+        help="(Optional) Path to the 'health-benefits-app-config' repository to resolve specific batch job names.",
     )
     common_group.add_argument(
-        "--class-name", default=None,
-        help="(Optional) Filter: In Git mode, analyze only this type if found in changes. In Target Project mode, check for usage of this specific type."
+        "--class-name",
+        default=None,
+        help="(Optional) Filter: In Git mode, analyze only this type if found in changes. In Target Project mode, check for usage of this specific type.",
     )
     common_group.add_argument(
-        "--method-name", default=None,
-        help="(Optional) Filter: Check for usage of this specific method name. Requires --class-name to be specified."
+        "--method-name",
+        default=None,
+        help="(Optional) Filter: Check for usage of this specific method name. Requires --class-name to be specified.",
     )
     common_group.add_argument(
-        "--target-namespace", default=None,
-        help="(Optional) Explicitly specify the target project's namespace. Overrides automatic derivation (mainly useful in Target Project mode)."
+        "--target-namespace",
+        default=None,
+        help="(Optional) Explicitly specify the target project's namespace. Overrides automatic derivation (mainly useful in Target Project mode).",
     )
     common_group.add_argument(
-        "--pipeline-csv", default=None,
-        help="(Optional) Path to CSV mapping 'Project Name' to 'Pipeline Name'."
+        "--pipeline-csv",
+        default=None,
+        help="(Optional) Path to CSV mapping 'Project Name' to 'Pipeline Name'.",
     )
     common_group.add_argument(
-        "--output-file", default=None,
-        help="(Optional) Path to write results to a file. The format is determined by --output-format."
+        "--output-file",
+        default=None,
+        help="(Optional) Path to write results to a file. The format is determined by --output-format.",
     )
     common_group.add_argument(
-        "-v", "--verbose", action="store_true",
-        help="Enable detailed DEBUG level logging."
+        "-v", "--verbose", action="store_true", help="Enable detailed DEBUG level logging."
     )
-    summarize_group = parser.add_argument_group('Summarization Options (using Google Gemini)')
+    summarize_group = parser.add_argument_group("Summarization Options (using Google Gemini)")
     summarize_group.add_argument(
-        "--summarize-consumers", action="store_true",
-        help="Enable summarization of relevant C# files in consuming projects using the Gemini API."
+        "--summarize-consumers",
+        action="store_true",
+        help="Enable summarization of relevant C# files in consuming projects using the Gemini API.",
     )
     summarize_group.add_argument(
-        "--google-api-key", default=None,
-        help="Google API Key for Gemini. If not provided, uses the GOOGLE_API_KEY environment variable."
+        "--google-api-key",
+        default=None,
+        help="Google API Key for Gemini. If not provided, uses the GOOGLE_API_KEY environment variable.",
     )
     summarize_group.add_argument(
-        "--gemini-model", default=None,
-        help="The Gemini model to use for summarization (default: gemini-2.0-flash)."
+        "--gemini-model",
+        default=None,
+        help="The Gemini model to use for summarization (default: gemini-2.0-flash).",
     )
     common_group.add_argument(
-        "--output-format", default="console",
-        choices=['console', 'csv', 'json', 'markdown', 'mermaid', 'pipelines'],
-        help="Format for the output. 'console' prints to screen. 'csv', 'json', or 'markdown' writes to --output-file (markdown also prints to stdout if no file given). 'mermaid' outputs a Mermaid dependency diagram (graph mode only). 'pipelines' prints sorted unique pipeline names, one per line."
+        "--output-format",
+        default="console",
+        choices=["console", "csv", "json", "markdown", "mermaid", "pipelines"],
+        help="Format for the output. 'console' prints to screen. 'csv', 'json', or 'markdown' writes to --output-file (markdown also prints to stdout if no file given). 'mermaid' outputs a Mermaid dependency diagram (graph mode only). 'pipelines' prints sorted unique pipeline names, one per line.",
     )
 
     # Multiprocessing options
-    multiprocessing_group = parser.add_argument_group('Multiprocessing Options')
+    multiprocessing_group = parser.add_argument_group("Multiprocessing Options")
     multiprocessing_group.add_argument(
-        "--disable-multiprocessing", action="store_true",
-        help="Disable parallel processing and use sequential file discovery."
+        "--disable-multiprocessing",
+        action="store_true",
+        help="Disable parallel processing and use sequential file discovery.",
     )
     multiprocessing_group.add_argument(
-        "--max-workers", type=int, default=DEFAULT_MAX_WORKERS,
-        help=f"Maximum number of worker processes for parallel operations (default: {DEFAULT_MAX_WORKERS})."
+        "--max-workers",
+        type=int,
+        default=DEFAULT_MAX_WORKERS,
+        help=f"Maximum number of worker processes for parallel operations (default: {DEFAULT_MAX_WORKERS}).",
     )
     multiprocessing_group.add_argument(
-        "--chunk-size", type=int, default=DEFAULT_CHUNK_SIZE,
-        help=f"Number of directories to process per worker chunk (default: {DEFAULT_CHUNK_SIZE})."
+        "--chunk-size",
+        type=int,
+        default=DEFAULT_CHUNK_SIZE,
+        help=f"Number of directories to process per worker chunk (default: {DEFAULT_CHUNK_SIZE}).",
     )
     multiprocessing_group.add_argument(
-        "--cs-analysis-chunk-size", type=int, default=50,
-        help="Number of .cs files per worker batch for content analysis (default: 50)."
+        "--cs-analysis-chunk-size",
+        type=int,
+        default=50,
+        help="Number of .cs files per worker batch for content analysis (default: 50).",
     )
     multiprocessing_group.add_argument(
-        "--csproj-analysis-chunk-size", type=int, default=25,
-        help="Number of .csproj files per worker batch for XML parsing (default: 25)."
+        "--csproj-analysis-chunk-size",
+        type=int,
+        default=25,
+        help="Number of .csproj files per worker batch for XML parsing (default: 25).",
     )
 
     return parser

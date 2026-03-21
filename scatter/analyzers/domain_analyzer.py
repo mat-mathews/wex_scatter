@@ -3,6 +3,7 @@
 All functions are standalone free functions that accept a DependencyGraph
 as input — they are NOT methods on DependencyGraph (SRP).
 """
+
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Tuple
@@ -113,9 +114,7 @@ def score_extraction_feasibility(
         node = graph.get_node(proj)
         if node:
             total_sprocs_in_cluster += len(node.sproc_references)
-    shared_db_ratio = (
-        len(cluster.shared_db_objects) / max(1, total_sprocs_in_cluster)
-    )
+    shared_db_ratio = len(cluster.shared_db_objects) / max(1, total_sprocs_in_cluster)
 
     # 3. Cycle penalty — any cycle spanning inside and outside the cluster
     has_cross_boundary_cycle = 0.0
@@ -173,8 +172,7 @@ def _label_propagation(
         changed = False
         for node in sorted_nodes:
             neighbors = sorted(
-                (graph.get_dependency_names(node) | graph.get_consumer_names(node))
-                & component_set
+                (graph.get_dependency_names(node) | graph.get_consumer_names(node)) & component_set
             )
             if not neighbors:
                 continue
@@ -186,9 +184,7 @@ def _label_propagation(
                 label_votes[labels[neighbor]] += total_weight
 
             # Best label: highest vote, tie-break by lowest label alphabetically
-            best_label = min(
-                label_votes, key=lambda lbl: (-label_votes[lbl], lbl)
-            )
+            best_label = min(label_votes, key=lambda lbl: (-label_votes[lbl], lbl))
 
             if best_label != labels[node]:
                 labels[node] = best_label
@@ -233,8 +229,7 @@ def _compute_solution_alignment(
 
     # Alignment = fraction of members that have the dominant solution
     members_with_dominant = sum(
-        1 for proj in projects
-        if (node := graph.get_node(proj)) and dominant in node.solutions
+        1 for proj in projects if (node := graph.get_node(proj)) and dominant in node.solutions
     )
     alignment = members_with_dominant / len(projects)
 

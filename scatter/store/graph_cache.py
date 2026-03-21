@@ -5,6 +5,7 @@ Uses git-based invalidation (preferred) with mtime fallback.
 
 Cache format v2 adds per-file and per-project facts for incremental updates.
 """
+
 import hashlib
 import json
 import logging
@@ -145,9 +146,7 @@ def load_graph(cache_path: Path) -> Optional[DependencyGraph]:
         logging.warning(f"Could not deserialize graph from cache {cache_path}: {e}")
         return None
 
-    logging.info(
-        f"Graph loaded from cache: {graph.node_count} nodes, {graph.edge_count} edges"
-    )
+    logging.info(f"Graph loaded from cache: {graph.node_count} nodes, {graph.edge_count} edges")
     return graph
 
 
@@ -156,8 +155,13 @@ def load_and_validate(
     search_scope: Path,
     invalidation: str = "git",
 ) -> Optional[
-    Tuple[DependencyGraph, Optional[Dict[str, "FileFacts"]],
-          Optional[Dict[str, "ProjectFacts"]], Optional[str], Optional[str]]
+    Tuple[
+        DependencyGraph,
+        Optional[Dict[str, "FileFacts"]],
+        Optional[Dict[str, "ProjectFacts"]],
+        Optional[str],
+        Optional[str],
+    ]
 ]:
     """Single-pass load: read cache once, validate, and return graph if valid.
 
@@ -215,12 +219,8 @@ def load_and_validate(
     project_facts = None
     if has_facts:
         try:
-            file_facts = {
-                k: FileFacts(**v) for k, v in envelope["file_facts"].items()
-            }
-            project_facts = {
-                k: ProjectFacts(**v) for k, v in envelope["project_facts"].items()
-            }
+            file_facts = {k: FileFacts(**v) for k, v in envelope["file_facts"].items()}
+            project_facts = {k: ProjectFacts(**v) for k, v in envelope["project_facts"].items()}
         except (KeyError, TypeError) as e:
             logging.warning(f"Could not deserialize facts from cache: {e}")
             file_facts = None
@@ -333,9 +333,14 @@ def _git_has_code_changes(cached_hash: str, search_scope: Path) -> bool:
     try:
         result = subprocess.run(
             [
-                "git", "diff", "--name-only",
-                cached_hash, "HEAD",
-                "--", "*.csproj", "*.cs",
+                "git",
+                "diff",
+                "--name-only",
+                cached_hash,
+                "HEAD",
+                "--",
+                "*.csproj",
+                "*.cs",
             ],
             cwd=str(search_scope),
             capture_output=True,
@@ -343,9 +348,7 @@ def _git_has_code_changes(cached_hash: str, search_scope: Path) -> bool:
             timeout=30,
         )
         if result.returncode != 0:
-            logging.debug(
-                f"git diff failed (rc={result.returncode}): {result.stderr.strip()}"
-            )
+            logging.debug(f"git diff failed (rc={result.returncode}): {result.stderr.strip()}")
             return True  # conservative: rebuild
 
         changed = result.stdout.strip()

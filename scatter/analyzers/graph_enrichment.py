@@ -4,6 +4,7 @@ Bridges the dependency graph (built by graph_builder) into consumer results
 produced by find_consumers(). All enrichment is post-processing — no changes
 to find_consumers() or the v1 bridge.
 """
+
 import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Set
@@ -29,7 +30,9 @@ class GraphContext:
     cycle_members: Set[str]
 
 
-def build_graph_context(search_scope, config, args, solution_index=None) -> Optional["GraphContext"]:
+def build_graph_context(
+    search_scope, config, args, solution_index=None
+) -> Optional["GraphContext"]:
     """Build or load a cached dependency graph and compute metrics.
 
     Returns GraphContext on success, None on failure. Caller should
@@ -62,9 +65,7 @@ def build_graph_context(search_scope, config, args, solution_index=None) -> Opti
         needs_full_rebuild = True
 
         if not config.graph.rebuild:
-            cache_result = load_and_validate(
-                cache_path, search_scope, config.graph.invalidation
-            )
+            cache_result = load_and_validate(cache_path, search_scope, config.graph.invalidation)
             if cache_result is not None:
                 graph, file_facts, project_facts, git_head, proj_set_hash = cache_result
 
@@ -73,14 +74,20 @@ def build_graph_context(search_scope, config, args, solution_index=None) -> Opti
                     changed = get_changed_files(git_head, search_scope)
                     if changed is not None and len(changed) > 0:
                         result = patch_graph(
-                            graph, file_facts, project_facts,
-                            changed, search_scope,
+                            graph,
+                            file_facts,
+                            project_facts,
+                            changed,
+                            search_scope,
                             cached_project_set_hash=proj_set_hash,
                         )
                         if result.patch_applied:
                             save_graph(
-                                result.graph, cache_path, search_scope,
-                                result.file_facts, result.project_facts,
+                                result.graph,
+                                cache_path,
+                                search_scope,
+                                result.file_facts,
+                                result.project_facts,
                             )
                             graph = result.graph
                             file_facts = result.file_facts
@@ -100,6 +107,7 @@ def build_graph_context(search_scope, config, args, solution_index=None) -> Opti
                 elif file_facts is not None and not git_head:
                     # v2 cache but no git_head (non-git dir) — fall back to mtime
                     from scatter.store.graph_cache import _is_cache_valid_mtime
+
                     if _is_cache_valid_mtime(cache_path, search_scope):
                         logging.info("Using cached dependency graph (mtime valid, no git).")
                         needs_full_rebuild = False
@@ -116,9 +124,7 @@ def build_graph_context(search_scope, config, args, solution_index=None) -> Opti
 
         # Build if needed
         if graph is None or needs_full_rebuild:
-            logging.info(
-                f"Building dependency graph from {search_scope} for metrics enrichment..."
-            )
+            logging.info(f"Building dependency graph from {search_scope} for metrics enrichment...")
             build_result = build_dependency_graph(
                 search_scope,
                 disable_multiprocessing=args.disable_multiprocessing,
