@@ -3,6 +3,7 @@
 # Usage:
 #   bash tools/check.sh          # full: lint + format + mypy + pytest
 #   bash tools/check.sh --quick  # fast: lint + format only
+# Windows: run from Git Bash (included with Git for Windows).
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

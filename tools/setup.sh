@@ -2,6 +2,7 @@
 # One-time developer environment bootstrap.
 # Run from anywhere: bash tools/setup.sh
 # Safe to re-run — all steps are idempotent.
+# Windows: run from Git Bash (included with Git for Windows).
 
 set -e
 

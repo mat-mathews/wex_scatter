@@ -43,7 +43,7 @@ The repository includes 8 sample .NET projects that form a realistic dependency 
 git clone <repository_url>
 cd scatter
 
-# One-command dev setup: installs uv deps, configures git, links Claude skills
+# One-command dev setup (Windows: run from Git Bash)
 bash tools/setup.sh
 ```
 

@@ -15,7 +15,7 @@ That's it. The repo ships with 8 sample .NET projects, so you don't need a produ
 git clone <repo-url>
 cd wex_scatter
 
-# One-command dev setup
+# One-command dev setup (Windows: run from Git Bash)
 bash tools/setup.sh
 ```
 

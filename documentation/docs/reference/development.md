@@ -34,7 +34,7 @@ uv add --group dev some-dev-tool
 
 ## Developer Scripts
 
-All developer tooling lives in `tools/`:
+All developer tooling lives in `tools/`. The scripts are bash — on Windows, run them from Git Bash (included with Git for Windows).
 
 | Script | Purpose | When to use |
 |--------|---------|-------------|
