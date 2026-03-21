@@ -10,6 +10,7 @@ from scatter.analyzers.domain_analyzer import (
     score_extraction_feasibility,
     _derive_cluster_name,
     _label_propagation,
+    _compute_solution_alignment,
     LABEL_PROPAGATION_THRESHOLD,
 )
 from scatter.analyzers.coupling_analyzer import CycleGroup, detect_cycles
@@ -309,3 +310,86 @@ class TestExtractionFeasibility:
             total_penalty = sum(c.feasibility_details.values())
             expected_score = max(0.0, 1.0 - total_penalty)
             assert c.feasibility_score == pytest.approx(expected_score, abs=1e-9)
+
+
+# === Initiative 9 Phase 4: Solution alignment ===
+
+
+def _sol_node(name, solutions=None):
+    return ProjectNode(
+        path=Path(f"/fake/{name}/{name}.csproj"),
+        name=name,
+        solutions=solutions or [],
+    )
+
+
+class TestSolutionAlignment:
+    def test_alignment_all_same_solution(self):
+        g = DependencyGraph()
+        g.add_node(_sol_node("A", solutions=["X"]))
+        g.add_node(_sol_node("B", solutions=["X"]))
+        g.add_node(_sol_node("C", solutions=["X"]))
+
+        alignment, dominant = _compute_solution_alignment(["A", "B", "C"], g)
+        assert alignment == 1.0
+        assert dominant == "X"
+
+    def test_alignment_no_solutions(self):
+        g = DependencyGraph()
+        g.add_node(_make_node("A"))
+        g.add_node(_make_node("B"))
+
+        alignment, dominant = _compute_solution_alignment(["A", "B"], g)
+        assert alignment == 0.0
+        assert dominant is None
+
+    def test_alignment_mixed(self):
+        g = DependencyGraph()
+        g.add_node(_sol_node("A", solutions=["X"]))
+        g.add_node(_sol_node("B", solutions=["X"]))
+        g.add_node(_sol_node("C", solutions=["X"]))
+        g.add_node(_sol_node("D", solutions=["Y"]))
+        g.add_node(_sol_node("E", solutions=["Y"]))
+
+        alignment, dominant = _compute_solution_alignment(
+            ["A", "B", "C", "D", "E"], g
+        )
+        assert alignment == pytest.approx(0.6)
+        assert dominant == "X"
+
+    def test_dominant_solution_identified(self):
+        g = DependencyGraph()
+        g.add_node(_sol_node("A", solutions=["Alpha"]))
+        g.add_node(_sol_node("B", solutions=["Alpha"]))
+        g.add_node(_sol_node("C", solutions=["Beta"]))
+
+        _, dominant = _compute_solution_alignment(["A", "B", "C"], g)
+        assert dominant == "Alpha"
+
+    def test_multi_solution_project_counts(self):
+        """Project in {X, Y} counts toward dominant X (Fatima)."""
+        g = DependencyGraph()
+        g.add_node(_sol_node("A", solutions=["X", "Y"]))
+        g.add_node(_sol_node("B", solutions=["X"]))
+        g.add_node(_sol_node("C", solutions=["Y"]))
+
+        alignment, dominant = _compute_solution_alignment(["A", "B", "C"], g)
+        # X: A and B have it → 2 of 3 members → 0.667
+        # Y: A and C have it → 2 of 3 members → 0.667
+        # Tie-break: max by count then alphabetically → X wins
+        assert dominant == "X"
+        assert alignment == pytest.approx(2 / 3, abs=0.01)
+
+
+class TestClusterAlignmentIntegration:
+    def test_find_clusters_populates_alignment(self):
+        """find_clusters() sets solution_alignment and dominant_solution."""
+        g = DependencyGraph()
+        g.add_node(_sol_node("A", solutions=["Sol"]))
+        g.add_node(_sol_node("B", solutions=["Sol"]))
+        g.add_edge(DependencyEdge(source="A", target="B", edge_type="project_reference"))
+
+        clusters = find_clusters(g, min_cluster_size=2)
+        assert len(clusters) == 1
+        assert clusters[0].solution_alignment == 1.0
+        assert clusters[0].dominant_solution == "Sol"

@@ -36,6 +36,8 @@ class Cluster:
     extraction_feasibility: str
     feasibility_score: float
     feasibility_details: Dict[str, float] = field(default_factory=dict)
+    solution_alignment: float = 0.0
+    dominant_solution: Optional[str] = None
 
 
 def find_clusters(
@@ -74,6 +76,10 @@ def find_clusters(
         if len(group) < min_cluster_size:
             continue
         cluster = _build_cluster(group, graph, 0, metrics, cycles, sproc_map)
+        # Compute solution alignment post-hoc
+        alignment, dominant = _compute_solution_alignment(cluster.projects, graph)
+        cluster.solution_alignment = alignment
+        cluster.dominant_solution = dominant
         clusters.append(cluster)
 
     clusters.sort(key=lambda c: (-len(c.projects), c.name))
@@ -197,6 +203,42 @@ def _label_propagation(
         groups[label].append(node)
 
     return [sorted(members) for members in groups.values()]
+
+
+def _compute_solution_alignment(
+    projects: List[str],
+    graph: DependencyGraph,
+) -> Tuple[float, Optional[str]]:
+    """Compute solution alignment for a cluster.
+
+    Returns (alignment_score, dominant_solution).
+    A project in multiple solutions counts for each (set membership check).
+    """
+    if not projects:
+        return 0.0, None
+
+    # Count solution occurrences across all cluster members
+    solution_counts: Dict[str, int] = defaultdict(int)
+    for proj in projects:
+        node = graph.get_node(proj)
+        if node:
+            for sol in node.solutions:
+                solution_counts[sol] += 1
+
+    if not solution_counts:
+        return 0.0, None
+
+    # Dominant = most common solution (tie-break: lowest name alphabetically)
+    dominant = min(solution_counts, key=lambda s: (-solution_counts[s], s))
+
+    # Alignment = fraction of members that have the dominant solution
+    members_with_dominant = sum(
+        1 for proj in projects
+        if (node := graph.get_node(proj)) and dominant in node.solutions
+    )
+    alignment = members_with_dominant / len(projects)
+
+    return alignment, dominant
 
 
 def _derive_cluster_name(projects: List[str], cluster_index: int) -> str:

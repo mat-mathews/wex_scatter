@@ -485,6 +485,34 @@ class TestSolutionCouplingConsole:
         assert "Solution Coupling" not in captured
 
 
+class TestClusterAlignmentReporters:
+    def test_console_alignment_column(self, capsys):
+        g = _sample_graph()
+        g.get_node("A").solutions = ["Sol1"]
+        g.get_node("B").solutions = ["Sol1"]
+        ranked = [("A", _sample_metrics()["A"])]
+        clusters = [_make_cluster("TestCluster", ["A", "B"])]
+        clusters[0].solution_alignment = 1.0
+        clusters[0].dominant_solution = "Sol1"
+        print_graph_report(g, ranked, [], clusters=clusters)
+        captured = capsys.readouterr().out
+        assert "Align" in captured
+        assert "1.00" in captured
+        assert "(solution: Sol1)" in captured
+
+    def test_json_cluster_alignment(self):
+        g = _sample_graph()
+        g.get_node("A").solutions = ["Sol1"]
+        metrics = _sample_metrics()
+        clusters = [_make_cluster("TestCluster", ["A", "B"])]
+        clusters[0].solution_alignment = 0.75
+        clusters[0].dominant_solution = "Sol1"
+        result = build_graph_json(g, metrics, [], [], clusters=clusters)
+        clu = result["clusters"][0]
+        assert clu["solution_alignment"] == 0.75
+        assert clu["dominant_solution"] == "Sol1"
+
+
 # ===========================================================================
 # TestMermaidFileOutput
 # ===========================================================================

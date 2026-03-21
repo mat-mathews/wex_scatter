@@ -177,16 +177,26 @@ def print_graph_report(
         print()
 
     if clusters:
+        # Check if any cluster has solution alignment data
+        has_alignment = any(clu.solution_alignment > 0 for clu in clusters)
         print(f"  Domain Clusters:")
-        print(f"  {'Cluster':<30} {'Size':>6} {'Cohesion':>10} {'Coupling':>10} {'Feasibility':>20}")
-        print(f"  {'-'*30} {'-'*6} {'-'*10} {'-'*10} {'-'*20}")
+        if has_alignment:
+            print(f"  {'Cluster':<30} {'Size':>6} {'Cohesion':>10} {'Coupling':>10} {'Feasibility':>20} {'Align':>8}")
+            print(f"  {'-'*30} {'-'*6} {'-'*10} {'-'*10} {'-'*20} {'-'*8}")
+        else:
+            print(f"  {'Cluster':<30} {'Size':>6} {'Cohesion':>10} {'Coupling':>10} {'Feasibility':>20}")
+            print(f"  {'-'*30} {'-'*6} {'-'*10} {'-'*10} {'-'*20}")
         for clu in clusters:
             label = f"{clu.extraction_feasibility} ({clu.feasibility_score:.3f})"
-            print(f"  {clu.name:<30} {len(clu.projects):>6} {clu.cohesion:>10.3f} {clu.coupling_to_outside:>10.3f} {label:>20}")
-            # Show top 5 members
+            if has_alignment:
+                print(f"  {clu.name:<30} {len(clu.projects):>6} {clu.cohesion:>10.3f} {clu.coupling_to_outside:>10.3f} {label:>20} {clu.solution_alignment:>8.2f}")
+            else:
+                print(f"  {clu.name:<30} {len(clu.projects):>6} {clu.cohesion:>10.3f} {clu.coupling_to_outside:>10.3f} {label:>20}")
+            # Show top 5 members + dominant solution
             members = sorted(clu.projects)[:5]
             suffix = ", ..." if len(clu.projects) > 5 else ""
-            print(f"    Members: {', '.join(members)}{suffix}")
+            sol_suffix = f" (solution: {clu.dominant_solution})" if clu.dominant_solution else ""
+            print(f"    Members: {', '.join(members)}{suffix}{sol_suffix}")
         print()
 
     if solution_metrics:
@@ -282,6 +292,8 @@ def build_graph_json(
                     k: round(v, 3) for k, v in clu.feasibility_details.items()
                 },
                 "shared_db_objects": clu.shared_db_objects,
+                "solution_alignment": round(clu.solution_alignment, 3),
+                "dominant_solution": clu.dominant_solution,
             }
             for clu in clusters
         ]
