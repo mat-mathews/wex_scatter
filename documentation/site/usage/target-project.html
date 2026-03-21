@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Target Project Analysis - Scatter // Athena</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/solarized-dark.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">Scatter // Athena</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">User Guide</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../index.html" class="dropdown-item">Home</a>
+</li>
+                                    
+<li>
+    <a href="../getting-started.html" class="dropdown-item">Getting Started</a>
+</li>
+                                    
+<li>
+    <a href="target-project.html" class="dropdown-item active" aria-current="page">Target Project Analysis</a>
+</li>
+                                    
+<li>
+    <a href="git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+</li>
+                                    
+<li>
+    <a href="stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+</li>
+                                    
+<li>
+    <a href="impact-analysis.html" class="dropdown-item">Impact Analysis</a>
+</li>
+                                    
+<li>
+    <a href="dependency-graph.html" class="dropdown-item">Dependency Graph</a>
+</li>
+                                    
+<li>
+    <a href="../output-formats.html" class="dropdown-item">Output Formats</a>
+</li>
+                                    
+<li>
+    <a href="../workflows.html" class="dropdown-item">Workflows</a>
+</li>
+                                    
+<li>
+    <a href="../ai-features.html" class="dropdown-item">AI Features</a>
+</li>
+                                    
+<li>
+    <a href="../configuration.html" class="dropdown-item">Configuration</a>
+</li>
+                                    
+<li>
+    <a href="../cli-reference.html" class="dropdown-item">CLI Reference</a>
+</li>
+                                    
+<li>
+    <a href="../testing.html" class="dropdown-item">Testing</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Technical Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../reference/architecture.html" class="dropdown-item">Architecture Overview</a>
+</li>
+                                    
+<li>
+    <a href="../reference/graph-engine.html" class="dropdown-item">Graph Engine</a>
+</li>
+                                    
+<li>
+    <a href="../reference/incremental-updates.html" class="dropdown-item">Incremental Updates</a>
+</li>
+                                    
+<li>
+    <a href="../reference/coupling-and-cycles.html" class="dropdown-item">Coupling & Cycle Detection</a>
+</li>
+                                    
+<li>
+    <a href="../reference/domain-clustering.html" class="dropdown-item">Domain Clustering</a>
+</li>
+                                    
+<li>
+    <a href="../reference/consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="../reference/type-extraction.html" class="dropdown-item">Type Extraction</a>
+</li>
+                                    
+<li>
+    <a href="../reference/test-architecture.html" class="dropdown-item">Test Architecture</a>
+</li>
+                                    
+<li>
+    <a href="../reference/benchmarks.html" class="dropdown-item">Benchmarks</a>
+</li>
+                                    
+<li>
+    <a href="../reference/sample-projects.html" class="dropdown-item">Sample Projects</a>
+</li>
+                                    
+<li>
+    <a href="../reference/development.html" class="dropdown-item">Development</a>
+</li>
+                                    
+<li>
+    <a href="../reference/contributing.html" class="dropdown-item">Contributing</a>
+</li>
+                                    
+<li>
+    <a href="../reference/claude-skills.html" class="dropdown-item">Claude Code Skills</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../getting-started.html" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="git-branch.html" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#target-project-analysis" class="nav-link">Target Project Analysis</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#basic-example" class="nav-link">Basic Example</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#narrowing-the-results" class="nav-link">Narrowing the Results</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#other-scenarios" class="nav-link">Other Scenarios</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#override-namespace" class="nav-link">Override Namespace</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ai-summaries" class="nav-link">AI Summaries</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#output-formats" class="nav-link">Output Formats</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#reading-the-filter-pipeline" class="nav-link">Reading the Filter Pipeline</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="target-project-analysis">Target Project Analysis<a class="headerlink" href="#target-project-analysis" title="Permanent link">&para;</a></h1>
+<p>You're refactoring a shared library and need to know who's using it. Maybe someone said "we want to modernize GalaxyWorks.Data" and you need to find out how many teams will have opinions about that. This is the mode for that.</p>
+<p>Point Scatter at a <code>.csproj</code> file. It finds every project that references it, confirms they actually import the namespace, and optionally drills down to specific class or method usage.</p>
+<h2 id="basic-example">Basic Example<a class="headerlink" href="#basic-example" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">python scatter.py \
+  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope .
+</code></pre>
+<pre><code>Search scope: /path/to/repo (scanned 11 projects, 24 files)
+Filter: 11 -&gt; 7 project refs -&gt; 6 namespace
+
+--- Combined Consumer Analysis Report ---
+
+--- Consuming Relationships Found ---
+
+Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (6 consumer(s))
+         -&gt; Consumed by: GalaxyWorks.Api (GalaxyWorks.Api/GalaxyWorks.Api.csproj)
+         -&gt; Consumed by: GalaxyWorks.BatchProcessor (GalaxyWorks.BatchProcessor/GalaxyWorks.BatchProcessor.csproj)
+         -&gt; Consumed by: GalaxyWorks.Data.Tests (GalaxyWorks.Data.Tests/GalaxyWorks.Data.Tests.csproj)
+         -&gt; Consumed by: GalaxyWorks.WebPortal (GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj)
+         -&gt; Consumed by: MyGalaryConsumerApp (MyGalaxyConsumerApp/MyGalaryConsumerApp.csproj)
+         -&gt; Consumed by: MyGalaryConsumerApp2 (MyGalaxyConsumerApp2/MyGalaryConsumerApp2.csproj)
+
+--- Total Consuming Relationships Found: 6 ---
+
+Analysis complete. 6 consumer(s) found across 1 target(s).
+</code></pre>
+<p>Six consumers. That's your blast radius. Now you know who to talk to before you start moving things around.</p>
+<h2 id="narrowing-the-results">Narrowing the Results<a class="headerlink" href="#narrowing-the-results" title="Permanent link">&para;</a></h2>
+<p>Six consumers is manageable. But GalaxyWorks.Data exports a lot of types, and maybe you only care about one class.</p>
+<h3 id="filter-by-class">Filter by Class<a class="headerlink" href="#filter-by-class" title="Permanent link">&para;</a></h3>
+<pre><code class="language-bash">python scatter.py \
+  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . \
+  --class-name PortalDataService
+</code></pre>
+<pre><code>Filter: 11 -&gt; 7 project refs -&gt; 6 namespace -&gt; 4 class match
+</code></pre>
+<p>Down to 4. Only projects that actually reference <code>PortalDataService</code> in their source code survive the class filter. The other two consumers use different types from GalaxyWorks.Data -- they're not your problem today.</p>
+<h3 id="filter-by-method">Filter by Method<a class="headerlink" href="#filter-by-method" title="Permanent link">&para;</a></h3>
+<pre><code class="language-bash">python scatter.py \
+  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . \
+  --class-name PortalDataService \
+  --method-name StorePortalConfigurationAsync
+</code></pre>
+<pre><code>Filter: 11 -&gt; 7 project refs -&gt; 6 namespace -&gt; 4 class match -&gt; 2 method match
+</code></pre>
+<p>Two projects actually call <code>StorePortalConfigurationAsync</code>. If you're changing that method's signature, these are the only two that need updating.</p>
+<p>Note: <code>--method-name</code> requires <code>--class-name</code>. Pass <code>--method-name</code> alone and Scatter warns and ignores it.</p>
+<h2 id="other-scenarios">Other Scenarios<a class="headerlink" href="#other-scenarios" title="Permanent link">&para;</a></h2>
+<h3 id="mid-tier-library-1-consumer">Mid-Tier Library (1 Consumer)<a class="headerlink" href="#mid-tier-library-1-consumer" title="Permanent link">&para;</a></h3>
+<pre><code class="language-bash">python scatter.py \
+  --target-project ./GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj \
+  --search-scope .
+</code></pre>
+<p>WebPortal sits in the middle of the dependency chain. Only GalaxyWorks.BatchProcessor references it. One consumer -- small blast radius, straightforward coordination.</p>
+<h3 id="leaf-project-1-consumer">Leaf Project (1 Consumer)<a class="headerlink" href="#leaf-project-1-consumer" title="Permanent link">&para;</a></h3>
+<pre><code class="language-bash">python scatter.py \
+  --target-project ./MyDotNetApp/MyDotNetApp.csproj \
+  --search-scope .
+</code></pre>
+<p>MyDotNetApp has a single consumer: MyDotNetApp.Consumer. Leaf projects are the easy ones. Change it, update the one consumer, move on.</p>
+<h3 id="standalone-project-0-consumers">Standalone Project (0 Consumers)<a class="headerlink" href="#standalone-project-0-consumers" title="Permanent link">&para;</a></h3>
+<pre><code class="language-bash">python scatter.py \
+  --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj \
+  --search-scope .
+</code></pre>
+<p>Nobody references this project. Zero consumers. If you expected consumers and see zero, check whether the consuming code uses NuGet packages instead of <code>&lt;ProjectReference&gt;</code> entries -- Scatter only tracks project references, not package references.</p>
+<h2 id="override-namespace">Override Namespace<a class="headerlink" href="#override-namespace" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">python scatter.py \
+  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . \
+  --target-namespace Company.Product.OldStuff
+</code></pre>
+<p>Scatter normally derives the namespace from <code>&lt;RootNamespace&gt;</code> in the target's <code>.csproj</code>. When that doesn't match what the code actually uses (legacy projects, renamed assemblies, shared namespace conventions), override it with <code>--target-namespace</code>. Scatter will look for <code>using Company.Product.OldStuff;</code> instead of the auto-derived namespace.</p>
+<h2 id="ai-summaries">AI Summaries<a class="headerlink" href="#ai-summaries" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">python scatter.py \
+  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . \
+  --summarize-consumers \
+  --google-api-key $GOOGLE_API_KEY
+</code></pre>
+<p>For each consumer, Scatter sends its relevant <code>.cs</code> files to Gemini and gets back a 2-3 sentence summary of what that code does. Useful when you're triaging a long consumer list and need to quickly understand "what does MyGalaryConsumerApp actually do with PortalDataService?" without opening 15 files.</p>
+<h2 id="output-formats">Output Formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h2>
+<p><strong>JSON</strong> -- for downstream tooling:</p>
+<pre><code class="language-bash">python scatter.py \
+  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . \
+  --output-format json --output-file reports/target_analysis.json
+</code></pre>
+<p><strong>CSV</strong> -- for the teammates who live in spreadsheets:</p>
+<pre><code class="language-bash">python scatter.py \
+  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . \
+  --output-format csv --output-file reports/target_analysis.csv
+</code></pre>
+<p><strong>Markdown</strong> -- for pasting into a PR or wiki:</p>
+<pre><code class="language-bash">python scatter.py \
+  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . \
+  --output-format markdown --output-file reports/target_analysis.md
+</code></pre>
+<p>Markdown also works without <code>--output-file</code> -- it prints to stdout so you can pipe it wherever you need it. See <a href="../output-formats.html">Output Formats</a> for detailed structure of each format.</p>
+<h2 id="reading-the-filter-pipeline">Reading the Filter Pipeline<a class="headerlink" href="#reading-the-filter-pipeline" title="Permanent link">&para;</a></h2>
+<p>The most important line in the output is the arrow chain. Read it left to right:</p>
+<pre><code>Filter: 200 -&gt; 12 project refs -&gt; 8 namespace -&gt; 4 class match
+</code></pre>
+<p>Translation: "200 projects in scope. 12 have a <code>&lt;ProjectReference&gt;</code> to the target. 8 of those import the namespace. 4 of those reference the class."</p>
+<p>Each arrow is a stage that narrows the set. When you're debugging a surprising result -- too many consumers, or zero when you expected some -- this chain tells you exactly where things went wrong.</p>
+<h3 id="when-a-stage-drops-to-zero">When a Stage Drops to Zero<a class="headerlink" href="#when-a-stage-drops-to-zero" title="Permanent link">&para;</a></h3>
+<p>When a filter stage produces zero results, Scatter prints a diagnostic hint:</p>
+<pre><code>Filter: 200 -&gt; 12 project refs -&gt; 0 namespace
+  Hint: 0 of 12 project-reference-matching projects contained 'GalaxyWorks.Data'
+        -- verify the namespace name
+</code></pre>
+<p>This usually means the auto-derived namespace doesn't match what the code uses. Fix it with <code>--target-namespace</code>.</p>
+<p>If the project reference stage itself drops to zero, nobody has a <code>&lt;ProjectReference&gt;</code> to your target. Possible causes: the consuming code references it as a NuGet package, or you're looking in the wrong <code>--search-scope</code>.</p>
+<hr />
+<div class="admonition info">
+<p class="admonition-title">How this works</p>
+<p>Scatter runs a 5-stage filter pipeline (discovery, project references, namespace, class, method). When a dependency graph cache is available, stages 1-2 use a cached reverse index instead of scanning the filesystem. See <a href="../reference/consumer-pipeline.html">Consumer Detection Pipeline</a> for the full stage-by-stage breakdown.</p>
+</div></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

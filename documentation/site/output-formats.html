@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="img/favicon.ico">
+        <title>Output Formats - Scatter // Athena</title>
+        <link href="css/bootstrap.min.css" rel="stylesheet">
+        <link href="css/fontawesome.min.css" rel="stylesheet">
+        <link href="css/brands.min.css" rel="stylesheet">
+        <link href="css/solid.min.css" rel="stylesheet">
+        <link href="css/v4-font-face.min.css" rel="stylesheet">
+        <link href="css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/solarized-dark.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href=".">Scatter // Athena</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">User Guide</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="index.html" class="dropdown-item">Home</a>
+</li>
+                                    
+<li>
+    <a href="getting-started.html" class="dropdown-item">Getting Started</a>
+</li>
+                                    
+<li>
+    <a href="usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
+</li>
+                                    
+<li>
+    <a href="output-formats.html" class="dropdown-item active" aria-current="page">Output Formats</a>
+</li>
+                                    
+<li>
+    <a href="workflows.html" class="dropdown-item">Workflows</a>
+</li>
+                                    
+<li>
+    <a href="ai-features.html" class="dropdown-item">AI Features</a>
+</li>
+                                    
+<li>
+    <a href="configuration.html" class="dropdown-item">Configuration</a>
+</li>
+                                    
+<li>
+    <a href="cli-reference.html" class="dropdown-item">CLI Reference</a>
+</li>
+                                    
+<li>
+    <a href="testing.html" class="dropdown-item">Testing</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Technical Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="reference/architecture.html" class="dropdown-item">Architecture Overview</a>
+</li>
+                                    
+<li>
+    <a href="reference/graph-engine.html" class="dropdown-item">Graph Engine</a>
+</li>
+                                    
+<li>
+    <a href="reference/incremental-updates.html" class="dropdown-item">Incremental Updates</a>
+</li>
+                                    
+<li>
+    <a href="reference/coupling-and-cycles.html" class="dropdown-item">Coupling & Cycle Detection</a>
+</li>
+                                    
+<li>
+    <a href="reference/domain-clustering.html" class="dropdown-item">Domain Clustering</a>
+</li>
+                                    
+<li>
+    <a href="reference/consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="reference/type-extraction.html" class="dropdown-item">Type Extraction</a>
+</li>
+                                    
+<li>
+    <a href="reference/test-architecture.html" class="dropdown-item">Test Architecture</a>
+</li>
+                                    
+<li>
+    <a href="reference/benchmarks.html" class="dropdown-item">Benchmarks</a>
+</li>
+                                    
+<li>
+    <a href="reference/sample-projects.html" class="dropdown-item">Sample Projects</a>
+</li>
+                                    
+<li>
+    <a href="reference/development.html" class="dropdown-item">Development</a>
+</li>
+                                    
+<li>
+    <a href="reference/contributing.html" class="dropdown-item">Contributing</a>
+</li>
+                                    
+<li>
+    <a href="reference/claude-skills.html" class="dropdown-item">Claude Code Skills</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="usage/dependency-graph.html" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="workflows.html" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#output-formats" class="nav-link">Output Formats</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#1-console-default" class="nav-link">1. Console (default)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#2-json" class="nav-link">2. JSON</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#3-csv" class="nav-link">3. CSV</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#4-markdown" class="nav-link">4. Markdown</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#5-mermaid" class="nav-link">5. Mermaid</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#6-pipelines" class="nav-link">6. Pipelines</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#quick-reference" class="nav-link">Quick Reference</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="output-formats">Output Formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h1>
+<p>Scatter speaks six output languages. Each exists because someone had a real need -- a PR review, a deployment checklist, a Confluence page, a Mermaid diagram. The <code>--output-format</code> flag controls which one you get. Default is <code>console</code>.</p>
+<hr />
+<h2 id="1-console-default">1. Console (default)<a class="headerlink" href="#1-console-default" title="Permanent link">&para;</a></h2>
+<p>When you just want to see what's going on. No flags, no files, no ceremony.</p>
+<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --pipeline-csv pipeline_to_app_mapping.csv
+</code></pre>
+<pre><code>Search scope: /code/myrepo (scanned 142 projects, 3,891 files)
+Filter: 142 -&gt; 8 project refs -&gt; 5 namespace -&gt; 3 class match
+
+--- Combined Consumer Analysis Report ---
+
+--- Consuming Relationships Found ---
+
+Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (3 consumer(s))
+    Type/Level: PortalDataService
+         -&gt; Consumed by: MyGalaxyConsumerApp (MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj) [Pipeline: galaxy-consumer-ci]
+           Solutions: GalaxyWorks.sln
+         -&gt; Consumed by: MyGalaxyConsumerApp2 (MyGalaxyConsumerApp2/MyGalaxyConsumerApp2.csproj) [Pipeline: galaxy-consumer2-ci]
+           Solutions: GalaxyWorks.sln
+         -&gt; Consumed by: PortalBatchProcessor (PortalBatchProcessor/PortalBatchProcessor.csproj) [Pipeline: portal-batch-ci]
+           Solutions: PortalServices.sln
+           Batch Job Status: portal-nightly-sync in app-config
+
+--- Total Consuming Relationships Found: 3 ---
+</code></pre>
+<p>When a graph cache exists, each consumer gets an extra line with metrics:</p>
+<pre><code>         -&gt; Consumed by: MyGalaxyConsumerApp (MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj)
+           Graph: coupling=4.30, fan-in=1, fan-out=3, instability=0.750, in-cycle=no
+</code></pre>
+<p>High coupling score + in-cycle=yes is a project you do not want to surprise with a breaking change on a Friday afternoon.</p>
+<hr />
+<h2 id="2-json">2. JSON<a class="headerlink" href="#2-json" title="Permanent link">&para;</a></h2>
+<p>Structured data for programmatic consumption -- ticket automation, dashboards, diffing between runs.</p>
+<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --output-format json --output-file report.json
+</code></pre>
+<p>Requires <code>--output-file</code>. Scatter won't dump JSON to stdout -- that path leads to accidental pipe disasters with multi-megabyte payloads.</p>
+<pre><code class="language-json">{
+    &quot;metadata&quot;: {
+        &quot;scatter_version&quot;: &quot;0.12.0&quot;,
+        &quot;timestamp&quot;: &quot;2026-03-17T14:32:01.123456+00:00&quot;,
+        &quot;cli_args&quot;: { &quot;...&quot; : &quot;...&quot; },
+        &quot;search_scope&quot;: &quot;/code/myrepo&quot;,
+        &quot;duration_seconds&quot;: 2.41,
+        &quot;graph_enriched&quot;: true
+    },
+    &quot;filter_pipeline&quot;: {
+        &quot;search_scope&quot;: &quot;/code/myrepo&quot;,
+        &quot;total_projects_scanned&quot;: 142,
+        &quot;total_files_scanned&quot;: 3891,
+        &quot;stages&quot;: [ &quot;...&quot; ]
+    },
+    &quot;pipeline_summary&quot;: [
+        &quot;galaxy-consumer-ci&quot;,
+        &quot;galaxy-consumer2-ci&quot;,
+        &quot;portal-batch-ci&quot;
+    ],
+    &quot;all_results&quot;: [
+        {
+            &quot;TargetProjectName&quot;: &quot;GalaxyWorks.Data&quot;,
+            &quot;TargetProjectPath&quot;: &quot;GalaxyWorks.Data/GalaxyWorks.Data.csproj&quot;,
+            &quot;TriggeringType&quot;: &quot;PortalDataService&quot;,
+            &quot;ConsumerProjectName&quot;: &quot;MyGalaxyConsumerApp&quot;,
+            &quot;ConsumerProjectPath&quot;: &quot;MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj&quot;,
+            &quot;ConsumingSolutions&quot;: [&quot;GalaxyWorks.sln&quot;],
+            &quot;ConsumerFileSummaries&quot;: {},
+            &quot;PipelineName&quot;: &quot;galaxy-consumer-ci&quot;,
+            &quot;BatchJobVerification&quot;: null,
+            &quot;CouplingScore&quot;: 4.3,
+            &quot;FanIn&quot;: 1,
+            &quot;FanOut&quot;: 3,
+            &quot;Instability&quot;: 0.75,
+            &quot;InCycle&quot;: false
+        }
+    ]
+}
+</code></pre>
+<p>A few things worth knowing:</p>
+<ul>
+<li><strong><code>pipeline_summary</code></strong> is sorted and deduplicated. Quick "what needs to deploy" check without iterating <code>all_results</code>.</li>
+<li><strong><code>ConsumerFileSummaries</code></strong> is a native JSON object (not stringified). Keys are relative file paths, values are AI-generated summaries. Empty <code>{}</code> when <code>--summarize-consumers</code> is not used.</li>
+<li><strong><code>PipelineName</code></strong> and <strong><code>BatchJobVerification</code></strong> are <code>null</code> when absent, not empty strings.</li>
+<li><strong>Path objects</strong> serialize as strings. The custom serializer handles this transparently -- you'll never see a <code>PosixPath(...)</code> in the output.</li>
+<li><strong>Graph metrics</strong> (<code>CouplingScore</code>, <code>FanIn</code>, <code>FanOut</code>, <code>Instability</code>, <code>InCycle</code>) appear only when graph enrichment ran. Otherwise those keys are absent entirely.</li>
+</ul>
+<hr />
+<h2 id="3-csv">3. CSV<a class="headerlink" href="#3-csv" title="Permanent link">&para;</a></h2>
+<p>One row per consumer. For Excel, pivot tables, and people who think in spreadsheets.</p>
+<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --output-format csv --output-file report.csv
+</code></pre>
+<p>Requires <code>--output-file</code>.</p>
+<pre><code># Search scope: /code/myrepo (142 projects, 3,891 files)
+# Filter: 142 -&gt; 8 project refs -&gt; 5 namespace -&gt; 3 class match
+TargetProjectName,TargetProjectPath,TriggeringType,ConsumerProjectName,ConsumerProjectPath,ConsumingSolutions,PipelineName,BatchJobVerification
+GalaxyWorks.Data,GalaxyWorks.Data/GalaxyWorks.Data.csproj,PortalDataService,MyGalaxyConsumerApp,MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj,GalaxyWorks.sln,galaxy-consumer-ci,
+</code></pre>
+<p>The <code>#</code>-prefixed lines at the top are comment headers showing the search scope and filter chain. Most CSV parsers skip them automatically. If yours doesn't, strip lines starting with <code>#</code> before parsing.</p>
+<p>When graph enrichment is active, five additional columns appear: <code>CouplingScore</code>, <code>FanIn</code>, <code>FanOut</code>, <code>Instability</code>, <code>InCycle</code>.</p>
+<p><code>ConsumingSolutions</code> uses semicolons as the delimiter when a consumer belongs to multiple solutions (e.g., <code>GalaxyWorks.sln; PortalServices.sln</code>).</p>
+<hr />
+<h2 id="4-markdown">4. Markdown<a class="headerlink" href="#4-markdown" title="Permanent link">&para;</a></h2>
+<p>Paste-ready for PRs, Jira tickets, Confluence pages, ADO work items. Designed for humans reading rendered text, not raw data.</p>
+<p>Unlike CSV and JSON, Markdown does <strong>not</strong> require <code>--output-file</code>. Without it, Scatter prints to stdout. This is intentional -- pipe straight to clipboard:</p>
+<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --output-format markdown | pbcopy
+</code></pre>
+<pre><code class="language-markdown"># Consumer Analysis Report
+
+&gt; **Search scope:** /code/myrepo (scanned 142 projects, 3,891 files)
+&gt; **Filter:** 142 -&gt; 8 project refs -&gt; 5 namespace -&gt; 3 class match
+
+## GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (3 consumer(s))
+
+Type/Level: PortalDataService
+
+| Consumer | Path | Pipeline | Solutions |
+| --- | --- | --- | --- |
+| MyGalaxyConsumerApp | MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj | galaxy-consumer-ci | GalaxyWorks.sln |
+| MyGalaxyConsumerApp2 | MyGalaxyConsumerApp2/MyGalaxyConsumerApp2.csproj | galaxy-consumer2-ci | GalaxyWorks.sln |
+| PortalBatchProcessor | PortalBatchProcessor/PortalBatchProcessor.csproj | portal-batch-ci | PortalServices.sln |
+
+---
+**Total:** 3 consuming relationship(s) across 1 target(s).
+</code></pre>
+<p>Impact mode includes a blast radius tree rendered as a code block (so it survives Markdown rendering without losing structure):</p>
+<pre><code class="language-text">+-- MyGalaxyConsumerApp  [HIGH]  direct
+|   Pipeline: galaxy-consumer-ci
+|   +-- GalaxyPortalUI  [MEDIUM]  via MyGalaxyConsumerApp
++-- MyGalaxyConsumerApp2  [HIGH]  direct
+|   Pipeline: galaxy-consumer2-ci
++-- PortalBatchProcessor  [HIGH]  direct
+    Pipeline: portal-batch-ci
+</code></pre>
+<p>When <code>--graph-metrics</code> is active, the table gains five extra columns: Coupling, Fan-In, Fan-Out, Instability, In Cycle.</p>
+<hr />
+<h2 id="5-mermaid">5. Mermaid<a class="headerlink" href="#5-mermaid" title="Permanent link">&para;</a></h2>
+<p>Graph mode only. Raw Mermaid diagram syntax -- no wrapping markdown, no summary tables.</p>
+<pre><code class="language-bash">python scatter.py --graph --search-scope . --output-format mermaid
+</code></pre>
+<pre><code>graph TD
+  GalaxyWorks_Data[&quot;GalaxyWorks.Data&quot;]
+  MyDotNetApp[&quot;MyDotNetApp&quot;]
+  MyDotNetApp_Consumer[&quot;MyDotNetApp.Consumer&quot;]
+  MyGalaxyConsumerApp[&quot;MyGalaxyConsumerApp&quot;]
+  MyGalaxyConsumerApp2[&quot;MyGalaxyConsumerApp2&quot;]
+  MyDotNetApp_Consumer --&gt; MyDotNetApp
+  MyGalaxyConsumerApp --&gt; GalaxyWorks_Data
+  MyGalaxyConsumerApp2 --&gt; GalaxyWorks_Data
+</code></pre>
+<p>If domain clusters were detected, nodes are grouped into Mermaid subgraphs. Renders natively in GitHub PRs, Azure DevOps wikis, and Confluence.</p>
+<p>Using <code>--output-format mermaid</code> outside of <code>--graph</code> mode is an error -- Scatter will tell you so and exit.</p>
+<pre><code class="language-bash"># Save to file
+python scatter.py --graph --search-scope . --output-format mermaid --output-file deps.mmd
+</code></pre>
+<hr />
+<h2 id="6-pipelines">6. Pipelines<a class="headerlink" href="#6-pipelines" title="Permanent link">&para;</a></h2>
+<p>One pipeline name per line, sorted alphabetically. Built for deployment scripts and shell pipelines (the other kind).</p>
+<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --pipeline-csv pipeline_to_app_mapping.csv \
+  --output-format pipelines
+</code></pre>
+<pre><code>galaxy-consumer-ci
+galaxy-consumer2-ci
+portal-batch-ci
+</code></pre>
+<p>Three lines, three pipelines that need to deploy. That's the entire output.</p>
+<p>Requires <code>--pipeline-csv</code> to map consumer projects to pipeline names. Without it, the output will be empty. Scatter warns you about this, but won't stop you.</p>
+<p>Not supported in <code>--graph</code> mode. Graph analysis is about architecture, not deployments.</p>
+<pre><code class="language-bash"># Feed directly into a deployment script
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --pipeline-csv pipeline_to_app_mapping.csv \
+  --output-format pipelines | xargs -I {} ./trigger-pipeline.sh {}
+</code></pre>
+<hr />
+<h2 id="quick-reference">Quick Reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Requires <code>--output-file</code>?</th>
+<th>Available modes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Console (default)</td>
+<td>No</td>
+<td>All</td>
+</tr>
+<tr>
+<td>JSON</td>
+<td>Yes</td>
+<td>All</td>
+</tr>
+<tr>
+<td>CSV</td>
+<td>Yes</td>
+<td>All</td>
+</tr>
+<tr>
+<td>Markdown</td>
+<td>No</td>
+<td>All</td>
+</tr>
+<tr>
+<td>Mermaid</td>
+<td>No</td>
+<td>Graph only</td>
+</tr>
+<tr>
+<td>Pipelines</td>
+<td>No</td>
+<td>All except Graph</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>How this works:</strong> Each reporter is a standalone module in <code>scatter/reports/</code>. See <a href="reference/architecture.html">Architecture Overview</a> for the module map.</p>
+</blockquote></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = ".",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="js/base.js"></script>
+        <script src="search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

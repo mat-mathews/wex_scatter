@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Sample Projects - Scatter // Athena</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/solarized-dark.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">Scatter // Athena</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">User Guide</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../index.html" class="dropdown-item">Home</a>
+</li>
+                                    
+<li>
+    <a href="../getting-started.html" class="dropdown-item">Getting Started</a>
+</li>
+                                    
+<li>
+    <a href="../usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
+</li>
+                                    
+<li>
+    <a href="../output-formats.html" class="dropdown-item">Output Formats</a>
+</li>
+                                    
+<li>
+    <a href="../workflows.html" class="dropdown-item">Workflows</a>
+</li>
+                                    
+<li>
+    <a href="../ai-features.html" class="dropdown-item">AI Features</a>
+</li>
+                                    
+<li>
+    <a href="../configuration.html" class="dropdown-item">Configuration</a>
+</li>
+                                    
+<li>
+    <a href="../cli-reference.html" class="dropdown-item">CLI Reference</a>
+</li>
+                                    
+<li>
+    <a href="../testing.html" class="dropdown-item">Testing</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Technical Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="architecture.html" class="dropdown-item">Architecture Overview</a>
+</li>
+                                    
+<li>
+    <a href="graph-engine.html" class="dropdown-item">Graph Engine</a>
+</li>
+                                    
+<li>
+    <a href="incremental-updates.html" class="dropdown-item">Incremental Updates</a>
+</li>
+                                    
+<li>
+    <a href="coupling-and-cycles.html" class="dropdown-item">Coupling & Cycle Detection</a>
+</li>
+                                    
+<li>
+    <a href="domain-clustering.html" class="dropdown-item">Domain Clustering</a>
+</li>
+                                    
+<li>
+    <a href="consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="type-extraction.html" class="dropdown-item">Type Extraction</a>
+</li>
+                                    
+<li>
+    <a href="test-architecture.html" class="dropdown-item">Test Architecture</a>
+</li>
+                                    
+<li>
+    <a href="benchmarks.html" class="dropdown-item">Benchmarks</a>
+</li>
+                                    
+<li>
+    <a href="sample-projects.html" class="dropdown-item active" aria-current="page">Sample Projects</a>
+</li>
+                                    
+<li>
+    <a href="development.html" class="dropdown-item">Development</a>
+</li>
+                                    
+<li>
+    <a href="contributing.html" class="dropdown-item">Contributing</a>
+</li>
+                                    
+<li>
+    <a href="claude-skills.html" class="dropdown-item">Claude Code Skills</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="benchmarks.html" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="development.html" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#sample-projects" class="nav-link">Sample Projects</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#dependency-tree" class="nav-link">Dependency Tree</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#expected-values-table" class="nav-link">Expected Values Table</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#key-metrics-graph-mode" class="nav-link">Key Metrics (Graph Mode)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#project-style-inventory" class="nav-link">Project Style Inventory</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#using-samples-in-tests" class="nav-link">Using Samples in Tests</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="sample-projects">Sample Projects<a class="headerlink" href="#sample-projects" title="Permanent link">&para;</a></h1>
+<p>The 11 included .NET projects serve as a validation reference and integration test fixture. Moved here from the User Guide per Sam's feedback -- this is reference material, not a getting-started topic.</p>
+<hr />
+<h2 id="dependency-tree">Dependency Tree<a class="headerlink" href="#dependency-tree" title="Permanent link">&para;</a></h2>
+<pre><code>GalaxyWorks.Data (SDK, net8.0, Library, no deps)
+ |  Types: PortalDataService, EntityModels, IDataAccessor, FakeDatabaseHelper,
+ |         FakeDbCommand, FakeDbParameter
+ |  Sprocs: &quot;dbo.sp_InsertPortalConfiguration&quot;, &quot;dbo.sp_GetPortalSettings&quot;
+ |
+ +-- GalaxyWorks.WebPortal (Framework, v4.7.2, Library, refs Data)
+ |    |  Types: PortalController, BaseController, AdminApiController,
+ |    |         PortalViewModels, ConfigHelper, PortalCacheService
+ |    |
+ |    +-- GalaxyWorks.BatchProcessor (Framework, v4.7.2, Exe, refs Data + WebPortal)
+ |         Types: SyncJob, ReportJob, AppDbContext
+ |
+ +-- GalaxyWorks.Common (SDK, net48+net8.0, Library, refs Data)
+ |    |  Types: Records, CommonNames, StringExtensions,
+ |    |         ServiceCollectionExtensions, DomainEvents, InternalTypes
+ |    |
+ |    +-- GalaxyWorks.Api (SDK Web, net8.0, Web, refs Data + Common)
+ |    |    Types: PortalApiController, OrdersController, ConfigurationService, Program
+ |    |
+ |    +-- GalaxyWorks.Data.Tests (SDK, net8.0, Test, refs Data + Common)
+ |    |    Types: PortalDataServiceTests, InternalTypeTests
+ |    |
+ |    +-- MyGalaxyConsumerApp (SDK, net8.0, Exe, refs Data + Common)
+ |         Types: Project, GlobalUsings, OrderConsumer
+ |
+ +-- MyGalaxyConsumerApp2 (SDK, net8.0, Exe, refs Data)
+      Types: Project
+
+MyDotNetApp (SDK, net8.0, Exe, independent)
+ |  Types: Person, DataService, IDataService, Program
+ |
+ +-- MyDotNetApp.Consumer (SDK, net8.0, Exe, refs MyDotNetApp)
+      Types: Program, ReportGenerator
+
+MyDotNetApp2.Exclude (SDK, net8.0, Exe, standalone, no refs)
+   Types: ReportGenerator, Program
+</code></pre>
+<h3 id="notes-on-the-tree">Notes on the Tree<a class="headerlink" href="#notes-on-the-tree" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>GalaxyWorks.Data</strong> is the hub. Everything in the GalaxyWorks cluster depends on it.</li>
+<li><strong>GalaxyWorks.BatchProcessor</strong> has the highest instability (1.0) -- it depends on two projects and nothing depends on it.</li>
+<li><strong>GalaxyWorks.WebPortal</strong> uses legacy framework-style <code>.csproj</code> (with <code>&lt;ToolsVersion&gt;</code> and <code>&lt;ProjectGuid&gt;</code>). BatchProcessor does too. This validates that Scatter handles both SDK and legacy formats.</li>
+<li><strong>GalaxyWorks.Common</strong> multi-targets <code>net48</code> and <code>net8.0</code>. Scatter extracts the first framework.</li>
+<li><strong>MyDotNetApp</strong> is completely independent from the GalaxyWorks cluster. They form separate connected components in the graph.</li>
+<li><strong>MyDotNetApp2.Exclude</strong> is an island -- no incoming or outgoing project references. It exists specifically to test that Scatter correctly reports 0 consumers.</li>
+</ul>
+<hr />
+<h2 id="expected-values-table">Expected Values Table<a class="headerlink" href="#expected-values-table" title="Permanent link">&para;</a></h2>
+<p>These are the ground-truth results you should see when running Scatter against the repo root. If your changes break any of these, something is wrong.</p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Command</th>
+<th>Expected</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GalaxyWorks.Data consumers</td>
+<td><code>--target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .</code></td>
+<td>6 consumers: WebPortal, BatchProcessor, Common, Api, Data.Tests, MyGalaxyConsumerApp, MyGalaxyConsumerApp2 (7 with transitive)</td>
+</tr>
+<tr>
+<td>GalaxyWorks.Data + class filter</td>
+<td><code>--target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . --class-name PortalDataService</code></td>
+<td>Consumers filtered to those referencing <code>PortalDataService</code></td>
+</tr>
+<tr>
+<td>GalaxyWorks.WebPortal consumers</td>
+<td><code>--target-project ./GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj --search-scope .</code></td>
+<td>1 consumer: BatchProcessor</td>
+</tr>
+<tr>
+<td>MyDotNetApp consumers</td>
+<td><code>--target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .</code></td>
+<td>1 consumer: MyDotNetApp.Consumer</td>
+</tr>
+<tr>
+<td>MyDotNetApp2.Exclude consumers</td>
+<td><code>--target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .</code></td>
+<td>0 consumers</td>
+</tr>
+<tr>
+<td>Sproc analysis</td>
+<td><code>--stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .</code></td>
+<td>Finds PortalDataService in GalaxyWorks.Data, then its consumers</td>
+</tr>
+<tr>
+<td>Graph mode</td>
+<td><code>--graph --search-scope .</code></td>
+<td>11 projects, multiple connected components, 0 cycles</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="key-metrics-graph-mode">Key Metrics (Graph Mode)<a class="headerlink" href="#key-metrics-graph-mode" title="Permanent link">&para;</a></h2>
+<p>When you run <code>--graph --search-scope .</code>, Scatter computes coupling metrics for every project. Here are the notable values:</p>
+<h3 id="galaxyworksdata">GalaxyWorks.Data<a class="headerlink" href="#galaxyworksdata" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>fan_in</strong>: 7 (everything in the cluster references it)</li>
+<li><strong>fan_out</strong>: 0 (depends on nothing)</li>
+<li><strong>instability</strong>: 0.0 (perfectly stable -- the foundation)</li>
+<li><strong>coupling_score</strong>: ~8.6 (high, due to fan_in)</li>
+</ul>
+<p>This is what a core library looks like. High fan-in, zero fan-out, zero instability. Changing GalaxyWorks.Data has maximum blast radius.</p>
+<h3 id="galaxyworksbatchprocessor">GalaxyWorks.BatchProcessor<a class="headerlink" href="#galaxyworksbatchprocessor" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>fan_in</strong>: 0 (nothing depends on it)</li>
+<li><strong>fan_out</strong>: 2 (depends on Data + WebPortal)</li>
+<li><strong>instability</strong>: 1.0 (maximally unstable -- all dependencies, no dependents)</li>
+</ul>
+<p>A leaf node. Safe to change -- nothing downstream breaks.</p>
+<h3 id="mydotnetapp-cluster">MyDotNetApp Cluster<a class="headerlink" href="#mydotnetapp-cluster" title="Permanent link">&para;</a></h3>
+<p>The MyDotNetApp and MyDotNetApp.Consumer form a small independent cluster. Feasibility scoring rates this as "easy" (1.000) for extraction -- it's already isolated from the GalaxyWorks ecosystem.</p>
+<h3 id="connected-components">Connected Components<a class="headerlink" href="#connected-components" title="Permanent link">&para;</a></h3>
+<p>The graph has at least 3 connected components:
+1. The GalaxyWorks cluster (Data, WebPortal, BatchProcessor, Common, Api, Data.Tests, MyGalaxyConsumerApp, MyGalaxyConsumerApp2)
+2. The MyDotNetApp cluster (MyDotNetApp, MyDotNetApp.Consumer)
+3. MyDotNetApp2.Exclude (island)</p>
+<h3 id="cycles">Cycles<a class="headerlink" href="#cycles" title="Permanent link">&para;</a></h3>
+<p>Zero. The sample projects form a clean DAG. If you're testing cycle detection, you'll need to create a fixture with circular references (see <code>test_coupling.py</code> for examples).</p>
+<hr />
+<h2 id="project-style-inventory">Project Style Inventory<a class="headerlink" href="#project-style-inventory" title="Permanent link">&para;</a></h2>
+<p>The sample projects deliberately mix .NET project styles to validate Scatter's parser:</p>
+<table>
+<thead>
+<tr>
+<th>Style</th>
+<th>Projects</th>
+<th>Characteristics</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SDK-style</td>
+<td>GalaxyWorks.Data, Common, Api, Data.Tests, MyGalaxyConsumerApp, MyGalaxyConsumerApp2, MyDotNetApp, MyDotNetApp.Consumer, MyDotNetApp2.Exclude</td>
+<td><code>&lt;Project Sdk="..."&gt;</code>, compact XML, <code>&lt;TargetFramework&gt;</code></td>
+</tr>
+<tr>
+<td>Framework-style</td>
+<td>GalaxyWorks.WebPortal, GalaxyWorks.BatchProcessor</td>
+<td><code>&lt;ToolsVersion&gt;</code>, <code>&lt;ProjectGuid&gt;</code>, <code>&lt;TargetFrameworkVersion&gt;</code>, explicit <code>&lt;Compile Include&gt;</code>, verbose XML</td>
+</tr>
+</tbody>
+</table>
+<p>This matters because the <code>.csproj</code> parser in <code>scatter/scanners/project_scanner.py</code> handles both formats. SDK-style uses <code>&lt;TargetFramework&gt;</code>, framework-style uses <code>&lt;TargetFrameworkVersion&gt;</code> with a <code>v</code> prefix. The parser normalizes both.</p>
+<hr />
+<h2 id="using-samples-in-tests">Using Samples in Tests<a class="headerlink" href="#using-samples-in-tests" title="Permanent link">&para;</a></h2>
+<pre><code class="language-python">from pathlib import Path
+
+REPO_ROOT = Path(__file__).parent
+
+def test_graph_against_samples():
+    from scatter.analyzers.graph_builder import build_dependency_graph
+    graph = build_dependency_graph(
+        REPO_ROOT,
+        disable_multiprocessing=True,
+        exclude_patterns=[&quot;*/bin/*&quot;, &quot;*/obj/*&quot;, &quot;*/temp_test_data/*&quot;],
+    )
+    # 11 projects
+    assert graph.node_count == 11
+
+    # GalaxyWorks.Data has the most dependents
+    data_edges = graph.get_edges_to(&quot;GalaxyWorks.Data&quot;)
+    assert len(data_edges) &gt;= 6
+</code></pre>
+<p>The <code>exclude_patterns</code> parameter filters out <code>bin/</code>, <code>obj/</code>, and <code>temp_test_data/</code> directories. Always include it when running against the repo root -- otherwise you'll pick up build artifacts.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

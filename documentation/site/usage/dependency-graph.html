@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Dependency Graph - Scatter // Athena</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/solarized-dark.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">Scatter // Athena</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">User Guide</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../index.html" class="dropdown-item">Home</a>
+</li>
+                                    
+<li>
+    <a href="../getting-started.html" class="dropdown-item">Getting Started</a>
+</li>
+                                    
+<li>
+    <a href="target-project.html" class="dropdown-item">Target Project Analysis</a>
+</li>
+                                    
+<li>
+    <a href="git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+</li>
+                                    
+<li>
+    <a href="stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+</li>
+                                    
+<li>
+    <a href="impact-analysis.html" class="dropdown-item">Impact Analysis</a>
+</li>
+                                    
+<li>
+    <a href="dependency-graph.html" class="dropdown-item active" aria-current="page">Dependency Graph</a>
+</li>
+                                    
+<li>
+    <a href="../output-formats.html" class="dropdown-item">Output Formats</a>
+</li>
+                                    
+<li>
+    <a href="../workflows.html" class="dropdown-item">Workflows</a>
+</li>
+                                    
+<li>
+    <a href="../ai-features.html" class="dropdown-item">AI Features</a>
+</li>
+                                    
+<li>
+    <a href="../configuration.html" class="dropdown-item">Configuration</a>
+</li>
+                                    
+<li>
+    <a href="../cli-reference.html" class="dropdown-item">CLI Reference</a>
+</li>
+                                    
+<li>
+    <a href="../testing.html" class="dropdown-item">Testing</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Technical Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../reference/architecture.html" class="dropdown-item">Architecture Overview</a>
+</li>
+                                    
+<li>
+    <a href="../reference/graph-engine.html" class="dropdown-item">Graph Engine</a>
+</li>
+                                    
+<li>
+    <a href="../reference/incremental-updates.html" class="dropdown-item">Incremental Updates</a>
+</li>
+                                    
+<li>
+    <a href="../reference/coupling-and-cycles.html" class="dropdown-item">Coupling & Cycle Detection</a>
+</li>
+                                    
+<li>
+    <a href="../reference/domain-clustering.html" class="dropdown-item">Domain Clustering</a>
+</li>
+                                    
+<li>
+    <a href="../reference/consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="../reference/type-extraction.html" class="dropdown-item">Type Extraction</a>
+</li>
+                                    
+<li>
+    <a href="../reference/test-architecture.html" class="dropdown-item">Test Architecture</a>
+</li>
+                                    
+<li>
+    <a href="../reference/benchmarks.html" class="dropdown-item">Benchmarks</a>
+</li>
+                                    
+<li>
+    <a href="../reference/sample-projects.html" class="dropdown-item">Sample Projects</a>
+</li>
+                                    
+<li>
+    <a href="../reference/development.html" class="dropdown-item">Development</a>
+</li>
+                                    
+<li>
+    <a href="../reference/contributing.html" class="dropdown-item">Contributing</a>
+</li>
+                                    
+<li>
+    <a href="../reference/claude-skills.html" class="dropdown-item">Claude Code Skills</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="impact-analysis.html" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../output-formats.html" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#dependency-graph" class="nav-link">Dependency Graph</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#basic-example" class="nav-link">Basic Example</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#reading-the-output" class="nav-link">Reading the Output</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#force-rebuild" class="nav-link">Force Rebuild</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#include-database-dependencies" class="nav-link">Include Database Dependencies</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#output-formats" class="nav-link">Output Formats</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#when-to-use-this" class="nav-link">When to Use This</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#controlling-graph-behavior" class="nav-link">Controlling Graph Behavior</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="dependency-graph">Dependency Graph<a class="headerlink" href="#dependency-graph" title="Permanent link">&para;</a></h1>
+<p>You want the full picture: every project, every dependency, every coupling hotspot, every potential service boundary. This isn't "who consumes this one thing?" -- it's "what does our entire dependency landscape look like, and where are the problems?"</p>
+<p>Think of it as a codebase X-ray. You run it, stare at the results, and then have opinions about which refactors to prioritize.</p>
+<h2 id="basic-example">Basic Example<a class="headerlink" href="#basic-example" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">python scatter.py --graph --search-scope .
+</code></pre>
+<pre><code>============================================================
+  Dependency Graph Analysis
+============================================================
+  Projects: 11
+  Dependencies: 50
+  Solutions: 1
+  Connected components: 1
+  Circular dependencies: 0
+
+  Top Coupled Projects:
+  Project                                     Score   Fan-In  Fan-Out  Instab.
+  ---------------------------------------- -------- -------- -------- --------
+  GalaxyWorks.Data                             22.3        7        0     0.00
+  GalaxyWorks.WebPortal                        12.7        1        1     0.50
+  GalaxyWorks.BatchProcessor                   10.8        0        2     1.00
+  ...
+
+  Domain Clusters:
+  Cluster                          Size   Cohesion   Coupling          Feasibility    Align
+  ------------------------------ ------ ---------- ---------- -------------------- --------
+  cluster_0                          11      0.455      0.000         easy (1.000)     0.91
+    Members: GalaxyWorks.Api, GalaxyWorks.BatchProcessor, ... (solution: GalaxyWorks)
+
+  Solution Coupling:
+  Solution                       Projects   Internal   External    Ratio
+  ------------------------------ -------- ---------- ---------- --------
+  GalaxyWorks                          10         41          9     0.18
+
+  Observations:
+    [warning] GalaxyWorks.Data: stable core (fan_in=7, instability=0.00) -- change carefully
+    [warning] GalaxyWorks.Data: high coupling score (22.3) -- review dependencies
+    [info] dbo.sp_GetPortalConfigurationDetails: shared by 3 projects -- database coupling hotspot
+
+Analysis complete. 11 projects, 50 dependencies, 0 cycle(s).
+</code></pre>
+<p>That's the whole codebase in one screen. Let's walk through what you're looking at.</p>
+<h2 id="reading-the-output">Reading the Output<a class="headerlink" href="#reading-the-output" title="Permanent link">&para;</a></h2>
+<h3 id="top-coupled-projects">Top Coupled Projects<a class="headerlink" href="#top-coupled-projects" title="Permanent link">&para;</a></h3>
+<p>The project with the highest coupling score is the one you should worry about most before modifying. In this case, GalaxyWorks.Data sits at the top with a high fan-in and zero instability -- a classic "stable core." Everything depends on it. It depends on nothing. Change it carefully.</p>
+<p>The columns:</p>
+<ul>
+<li><strong>Score</strong> -- weighted sum of all dependency edges touching this project. Higher means more coupled to the rest of the codebase.</li>
+<li><strong>Fan-In</strong> -- how many projects depend on this one. High fan-in = lots of consumers.</li>
+<li><strong>Fan-Out</strong> -- how many projects this one depends on. High fan-out = lots of dependencies.</li>
+<li><strong>Instability</strong> -- <code>fan_out / (fan_in + fan_out)</code>. A score of 0.0 means fully stable (only depended upon). A score of 1.0 means fully unstable (only depends on others, nothing depends on it). Stable projects should be changed cautiously. Unstable projects are free to change.</li>
+</ul>
+<h3 id="domain-clusters">Domain Clusters<a class="headerlink" href="#domain-clusters" title="Permanent link">&para;</a></h3>
+<p>Scatter groups tightly-connected projects into clusters and scores how feasible it would be to extract each cluster as an independent deployable unit.</p>
+<p>The <strong>Feasibility</strong> column is the one that matters for planning:</p>
+<ul>
+<li><strong>easy</strong> -- low coupling to outside, no cross-boundary cycles. Could extract in a sprint or two.</li>
+<li><strong>moderate</strong> -- some coupling to break, maybe shared database state. Feasible with planning.</li>
+<li><strong>hard</strong> -- significant cross-boundary dependencies. Requires interface extraction, database refactoring, or both.</li>
+<li><strong>very_hard</strong> -- deeply entangled. Extracting this cluster is a multi-quarter project.</li>
+</ul>
+<h3 id="observations">Observations<a class="headerlink" href="#observations" title="Permanent link">&para;</a></h3>
+<p>Rule-based warnings (no AI involved) that flag specific concerns:</p>
+<ul>
+<li><strong>stable core</strong> -- high fan-in, low instability. Lots of things depend on it.</li>
+<li><strong>high coupling</strong> -- coupling score above threshold. Too many dependency edges.</li>
+<li><strong>in cycle</strong> -- participates in a circular dependency. Must break before extraction.</li>
+<li><strong>low cohesion cluster</strong> -- high external coupling, low internal cohesion. Consider splitting.</li>
+<li><strong>db hotspot</strong> -- a stored procedure shared by 3+ projects. Database coupling hotspot.</li>
+<li><strong>high_cross_solution_coupling</strong> -- ratio &gt; 0.5, meaning more edges cross the solution boundary than stay inside.</li>
+<li><strong>solution_bridge_project</strong> -- a project in 3+ solutions with 5+ incoming dependencies, acting as a coupling bottleneck.</li>
+</ul>
+<h3 id="solution-coupling">Solution Coupling<a class="headerlink" href="#solution-coupling" title="Permanent link">&para;</a></h3>
+<p>When <code>.sln</code> files are present in the search scope, Scatter parses them and reports how self-contained each solution is:</p>
+<ul>
+<li><strong>Projects</strong> -- number of projects declared in the solution</li>
+<li><strong>Internal</strong> -- edges where both endpoints are in this solution</li>
+<li><strong>External</strong> -- edges crossing the solution boundary</li>
+<li><strong>Ratio</strong> -- external / (internal + external). Low ratio = self-contained. High ratio = heavily coupled to other solutions.</li>
+</ul>
+<p>The <strong>Align</strong> column on domain clusters shows how well each cluster aligns with solution boundaries. 1.0 means every cluster member is in the same solution. Lower values surface accidental cross-solution coupling -- projects that the graph says are tightly coupled but the org structure thinks belong to different teams.</p>
+<p>Two health observations fire automatically:</p>
+<ul>
+<li><strong>high_cross_solution_coupling</strong> (warning) -- ratio &gt; 0.5, meaning more edges cross the solution boundary than stay inside</li>
+<li><strong>solution_bridge_project</strong> (info) -- a project in 3+ solutions with 5+ incoming dependencies, acting as a coupling bottleneck</li>
+</ul>
+<h2 id="force-rebuild">Force Rebuild<a class="headerlink" href="#force-rebuild" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">python scatter.py --graph --search-scope . --rebuild-graph
+</code></pre>
+<p>Scatter caches the graph after the first build. Subsequent runs load the cache and skip the expensive construction step. Use <code>--rebuild-graph</code> after major structural changes (new projects added, projects removed, renamed namespaces) when you suspect the cache is stale.</p>
+<p>The cache also accelerates other modes -- when you run <code>--target-project</code> and a graph cache exists, the first two pipeline stages use the graph's reverse index instead of scanning the filesystem.</p>
+<h2 id="include-database-dependencies">Include Database Dependencies<a class="headerlink" href="#include-database-dependencies" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">python scatter.py --graph --search-scope . --include-db
+</code></pre>
+<p>Adds <code>sproc_shared</code> edges by scanning <code>.cs</code> files for stored procedure references, EF model patterns, and direct SQL strings. Without this flag, the graph only tracks project references, namespace usage, and type usage.</p>
+<p>Database edges expose hidden coupling. Two projects that share no code references but both call <code>sp_InsertPortalConfiguration</code> are coupled through shared mutable state -- and that coupling is nearly as hard as a project reference.</p>
+<h2 id="output-formats">Output Formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h2>
+<p><strong>JSON</strong> -- structured report with summary stats, top coupled projects, cycle details, per-project metrics, cluster analysis, and observations:</p>
+<pre><code class="language-bash">python scatter.py --graph --search-scope . \
+  --output-format json --output-file graph_report.json
+</code></pre>
+<p>Add <code>--include-graph-topology</code> to include the full node and edge data in the JSON. Omitted by default to keep file size manageable. Include it when you need the raw graph for visualization tools or custom analysis.</p>
+<p><strong>CSV</strong> -- one row per project with columns for all metrics (FanIn, FanOut, Instability, CouplingScore, Cluster, ExtractionFeasibility, etc.). Sort in a spreadsheet and find outliers:</p>
+<pre><code class="language-bash">python scatter.py --graph --search-scope . \
+  --output-format csv --output-file graph_metrics.csv
+</code></pre>
+<p><strong>Markdown</strong> -- includes a Mermaid diagram of the dependency graph. Paste it into a PR, a wiki, or any documentation that renders Mermaid blocks:</p>
+<pre><code class="language-bash">python scatter.py --graph --search-scope . \
+  --output-format markdown --output-file graph.md
+</code></pre>
+<p><strong>Mermaid</strong> -- just the diagram, nothing else. Projects are grouped into subgraph blocks when clusters are present:</p>
+<pre><code class="language-bash">python scatter.py --graph --search-scope . \
+  --output-format mermaid --output-file graph.mmd
+</code></pre>
+<p>See <a href="../output-formats.html">Output Formats</a> for detailed structure of each format.</p>
+<h2 id="when-to-use-this">When to Use This<a class="headerlink" href="#when-to-use-this" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Architecture reviews</strong> -- run before a planning session. Print the top coupled projects table and the cluster feasibility scores. Now the discussion starts with evidence.</li>
+<li><strong>Pre-modernization assessments</strong> -- before proposing a microservice extraction, run with <code>--include-db</code> to see the real coupling (including database state). The feasibility column will tell you if the extraction is a sprint or a quarter.</li>
+<li><strong>Tracking coupling trends</strong> -- run periodically and compare the JSON reports. Is coupling going up or down? Are new cycles appearing?</li>
+</ul>
+<h2 id="controlling-graph-behavior">Controlling Graph Behavior<a class="headerlink" href="#controlling-graph-behavior" title="Permanent link">&para;</a></h2>
+<p>The graph has four modes across the tool:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>(default)</em></td>
+<td>Auto-builds graph if needed, caches for later</td>
+</tr>
+<tr>
+<td><code>--no-graph</code></td>
+<td>Skip graph entirely, even if cached</td>
+</tr>
+<tr>
+<td><code>--rebuild-graph</code></td>
+<td>Force rebuild, ignore cache</td>
+</tr>
+<tr>
+<td><code>--graph</code></td>
+<td>Dedicated graph analysis mode (this page)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<div class="admonition info">
+<p class="admonition-title">How this works</p>
+<p>Scatter builds a full dependency graph tracking four edge types (project references, namespace usage, type usage, shared stored procedures), computes coupling metrics per project, detects circular dependencies, and identifies domain clusters with extraction feasibility scoring. See <a href="../reference/graph-engine.html">Graph Engine</a> for the construction pipeline, <a href="../reference/coupling-and-cycles.html">Coupling &amp; Cycles</a> for metric formulas, and <a href="../reference/domain-clustering.html">Domain Clustering</a> for the clustering algorithm.</p>
+</div></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

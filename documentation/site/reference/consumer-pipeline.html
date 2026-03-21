@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Consumer Detection Pipeline - Scatter // Athena</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/solarized-dark.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">Scatter // Athena</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">User Guide</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../index.html" class="dropdown-item">Home</a>
+</li>
+                                    
+<li>
+    <a href="../getting-started.html" class="dropdown-item">Getting Started</a>
+</li>
+                                    
+<li>
+    <a href="../usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
+</li>
+                                    
+<li>
+    <a href="../output-formats.html" class="dropdown-item">Output Formats</a>
+</li>
+                                    
+<li>
+    <a href="../workflows.html" class="dropdown-item">Workflows</a>
+</li>
+                                    
+<li>
+    <a href="../ai-features.html" class="dropdown-item">AI Features</a>
+</li>
+                                    
+<li>
+    <a href="../configuration.html" class="dropdown-item">Configuration</a>
+</li>
+                                    
+<li>
+    <a href="../cli-reference.html" class="dropdown-item">CLI Reference</a>
+</li>
+                                    
+<li>
+    <a href="../testing.html" class="dropdown-item">Testing</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Technical Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="architecture.html" class="dropdown-item">Architecture Overview</a>
+</li>
+                                    
+<li>
+    <a href="graph-engine.html" class="dropdown-item">Graph Engine</a>
+</li>
+                                    
+<li>
+    <a href="incremental-updates.html" class="dropdown-item">Incremental Updates</a>
+</li>
+                                    
+<li>
+    <a href="coupling-and-cycles.html" class="dropdown-item">Coupling & Cycle Detection</a>
+</li>
+                                    
+<li>
+    <a href="domain-clustering.html" class="dropdown-item">Domain Clustering</a>
+</li>
+                                    
+<li>
+    <a href="consumer-pipeline.html" class="dropdown-item active" aria-current="page">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="type-extraction.html" class="dropdown-item">Type Extraction</a>
+</li>
+                                    
+<li>
+    <a href="test-architecture.html" class="dropdown-item">Test Architecture</a>
+</li>
+                                    
+<li>
+    <a href="benchmarks.html" class="dropdown-item">Benchmarks</a>
+</li>
+                                    
+<li>
+    <a href="sample-projects.html" class="dropdown-item">Sample Projects</a>
+</li>
+                                    
+<li>
+    <a href="development.html" class="dropdown-item">Development</a>
+</li>
+                                    
+<li>
+    <a href="contributing.html" class="dropdown-item">Contributing</a>
+</li>
+                                    
+<li>
+    <a href="claude-skills.html" class="dropdown-item">Claude Code Skills</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="domain-clustering.html" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="type-extraction.html" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#consumer-detection-pipeline" class="nav-link">Consumer Detection Pipeline</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#the-5-stages" class="nav-link">The 5 Stages</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#the-filterpipeline" class="nav-link">The FilterPipeline</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#graph-acceleration" class="nav-link">Graph Acceleration</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#multiprocessing-details" class="nav-link">Multiprocessing Details</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#putting-it-all-together" class="nav-link">Putting It All Together</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="consumer-detection-pipeline">Consumer Detection Pipeline<a class="headerlink" href="#consumer-detection-pipeline" title="Permanent link">&para;</a></h1>
+<p>The consumer pipeline is Scatter's answer to the question: "If I change this project, who is affected?" It is a 5-stage filter funnel that progressively narrows the candidate set from "every .csproj in the search scope" down to "projects that actually call this specific method." Each stage is cheaper to evaluate but stricter in its criteria.</p>
+<p>The pipeline lives in <code>analyzers/consumer_analyzer.py</code>.</p>
+<hr />
+<h2 id="the-5-stages">The 5 Stages<a class="headerlink" href="#the-5-stages" title="Permanent link">&para;</a></h2>
+<h3 id="stage-1-file-discovery">Stage 1: File Discovery<a class="headerlink" href="#stage-1-file-discovery" title="Permanent link">&para;</a></h3>
+<p>Find all <code>.csproj</code> files in the search scope.</p>
+<ul>
+<li><strong>Filesystem path:</strong> Parallel glob for <code>*.csproj</code> across the search scope directory tree.</li>
+<li><strong>Graph path:</strong> Read <code>graph.node_count</code> from the cached graph. No filesystem I/O.</li>
+</ul>
+<h3 id="stage-2-projectreference-filter">Stage 2: ProjectReference Filter<a class="headerlink" href="#stage-2-projectreference-filter" title="Permanent link">&para;</a></h3>
+<p>Keep only projects that have a <code>&lt;ProjectReference&gt;</code> to the target project.</p>
+<ul>
+<li><strong>Filesystem path:</strong> Parse each candidate <code>.csproj</code> as XML, resolve the <code>Include</code> path, compare against the target. Parallelized via <code>ProcessPoolExecutor</code>.</li>
+<li><strong>Graph path:</strong> <code>graph.get_edges_to(target_name)</code> filtered to <code>edge_type == "project_reference"</code>. O(in-degree).</li>
+</ul>
+<p>This is typically the biggest drop. A 250-project codebase might have only 8-12 projects that directly reference any given target.</p>
+<h3 id="stage-3-namespace-filter">Stage 3: Namespace Filter<a class="headerlink" href="#stage-3-namespace-filter" title="Permanent link">&para;</a></h3>
+<p>Keep only projects that have <code>using TargetNamespace;</code> (or a sub-namespace) in their .cs files.</p>
+<p>Always runs on the filesystem -- the graph does not cache file contents. For each surviving consumer, discover its .cs files, then search for the target namespace using a compiled regex:</p>
+<pre><code class="language-python">using_pattern = re.compile(
+    rf&quot;(?:^|;|\{{)\s*(?:global\s+)?using\s+{re.escape(target_namespace)}(?:\.[A-Za-z0-9_.]+)?\s*;&quot;,
+    re.MULTILINE
+)
+</code></pre>
+<p>This pattern handles standard <code>using</code>, <code>global using</code>, and sub-namespace imports (e.g., <code>using GalaxyWorks.Data.Models;</code> when the target namespace is <code>GalaxyWorks.Data</code>).</p>
+<p>Files that match are tracked as <code>relevant_files</code> on the consumer and carried forward to later stages.</p>
+<h3 id="stage-4-class-filter-optional">Stage 4: Class Filter (Optional)<a class="headerlink" href="#stage-4-class-filter-optional" title="Permanent link">&para;</a></h3>
+<p>Keep only projects that reference the specific class/type name. Only runs if <code>--class-name</code> is provided.</p>
+<p>Uses word-boundary regex on the <code>relevant_files</code> from stage 3:</p>
+<pre><code class="language-python">class_pattern = re.compile(rf&quot;\b{re.escape(class_name)}\b&quot;)
+</code></pre>
+<h3 id="stage-5-method-filter-optional">Stage 5: Method Filter (Optional)<a class="headerlink" href="#stage-5-method-filter-optional" title="Permanent link">&para;</a></h3>
+<p>Keep only projects that call the specific method. Only runs if <code>--method-name</code> is provided (requires <code>--class-name</code>).</p>
+<p>Searches for the pattern <code>.MethodName(</code>:</p>
+<pre><code class="language-python">method_pattern = re.compile(rf&quot;\.\s*{re.escape(method_name)}\s*\(&quot;)
+</code></pre>
+<hr />
+<h2 id="the-filterpipeline">The FilterPipeline<a class="headerlink" href="#the-filterpipeline" title="Permanent link">&para;</a></h2>
+<p>Every run produces a <code>FilterPipeline</code> dataclass that records what happened at each stage:</p>
+<pre><code class="language-python">@dataclass
+class FilterPipeline:
+    search_scope: str
+    total_projects_scanned: int
+    total_files_scanned: int
+    stages: List[FilterStage]
+    target_project: str
+    target_namespace: str
+    class_filter: Optional[str]
+    method_filter: Optional[str]
+</code></pre>
+<p>Each stage is a <code>FilterStage</code>:</p>
+<pre><code class="language-python">@dataclass
+class FilterStage:
+    name: str           # &quot;discovery&quot;, &quot;project_reference&quot;, &quot;namespace&quot;, &quot;class&quot;, &quot;method&quot;
+    input_count: int    # Projects entering this stage
+    output_count: int   # Projects passing this stage
+    source: str         # &quot;filesystem&quot; or &quot;graph&quot;
+</code></pre>
+<h3 id="the-arrow-chain">The Arrow Chain<a class="headerlink" href="#the-arrow-chain" title="Permanent link">&para;</a></h3>
+<p>The pipeline produces a human-readable arrow chain for reports:</p>
+<pre><code>Filter: 250 -&gt; 12 project refs -&gt; 8 namespace -&gt; 4 class match -&gt; 2 method match
+</code></pre>
+<p>With graph acceleration:</p>
+<pre><code>Filter: 250[graph] -&gt; 12 project refs[graph] -&gt; 8 namespace -&gt; 4 class match
+</code></pre>
+<p>The <code>[graph]</code> annotation tells you which stages used the cached graph instead of the filesystem.</p>
+<h3 id="diagnostic-hints">Diagnostic Hints<a class="headerlink" href="#diagnostic-hints" title="Permanent link">&para;</a></h3>
+<p>When a stage drops to zero, it is useful to know which filter caused the dead end. The pipeline tracks <code>STAGE_INPUT_LABELS</code> so reporters can tell you "0 of 12 project-reference-matching projects use the target namespace" rather than just "0 projects found."</p>
+<p>Stage name constants (<code>STAGE_DISCOVERY</code>, <code>STAGE_PROJECT_REFERENCE</code>, etc.) are defined in <code>core/models.py</code> and used everywhere instead of raw strings.</p>
+<hr />
+<h2 id="graph-acceleration">Graph Acceleration<a class="headerlink" href="#graph-acceleration" title="Permanent link">&para;</a></h2>
+<h3 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h3>
+<p>When a graph cache exists and the target project is in the graph, stages 1-2 are replaced with a reverse-index lookup:</p>
+<pre><code class="language-python">def _lookup_consumers_from_graph(graph, target_csproj_path):
+    target_name = target_csproj_path.stem
+
+    if graph.get_node(target_name) is None:
+        return None  # Fall back to filesystem
+
+    direct_consumers = {}
+    for edge in graph.get_edges_to(target_name):
+        if edge.edge_type == &quot;project_reference&quot;:
+            node = graph.get_node(edge.source)
+            if node:
+                direct_consumers[node.path.resolve()] = {
+                    'consumer_name': edge.source,
+                    'relevant_files': []
+                }
+    return direct_consumers
+</code></pre>
+<p>Only <code>project_reference</code> edges are used for stage 2. The graph has four edge types, but using <code>namespace_usage</code> or <code>type_usage</code> edges would widen the consumer set beyond what the filesystem path finds, causing correctness divergence. The graph acceleration must produce the same candidate set as the filesystem path.</p>
+<h3 id="fallback-behavior">Fallback Behavior<a class="headerlink" href="#fallback-behavior" title="Permanent link">&para;</a></h3>
+<p>If the target is not in the graph (stale cache, new project, scope mismatch), <code>_lookup_consumers_from_graph</code> returns <code>None</code> and the pipeline transparently falls back to filesystem scanning. No caller code changes needed.</p>
+<h3 id="when-does-it-help">When Does It Help?<a class="headerlink" href="#when-does-it-help" title="Permanent link">&para;</a></h3>
+<p>The acceleration matters most on large codebases where stage 1-2 is expensive:</p>
+<table>
+<thead>
+<tr>
+<th>Codebase Size</th>
+<th>Filesystem Stages 1-2</th>
+<th>Graph Stages 1-2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>50 projects</td>
+<td>~0.3s</td>
+<td>~0.001s</td>
+</tr>
+<tr>
+<td>250 projects</td>
+<td>~2.1s</td>
+<td>~0.001s</td>
+</tr>
+<tr>
+<td>500 projects</td>
+<td>~5.8s</td>
+<td>~0.001s</td>
+</tr>
+</tbody>
+</table>
+<p>Stages 3-5 still read .cs files from disk regardless of source, so the total speedup depends on how many consumers survive stage 2.</p>
+<hr />
+<h2 id="multiprocessing-details">Multiprocessing Details<a class="headerlink" href="#multiprocessing-details" title="Permanent link">&para;</a></h2>
+<p>Without the graph (first run or <code>--no-graph</code>), the pipeline parallelizes four operations using <code>ProcessPoolExecutor</code>:</p>
+<ol>
+<li><strong>File discovery</strong> (<code>find_files_with_pattern_parallel</code>): Glob for .csproj and .cs files</li>
+<li><strong>XML parsing</strong> (<code>parse_csproj_files_parallel</code>): Parse .csproj files to check ProjectReference</li>
+<li><strong>Content analysis</strong> (<code>analyze_cs_files_parallel</code>): Search .cs files for namespace/class/method patterns</li>
+<li><strong>Project mapping</strong> (<code>map_cs_to_projects_parallel</code>): Map .cs files to parent .csproj projects</li>
+</ol>
+<h3 id="adaptive-worker-scaling">Adaptive Worker Scaling<a class="headerlink" href="#adaptive-worker-scaling" title="Permanent link">&para;</a></h3>
+<p>Worker count scales with workload to avoid overhead on small tasks:</p>
+<table>
+<thead>
+<tr>
+<th>File Count</th>
+<th>Workers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&lt; 200</td>
+<td>min(max_workers, 4)</td>
+</tr>
+<tr>
+<td>&lt; 1000</td>
+<td>min(max_workers, 8)</td>
+</tr>
+<tr>
+<td>&gt;= 1000</td>
+<td>max_workers (default: <code>min(32, cpu_count + 4)</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Below the chunk size threshold (50 for .cs files, 25 for .csproj files), the pipeline skips multiprocessing entirely and runs sequentially. The overhead of spawning processes is not worth it for small batches.</p>
+<h3 id="chunk-sizes">Chunk Sizes<a class="headerlink" href="#chunk-sizes" title="Permanent link">&para;</a></h3>
+<p>Configurable via CLI flags:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>What It Controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--chunk-size</code></td>
+<td>75</td>
+<td>Directories per worker chunk (file discovery)</td>
+</tr>
+<tr>
+<td><code>--cs-analysis-chunk-size</code></td>
+<td>50</td>
+<td>.cs files per worker batch (content analysis)</td>
+</tr>
+<tr>
+<td><code>--csproj-analysis-chunk-size</code></td>
+<td>25</td>
+<td>.csproj files per worker batch (XML parsing)</td>
+</tr>
+</tbody>
+</table>
+<p>These can also be set via config:</p>
+<pre><code class="language-yaml">multiprocessing:
+  disabled: false
+  max_workers: 16
+  chunk_size: 100
+</code></pre>
+<h3 id="graceful-degradation">Graceful Degradation<a class="headerlink" href="#graceful-degradation" title="Permanent link">&para;</a></h3>
+<p>Every parallel operation has a try/except that falls back to sequential processing:</p>
+<pre><code class="language-python">try:
+    # ... parallel execution ...
+except Exception as e:
+    logging.warning(f&quot;Parallel analysis failed: {e}. Falling back to sequential.&quot;)
+    return analyze_cs_files_batch((cs_files, analysis_config))
+</code></pre>
+<p>This means Scatter never crashes due to multiprocessing issues -- it just gets slower. The <code>--disable-multiprocessing</code> flag forces sequential mode for debugging or environments where <code>fork()</code> is problematic (some macOS configurations, some CI containers).</p>
+<hr />
+<h2 id="putting-it-all-together">Putting It All Together<a class="headerlink" href="#putting-it-all-together" title="Permanent link">&para;</a></h2>
+<p>A complete target-project analysis with all stages:</p>
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+        --search-scope /path/to/monorepo \
+        --class-name PortalDataService \
+        --method-name GetPortalConfig
+</code></pre>
+<p>What happens:</p>
+<ol>
+<li><strong>Discovery:</strong> Find 247 .csproj files in <code>/path/to/monorepo</code></li>
+<li><strong>ProjectReference:</strong> 247 candidates -&gt; 11 have <code>&lt;ProjectReference&gt;</code> to GalaxyWorks.Data</li>
+<li><strong>Namespace:</strong> 11 candidates -&gt; 8 have <code>using GalaxyWorks.Data;</code> in their .cs files</li>
+<li><strong>Class:</strong> 8 candidates -&gt; 4 reference <code>PortalDataService</code></li>
+<li><strong>Method:</strong> 4 candidates -&gt; 2 call <code>.GetPortalConfig(</code></li>
+</ol>
+<p>Output:</p>
+<pre><code>Filter: 247 -&gt; 11 project refs -&gt; 8 namespace -&gt; 4 class match -&gt; 2 method match
+</code></pre>
+<p>If the graph cache exists, stages 1-2 produce the same result in microseconds:</p>
+<pre><code>Filter: 247[graph] -&gt; 11 project refs[graph] -&gt; 8 namespace -&gt; 4 class match -&gt; 2 method match
+</code></pre>
+<p>The FilterPipeline is included in all output formats (console, JSON, CSV, markdown) so you always know how the funnel narrowed.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

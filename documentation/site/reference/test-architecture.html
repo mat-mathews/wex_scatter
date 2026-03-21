@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Test Architecture - Scatter // Athena</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/solarized-dark.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">Scatter // Athena</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">User Guide</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../index.html" class="dropdown-item">Home</a>
+</li>
+                                    
+<li>
+    <a href="../getting-started.html" class="dropdown-item">Getting Started</a>
+</li>
+                                    
+<li>
+    <a href="../usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
+</li>
+                                    
+<li>
+    <a href="../output-formats.html" class="dropdown-item">Output Formats</a>
+</li>
+                                    
+<li>
+    <a href="../workflows.html" class="dropdown-item">Workflows</a>
+</li>
+                                    
+<li>
+    <a href="../ai-features.html" class="dropdown-item">AI Features</a>
+</li>
+                                    
+<li>
+    <a href="../configuration.html" class="dropdown-item">Configuration</a>
+</li>
+                                    
+<li>
+    <a href="../cli-reference.html" class="dropdown-item">CLI Reference</a>
+</li>
+                                    
+<li>
+    <a href="../testing.html" class="dropdown-item">Testing</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Technical Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="architecture.html" class="dropdown-item">Architecture Overview</a>
+</li>
+                                    
+<li>
+    <a href="graph-engine.html" class="dropdown-item">Graph Engine</a>
+</li>
+                                    
+<li>
+    <a href="incremental-updates.html" class="dropdown-item">Incremental Updates</a>
+</li>
+                                    
+<li>
+    <a href="coupling-and-cycles.html" class="dropdown-item">Coupling & Cycle Detection</a>
+</li>
+                                    
+<li>
+    <a href="domain-clustering.html" class="dropdown-item">Domain Clustering</a>
+</li>
+                                    
+<li>
+    <a href="consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="type-extraction.html" class="dropdown-item">Type Extraction</a>
+</li>
+                                    
+<li>
+    <a href="test-architecture.html" class="dropdown-item active" aria-current="page">Test Architecture</a>
+</li>
+                                    
+<li>
+    <a href="benchmarks.html" class="dropdown-item">Benchmarks</a>
+</li>
+                                    
+<li>
+    <a href="sample-projects.html" class="dropdown-item">Sample Projects</a>
+</li>
+                                    
+<li>
+    <a href="development.html" class="dropdown-item">Development</a>
+</li>
+                                    
+<li>
+    <a href="contributing.html" class="dropdown-item">Contributing</a>
+</li>
+                                    
+<li>
+    <a href="claude-skills.html" class="dropdown-item">Claude Code Skills</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="type-extraction.html" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="benchmarks.html" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#test-architecture" class="nav-link">Test Architecture</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#running-tests" class="nav-link">Running Tests</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#full-test-inventory" class="nav-link">Full Test Inventory</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#test-patterns" class="nav-link">Test Patterns</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#how-to-add-a-new-test" class="nav-link">How to Add a New Test</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#test-organization" class="nav-link">Test Organization</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#coverage" class="nav-link">Coverage</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="test-architecture">Test Architecture<a class="headerlink" href="#test-architecture" title="Permanent link">&para;</a></h1>
+<p>For developers about to write or modify tests. This is the page Anya asked for.</p>
+<hr />
+<h2 id="running-tests">Running Tests<a class="headerlink" href="#running-tests" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash"># Full suite
+python -m pytest -v
+
+# Specific file
+pytest test_graph.py
+
+# Specific test
+pytest test_impact_analysis.py::test_something_specific
+
+# With coverage
+python -m pytest --cov=scatter
+</code></pre>
+<p>The full suite is 683 tests (1 xfail), and runs in roughly 9 seconds. No network calls, no database, no Docker. Just Python and your CPU.</p>
+<p>Coverage is configured in <code>pyproject.toml</code> with <code>fail_under=70%</code>. The coverage source is the <code>scatter/</code> package only -- test files themselves are excluded from the metric.</p>
+<hr />
+<h2 id="full-test-inventory">Full Test Inventory<a class="headerlink" href="#full-test-inventory" title="Permanent link">&para;</a></h2>
+<p>25 test files. Here's every one of them, what it covers, and how many tests it contains.</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th style="text-align: right;">Tests</th>
+<th>What it covers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test_cli_parser.py</code></td>
+<td style="text-align: right;">15</td>
+<td>Argument parsing, flag combinations, defaults, mutual exclusivity</td>
+</tr>
+<tr>
+<td><code>test_cli_modes.py</code></td>
+<td style="text-align: right;">16</td>
+<td>Mode handler dispatch (target-project, sproc, git-branch, graph, impact)</td>
+</tr>
+<tr>
+<td><code>test_cli_dispatch.py</code></td>
+<td style="text-align: right;">13</td>
+<td>End-to-end CLI dispatch with mocked handlers, output format routing</td>
+</tr>
+<tr>
+<td><code>test_config.py</code></td>
+<td style="text-align: right;">24</td>
+<td>Config loading, layering, CLI overrides, environment variable resolution</td>
+</tr>
+<tr>
+<td><code>test_consumer_analyzer_graph.py</code></td>
+<td style="text-align: right;">14</td>
+<td>Graph-accelerated consumer detection vs filesystem fallback</td>
+</tr>
+<tr>
+<td><code>test_coupling.py</code></td>
+<td style="text-align: right;">25</td>
+<td>Coupling metrics: fan-in, fan-out, instability, coupling score, cycles</td>
+</tr>
+<tr>
+<td><code>test_db_scanner.py</code></td>
+<td style="text-align: right;">36</td>
+<td>DB pattern detection: sprocs, DbSet, SQL strings, connection strings, comment stripping</td>
+</tr>
+<tr>
+<td><code>test_domain.py</code></td>
+<td style="text-align: right;">15</td>
+<td>Domain clustering: Louvain community detection, feasibility scoring, cluster membership</td>
+</tr>
+<tr>
+<td><code>test_filter_pipeline.py</code></td>
+<td style="text-align: right;">21</td>
+<td>Filter funnel: stage counts, arrow-chain formatting, diagnostic hints</td>
+</tr>
+<tr>
+<td><code>test_find_enclosing_type.py</code></td>
+<td style="text-align: right;">14</td>
+<td><code>find_enclosing_type_name()</code>: nested types, generics, edge cases</td>
+</tr>
+<tr>
+<td><code>test_graph.py</code></td>
+<td style="text-align: right;">46</td>
+<td><code>DependencyGraph</code> data structure: add/remove nodes, edges, queries, connected components</td>
+</tr>
+<tr>
+<td><code>test_graph_cache.py</code></td>
+<td style="text-align: right;">28</td>
+<td>Cache serialization (v2 fact-based), hash computation, staleness detection</td>
+</tr>
+<tr>
+<td><code>test_graph_enrichment.py</code></td>
+<td style="text-align: right;">17</td>
+<td>Graph context enrichment: metrics injection, cycle detection, health dashboard</td>
+</tr>
+<tr>
+<td><code>test_graph_patcher.py</code></td>
+<td style="text-align: right;">49</td>
+<td>Incremental graph updates: 6 mutation types, correctness vs full rebuild</td>
+</tr>
+<tr>
+<td><code>test_hybrid_git.py</code></td>
+<td style="text-align: right;">7</td>
+<td>LLM-based symbol extraction: valid JSON, empty, invalid, markdown fences, exceptions</td>
+</tr>
+<tr>
+<td><code>test_impact_analysis.py</code></td>
+<td style="text-align: right;">82</td>
+<td>Impact analysis: BFS traversal, confidence decay, depth limits, transitive chains</td>
+</tr>
+<tr>
+<td><code>test_markdown_reporter.py</code></td>
+<td style="text-align: right;">39</td>
+<td>Markdown report generation: sections, tables, formatting, edge cases</td>
+</tr>
+<tr>
+<td><code>test_multiprocessing_phase1.py</code></td>
+<td style="text-align: right;">7</td>
+<td>Parallel file discovery: consistency with sequential, worker count handling</td>
+</tr>
+<tr>
+<td><code>test_new_samples.py</code></td>
+<td style="text-align: right;">54</td>
+<td>Extended sample project validation: GalaxyWorks.Common, Api, Data.Tests</td>
+</tr>
+<tr>
+<td><code>test_phase2_3_project_mapping.py</code></td>
+<td style="text-align: right;">24</td>
+<td>Pipeline mapping and batch job verification</td>
+</tr>
+<tr>
+<td><code>test_pipeline_reporter.py</code></td>
+<td style="text-align: right;">14</td>
+<td>Pipeline report output: CSV format, column ordering, missing data handling</td>
+</tr>
+<tr>
+<td><code>test_report_quality.py</code></td>
+<td style="text-align: right;">24</td>
+<td>Cross-format consistency: JSON, CSV, console, markdown produce same core data</td>
+</tr>
+<tr>
+<td><code>test_reporters.py</code></td>
+<td style="text-align: right;">21</td>
+<td>Reporter dispatch: format selection, file writing, stdout fallback</td>
+</tr>
+<tr>
+<td><code>test_summarize_consumers.py</code></td>
+<td style="text-align: right;">7</td>
+<td>AI summarization with mocked providers, truncation at <code>MAX_SUMMARIZATION_CHARS</code></td>
+</tr>
+<tr>
+<td><code>test_type_extraction.py</code></td>
+<td style="text-align: right;">48</td>
+<td>Regex patterns: classes, structs, interfaces, enums, records, delegates, generics, edge cases</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="test-patterns">Test Patterns<a class="headerlink" href="#test-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="ai-mocking-no-real-api-calls-ever">AI Mocking: No Real API Calls. Ever.<a class="headerlink" href="#ai-mocking-no-real-api-calls-ever" title="Permanent link">&para;</a></h3>
+<p>Every test that touches AI functionality uses <code>unittest.mock.MagicMock</code> as the provider. The pattern is consistent:</p>
+<pre><code class="language-python">from unittest.mock import MagicMock
+from scatter.ai.base import AITaskType, AnalysisResult
+
+mock_provider = MagicMock()
+mock_provider.name = &quot;mock-gemini&quot;
+mock_provider.supports.return_value = True
+mock_provider.analyze.return_value = AnalysisResult(
+    response='[&quot;MyClass&quot;, &quot;IMyInterface&quot;]',
+    confidence=1.0,
+)
+</code></pre>
+<p>Mock responses cover the full spectrum:
+- <strong>Valid JSON</strong>: <code>'["TypeA", "TypeB"]'</code> -- happy path
+- <strong>Empty result</strong>: <code>'[]'</code> -- comment-only or import-only changes
+- <strong>Invalid JSON</strong>: <code>'not json at all'</code> -- tests fallback to regex
+- <strong>Markdown fence wrapping</strong>: <code>'```json\n["TypeA"]\n```'</code> -- tests fence stripping
+- <strong>Exceptions</strong>: <code>side_effect=Exception("API error")</code> -- tests error handling</p>
+<p>If you write a test that makes a real API call, something has gone wrong. The CI has no API keys and never will.</p>
+<h3 id="conftestpy-shared-fixtures">conftest.py: Shared Fixtures<a class="headerlink" href="#conftestpy-shared-fixtures" title="Permanent link">&para;</a></h3>
+<p>The root <code>conftest.py</code> provides a <code>make_mode_context</code> factory fixture for building <code>ModeContext</code> objects with sensible defaults:</p>
+<pre><code class="language-python">def test_something(make_mode_context):
+    ctx = make_mode_context(class_name=&quot;Foo&quot;, no_graph=False)
+</code></pre>
+<p>This saves you from constructing a 15-field dataclass in every test. Override what you care about; the factory fills in the rest with safe defaults (<code>search_scope=/tmp/scope</code>, <code>disable_multiprocessing=True</code>, etc.).</p>
+<h3 id="parallel-consistency">Parallel Consistency<a class="headerlink" href="#parallel-consistency" title="Permanent link">&para;</a></h3>
+<p>Any operation that supports <code>--disable-multiprocessing</code> is verified to produce identical results in both modes. The <code>test_multiprocessing_phase1.py</code> suite runs file discovery with N workers and with 0, then asserts the results match exactly. This pattern extends into the graph builder tests -- parallel graph construction must produce the same graph as sequential.</p>
+<h3 id="property-based-tests-incremental-full-rebuild">Property-Based Tests: Incremental == Full Rebuild<a class="headerlink" href="#property-based-tests-incremental-full-rebuild" title="Permanent link">&para;</a></h3>
+<p><code>test_graph_patcher.py</code> is the crown jewel of the test suite at 49 tests. It verifies a critical invariant: <strong>applying an incremental patch to a graph must produce the same result as building the graph from scratch.</strong></p>
+<p>Six mutation types are tested:
+1. Usage-only change (add a <code>using</code> statement)
+2. Declaration change (add a new class)
+3. New file added
+4. File deleted
+5. <code>.csproj</code> modified
+6. Multiple simultaneous mutations</p>
+<p>For each mutation, the test:
+1. Builds a full graph from the clean codebase
+2. Captures v2 facts
+3. Applies the mutation
+4. Patches the existing graph incrementally
+5. Builds a fresh graph from the mutated codebase
+6. Asserts the patched graph equals the fresh graph (nodes, edges, metrics)</p>
+<p>This is as close to property-based testing as we get without hypothesis. The synthetic codebase generator (see <a href="benchmarks.html">Benchmarks</a>) can produce arbitrary-scale codebases for fuzz-like coverage.</p>
+<hr />
+<h2 id="how-to-add-a-new-test">How to Add a New Test<a class="headerlink" href="#how-to-add-a-new-test" title="Permanent link">&para;</a></h2>
+<h3 id="unit-test-for-a-scanner-or-analyzer">Unit Test for a Scanner or Analyzer<a class="headerlink" href="#unit-test-for-a-scanner-or-analyzer" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python"># test_my_new_scanner.py
+from scatter.scanners.my_scanner import scan_something
+
+def test_scan_finds_expected_pattern(tmp_path):
+    &quot;&quot;&quot;Create fixture data in tmp_path, run scanner, assert results.&quot;&quot;&quot;
+    cs_file = tmp_path / &quot;MyProject&quot; / &quot;Service.cs&quot;
+    cs_file.parent.mkdir()
+    cs_file.write_text('public class FooService { /* ... */ }')
+
+    results = scan_something(tmp_path)
+    assert &quot;FooService&quot; in results
+</code></pre>
+<p>Use <code>tmp_path</code> (pytest built-in) for any test that needs files on disk. It's auto-cleaned after each test.</p>
+<h3 id="test-against-sample-projects">Test Against Sample Projects<a class="headerlink" href="#test-against-sample-projects" title="Permanent link">&para;</a></h3>
+<p>The 11 <code>.csproj</code> files in the repo root are real .NET projects designed for integration testing. Use them when you need realistic project references, namespace structures, and type declarations:</p>
+<pre><code class="language-python">from pathlib import Path
+
+REPO_ROOT = Path(__file__).parent
+
+def test_against_sample_projects():
+    from scatter.analyzers.graph_builder import build_dependency_graph
+    graph = build_dependency_graph(REPO_ROOT, disable_multiprocessing=True)
+    assert graph.node_count == 11
+</code></pre>
+<p>See <a href="sample-projects.html">Sample Projects</a> for the full dependency tree and expected values.</p>
+<h3 id="test-with-mocked-ai">Test with Mocked AI<a class="headerlink" href="#test-with-mocked-ai" title="Permanent link">&para;</a></h3>
+<pre><code class="language-python">from unittest.mock import MagicMock
+from scatter.ai.base import AITaskType, AnalysisResult
+
+def test_ai_summarization_with_mock():
+    provider = MagicMock()
+    provider.supports.return_value = True
+    provider.analyze.return_value = AnalysisResult(
+        response=&quot;This service handles portal data operations.&quot;,
+        confidence=0.95,
+    )
+
+    # Pass provider to whatever function you're testing
+    result = summarize_file(provider, &quot;PortalDataService.cs&quot;, file_content)
+
+    provider.analyze.assert_called_once()
+    assert &quot;portal&quot; in result.lower()
+</code></pre>
+<p>Three rules:
+1. Always mock. Never call real APIs.
+2. Test the happy path AND the failure path (exception, bad JSON, empty response).
+3. Assert that the provider was actually called -- catch regressions where someone bypasses the provider.</p>
+<hr />
+<h2 id="test-organization">Test Organization<a class="headerlink" href="#test-organization" title="Permanent link">&para;</a></h2>
+<p>All test files live at the repo root, not in a <code>tests/</code> subdirectory. This is configured in <code>pyproject.toml</code>:</p>
+<pre><code class="language-toml">[tool.pytest.ini_options]
+testpaths = [&quot;.&quot;]
+python_files = &quot;test_*.py&quot;
+addopts = &quot;-q&quot;
+</code></pre>
+<p>The <code>-q</code> (quiet) default keeps output manageable for 683 tests. Override with <code>-v</code> when debugging.</p>
+<hr />
+<h2 id="coverage">Coverage<a class="headerlink" href="#coverage" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash"># Run with coverage report
+python -m pytest --cov=scatter
+
+# HTML report (useful for finding uncovered branches)
+python -m pytest --cov=scatter --cov-report=html
+open htmlcov/index.html
+</code></pre>
+<p>Configuration in <code>pyproject.toml</code>:</p>
+<pre><code class="language-toml">[tool.coverage.run]
+source = [&quot;scatter&quot;]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+fail_under = 70
+</code></pre>
+<p>The <code>fail_under=70</code> threshold is a floor, not a target. Most modules are well above that. The threshold exists to catch regressions -- if you add a new module with zero tests, coverage will drop and CI will tell you about it.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

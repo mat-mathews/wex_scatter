@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="img/favicon.ico">
+        <title>Workflows - Scatter // Athena</title>
+        <link href="css/bootstrap.min.css" rel="stylesheet">
+        <link href="css/fontawesome.min.css" rel="stylesheet">
+        <link href="css/brands.min.css" rel="stylesheet">
+        <link href="css/solid.min.css" rel="stylesheet">
+        <link href="css/v4-font-face.min.css" rel="stylesheet">
+        <link href="css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/solarized-dark.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href=".">Scatter // Athena</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">User Guide</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="index.html" class="dropdown-item">Home</a>
+</li>
+                                    
+<li>
+    <a href="getting-started.html" class="dropdown-item">Getting Started</a>
+</li>
+                                    
+<li>
+    <a href="usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
+</li>
+                                    
+<li>
+    <a href="output-formats.html" class="dropdown-item">Output Formats</a>
+</li>
+                                    
+<li>
+    <a href="workflows.html" class="dropdown-item active" aria-current="page">Workflows</a>
+</li>
+                                    
+<li>
+    <a href="ai-features.html" class="dropdown-item">AI Features</a>
+</li>
+                                    
+<li>
+    <a href="configuration.html" class="dropdown-item">Configuration</a>
+</li>
+                                    
+<li>
+    <a href="cli-reference.html" class="dropdown-item">CLI Reference</a>
+</li>
+                                    
+<li>
+    <a href="testing.html" class="dropdown-item">Testing</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Technical Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="reference/architecture.html" class="dropdown-item">Architecture Overview</a>
+</li>
+                                    
+<li>
+    <a href="reference/graph-engine.html" class="dropdown-item">Graph Engine</a>
+</li>
+                                    
+<li>
+    <a href="reference/incremental-updates.html" class="dropdown-item">Incremental Updates</a>
+</li>
+                                    
+<li>
+    <a href="reference/coupling-and-cycles.html" class="dropdown-item">Coupling & Cycle Detection</a>
+</li>
+                                    
+<li>
+    <a href="reference/domain-clustering.html" class="dropdown-item">Domain Clustering</a>
+</li>
+                                    
+<li>
+    <a href="reference/consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="reference/type-extraction.html" class="dropdown-item">Type Extraction</a>
+</li>
+                                    
+<li>
+    <a href="reference/test-architecture.html" class="dropdown-item">Test Architecture</a>
+</li>
+                                    
+<li>
+    <a href="reference/benchmarks.html" class="dropdown-item">Benchmarks</a>
+</li>
+                                    
+<li>
+    <a href="reference/sample-projects.html" class="dropdown-item">Sample Projects</a>
+</li>
+                                    
+<li>
+    <a href="reference/development.html" class="dropdown-item">Development</a>
+</li>
+                                    
+<li>
+    <a href="reference/contributing.html" class="dropdown-item">Contributing</a>
+</li>
+                                    
+<li>
+    <a href="reference/claude-skills.html" class="dropdown-item">Claude Code Skills</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="output-formats.html" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="ai-features.html" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#workflows" class="nav-link">Workflows</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#1-pre-merge-blast-radius-check" class="nav-link">1. Pre-Merge Blast Radius Check</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#2-stored-procedure-change-impact" class="nav-link">2. Stored Procedure Change Impact</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#3-work-request-scoping-with-ai" class="nav-link">3. Work Request Scoping with AI</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#4-architecture-health-assessment" class="nav-link">4. Architecture Health Assessment</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#5-target-project-dependency-audit" class="nav-link">5. Target Project Dependency Audit</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#6-full-codebase-analysis-pipeline" class="nav-link">6. Full Codebase Analysis Pipeline</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="workflows">Workflows<a class="headerlink" href="#workflows" title="Permanent link">&para;</a></h1>
+<p>Six real-world scenarios, each one pulled from actual team usage. Not hypothetical -- these are the problems Scatter was built to solve.</p>
+<hr />
+<h2 id="1-pre-merge-blast-radius-check">1. Pre-Merge Blast Radius Check<a class="headerlink" href="#1-pre-merge-blast-radius-check" title="Permanent link">&para;</a></h2>
+<p><strong>Persona:</strong> Developer preparing a PR for a feature branch.</p>
+<p><strong>When:</strong> Before requesting review. Before you write "small change" in the PR description and regret it.</p>
+<p><strong>Why:</strong> You changed three files in a shared library. You think you know who uses it. You are probably wrong. Scatter tells you who actually uses it, not who you assume does.</p>
+<h3 id="steps">Steps<a class="headerlink" href="#steps" title="Permanent link">&para;</a></h3>
+<p><strong>Quick scan -- what did this branch touch?</strong></p>
+<pre><code class="language-bash">python scatter.py --branch-name feature/add-caching \
+  --repo-path /code/myrepo \
+  --search-scope /code/myrepo
+</code></pre>
+<p>This compares your branch against <code>main</code>, extracts every type declaration from changed C# files, and finds every project that references those types. Takes seconds on a typical repo.</p>
+<p><strong>Drill into the consumers with AI summaries:</strong></p>
+<pre><code class="language-bash">python scatter.py --branch-name feature/add-caching \
+  --repo-path /code/myrepo \
+  --search-scope /code/myrepo \
+  --summarize-consumers
+</code></pre>
+<p>Now each consumer gets a 2-3 sentence summary of how it actually uses the types you changed. The difference between "ProjectX references this namespace" and "ProjectX calls <code>PortalDataService.GetConfig()</code> in its startup pipeline and caches the result for 30 minutes."</p>
+<p><strong>High-precision mode with hybrid analysis:</strong></p>
+<pre><code class="language-bash">python scatter.py --branch-name feature/add-caching \
+  --repo-path /code/myrepo \
+  --search-scope /code/myrepo \
+  --enable-hybrid-git \
+  --summarize-consumers \
+  --output-format markdown | pbcopy
+</code></pre>
+<p>The <code>--enable-hybrid-git</code> flag uses AI to identify precisely which types were affected in each changed file, rather than flagging every type declaration. More accurate, slower, costs API calls. Worth it for files with many types.</p>
+<p>Pipe to clipboard, paste into the PR description. Reviewer sees the blast radius before they read a single line of code.</p>
+<h3 id="what-to-look-for">What to Look For<a class="headerlink" href="#what-to-look-for" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Unexpected consumers.</strong> You changed <code>GalaxyWorks.Data</code> and somehow <code>BillingReportGenerator</code> showed up? That's the conversation you need to have before merge, not after deploy.</li>
+<li><strong>Consumer count vs. expectation.</strong> If your "small change" surfaces 10+ consumers, it is not a small change. Escalate to the team, get more eyes on it.</li>
+<li><strong>Pipeline names.</strong> If the consumers span multiple pipelines, that's a coordinated deployment. Not a "merge and forget."</li>
+<li><strong>The filter chain.</strong> The <code>142 -&gt; 8 project refs -&gt; 5 namespace -&gt; 3 class match</code> line tells you how Scatter narrowed the field. If a stage drops to zero unexpectedly, your namespace or class filter might be wrong.</li>
+</ul>
+<blockquote>
+<p><strong>How this works:</strong> Git branch analysis uses type extraction (regex or AI-assisted hybrid) to identify changed symbols, then traces consumers through project references and namespace matches. See <a href="reference/architecture.html">Architecture Overview</a> for the analysis pipeline.</p>
+</blockquote>
+<hr />
+<h2 id="2-stored-procedure-change-impact">2. Stored Procedure Change Impact<a class="headerlink" href="#2-stored-procedure-change-impact" title="Permanent link">&para;</a></h2>
+<p><strong>Persona:</strong> Developer or DBA modifying a stored procedure.</p>
+<p><strong>When:</strong> Before changing <code>dbo.sp_InsertPortalConfiguration</code> in the database and hoping for the best.</p>
+<p><strong>Why:</strong> Sproc changes are invisible to Git branch analysis -- the SQL lives in a different repo (or no repo at all). Scatter traces from the sproc name through C# code to find every caller, then finds every consumer of those callers. The full chain.</p>
+<h3 id="steps_1">Steps<a class="headerlink" href="#steps_1" title="Permanent link">&para;</a></h3>
+<p><strong>Find every C# project that references the sproc:</strong></p>
+<pre><code class="language-bash">python scatter.py --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
+  --search-scope /code/myrepo
+</code></pre>
+<p>Scatter scans every <code>.cs</code> file for references to the sproc name, identifies which class contains the call, then finds consumers of that class.</p>
+<p><strong>Export a CSV for the DBA team:</strong></p>
+<pre><code class="language-bash">python scatter.py --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
+  --search-scope /code/myrepo \
+  --output-format csv --output-file sproc_impact.csv
+</code></pre>
+<p>DBAs love spreadsheets. Give them a spreadsheet.</p>
+<p><strong>Add pipeline mappings for deployment planning:</strong></p>
+<pre><code class="language-bash">python scatter.py --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
+  --search-scope /code/myrepo \
+  --pipeline-csv pipeline_to_app_mapping.csv \
+  --output-format csv --output-file sproc_impact.csv
+</code></pre>
+<p>Now each row includes the CI/CD pipeline name. The deployment plan writes itself.</p>
+<p><strong>Narrow to a specific class if the sproc is used in multiple places:</strong></p>
+<pre><code class="language-bash">python scatter.py --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
+  --search-scope /code/myrepo \
+  --class-name PortalDataService
+</code></pre>
+<h3 id="what-to-look-for_1">What to Look For<a class="headerlink" href="#what-to-look-for_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>The containing class matters.</strong> The sproc might be called from <code>PortalDataService</code>, but the consumers are using <code>IPortalDataService</code> through dependency injection. Look at the <code>TriggeringType</code> column to see what's actually being traced.</li>
+<li><strong>Multiple containing classes.</strong> If the sproc is referenced in more than one class, Scatter traces consumers for each one separately. The total blast radius is the union of all those chains.</li>
+<li><strong>Sproc change = coordinated deployment.</strong> Database changes go out before application changes. The pipeline list tells you what needs to deploy after the migration runs. Get the order wrong and you get runtime exceptions at 2am.</li>
+</ul>
+<blockquote>
+<p><strong>How this works:</strong> Stored procedure analysis scans <code>.cs</code> files for sproc name references, identifies the containing classes, then runs the same consumer-tracing pipeline as target project mode. See <a href="reference/architecture.html">Architecture Overview</a> for the analysis pipeline.</p>
+</blockquote>
+<hr />
+<h2 id="3-work-request-scoping-with-ai">3. Work Request Scoping with AI<a class="headerlink" href="#3-work-request-scoping-with-ai" title="Permanent link">&para;</a></h2>
+<p><strong>Persona:</strong> Tech lead during sprint planning or backlog grooming.</p>
+<p><strong>When:</strong> Someone hands you a work request and asks "how big is this?" You need a number, not a feeling.</p>
+<p><strong>Why:</strong> Impact analysis mode (<code>--sow</code>) reads a natural language work description, uses AI to identify which projects, classes, or sprocs are affected, then runs the full consumer analysis automatically. It answers "what breaks if we do this" before anyone writes code.</p>
+<h3 id="steps_2">Steps<a class="headerlink" href="#steps_2" title="Permanent link">&para;</a></h3>
+<p><strong>Quick inline description:</strong></p>
+<pre><code class="language-bash">python scatter.py --sow &quot;Add Redis caching to PortalDataService.GetConfiguration method&quot; \
+  --search-scope /code/myrepo
+</code></pre>
+<p>The AI parses the description, identifies <code>GalaxyWorks.Data</code> as the target project and <code>PortalDataService</code> as the class, then traces consumers through the dependency graph.</p>
+<p><strong>Longer work request from a file:</strong></p>
+<pre><code class="language-bash">python scatter.py --sow-file /docs/work-requests/WR-2024-0342.txt \
+  --search-scope /code/myrepo \
+  --pipeline-csv pipeline_to_app_mapping.csv
+</code></pre>
+<p>For multi-paragraph work requests, point to a file. The AI does a better job with more context.</p>
+<p><strong>Save structured output for the ticket:</strong></p>
+<pre><code class="language-bash">python scatter.py --sow-file /docs/work-requests/WR-2024-0342.txt \
+  --search-scope /code/myrepo \
+  --pipeline-csv pipeline_to_app_mapping.csv \
+  --output-format json --output-file WR-0342-impact.json
+</code></pre>
+<p>The JSON includes everything: identified targets, consumer trees, risk ratings, complexity assessment, effort estimate. Attach it to the Jira ticket.</p>
+<p><strong>Paste-ready for a planning meeting:</strong></p>
+<pre><code class="language-bash">python scatter.py --sow &quot;Add Redis caching to PortalDataService.GetConfiguration method&quot; \
+  --search-scope /code/myrepo \
+  --output-format markdown | pbcopy
+</code></pre>
+<h3 id="what-to-look-for_2">What to Look For<a class="headerlink" href="#what-to-look-for_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Overall Risk and Complexity ratings.</strong> AI-assessed based on the number of consumers, their depth, and the nature of the change. "Low/Medium/High/Critical" with a justification. Not a magic number -- a starting point for discussion.</li>
+<li><strong>Effort estimate.</strong> Expressed as developer-days (e.g., "3-5 developer-days"). Calibrate against your team's actual velocity.</li>
+<li><strong>Direct vs. transitive consumers.</strong> 3 direct + 12 transitive is a very different shape than 15 direct + 0 transitive. The first is manageable with interface contracts. The second is a rewrite.</li>
+<li><strong>Confidence labels.</strong> HIGH means Scatter found a direct project reference and namespace match. MEDIUM means the namespace match is fuzzy. LOW means it's inferring based on naming conventions. Treat LOW-confidence consumers as "check manually."</li>
+</ul>
+<blockquote>
+<p><strong>How this works:</strong> Impact analysis runs five AI tasks (parsing, risk, coupling, complexity, narrative) against structured context -- not raw code. See <a href="usage/impact-analysis.html">Impact Analysis</a> for the full details and <a href="reference/architecture.html">Architecture Overview</a> for the AI provider system.</p>
+</blockquote>
+<hr />
+<h2 id="4-architecture-health-assessment">4. Architecture Health Assessment<a class="headerlink" href="#4-architecture-health-assessment" title="Permanent link">&para;</a></h2>
+<p><strong>Persona:</strong> Architect evaluating the codebase before a modernization initiative, platform migration, or service extraction.</p>
+<p><strong>When:</strong> Before you commit to "let's extract this into a microservice" in the architecture review. Before you draw boxes on a whiteboard that don't match reality.</p>
+<p><strong>Why:</strong> Graph mode builds a full dependency graph from every <code>.csproj</code> in scope, computes coupling metrics, detects circular dependencies, identifies domain clusters, and tells you which extractions are feasible and which are fantasy.</p>
+<h3 id="steps_3">Steps<a class="headerlink" href="#steps_3" title="Permanent link">&para;</a></h3>
+<p><strong>Build the graph and see the summary:</strong></p>
+<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo
+</code></pre>
+<p>First run builds the graph from scratch and caches it. Subsequent runs load from cache in under a second.</p>
+<p><strong>Get the full report with domain clusters:</strong></p>
+<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo \
+  --output-format markdown | pbcopy
+</code></pre>
+<p>Paste into Confluence. The Mermaid diagram renders inline. The domain clusters table shows extraction feasibility scores.</p>
+<p><strong>Export JSON for deeper analysis:</strong></p>
+<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo \
+  --output-format json --output-file graph-report.json \
+  --include-graph-topology
+</code></pre>
+<p>The <code>--include-graph-topology</code> flag adds the raw nodes and edges to the JSON. Omitted by default because it can get large, but you need it for custom analysis.</p>
+<p><strong>Include database dependencies:</strong></p>
+<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo \
+  --include-db \
+  --output-format json --output-file graph-with-db.json
+</code></pre>
+<p>The <code>--include-db</code> flag scans for stored procedure references and direct SQL in C# files. This adds edges to the graph that represent shared database coupling -- the kind of coupling that <code>.csproj</code> references don't show you.</p>
+<p><strong>Export the Mermaid diagram separately:</strong></p>
+<pre><code class="language-bash">python scatter.py --graph --search-scope . --output-format mermaid &gt; deps.mmd
+</code></pre>
+<p><strong>Force a rebuild if the cache is suspect:</strong></p>
+<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo --rebuild-graph
+</code></pre>
+<h3 id="what-to-look-for_3">What to Look For<a class="headerlink" href="#what-to-look-for_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Circular dependencies.</strong> Listed explicitly with the projects involved and the cycle path. Every circular dependency must be broken before you can extract anything cleanly.</li>
+<li><strong>Top coupled projects.</strong> Sorted by coupling score. The top entries are the projects that are hardest to change in isolation. If your extraction target tops this list, reconsider.</li>
+<li><strong>Domain clusters.</strong> Scatter groups projects by namespace prefix and computes cohesion and coupling for each cluster. High cohesion + low coupling = good extraction candidate. The <code>extraction_feasibility</code> field rates each cluster as <code>EASY</code>, <code>MODERATE</code>, <code>HARD</code>, or <code>INFEASIBLE</code>.</li>
+<li><strong>Health dashboard observations.</strong> Automated observations like "4 projects have instability &gt; 0.8" or "Cluster 'Billing' has 3 shared database objects crossing boundary." These are the things an architect would notice in a manual review -- Scatter just finds them faster.</li>
+</ul>
+<blockquote>
+<p><strong>How this works:</strong> Graph mode builds a directed dependency graph from <code>.csproj</code> references and (optionally) database edges, then computes structural metrics and clustering. See <a href="reference/architecture.html">Architecture Overview</a> for the graph engine and <a href="usage/dependency-graph.html">Dependency Graph</a> for detailed usage.</p>
+</blockquote>
+<hr />
+<h2 id="5-target-project-dependency-audit">5. Target Project Dependency Audit<a class="headerlink" href="#5-target-project-dependency-audit" title="Permanent link">&para;</a></h2>
+<p><strong>Persona:</strong> Developer planning to refactor, version, or deprecate a shared library.</p>
+<p><strong>When:</strong> Before you change the public API of <code>GalaxyWorks.Data</code> and discover in production that 14 projects were using that method you thought was internal.</p>
+<p><strong>Why:</strong> Target project mode gives you a precise, progressively narrowable view of who consumes what. Start broad, filter down to the exact method, get AI explanations of each usage.</p>
+<h3 id="steps_4">Steps<a class="headerlink" href="#steps_4" title="Permanent link">&para;</a></h3>
+<p><strong>Broad scan -- who references this project at all?</strong></p>
+<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope /code/myrepo
+</code></pre>
+<p>The filter chain in the output shows the funnel: total projects -&gt; those with a <code>&lt;ProjectReference&gt;</code> -&gt; those using the namespace -&gt; those referencing specific types.</p>
+<p><strong>Narrow to a specific class:</strong></p>
+<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope /code/myrepo \
+  --class-name PortalDataService
+</code></pre>
+<p>Now you see only consumers that actually reference <code>PortalDataService</code>, not just the namespace.</p>
+<p><strong>Narrow further to a specific method:</strong></p>
+<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope /code/myrepo \
+  --class-name PortalDataService \
+  --method-name GetConfiguration
+</code></pre>
+<p>Down to the exact call sites. If you're deprecating <code>GetConfiguration()</code>, these are the projects that need updating.</p>
+<p><strong>Add AI summaries to understand the usage patterns:</strong></p>
+<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope /code/myrepo \
+  --class-name PortalDataService \
+  --summarize-consumers \
+  --output-format json --output-file audit.json
+</code></pre>
+<p>Each consumer now includes summaries of the relevant C# files, explaining not just that they reference the class but how they use it. "Calls <code>GetConfiguration()</code> during startup and caches the result" versus "Calls <code>GetConfiguration()</code> on every request in a hot loop" are very different migration stories.</p>
+<h3 id="what-to-look-for_4">What to Look For<a class="headerlink" href="#what-to-look-for_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>The filter funnel.</strong> Watch the numbers drop at each stage: <code>142 -&gt; 8 project refs -&gt; 5 namespace -&gt; 3 class match -&gt; 2 method match</code>. If project refs is high but namespace match is low, you may have phantom dependencies from copy-paste .csproj editing.</li>
+<li><strong>Solutions column.</strong> A consumer appearing in multiple solutions is harder to coordinate. Single-solution consumers can be updated in one PR.</li>
+<li><strong>Zero results at a stage.</strong> The diagnostic hint tells you why: <code>Hint: 0 of 8 project-reference-matching projects contained 'PortalDataService' -- verify the class name</code>. Usually a spelling issue or a rename.</li>
+<li><strong>Summarization patterns.</strong> When AI summaries show consumers doing the same thing in slightly different ways, that's a sign you need a shared abstraction, not N individual migrations.</li>
+</ul>
+<blockquote>
+<p><strong>How this works:</strong> Target project analysis walks <code>.csproj</code> references, then filters by namespace usage, type references, and method calls in successive passes. See <a href="reference/architecture.html">Architecture Overview</a> for the filtering pipeline and <a href="usage/target-project.html">Target Project</a> for detailed usage.</p>
+</blockquote>
+<hr />
+<h2 id="6-full-codebase-analysis-pipeline">6. Full Codebase Analysis Pipeline<a class="headerlink" href="#6-full-codebase-analysis-pipeline" title="Permanent link">&para;</a></h2>
+<p><strong>Persona:</strong> DevOps engineer or architect running periodic health checks. The person who maintains the "state of the codebase" dashboard.</p>
+<p><strong>When:</strong> Weekly, on a schedule, or before quarterly planning. Trending matters more than any single snapshot.</p>
+<p><strong>Why:</strong> One graph report is a picture. A series of graph reports is a story. Coupling trending upward? New cycles appearing? Cluster feasibility eroding? These are the signals that architecture decisions get made from.</p>
+<h3 id="steps_5">Steps<a class="headerlink" href="#steps_5" title="Permanent link">&para;</a></h3>
+<p><strong>Generate a timestamped report:</strong></p>
+<pre><code class="language-bash">TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+python scatter.py --graph --search-scope /code/myrepo \
+  --include-db \
+  --output-format json --output-file &quot;reports/graph_${TIMESTAMP}.json&quot; \
+  --include-graph-topology
+</code></pre>
+<p>Run this on a schedule. Each report is a snapshot of the entire dependency graph with full metrics.</p>
+<p><strong>Compare key metrics between two reports:</strong></p>
+<pre><code class="language-python">import json
+
+with open(&quot;reports/graph_20260310_090000.json&quot;) as f:
+    old = json.load(f)
+with open(&quot;reports/graph_20260317_090000.json&quot;) as f:
+    new = json.load(f)
+
+print(f&quot;Nodes: {old['summary']['node_count']} -&gt; {new['summary']['node_count']}&quot;)
+print(f&quot;Edges: {old['summary']['edge_count']} -&gt; {new['summary']['edge_count']}&quot;)
+print(f&quot;Cycles: {old['summary']['cycle_count']} -&gt; {new['summary']['cycle_count']}&quot;)
+
+# Compare top coupled projects
+old_top = {p['project']: p['coupling_score'] for p in old['top_coupled']}
+new_top = {p['project']: p['coupling_score'] for p in new['top_coupled']}
+for project in new_top:
+    delta = new_top[project] - old_top.get(project, 0)
+    if abs(delta) &gt; 0.5:
+        print(f&quot;  {project}: coupling {old_top.get(project, 'NEW'):&gt;6} -&gt; {new_top[project]:&gt;6} ({'+' if delta &gt; 0 else ''}{delta:.1f})&quot;)
+</code></pre>
+<p>This is a 15-line script that tells you more about architecture drift than a week of code review.</p>
+<p><strong>Force a full rebuild if the cache is suspect:</strong></p>
+<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo \
+  --rebuild-graph \
+  --output-format json --output-file &quot;reports/graph_${TIMESTAMP}.json&quot;
+</code></pre>
+<p>Cache invalidation is automatic (Scatter checks file hashes and project sets), but if you've moved directories around or done major restructuring, a forced rebuild ensures clean data.</p>
+<p><strong>Generate a Markdown dashboard for the team:</strong></p>
+<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo \
+  --output-format markdown --output-file &quot;reports/health-dashboard.md&quot;
+</code></pre>
+<p>Commit this to the repo wiki. The Mermaid diagram renders inline. Update weekly.</p>
+<h3 id="what-to-look-for_5">What to Look For<a class="headerlink" href="#what-to-look-for_5" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Increasing edge counts.</strong> More edges = more coupling. If <code>edge_count</code> is trending up faster than <code>node_count</code>, the codebase is getting more tangled, not less.</li>
+<li><strong>New cycles.</strong> A cycle count going from 2 to 3 means someone introduced a circular dependency this week. Find it while the context is fresh.</li>
+<li><strong>Feasibility erosion.</strong> If a cluster's extraction feasibility drops from <code>MODERATE</code> to <code>HARD</code>, something crossed a boundary that shouldn't have.</li>
+<li><strong>Top coupled project churn.</strong> The same project topping the coupling list every week is expected (legacy core libraries tend to live there). A new project appearing in the top 5 is a signal worth investigating.</li>
+<li><strong>Health dashboard observations.</strong> The automated observations highlight the things that changed or crossed thresholds -- designed for exactly this trending use case.</li>
+</ul>
+<blockquote>
+<p><strong>How this works:</strong> Graph reports are JSON snapshots of the full dependency graph with structural metrics. The graph engine caches aggressively and invalidates via git diff. See <a href="reference/architecture.html">Architecture Overview</a> for the graph engine and caching system.</p>
+</blockquote></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = ".",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="js/base.js"></script>
+        <script src="search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

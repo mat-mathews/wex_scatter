@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="img/favicon.ico">
+        <title>Configuration - Scatter // Athena</title>
+        <link href="css/bootstrap.min.css" rel="stylesheet">
+        <link href="css/fontawesome.min.css" rel="stylesheet">
+        <link href="css/brands.min.css" rel="stylesheet">
+        <link href="css/solid.min.css" rel="stylesheet">
+        <link href="css/v4-font-face.min.css" rel="stylesheet">
+        <link href="css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/solarized-dark.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href=".">Scatter // Athena</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">User Guide</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="index.html" class="dropdown-item">Home</a>
+</li>
+                                    
+<li>
+    <a href="getting-started.html" class="dropdown-item">Getting Started</a>
+</li>
+                                    
+<li>
+    <a href="usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
+</li>
+                                    
+<li>
+    <a href="output-formats.html" class="dropdown-item">Output Formats</a>
+</li>
+                                    
+<li>
+    <a href="workflows.html" class="dropdown-item">Workflows</a>
+</li>
+                                    
+<li>
+    <a href="ai-features.html" class="dropdown-item">AI Features</a>
+</li>
+                                    
+<li>
+    <a href="configuration.html" class="dropdown-item active" aria-current="page">Configuration</a>
+</li>
+                                    
+<li>
+    <a href="cli-reference.html" class="dropdown-item">CLI Reference</a>
+</li>
+                                    
+<li>
+    <a href="testing.html" class="dropdown-item">Testing</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Technical Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="reference/architecture.html" class="dropdown-item">Architecture Overview</a>
+</li>
+                                    
+<li>
+    <a href="reference/graph-engine.html" class="dropdown-item">Graph Engine</a>
+</li>
+                                    
+<li>
+    <a href="reference/incremental-updates.html" class="dropdown-item">Incremental Updates</a>
+</li>
+                                    
+<li>
+    <a href="reference/coupling-and-cycles.html" class="dropdown-item">Coupling & Cycle Detection</a>
+</li>
+                                    
+<li>
+    <a href="reference/domain-clustering.html" class="dropdown-item">Domain Clustering</a>
+</li>
+                                    
+<li>
+    <a href="reference/consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="reference/type-extraction.html" class="dropdown-item">Type Extraction</a>
+</li>
+                                    
+<li>
+    <a href="reference/test-architecture.html" class="dropdown-item">Test Architecture</a>
+</li>
+                                    
+<li>
+    <a href="reference/benchmarks.html" class="dropdown-item">Benchmarks</a>
+</li>
+                                    
+<li>
+    <a href="reference/sample-projects.html" class="dropdown-item">Sample Projects</a>
+</li>
+                                    
+<li>
+    <a href="reference/development.html" class="dropdown-item">Development</a>
+</li>
+                                    
+<li>
+    <a href="reference/contributing.html" class="dropdown-item">Contributing</a>
+</li>
+                                    
+<li>
+    <a href="reference/claude-skills.html" class="dropdown-item">Claude Code Skills</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="ai-features.html" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="cli-reference.html" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#configuration" class="nav-link">Configuration</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#precedence" class="nav-link">Precedence</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#full-scatteryaml-schema" class="nav-link">Full .scatter.yaml Schema</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#typical-setup" class="nav-link">Typical Setup</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#environment-variables" class="nav-link">Environment Variables</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#google-api-key-setup" class="nav-link">Google API Key Setup</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#pipeline-mapping" class="nav-link">Pipeline Mapping</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#multiprocessing-tuning" class="nav-link">Multiprocessing Tuning</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#graph-behavior" class="nav-link">Graph Behavior</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h1>
+<p>Scatter uses a layered configuration system. You can configure nothing and it works. You can configure everything and it still works. The layers merge top-down, so a CLI flag always wins.</p>
+<h2 id="precedence">Precedence<a class="headerlink" href="#precedence" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Source</th>
+<th>Path / Mechanism</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 (highest)</td>
+<td>CLI flags</td>
+<td><code>--max-depth 3</code>, <code>--google-api-key ...</code>, etc.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Repo config</td>
+<td><code>.scatter.yaml</code> in the repo root</td>
+</tr>
+<tr>
+<td>3</td>
+<td>User config</td>
+<td><code>~/.scatter/config.yaml</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Environment variables</td>
+<td><code>GOOGLE_API_KEY</code>, <code>SCATTER_DEFAULT_PROVIDER</code></td>
+</tr>
+<tr>
+<td>5 (lowest)</td>
+<td>Built-in defaults</td>
+<td>Hardcoded in <code>scatter/config.py</code></td>
+</tr>
+</tbody>
+</table>
+<p>Missing config files are silently ignored. You do not need <code>.scatter.yaml</code> in your repo. You do not need <code>~/.scatter/config.yaml</code> at home. Scatter checks for them, shrugs if they are absent, and moves on. No warnings, no errors.</p>
+<h2 id="full-scatteryaml-schema">Full .scatter.yaml Schema<a class="headerlink" href="#full-scatteryaml-schema" title="Permanent link">&para;</a></h2>
+<pre><code class="language-yaml"># AI provider settings
+ai:
+  default_provider: gemini              # Only &quot;gemini&quot; supported today
+  gemini_model: gemini-1.5-flash        # Model for summarization and impact analysis
+  task_overrides:                       # Route specific AI tasks to different models
+    risk_assess: gemini-1.5-pro         # e.g., use a stronger model for risk assessment
+  credentials:
+    gemini:
+      api_key: your-key-here            # Or use env var / CLI flag instead
+
+# Search behavior
+search:
+  max_depth: 2                          # Transitive tracing depth for impact analysis
+  exclude_patterns:                     # Glob patterns to skip during file discovery
+    - &quot;*/bin/*&quot;                         # NOTE: this REPLACES the defaults entirely.
+    - &quot;*/obj/*&quot;                         # If you add custom patterns, re-list bin/obj
+    - &quot;*/node_modules/*&quot;               # or they will no longer be excluded.
+
+# Parallel processing
+multiprocessing:
+  disabled: false                       # Set true to force sequential execution
+  max_workers: 14                       # Upper bound on worker processes
+  chunk_size: 75                        # Directories per worker batch
+
+# Dependency graph
+graph:
+  cache_dir: null                       # Override default .scatter/ cache location
+  rebuild: false                        # Force full rebuild (ignore cache)
+  invalidation: git                     # &quot;git&quot; (default) or &quot;mtime&quot; fallback
+  coupling_weights:                     # Override edge type weights for coupling score
+    project_reference: 1.0
+    namespace_usage: 0.5
+    type_usage: 0.3
+    sproc_shared: 0.8
+
+# Database dependency scanning
+db:
+  sproc_prefixes:                       # Prefixes that identify stored procedures
+    - &quot;sp_&quot;
+    - &quot;usp_&quot;
+  include_db_edges: true                # Add sproc_shared edges to the graph
+</code></pre>
+<h2 id="typical-setup">Typical Setup<a class="headerlink" href="#typical-setup" title="Permanent link">&para;</a></h2>
+<p>Most teams land on a two-file setup: one user-level config that holds your API key, one repo-level config that holds repo-specific defaults. CLI flags for one-off experiments.</p>
+<h3 id="user-level-config-scatterconfigyaml">User-level config (<code>~/.scatter/config.yaml</code>)<a class="headerlink" href="#user-level-config-scatterconfigyaml" title="Permanent link">&para;</a></h3>
+<p>Set your API key once. Every Scatter run in every repo picks it up.</p>
+<pre><code class="language-yaml">ai:
+  credentials:
+    gemini:
+      api_key: AIzaSy...your-key-here
+</code></pre>
+<h3 id="repo-level-config-scatteryaml">Repo-level config (<code>.scatter.yaml</code>)<a class="headerlink" href="#repo-level-config-scatteryaml" title="Permanent link">&para;</a></h3>
+<p>Repo-specific defaults. Committed to source control so the whole team shares them.</p>
+<pre><code class="language-yaml">search:
+  max_depth: 3
+  exclude_patterns:
+    - &quot;*/bin/*&quot;
+    - &quot;*/obj/*&quot;
+    - &quot;*/test-fixtures/*&quot;
+
+graph:
+  invalidation: git
+
+db:
+  sproc_prefixes:
+    - &quot;sp_&quot;
+    - &quot;usp_&quot;
+    - &quot;proc_&quot;
+</code></pre>
+<h3 id="cli-overrides">CLI overrides<a class="headerlink" href="#cli-overrides" title="Permanent link">&para;</a></h3>
+<p>For one-off runs, just pass flags. They override everything.</p>
+<pre><code class="language-bash">python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope . --max-depth 4
+</code></pre>
+<h2 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GOOGLE_API_KEY</code></td>
+<td>Google API key for Gemini. Used when no key is provided via CLI flag or config file.</td>
+</tr>
+<tr>
+<td><code>SCATTER_DEFAULT_PROVIDER</code></td>
+<td>Override the default AI provider (currently only <code>gemini</code> is supported).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="google-api-key-setup">Google API Key Setup<a class="headerlink" href="#google-api-key-setup" title="Permanent link">&para;</a></h2>
+<p>Three ways to provide it, in order of precedence:</p>
+<ol>
+<li><strong>CLI flag</strong>: <code>--google-api-key YOUR_KEY</code> -- highest priority, useful for CI/CD</li>
+<li><strong>Config file</strong>: Set in <code>~/.scatter/config.yaml</code> or <code>.scatter.yaml</code> under <code>ai.credentials.gemini.api_key</code></li>
+<li><strong>Environment variable</strong>: <code>export GOOGLE_API_KEY=YOUR_KEY</code></li>
+</ol>
+<p>You only need an API key for AI features: <code>--summarize-consumers</code>, <code>--enable-hybrid-git</code>, <code>--sow</code>, and <code>--sow-file</code>. All other Scatter functionality works without one.</p>
+<h2 id="pipeline-mapping">Pipeline Mapping<a class="headerlink" href="#pipeline-mapping" title="Permanent link">&para;</a></h2>
+<p>Map consumer projects to their CI/CD pipelines using <code>--pipeline-csv</code>:</p>
+<pre><code class="language-bash">python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope . \
+  --pipeline-csv build/pipeline_to_app_mapping.csv
+</code></pre>
+<p>The CSV needs two columns: <code>Application Name</code> and <code>Pipeline Name</code>. Scatter matches discovered consumer project names against the Application Name column and includes pipeline information in the output.</p>
+<h2 id="multiprocessing-tuning">Multiprocessing Tuning<a class="headerlink" href="#multiprocessing-tuning" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--disable-multiprocessing</code></td>
+<td><code>false</code></td>
+<td>Force sequential processing. Useful for debugging or environments where fork is problematic.</td>
+</tr>
+<tr>
+<td><code>--max-workers</code></td>
+<td><code>14</code></td>
+<td>Upper bound on worker processes. Actual count may be lower (see adaptive scaling below).</td>
+</tr>
+<tr>
+<td><code>--chunk-size</code></td>
+<td><code>75</code></td>
+<td>Number of directories processed per worker batch during file discovery.</td>
+</tr>
+<tr>
+<td><code>--cs-analysis-chunk-size</code></td>
+<td><code>50</code></td>
+<td>Number of <code>.cs</code> files per worker batch for content analysis.</td>
+</tr>
+<tr>
+<td><code>--csproj-analysis-chunk-size</code></td>
+<td><code>25</code></td>
+<td>Number of <code>.csproj</code> files per worker batch for XML parsing.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="adaptive-worker-scaling">Adaptive Worker Scaling<a class="headerlink" href="#adaptive-worker-scaling" title="Permanent link">&para;</a></h3>
+<p>Scatter does not blindly spin up <code>--max-workers</code> processes. It scales based on workload:</p>
+<ul>
+<li>Less than 200 files: 4 workers</li>
+<li>200 to 999 files: 8 workers</li>
+<li>1000+ files: up to <code>--max-workers</code></li>
+</ul>
+<p>This prevents the overhead of process creation from exceeding the work being parallelized. For the sample projects (dozens of files), you will see 4 workers. For a 500-project monolith, you will see the full pool.</p>
+<h2 id="graph-behavior">Graph Behavior<a class="headerlink" href="#graph-behavior" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>(default)</em></td>
+<td>Auto-build graph on first run, auto-load from cache on subsequent runs, incremental patching via git diff</td>
+</tr>
+<tr>
+<td><code>--no-graph</code></td>
+<td>Skip all graph operations -- no build, no load, no enrichment. Pure filesystem analysis.</td>
+</tr>
+<tr>
+<td><code>--rebuild-graph</code></td>
+<td>Force a full graph rebuild, ignoring the existing cache. Useful after major refactors.</td>
+</tr>
+<tr>
+<td><code>--graph</code></td>
+<td>Dedicated graph analysis mode. Builds graph, computes coupling metrics, detects cycles, identifies domain clusters.</td>
+</tr>
+<tr>
+<td><code>--graph-metrics</code></td>
+<td>Explicitly request graph enrichment. Redundant now -- enrichment happens automatically when a cache exists.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>How this works:</strong> Configuration merging, adaptive scaling, and graph caching are handled by the config and graph engine subsystems. See <a href="reference/architecture.html">Architecture Overview</a> for details.</p>
+</blockquote></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = ".",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="js/base.js"></script>
+        <script src="search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
