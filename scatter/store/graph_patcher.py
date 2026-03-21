@@ -336,9 +336,9 @@ def patch_graph(
         if old_pfacts and old_pfacts.namespace != new_pfacts.namespace:
             namespace_changed = True
             # Update node namespace
-            node = graph.get_node(project_name)
-            if node:
-                node.namespace = new_pfacts.namespace
+            ns_node = graph.get_node(project_name)
+            if ns_node:
+                ns_node.namespace = new_pfacts.namespace
 
         project_facts[project_name] = new_pfacts
         affected_projects.add(project_name)
@@ -560,9 +560,10 @@ def _rebuild_project_reference_edges(
         # Build a relative Include path like "../RefProject/RefProject.csproj"
         if source_node:
             try:
-                include = str(target_node.path.relative_to(
-                    source_node.path.parent, walk_up=True
-                ))
+                import os
+                include = os.path.relpath(
+                    str(target_node.path), str(source_node.path.parent)
+                )
             except (ValueError, TypeError):
                 include = ref_name
         else:

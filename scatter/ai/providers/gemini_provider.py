@@ -196,6 +196,8 @@ class GeminiProvider(AIProvider):
     def analyze(self, prompt: str, context: str, task_type: AITaskType) -> AnalysisResult:
         """Generic analysis — sends prompt + context to Gemini."""
         full_prompt = f"{prompt}\n\n{context}" if context else prompt
+        if self._model is None:
+            raise RuntimeError("GeminiProvider model not initialized")
         response = self._model.generate_content(full_prompt)
         return AnalysisResult(response=response.text.strip())
 

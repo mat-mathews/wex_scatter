@@ -2,7 +2,7 @@
 import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import List, Optional, Tuple, Dict
+from typing import Any, List, Optional, Tuple, Dict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from scatter.core.models import DEFAULT_MAX_WORKERS, DEFAULT_CHUNK_SIZE, MULTIPROCESSING_ENABLED
@@ -42,7 +42,7 @@ def map_cs_to_projects_batch(args: Tuple[List[str]]) -> Dict[str, Optional[str]]
     """
     (cs_file_paths,) = args
     results = {}
-    dir_to_csproj = {}  # Cache: str(directory) -> Optional[str(csproj_path)]
+    dir_to_csproj: Dict[str, Optional[str]] = {}  # Cache: str(directory) -> Optional[str(csproj_path)]
 
     for cs_file_str in cs_file_paths:
         try:
@@ -292,7 +292,7 @@ def map_cs_to_projects_parallel(cs_files: List[Path],
         return map_cs_to_projects_batch((cs_file_strs,))
 
 
-def analyze_cs_files_batch(args: Tuple[List[Path], Dict[str, any]]) -> Dict[Path, Dict[str, any]]:
+def analyze_cs_files_batch(args: Tuple[List[Path], Dict[str, Any]]) -> Dict[Path, Dict[str, Any]]:
     """
     Worker function to analyze a batch of .cs files for various patterns.
 
@@ -379,10 +379,10 @@ def analyze_cs_files_batch(args: Tuple[List[Path], Dict[str, any]]) -> Dict[Path
 
 
 def analyze_cs_files_parallel(cs_files: List[Path],
-                             analysis_config: Dict[str, any],
+                             analysis_config: Dict[str, Any],
                              max_workers: int = DEFAULT_MAX_WORKERS,
                              cs_analysis_chunk_size: int = 50,
-                             disable_multiprocessing: bool = False) -> Dict[Path, Dict[str, any]]:
+                             disable_multiprocessing: bool = False) -> Dict[Path, Dict[str, Any]]:
     """
     Analyze a list of .cs files in parallel for specific patterns.
 

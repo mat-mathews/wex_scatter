@@ -41,11 +41,12 @@ def write_json_report(detailed_results: List[Dict], output_file_path: Path,
     """Write analysis results as JSON to file."""
     logging.info(f"Writing {len(detailed_results)} detailed results to JSON: {output_file_path}")
 
-    unique_pipelines = sorted(list(set(
-        item.get('PipelineName') for item in detailed_results if item.get('PipelineName')
-    )))
+    unique_pipelines = sorted([
+        p for item in detailed_results
+        if (p := item.get('PipelineName')) is not None
+    ])
 
-    json_output = {}
+    json_output: Dict[str, Any] = {}
     if metadata is not None:
         json_output['metadata'] = metadata
     if pipeline is not None:

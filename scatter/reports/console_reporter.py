@@ -1,9 +1,10 @@
 """Console output formatting for analysis results."""
 import textwrap
 from collections import Counter
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 from scatter.core.models import (
+    ConsumerResult,
     EnrichedConsumer,
     FilterPipeline, ImpactReport,
     STAGE_DISCOVERY, STAGE_INPUT_LABELS,
@@ -30,7 +31,7 @@ def print_filter_pipeline(pipeline: FilterPipeline) -> None:
                 break
 
 
-def print_console_report(all_results: List[Dict[str, Union[str, Dict, List[str]]]],
+def print_console_report(all_results: List["ConsumerResult"],
                          pipeline: Optional[FilterPipeline] = None,
                          graph_metrics_requested: bool = False) -> None:
     """Print formatted analysis results to console."""

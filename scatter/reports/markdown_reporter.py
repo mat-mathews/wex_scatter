@@ -2,7 +2,7 @@
 import logging
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from scatter.analyzers.coupling_analyzer import CycleGroup, ProjectMetrics
 from scatter.analyzers.health_analyzer import HealthDashboard
@@ -69,7 +69,7 @@ def _md_table(headers: List[str], rows: List[List[str]]) -> str:
 # ---------------------------------------------------------------------------
 
 def build_markdown(
-    detailed_results: List[Dict[str, Union[str, Dict, List[str]]]],
+    detailed_results: List[Dict[str, Any]],
     metadata: Optional[Dict] = None,
     pipeline: Optional[FilterPipeline] = None,
     graph_metrics_requested: bool = False,
@@ -114,7 +114,7 @@ def build_markdown(
             pipeline_name = item.get("PipelineName") or "\u2014"
             solutions = item.get("ConsumingSolutions", [])
             solutions_str = ", ".join(solutions) if solutions else "\u2014"
-            row = [
+            row: List[str] = [
                 item["ConsumerProjectName"],
                 item["ConsumerProjectPath"],
                 pipeline_name,
@@ -146,7 +146,7 @@ def build_markdown(
 
 
 def write_markdown_report(
-    detailed_results: List[Dict[str, Union[str, Dict, List[str]]]],
+    detailed_results: List[Dict[str, Any]],
     output_file_path: Path,
     metadata: Optional[Dict] = None,
     pipeline: Optional[FilterPipeline] = None,

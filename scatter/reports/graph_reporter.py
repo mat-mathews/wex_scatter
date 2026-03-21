@@ -3,7 +3,7 @@ import csv
 import dataclasses
 import json
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from scatter.analyzers.coupling_analyzer import CycleGroup, ProjectMetrics
 from scatter.core.graph import DependencyGraph
@@ -227,7 +227,7 @@ def build_graph_json(
     bridge_projects: Optional[List[str]] = None,
 ) -> dict:
     """Build JSON-serializable dict for graph report."""
-    report = {}
+    report: Dict[str, Any] = {}
     if metadata is not None:
         report['metadata'] = metadata
     report.update({
@@ -268,8 +268,8 @@ def build_graph_json(
                 "shared_db_density": round(m.shared_db_density, 3),
                 "type_export_count": m.type_export_count,
                 "consumer_count": m.consumer_count,
-                "solutions": (graph.get_node(name).solutions
-                              if graph.get_node(name) else []),
+                "solutions": (_node.solutions
+                              if (_node := graph.get_node(name)) else []),
             }
             for name, m in sorted(metrics.items())
         },

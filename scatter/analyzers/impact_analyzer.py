@@ -1,11 +1,12 @@
 """Impact analysis orchestrator — SOW text to ImpactReport pipeline."""
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 from scatter.core.models import (
     AnalysisTarget,
     EnrichedConsumer,
+    RawConsumerDict,
     TargetImpact,
     ImpactReport,
     DEFAULT_MAX_DEPTH,
@@ -267,7 +268,7 @@ def _analyze_single_target(
 
 
 def trace_transitive_impact(
-    direct_consumers: List[Dict[str, Union[Path, str, List[Path]]]],
+    direct_consumers: List[RawConsumerDict],
     search_scope: Path,
     max_depth: int = DEFAULT_MAX_DEPTH,
     pipeline_map: Optional[Dict[str, str]] = None,
@@ -296,12 +297,12 @@ def trace_transitive_impact(
     all_enriched: List[EnrichedConsumer] = []
 
     # Convert direct consumers to EnrichedConsumer at depth 0
-    current_level: List[Dict[str, Union[Path, str, List[Path]]]] = direct_consumers
+    current_level: List[RawConsumerDict] = direct_consumers
     depth = 0
 
     while depth <= max_depth and current_level:
         conf = confidence_by_depth.get(depth, CONFIDENCE_LOW)
-        next_level_raw: List[Dict[str, Union[Path, str, List[Path]]]] = []
+        next_level_raw: List[RawConsumerDict] = []
 
         for consumer_data in current_level:
             consumer_path = consumer_data['consumer_path']

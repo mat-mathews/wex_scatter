@@ -154,7 +154,7 @@ DEFAULT_CYCLE_EDGE_TYPES = frozenset({"project_reference"})
 
 def detect_cycles(
     graph: DependencyGraph,
-    edge_types: Optional[Set[str]] = None,
+    edge_types: Optional[frozenset[str]] = None,
 ) -> List[CycleGroup]:
     """Find all circular dependency groups using Tarjan's SCC algorithm.
 
@@ -167,13 +167,12 @@ def detect_cycles(
     Returns CycleGroups (SCCs with size > 1), sorted by size ascending
     (smallest first — often the easiest to break).
     """
-    if edge_types is None:
-        edge_types = DEFAULT_CYCLE_EDGE_TYPES
+    resolved_edge_types = edge_types if edge_types is not None else DEFAULT_CYCLE_EDGE_TYPES
 
     # Build filtered adjacency for cycle detection
     adjacency: Dict[str, Set[str]] = defaultdict(set)
     for edge in graph.all_edges:
-        if edge.edge_type in edge_types:
+        if edge.edge_type in resolved_edge_types:
             adjacency[edge.source].add(edge.target)
 
     sccs = _tarjans_scc_iterative(graph, adjacency)

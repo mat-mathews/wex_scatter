@@ -16,7 +16,7 @@ from scatter.__version__ import __version__
 from scatter.ai.base import AIProvider
 from scatter.cli_parser import _REDACTED_CLI_KEYS
 from scatter.config import ScatterConfig
-from scatter.core.models import DEFAULT_MAX_WORKERS, DEFAULT_CHUNK_SIZE, FilterPipeline
+from scatter.core.models import DEFAULT_MAX_WORKERS, DEFAULT_CHUNK_SIZE, ConsumerResult, FilterPipeline, RawConsumerDict
 from scatter.reports.console_reporter import print_console_report
 from scatter.reports.json_reporter import prepare_detailed_results, write_json_report
 from scatter.reports.csv_reporter import write_csv_report
@@ -53,7 +53,7 @@ class ModeContext:
 class ModeResult:
     """Return type for legacy mode handlers (git, target, sproc)."""
 
-    all_results: list = field(default_factory=list)
+    all_results: List[ConsumerResult] = field(default_factory=list)
     filter_pipeline: Optional[FilterPipeline] = None
     graph_enriched: bool = False
 
@@ -83,7 +83,7 @@ def _require_output_file(args, format_name: str) -> Path:
 
 
 def dispatch_legacy_output(
-    all_results: list,
+    all_results: List[ConsumerResult],
     filter_pipeline: Optional[FilterPipeline],
     args,
     search_scope: Optional[Path],
@@ -171,8 +171,8 @@ def dispatch_legacy_output(
 
 
 def _summarize_consumer_files(
-    final_consumers_data: List[Dict[str, Union[Path, str, List[Path]]]],
-    all_results: List[Dict],
+    final_consumers_data: List[RawConsumerDict],
+    all_results: List[ConsumerResult],
     ai_provider,
     search_scope: Path,
     results_start_index: int,
@@ -291,7 +291,7 @@ def _ensure_graph_context(ctx: ModeContext) -> None:
         logging.debug(f"First-run graph build failed (non-fatal): {e}")
 
 
-def _apply_graph_enrichment(all_results: List[Dict], ctx: ModeContext) -> None:
+def _apply_graph_enrichment(all_results: List[ConsumerResult], ctx: ModeContext) -> None:
     """Build graph context if needed, enrich results in place.
 
     Mutates ctx.graph_ctx and ctx.graph_enriched.
@@ -353,7 +353,7 @@ def run_target_analysis(ctx: ModeContext, target_csproj: Path) -> ModeResult:
         graph=ctx.graph_ctx.graph if ctx.graph_ctx else None,
     )
 
-    all_results: List[Dict] = []
+    all_results: List[ConsumerResult] = []
 
     if final_consumers_data:
         logging.info(f"Found {len(final_consumers_data)} consumer(s) matching criteria for target '{target_project_name}'.")
@@ -426,7 +426,7 @@ def run_git_analysis(
     logging.info(f"Step 1: Analyzing Git changes...")
     changed_projects_dict = analyze_branch_changes(str(repo_path), branch_name, base_branch)
 
-    all_results: List[Dict] = []
+    all_results: List[ConsumerResult] = []
     filter_pipeline: Optional[FilterPipeline] = None
 
     if not changed_projects_dict:
@@ -675,7 +675,7 @@ def run_sproc_analysis(
         f"{len(project_class_sproc_map)} project(s) referencing sproc '{sproc_name}'."
     )
 
-    all_results: List[Dict] = []
+    all_results: List[ConsumerResult] = []
     filter_pipeline: Optional[FilterPipeline] = None
     processed_targets_count = 0
 

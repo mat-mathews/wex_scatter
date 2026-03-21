@@ -3,7 +3,7 @@ import re
 import multiprocessing
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TypedDict
 
 # multiprocessing configuration
 DEFAULT_MAX_WORKERS = min(32, (multiprocessing.cpu_count() or 1) + 4)
@@ -45,6 +45,13 @@ def _confidence_label(confidence: float) -> str:
     elif confidence >= CONFIDENCE_MEDIUM:
         return "MEDIUM"
     return "LOW"
+
+
+class RawConsumerDict(TypedDict):
+    """Raw consumer dict returned by find_consumers()."""
+    consumer_path: Path
+    consumer_name: str
+    relevant_files: List[Path]
 
 
 # --- Consumer result data model ---

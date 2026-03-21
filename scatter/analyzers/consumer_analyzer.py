@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 from scatter.core.models import (
     DEFAULT_MAX_WORKERS, DEFAULT_CHUNK_SIZE,
-    FilterStage, FilterPipeline,
+    FilterStage, FilterPipeline, RawConsumerDict,
     STAGE_DISCOVERY, STAGE_PROJECT_REFERENCE, STAGE_NAMESPACE,
     STAGE_CLASS, STAGE_METHOD,
 )
@@ -112,7 +112,7 @@ def find_consumers(
     cs_analysis_chunk_size: int = 50,
     csproj_analysis_chunk_size: int = 25,
     graph: Optional["DependencyGraph"] = None,
-) -> Tuple[List[Dict[str, Union[Path, str, List[Path]]]], FilterPipeline]:
+) -> Tuple[List[RawConsumerDict], FilterPipeline]:
     """
     Finds consuming projects based on ProjectReference, namespace usage,
     and optional class/method usage checks. Tracks the specific files causing matches.
@@ -241,7 +241,7 @@ def find_consumers(
             )
 
             for consumer_path_abs, consumer_data in direct_consumers.items():
-                namespace_match_files = []
+                namespace_match_files: List[Path] = []
 
                 for cs_file_path in consumer_to_files_map.get(consumer_path_abs, []):
                     file_result = analysis_results.get(cs_file_path)
@@ -265,14 +265,14 @@ def find_consumers(
     ))
 
     # --- helper to format results ---
-    def format_results(consumer_dict: Dict[Path, Dict[str, Union[str, List[Path]]]]) -> List[Dict[str, Union[Path, str, List[Path]]]]:
-        results = []
+    def format_results(consumer_dict: Dict[Path, Dict[str, Union[str, List[Path]]]]) -> List[RawConsumerDict]:
+        results: List[RawConsumerDict] = []
         for path, data in consumer_dict.items():
-            results.append({
-                'consumer_path': path,
-                'consumer_name': data['consumer_name'],
-                'relevant_files': data['relevant_files']
-            })
+            results.append(RawConsumerDict(
+                consumer_path=path,
+                consumer_name=str(data['consumer_name']),
+                relevant_files=list(data.get('relevant_files', [])),  # type: ignore[arg-type]
+            ))
         return results
 
     if not namespace_consumers:
@@ -288,11 +288,12 @@ def find_consumers(
 
     class_pattern = re.compile(rf"\b{re.escape(class_name)}\b")
 
-    all_relevant_files = []
-    consumer_to_relevant_files_map = {}
+    all_relevant_files: List[Path] = []
+    consumer_to_relevant_files_map: Dict[Path, List[Path]] = {}
 
     for consumer_path_abs, consumer_data in namespace_consumers.items():
-        files_to_check = consumer_data['relevant_files']
+        raw_files = consumer_data['relevant_files']
+        files_to_check: List[Path] = raw_files if isinstance(raw_files, list) else []
         consumer_to_relevant_files_map[consumer_path_abs] = files_to_check
         all_relevant_files.extend(files_to_check)
         logging.debug(f"  Checking type '{class_name}' in {len(files_to_check)} relevant files for {consumer_data['consumer_name']}...")
@@ -315,7 +316,7 @@ def find_consumers(
         )
 
         for consumer_path_abs, consumer_data in namespace_consumers.items():
-            class_match_files = []
+            class_match_files: List[Path] = []
 
             for cs_file_path in consumer_to_relevant_files_map.get(consumer_path_abs, []):
                 file_result = analysis_results.get(cs_file_path)
@@ -349,12 +350,14 @@ def find_consumers(
 
     method_pattern = re.compile(rf"\.\s*{re.escape(method_name)}\s*\(")
 
-    all_method_files = []
+    all_method_files: List[Path] = []
     file_to_consumer_map: Dict[Path, Path] = {}
     for consumer_path_abs, consumer_data in class_consumers.items():
-        for cs_file_abs in consumer_data['relevant_files']:
-            all_method_files.append(cs_file_abs)
-            file_to_consumer_map[cs_file_abs] = consumer_path_abs
+        method_raw_files = consumer_data['relevant_files']
+        if isinstance(method_raw_files, list):
+            for cs_file_abs in method_raw_files:
+                all_method_files.append(cs_file_abs)
+                file_to_consumer_map[cs_file_abs] = consumer_path_abs
 
     logging.debug(f"  Scanning {len(all_method_files)} files across {len(class_consumers)} consumers for method '{method_name}'...")
 
@@ -387,10 +390,14 @@ def find_consumers(
                     'consumer_name': consumer_data['consumer_name'],
                     'relevant_files': []
                 }
-            method_consumers[consumer_path_abs]['relevant_files'].append(cs_file_abs)
+            files_list = method_consumers[consumer_path_abs]['relevant_files']
+            assert isinstance(files_list, list)
+            files_list.append(cs_file_abs)
 
     for consumer_path_abs, consumer_data in method_consumers.items():
-        logging.debug(f"    Method '{method_name}' used in {consumer_data['consumer_name']} (Files: {[f.name for f in consumer_data['relevant_files']]})")
+        rel_files = consumer_data['relevant_files']
+        assert isinstance(rel_files, list)
+        logging.debug(f"    Method '{method_name}' used in {consumer_data['consumer_name']} (Files: {[f.name for f in rel_files]})")
 
     logging.debug(f"Found {len(method_consumers)} consumer(s) potentially calling method '{method_name}'.")
 

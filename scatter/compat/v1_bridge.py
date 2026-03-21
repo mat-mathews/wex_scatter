@@ -2,9 +2,9 @@
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
-from scatter.core.models import ConsumerResult
+from scatter.core.models import ConsumerResult, RawConsumerDict
 
 
 def find_solutions_for_project(
@@ -86,7 +86,7 @@ def _process_consumer_summaries_and_append_results(
     target_project_name: str,
     target_project_rel_path_str: str,
     triggering_info: str,
-    final_consumers_data: List[Dict[str, Union[Path, str, List[Path]]]],
+    final_consumers_data: List[RawConsumerDict],
     all_results_list: List[ConsumerResult],
     pipeline_map_dict: Dict[str, str],
     solution_file_cache: List[Path],

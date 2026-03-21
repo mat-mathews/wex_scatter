@@ -96,9 +96,9 @@ def build_dependency_graph(
     project_cs_files: Dict[str, List[Path]] = defaultdict(list)
 
     for cs_path in cs_files:
-        project_name = _map_cs_to_project(cs_path, project_dir_index)
-        if project_name:
-            project_cs_files[project_name].append(cs_path)
+        mapped_name = _map_cs_to_project(cs_path, project_dir_index)
+        if mapped_name:
+            project_cs_files[mapped_name].append(cs_path)
 
     # Step 4: For each project's .cs files, extract type declarations, sproc refs, namespace usages
     # When capture_facts=True, we also build FileFacts inline to avoid re-reading files.

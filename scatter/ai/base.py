@@ -1,7 +1,7 @@
 """AI Provider protocol and shared types."""
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Protocol, runtime_checkable
+from typing import Optional, Protocol, Set, runtime_checkable
 
 SUMMARIZATION_PROMPT_TEMPLATE = (
     "Analyze the following C# code from the file '{filename}':\n\n"
@@ -48,3 +48,6 @@ class AIProvider(Protocol):
     def supports(self, task_type: AITaskType) -> bool: ...
 
     def estimate_tokens(self, context: str) -> int: ...
+
+    def extract_affected_symbols(self, file_content: str, diff_text: str,
+                                  file_path: str) -> Optional[Set[str]]: ...

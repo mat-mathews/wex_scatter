@@ -202,8 +202,8 @@ def _generate_observations(
 
     if bridge_projects and node_solutions:
         for name in bridge_projects:
-            m = metrics.get(name)
-            if m and m.fan_in >= HIGH_FAN_IN_THRESHOLD:
+            bridge_m = metrics.get(name)
+            if bridge_m and bridge_m.fan_in >= HIGH_FAN_IN_THRESHOLD:
                 sols = node_solutions.get(name, [])
                 sol_str = ", ".join(sols) if sols else "multiple"
                 obs.append(Observation(
@@ -211,7 +211,7 @@ def _generate_observations(
                     rule="solution_bridge_project",
                     message=(
                         f"{name}: bridge project across {len(sols)} solutions "
-                        f"({sol_str}) with {m.fan_in} incoming dependencies"
+                        f"({sol_str}) with {bridge_m.fan_in} incoming dependencies"
                     ),
                     severity="info",
                 ))
