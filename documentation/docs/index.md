@@ -50,7 +50,7 @@ You never pass a flag for this. You never configure it. It just happens.
 
 ## Built to last
 
-724 tests. Modular Python package. Actively developed by team Athena.
+788 tests. Modular Python package. Actively developed by team Athena.
 
 ## Where to go from here
 
@@ -59,3 +59,4 @@ You never pass a flag for this. You never configure it. It just happens.
 - [CLI Reference](cli-reference.md) -- every flag, every option
 - [Workflows](workflows.md) -- real-world scenarios chaining modes together
 - [Configuration](configuration.md) -- YAML config, env vars, project-specific overrides
+- [Claude Code Skills](getting-started.md#using-with-claude-code) -- ask Claude about dependencies in natural language

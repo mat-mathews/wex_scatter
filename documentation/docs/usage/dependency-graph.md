@@ -15,37 +15,36 @@ python scatter.py --graph --search-scope .
   Dependency Graph Analysis
 ============================================================
   Projects: 11
-  Dependencies: 28
-  Connected components: 2
+  Dependencies: 50
+  Solutions: 1
+  Connected components: 1
   Circular dependencies: 0
 
   Top Coupled Projects:
   Project                                     Score   Fan-In  Fan-Out  Instab.
   ---------------------------------------- -------- -------- -------- --------
-  GalaxyWorks.Data                              12.3        7        0     0.00
-  GalaxyWorks.Common                             6.8        3        1     0.25
-  GalaxyWorks.WebPortal                          5.2        1        1     0.50
-  GalaxyWorks.BatchProcessor                     4.1        0        2     1.00
-  GalaxyWorks.Api                                3.9        0        2     1.00
-  GalaxyWorks.Data.Tests                         3.5        0        2     1.00
-  MyGalaryConsumerApp                            2.3        0        2     1.00
-  MyGalaryConsumerApp2                           1.8        0        1     1.00
-  MyDotNetApp.Consumer                           1.2        0        1     1.00
-  MyDotNetApp                                    0.8        1        0     0.00
+  GalaxyWorks.Data                             22.3        7        0     0.00
+  GalaxyWorks.WebPortal                        12.7        1        1     0.50
+  GalaxyWorks.BatchProcessor                   10.8        0        2     1.00
+  ...
 
   Domain Clusters:
-  Cluster                          Size   Cohesion   Coupling        Feasibility
-  ------------------------------ ------ ---------- ---------- --------------------
-  GalaxyWorks                         7      0.143      0.286    moderate (0.571)
-    Members: GalaxyWorks.Api, GalaxyWorks.BatchProcessor, GalaxyWorks.Common, GalaxyWorks.Data, GalaxyWorks.Data.Tests, ...
-  MyDotNetApp                         2      0.500      0.000        easy (1.000)
-    Members: MyDotNetApp, MyDotNetApp.Consumer
+  Cluster                          Size   Cohesion   Coupling          Feasibility    Align
+  ------------------------------ ------ ---------- ---------- -------------------- --------
+  cluster_0                          11      0.455      0.000         easy (1.000)     0.91
+    Members: GalaxyWorks.Api, GalaxyWorks.BatchProcessor, ... (solution: GalaxyWorks)
+
+  Solution Coupling:
+  Solution                       Projects   Internal   External    Ratio
+  ------------------------------ -------- ---------- ---------- --------
+  GalaxyWorks                          10         41          9     0.18
 
   Observations:
     [warning] GalaxyWorks.Data: stable core (fan_in=7, instability=0.00) -- change carefully
-    [warning] GalaxyWorks.Data: high coupling score (12.3) -- review dependencies
+    [warning] GalaxyWorks.Data: high coupling score (22.3) -- review dependencies
+    [info] dbo.sp_GetPortalConfigurationDetails: shared by 3 projects -- database coupling hotspot
 
-Analysis complete. 11 projects, 28 dependencies, 0 cycle(s).
+Analysis complete. 11 projects, 50 dependencies, 0 cycle(s).
 ```
 
 That's the whole codebase in one screen. Let's walk through what you're looking at.
@@ -83,6 +82,24 @@ Rule-based warnings (no AI involved) that flag specific concerns:
 - **in cycle** -- participates in a circular dependency. Must break before extraction.
 - **low cohesion cluster** -- high external coupling, low internal cohesion. Consider splitting.
 - **db hotspot** -- a stored procedure shared by 3+ projects. Database coupling hotspot.
+- **high_cross_solution_coupling** -- ratio > 0.5, meaning more edges cross the solution boundary than stay inside.
+- **solution_bridge_project** -- a project in 3+ solutions with 5+ incoming dependencies, acting as a coupling bottleneck.
+
+### Solution Coupling
+
+When `.sln` files are present in the search scope, Scatter parses them and reports how self-contained each solution is:
+
+- **Projects** -- number of projects declared in the solution
+- **Internal** -- edges where both endpoints are in this solution
+- **External** -- edges crossing the solution boundary
+- **Ratio** -- external / (internal + external). Low ratio = self-contained. High ratio = heavily coupled to other solutions.
+
+The **Align** column on domain clusters shows how well each cluster aligns with solution boundaries. 1.0 means every cluster member is in the same solution. Lower values surface accidental cross-solution coupling -- projects that the graph says are tightly coupled but the org structure thinks belong to different teams.
+
+Two health observations fire automatically:
+
+- **high_cross_solution_coupling** (warning) -- ratio > 0.5, meaning more edges cross the solution boundary than stay inside
+- **solution_bridge_project** (info) -- a project in 3+ solutions with 5+ incoming dependencies, acting as a coupling bottleneck
 
 ## Force Rebuild
 

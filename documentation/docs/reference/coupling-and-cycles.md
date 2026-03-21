@@ -196,3 +196,42 @@ Cycles are sorted by size ascending because smaller cycles are:
 3. Often the root cause of larger cycles (break the small one and the large one dissolves)
 
 The `shortest_cycle` field within each CycleGroup gives you the tightest loop to focus on. If you are looking for which edge to cut, start there.
+
+---
+
+## Solution-Level Metrics
+
+When `.sln` files are present, Scatter computes coupling metrics at the solution level.
+
+### compute_solution_metrics
+
+```python
+def compute_solution_metrics(
+    graph: DependencyGraph,
+) -> Tuple[Dict[str, SolutionMetrics], List[str]]:
+    # Returns (metrics_by_solution, bridge_projects)
+```
+
+Uses a single-pass O(E) algorithm. For each edge, looks up which solutions the source and target belong to via `node.solutions`. Classifies the edge as internal or external for each relevant solution.
+
+### SolutionMetrics
+
+```python
+@dataclass
+class SolutionMetrics:
+    name: str
+    project_count: int
+    internal_edges: int          # Both endpoints in this solution
+    external_edges: int          # One endpoint outside this solution
+    cross_solution_ratio: float  # external / (internal + external)
+    incoming_solutions: List[str]
+    outgoing_solutions: List[str]
+```
+
+### Bridge Projects
+
+Projects appearing in 3+ solutions. These are coupling bottlenecks across solution boundaries. Returned as a separate list alongside the metrics dict.
+
+### Multi-Solution Edge Classification
+
+A single edge can be internal to one solution and external to another. If project A is in solutions {X, Y} and project B is in {X} only, then edge A→B is internal to X but external to Y. The algorithm handles this by iterating source and target solution sets independently.

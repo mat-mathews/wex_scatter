@@ -22,6 +22,24 @@ source .venv/bin/activate   # macOS/Linux
 pip install -r requirements.txt
 ```
 
+## Using with Claude Code
+
+If you use Claude Code, you can interact with Scatter through natural language instead of CLI flags.
+
+```bash
+bash tools/setup-claude-skills.sh
+```
+
+This symlinks five analysis skills into `.claude/skills/`. After setup, ask Claude directly:
+
+- "Show me the dependency health of this codebase"
+- "Who uses GalaxyWorks.Data?"
+- "What's the blast radius of adding tenant isolation to portal configuration?"
+
+Three skills auto-invoke based on your question (graph, consumers, impact). Two are manual slash commands (`/scatter-sproc`, `/scatter-branch`).
+
+See [Claude Code Skills documentation](reference/claude-skills.md) for details.
+
 ## Verify it works
 
 ```bash
@@ -130,10 +148,10 @@ python -m pytest -q
 Expected output:
 
 ```
-683 passed, 1 xfailed in 9.12s
+788 passed, 1 xfailed in 9.12s
 ```
 
-If you see 683 passed, your installation is solid. The single xfail is intentional -- it marks a known edge case that's tracked but not blocking.
+If you see 788 passed, your installation is solid. The single xfail is intentional -- it marks a known edge case that's tracked but not blocking.
 
 ## Next steps
 

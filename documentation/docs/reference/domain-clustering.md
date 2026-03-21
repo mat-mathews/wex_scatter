@@ -157,6 +157,8 @@ class Cluster:
     extraction_feasibility: str                 # "easy" | "moderate" | "hard" | "very_hard"
     feasibility_score: float                    # 0.0 - 1.0
     feasibility_details: Dict[str, float]       # Per-factor penalty breakdown
+    solution_alignment: float = 0.0         # Fraction sharing dominant solution
+    dominant_solution: Optional[str] = None  # Most common solution in cluster
 ```
 
 `cross_boundary_dependencies` is capped at `MAX_CROSS_BOUNDARY_EVIDENCE = 20` to keep output manageable. The full edge counts are in `internal_edges` and `external_edges`.
@@ -214,3 +216,38 @@ A few patterns to watch for:
 **shared_db_penalty dominating = database coupling.** This is the hardest kind to break. Two services sharing a stored procedure is really two services sharing a database table. Solutions: introduce a data access service, duplicate the sproc, or accept the coupling and co-deploy.
 
 **feasibility_details tells you where to focus.** Do not look at the total score and guess. The details dict breaks it down. If `cross_boundary_penalty` is 0.35 and everything else is near zero, your problem is external coupling, not shared state or cycles. Different problems need different solutions.
+
+---
+
+## Solution Alignment
+
+When `.sln` files are present, Scatter computes how well each cluster aligns with solution boundaries.
+
+### How It Works
+
+After clusters are formed (purely from graph topology -- solutions do not influence clustering), alignment is computed post-hoc:
+
+1. For each project in the cluster, look up `node.solutions`
+2. Count which solution name appears most often (the *dominant solution*)
+3. Alignment = fraction of cluster members that have the dominant solution in their list
+
+A project in multiple solutions counts for each. Tie-breaking uses lowest name alphabetically.
+
+### Reading Alignment
+
+| Feasibility | Alignment | Meaning |
+|-------------|-----------|---------|
+| High | High | Easy win -- code and org structure agree this is an independent unit |
+| High | Low | Code says extract, org says these belong to different teams -- investigate the coupling |
+| Low | High | Team thinks it's independent, but the code disagrees -- hidden dependencies |
+| Low | Low | Entangled across both code and org boundaries -- needs significant work |
+
+Low alignment is valuable, not a problem. It surfaces three common scenarios:
+
+- **Accidental coupling** -- AdminPortal.UserService references EmployerPortal.EnrollmentData because it was fastest. The coupling is real but unintended.
+- **Misplaced shared infrastructure** -- a utility lives in one team's solution but everyone uses it
+- **Stale solution files** -- solutions haven't been updated in years; the graph reflects reality, the solutions reflect history
+
+### Design Decision
+
+The clustering algorithm does **not** use solution membership as input. Label propagation runs on pure graph topology. This is intentional: if we biased clustering toward solutions, we'd suppress the divergence signal that architects need to see. The alignment score reports how reality (graph) compares to intent (solutions), without one distorting the other.
