@@ -70,6 +70,10 @@ The setup script above already links the skills. Then ask Claude directly:
 
 See [docs/CLAUDE_SKILLS.md](docs/CLAUDE_SKILLS.md) for all available skills and example prompts.
 
+### CI/CD Integration
+
+Drop a [GitHub Action workflow](tools/github-action/) into your .NET repo for automatic PR impact comments. One YAML file, no marketplace action, no org approvals.
+
 ### Try It with the Included Sample Projects
 
 The repository ships with 8 sample .NET projects that form two dependency chains (see [Sample Project Structure](#sample-project-structure) for the full graph). You can run every analysis mode against them immediately — no external codebase needed.

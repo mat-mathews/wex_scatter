@@ -71,18 +71,23 @@ jobs:
             --search-scope . \
             --output-format markdown \
             --output-file /tmp/impact-report.md \
-            ${{ secrets.GOOGLE_API_KEY && '--google-api-key' || '' }} \
-            ${{ secrets.GOOGLE_API_KEY || '' }} \
-            2>/tmp/scatter-stderr.log || true
+            2>/tmp/scatter-stderr.log
+          EXIT_CODE=$?
 
           # Check if report was generated
           if [ -f /tmp/impact-report.md ] && [ -s /tmp/impact-report.md ]; then
             echo "has_report=true" >> "$GITHUB_OUTPUT"
+          elif [ $EXIT_CODE -ne 0 ]; then
+            echo "has_report=false" >> "$GITHUB_OUTPUT"
+            echo "::error::Scatter failed with exit code $EXIT_CODE"
+            cat /tmp/scatter-stderr.log || true
           else
             echo "has_report=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Scatter did not produce an impact report. Check logs."
-            cat /tmp/scatter-stderr.log || true
+            echo "::warning::Scatter did not produce an impact report. PR may not affect .NET dependencies."
           fi
+        # Scatter reads GOOGLE_API_KEY from environment automatically
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
 
       - name: Comment on PR
         if: steps.analyze.outputs.has_report == 'true'
