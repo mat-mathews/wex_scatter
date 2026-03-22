@@ -6,7 +6,7 @@ See what Scatter does in under 5 minutes. No API key needed.
 
 Scatter analyzes a .NET codebase and tells you which projects are affected by a change. You point it at a project, and it traces every consumer through project references, namespace usage, and type matching. The output shows the blast radius — who depends on what you're changing, and how tightly coupled they are.
 
-## Run the demo
+## Step 1: Find all consumers
 
 After [installing](getting-started.md), run this from the scatter repo root:
 
@@ -16,9 +16,7 @@ uv run scatter \
   --search-scope .
 ```
 
-This analyzes the sample `GalaxyWorks.Data` project and finds every project that consumes it.
-
-## The output
+This analyzes the sample `GalaxyWorks.Data` project and finds every project that consumes it:
 
 ```
 Search scope: /code/wex_scatter (scanned 11 projects, 27 files)
@@ -42,8 +40,6 @@ Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (6 consumer(
 --- Total Consuming Relationships Found: 6 ---
 ```
 
-Here's what each part means:
-
 **Filter line** — the analysis funnel. Started with 11 projects, narrowed to 7 that have a project reference to GalaxyWorks.Data, then to 6 that actually use its namespace. Each stage cuts aggressively so you see real consumers, not false positives.
 
 **Consumer list** — every project that depends on GalaxyWorks.Data. If you change `PortalDataService`, these are the projects that might break.
@@ -60,7 +56,62 @@ You didn't ask for graph metrics — Scatter builds the graph automatically on f
 !!! note
     Test projects (like `GalaxyWorks.Data.Tests`) appear as consumers because they reference the target. In production, exclude test directories via [`.scatter.yaml` configuration](configuration.md).
 
-## Try it with markdown output
+## Step 2: Narrow by class
+
+Maybe you only touched `PortalDataService`, not the whole project:
+
+```bash
+uv run scatter \
+  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . \
+  --class-name PortalDataService
+```
+
+Now Scatter only reports projects that actually reference `PortalDataService` specifically. The consumer list gets shorter — only the projects that use that class show up.
+
+## Step 3: See the full dependency graph
+
+```bash
+uv run scatter --graph --search-scope .
+```
+
+```
+Dependency Graph Health Dashboard
+=================================
+
+Projects: 11 | Edges: 14 | Cycles: 0 | Clusters: 3
+
+Top Coupled Projects:
+  GalaxyWorks.Data           coupling=6.23  fan-in=4  fan-out=2  instability=0.33
+  MyGalaxyConsumerApp        coupling=4.30  fan-in=1  fan-out=3  instability=0.75
+  ...
+
+Domain Clusters:
+  [1] GalaxyWorks (5 projects) -- extraction feasibility: MODERATE
+  [2] MyDotNet (2 projects) -- extraction feasibility: HIGH
+  [3] Standalone (1 project) -- extraction feasibility: HIGH
+
+Observations:
+  - GalaxyWorks.Data has 4 inbound dependencies (highest fan-in)
+  - No circular dependencies detected
+```
+
+This builds the complete dependency graph, computes coupling metrics, detects cycles, identifies domain clusters, and generates observations.
+
+## What just happened
+
+The filter pipeline works like a funnel:
+
+1. **Discovery** — found all `.csproj` files in the search scope
+2. **Project reference filter** — kept only the ones with a `<ProjectReference>` pointing at the target
+3. **Namespace filter** — of those, kept only the ones whose `.cs` files contain the target's `using` statement
+4. **Type/class filter** — of those, kept only the ones that actually reference specific types
+
+Each stage cuts aggressively. The numbers in the filter line show exactly where projects got filtered out and why.
+
+Meanwhile, Scatter quietly built a dependency graph and cached it to disk. On your next run, it loads from cache (under 1 second). After that, it detects changes via `git diff` and patches incrementally (~10ms).
+
+## Get a shareable report
 
 ```bash
 uv run scatter \
@@ -137,9 +188,7 @@ Direct Consumers: 6 | Transitive: 0
 
 Every section is computed from real dependency data. The AI interprets and explains — it doesn't invent dependencies.
 
-## Other modes
-
-Scatter has five analysis modes. This tour showed `--target-project`. The others:
+## All five modes
 
 | Mode | What it does | Needs AI? |
 |------|-------------|-----------|
@@ -157,4 +206,10 @@ Point Scatter at your own .NET codebase:
 uv run scatter --target-project ./path/to/Your.Project.csproj --search-scope /path/to/repo
 ```
 
-See [Getting Started](getting-started.md) for full installation and [CLI Reference](cli-reference.md) for every flag.
+See [CLI Reference](cli-reference.md) for every flag, or dive into a specific mode:
+
+- [Target Project Analysis](usage/target-project.md)
+- [Git Branch Analysis](usage/git-branch.md)
+- [Impact Analysis](usage/impact-analysis.md)
+- [Output Formats](output-formats.md)
+- [Configuration](configuration.md)

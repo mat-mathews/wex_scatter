@@ -198,15 +198,23 @@
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-bs-level="2"><a href="#run-the-demo" class="nav-link">Run the demo</a>
+            <li class="nav-item" data-bs-level="2"><a href="#step-1-find-all-consumers" class="nav-link">Step 1: Find all consumers</a>
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-bs-level="2"><a href="#the-output" class="nav-link">The output</a>
+            <li class="nav-item" data-bs-level="2"><a href="#step-2-narrow-by-class" class="nav-link">Step 2: Narrow by class</a>
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-bs-level="2"><a href="#try-it-with-markdown-output" class="nav-link">Try it with markdown output</a>
+            <li class="nav-item" data-bs-level="2"><a href="#step-3-see-the-full-dependency-graph" class="nav-link">Step 3: See the full dependency graph</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#what-just-happened" class="nav-link">What just happened</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#get-a-shareable-report" class="nav-link">Get a shareable report</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -214,7 +222,7 @@
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-bs-level="2"><a href="#other-modes" class="nav-link">Other modes</a>
+            <li class="nav-item" data-bs-level="2"><a href="#all-five-modes" class="nav-link">All five modes</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -233,14 +241,13 @@
 <p>See what Scatter does in under 5 minutes. No API key needed.</p>
 <h2 id="what-youll-see">What you'll see<a class="headerlink" href="#what-youll-see" title="Permanent link">&para;</a></h2>
 <p>Scatter analyzes a .NET codebase and tells you which projects are affected by a change. You point it at a project, and it traces every consumer through project references, namespace usage, and type matching. The output shows the blast radius — who depends on what you're changing, and how tightly coupled they are.</p>
-<h2 id="run-the-demo">Run the demo<a class="headerlink" href="#run-the-demo" title="Permanent link">&para;</a></h2>
+<h2 id="step-1-find-all-consumers">Step 1: Find all consumers<a class="headerlink" href="#step-1-find-all-consumers" title="Permanent link">&para;</a></h2>
 <p>After <a href="getting-started.html">installing</a>, run this from the scatter repo root:</p>
 <pre><code class="language-bash">uv run scatter \
   --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope .
 </code></pre>
-<p>This analyzes the sample <code>GalaxyWorks.Data</code> project and finds every project that consumes it.</p>
-<h2 id="the-output">The output<a class="headerlink" href="#the-output" title="Permanent link">&para;</a></h2>
+<p>This analyzes the sample <code>GalaxyWorks.Data</code> project and finds every project that consumes it:</p>
 <pre><code>Search scope: /code/wex_scatter (scanned 11 projects, 27 files)
 Filter: 11 → 7 project refs[graph] → 6 namespace
 
@@ -261,7 +268,6 @@ Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (6 consumer(
 
 --- Total Consuming Relationships Found: 6 ---
 </code></pre>
-<p>Here's what each part means:</p>
 <p><strong>Filter line</strong> — the analysis funnel. Started with 11 projects, narrowed to 7 that have a project reference to GalaxyWorks.Data, then to 6 that actually use its namespace. Each stage cuts aggressively so you see real consumers, not false positives.</p>
 <p><strong>Consumer list</strong> — every project that depends on GalaxyWorks.Data. If you change <code>PortalDataService</code>, these are the projects that might break.</p>
 <p><strong>Graph metrics</strong> — automatically computed from the dependency graph:</p>
@@ -276,7 +282,48 @@ Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (6 consumer(
 <p class="admonition-title">Note</p>
 <p>Test projects (like <code>GalaxyWorks.Data.Tests</code>) appear as consumers because they reference the target. In production, exclude test directories via <a href="configuration.html"><code>.scatter.yaml</code> configuration</a>.</p>
 </div>
-<h2 id="try-it-with-markdown-output">Try it with markdown output<a class="headerlink" href="#try-it-with-markdown-output" title="Permanent link">&para;</a></h2>
+<h2 id="step-2-narrow-by-class">Step 2: Narrow by class<a class="headerlink" href="#step-2-narrow-by-class" title="Permanent link">&para;</a></h2>
+<p>Maybe you only touched <code>PortalDataService</code>, not the whole project:</p>
+<pre><code class="language-bash">uv run scatter \
+  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . \
+  --class-name PortalDataService
+</code></pre>
+<p>Now Scatter only reports projects that actually reference <code>PortalDataService</code> specifically. The consumer list gets shorter — only the projects that use that class show up.</p>
+<h2 id="step-3-see-the-full-dependency-graph">Step 3: See the full dependency graph<a class="headerlink" href="#step-3-see-the-full-dependency-graph" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">uv run scatter --graph --search-scope .
+</code></pre>
+<pre><code>Dependency Graph Health Dashboard
+=================================
+
+Projects: 11 | Edges: 14 | Cycles: 0 | Clusters: 3
+
+Top Coupled Projects:
+  GalaxyWorks.Data           coupling=6.23  fan-in=4  fan-out=2  instability=0.33
+  MyGalaxyConsumerApp        coupling=4.30  fan-in=1  fan-out=3  instability=0.75
+  ...
+
+Domain Clusters:
+  [1] GalaxyWorks (5 projects) -- extraction feasibility: MODERATE
+  [2] MyDotNet (2 projects) -- extraction feasibility: HIGH
+  [3] Standalone (1 project) -- extraction feasibility: HIGH
+
+Observations:
+  - GalaxyWorks.Data has 4 inbound dependencies (highest fan-in)
+  - No circular dependencies detected
+</code></pre>
+<p>This builds the complete dependency graph, computes coupling metrics, detects cycles, identifies domain clusters, and generates observations.</p>
+<h2 id="what-just-happened">What just happened<a class="headerlink" href="#what-just-happened" title="Permanent link">&para;</a></h2>
+<p>The filter pipeline works like a funnel:</p>
+<ol>
+<li><strong>Discovery</strong> — found all <code>.csproj</code> files in the search scope</li>
+<li><strong>Project reference filter</strong> — kept only the ones with a <code>&lt;ProjectReference&gt;</code> pointing at the target</li>
+<li><strong>Namespace filter</strong> — of those, kept only the ones whose <code>.cs</code> files contain the target's <code>using</code> statement</li>
+<li><strong>Type/class filter</strong> — of those, kept only the ones that actually reference specific types</li>
+</ol>
+<p>Each stage cuts aggressively. The numbers in the filter line show exactly where projects got filtered out and why.</p>
+<p>Meanwhile, Scatter quietly built a dependency graph and cached it to disk. On your next run, it loads from cache (under 1 second). After that, it detects changes via <code>git diff</code> and patches incrementally (~10ms).</p>
+<h2 id="get-a-shareable-report">Get a shareable report<a class="headerlink" href="#get-a-shareable-report" title="Permanent link">&para;</a></h2>
 <pre><code class="language-bash">uv run scatter \
   --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . \
@@ -340,8 +387,7 @@ Direct Consumers: 6 | Transitive: 0
 - Blast radius suggests staged rollout may reduce risk
 </code></pre>
 <p>Every section is computed from real dependency data. The AI interprets and explains — it doesn't invent dependencies.</p>
-<h2 id="other-modes">Other modes<a class="headerlink" href="#other-modes" title="Permanent link">&para;</a></h2>
-<p>Scatter has five analysis modes. This tour showed <code>--target-project</code>. The others:</p>
+<h2 id="all-five-modes">All five modes<a class="headerlink" href="#all-five-modes" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -382,7 +428,14 @@ Direct Consumers: 6 | Transitive: 0
 <p>Point Scatter at your own .NET codebase:</p>
 <pre><code class="language-bash">uv run scatter --target-project ./path/to/Your.Project.csproj --search-scope /path/to/repo
 </code></pre>
-<p>See <a href="getting-started.html">Getting Started</a> for full installation and <a href="cli-reference.html">CLI Reference</a> for every flag.</p></div>
+<p>See <a href="cli-reference.html">CLI Reference</a> for every flag, or dive into a specific mode:</p>
+<ul>
+<li><a href="usage/target-project.html">Target Project Analysis</a></li>
+<li><a href="usage/git-branch.html">Git Branch Analysis</a></li>
+<li><a href="usage/impact-analysis.html">Impact Analysis</a></li>
+<li><a href="output-formats.html">Output Formats</a></li>
+<li><a href="configuration.html">Configuration</a></li>
+</ul></div>
             </div>
         </div>
 

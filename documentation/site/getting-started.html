@@ -202,27 +202,15 @@
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-bs-level="2"><a href="#using-with-claude-code" class="nav-link">Using with Claude Code</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
             <li class="nav-item" data-bs-level="2"><a href="#verify-it-works" class="nav-link">Verify it works</a>
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-bs-level="2"><a href="#your-first-analysis" class="nav-link">Your first analysis</a>
+            <li class="nav-item" data-bs-level="2"><a href="#using-with-claude-code" class="nav-link">Using with Claude Code</a>
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-bs-level="2"><a href="#what-just-happened" class="nav-link">What just happened</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#verifying-your-installation" class="nav-link">Verifying your installation</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#next-steps" class="nav-link">Next steps</a>
+            <li class="nav-item" data-bs-level="2"><a href="#next-see-it-in-action" class="nav-link">Next: see it in action</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -234,7 +222,7 @@
                     <div class="col-md-9" role="main">
 
 <h1 id="getting-started">Getting Started<a class="headerlink" href="#getting-started" title="Permanent link">&para;</a></h1>
-<p>This walks you through installation and your first real analysis. By the end you'll have traced a dependency chain, narrowed it with filters, and seen the graph cache in action. Takes about five minutes.</p>
+<p>Install Scatter and verify it works. Takes about two minutes.</p>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Python 3.10+</strong> -- Scatter uses modern type hints and dataclass features</li>
@@ -264,6 +252,10 @@ bash tools/setup.sh
 curl -LsSf https://astral.sh/uv/install.sh | sh   # install uv
 uv sync                                             # install deps</code></p>
 </div>
+<h2 id="verify-it-works">Verify it works<a class="headerlink" href="#verify-it-works" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">uv run scatter --help
+</code></pre>
+<p>You should see the five analysis modes (<code>--target-project</code>, <code>--branch-name</code>, <code>--stored-procedure</code>, <code>--sow</code>, <code>--graph</code>) and all the common options. If you see that, you're good.</p>
 <h2 id="using-with-claude-code">Using with Claude Code<a class="headerlink" href="#using-with-claude-code" title="Permanent link">&para;</a></h2>
 <p>If you use Claude Code, the setup script already linked five analysis skills. Ask Claude directly:</p>
 <ul>
@@ -273,96 +265,8 @@ uv sync                                             # install deps</code></p>
 </ul>
 <p>Three skills auto-invoke based on your question (graph, consumers, impact). Two are manual slash commands (<code>/scatter-sproc</code>, <code>/scatter-branch</code>).</p>
 <p>See <a href="reference/claude-skills.html">Claude Code Skills documentation</a> for details.</p>
-<h2 id="verify-it-works">Verify it works<a class="headerlink" href="#verify-it-works" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">uv run scatter --help
-</code></pre>
-<p>You should see the five analysis modes (<code>--target-project</code>, <code>--branch-name</code>, <code>--stored-procedure</code>, <code>--sow</code>, <code>--graph</code>) and all the common options. If you see that, you're good.</p>
-<h2 id="your-first-analysis">Your first analysis<a class="headerlink" href="#your-first-analysis" title="Permanent link">&para;</a></h2>
-<p>Let's trace a real dependency chain through the sample projects. Each step narrows the search so you can see the filter pipeline in action.</p>
-<h3 id="step-1-find-all-consumers-of-galaxyworksdata">Step 1: Find all consumers of GalaxyWorks.Data<a class="headerlink" href="#step-1-find-all-consumers-of-galaxyworksdata" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope .
-</code></pre>
-<p>Expected output:</p>
-<pre><code>Search scope: /code/wex_scatter (scanned 11 projects, 42 files)
-Filter: 11 -&gt; 10 project refs -&gt; 7 namespace -&gt; 4 class match
-
-Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (4 consumer(s))
-    Type/Level: PortalDataService
-         -&gt; Consumed by: MyGalaxyConsumerApp (MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj)
-         -&gt; Consumed by: MyGalaxyConsumerApp2 (MyGalaxyConsumerApp2/MyGalaxyConsumerApp2.csproj)
-         -&gt; Consumed by: GalaxyWorks.Api (GalaxyWorks.Api/GalaxyWorks.Api.csproj)
-         -&gt; Consumed by: GalaxyWorks.BatchProcessor (GalaxyWorks.BatchProcessor/GalaxyWorks.BatchProcessor.csproj)
-
---- Total Consuming Relationships Found: 4 ---
-</code></pre>
-<p>Four consumers. That's your blast radius for any change to GalaxyWorks.Data.</p>
-<h3 id="step-2-narrow-by-class">Step 2: Narrow by class<a class="headerlink" href="#step-2-narrow-by-class" title="Permanent link">&para;</a></h3>
-<p>Maybe you only touched <code>PortalDataService</code>, not the whole project. Let's filter:</p>
-<pre><code class="language-bash">python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --class-name PortalDataService
-</code></pre>
-<p>Now Scatter only reports projects that actually reference <code>PortalDataService</code> specifically. The consumer list gets shorter -- only the projects that use that class show up.</p>
-<h3 id="step-3-build-the-full-dependency-graph">Step 3: Build the full dependency graph<a class="headerlink" href="#step-3-build-the-full-dependency-graph" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py --graph --search-scope .
-</code></pre>
-<p>Expected output (truncated):</p>
-<pre><code>Dependency Graph Health Dashboard
-=================================
-
-Projects: 11 | Edges: 14 | Cycles: 0 | Clusters: 3
-
-Top Coupled Projects:
-  GalaxyWorks.Data           coupling=6.23  fan-in=4  fan-out=2  instability=0.33
-  MyGalaxyConsumerApp        coupling=4.30  fan-in=1  fan-out=3  instability=0.75
-  ...
-
-Domain Clusters:
-  [1] GalaxyWorks (5 projects) -- extraction feasibility: MODERATE
-  [2] MyDotNet (2 projects) -- extraction feasibility: HIGH
-  [3] Standalone (1 project) -- extraction feasibility: HIGH
-
-Observations:
-  - GalaxyWorks.Data has 4 inbound dependencies (highest fan-in)
-  - No circular dependencies detected
-</code></pre>
-<p>This constructs the complete project dependency graph, computes coupling metrics, detects cycles, identifies domain clusters, and generates observations. On the sample projects it finishes in seconds. On a large monorepo, the first run takes longer -- but the cache means you only pay that cost once.</p>
-<h2 id="what-just-happened">What just happened<a class="headerlink" href="#what-just-happened" title="Permanent link">&para;</a></h2>
-<p>Here's what Scatter did behind the scenes. The filter pipeline works like a funnel:</p>
-<ol>
-<li><strong>Discovery</strong> -- found all <code>.csproj</code> files in the search scope (11 in the sample projects, maybe 200 in a real codebase)</li>
-<li><strong>Project reference filter</strong> -- kept only the ones with a <code>&lt;ProjectReference&gt;</code> pointing at <code>GalaxyWorks.Data</code> (narrowed to 10)</li>
-<li><strong>Namespace filter</strong> -- of those, kept only the ones whose <code>.cs</code> files contain a <code>using GalaxyWorks.Data...</code> statement (narrowed to 7)</li>
-<li><strong>Type/class filter</strong> -- of those, kept only the ones that actually reference specific types (narrowed to 4)</li>
-</ol>
-<p>Each stage cuts aggressively. The numbers you see in the console report reflect exactly this pipeline, so you can tell where projects got filtered out and why.</p>
-<p>Meanwhile, Scatter quietly built a dependency graph and cached it to disk. You didn't ask for it. On your next run, it loads the cache instead of rebuilding. If you've made changes since the last run, it reads <code>git diff</code> and patches only the affected nodes. First run is a few seconds, subsequent runs under a second, incremental patches around 10ms.</p>
-<blockquote>
-<p><strong>How this works:</strong> The consumer detection pipeline uses a multi-stage filter funnel with parallel execution. See <a href="reference/consumer-pipeline.html">Consumer Detection Pipeline</a> for the full story. The graph cache uses content-hashing and git-aware invalidation -- see <a href="reference/graph-engine.html">Graph Engine</a>.</p>
-</blockquote>
-<h2 id="verifying-your-installation">Verifying your installation<a class="headerlink" href="#verifying-your-installation" title="Permanent link">&para;</a></h2>
-<p>Run the local CI check to confirm everything works:</p>
-<pre><code class="language-bash">bash tools/check.sh
-</code></pre>
-<p>This runs the same checks as GitHub Actions CI: ruff lint, ruff format, mypy, and pytest. You should see all four steps pass.</p>
-<p>For a faster check (lint and format only, ~2 seconds):</p>
-<pre><code class="language-bash">bash tools/check.sh --quick
-</code></pre>
-<p>Or just the test suite:</p>
-<pre><code class="language-bash">uv run pytest
-</code></pre>
-<p>Expected: 789 passed, 1 xfailed. The single xfail is intentional — a tracked edge case, not a failure.</p>
-<h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
-<ul>
-<li><a href="usage/target-project.html">Target Project Analysis</a> -- deep dive into the most common mode</li>
-<li><a href="usage/git-branch.html">Git Branch Analysis</a> -- trace blast radius from a feature branch</li>
-<li><a href="output-formats.html">Output Formats</a> -- JSON, CSV, markdown, mermaid, pipelines</li>
-<li><a href="workflows.html">Workflows</a> -- real-world scenarios chaining analysis modes together</li>
-<li><a href="configuration.html">Configuration</a> -- YAML config, env vars, project-specific overrides</li>
-</ul></div>
+<h2 id="next-see-it-in-action">Next: see it in action<a class="headerlink" href="#next-see-it-in-action" title="Permanent link">&para;</a></h2>
+<p>Head to the <a href="quick-tour.html">Quick Tour</a> to run your first analysis and see what the output looks like.</p></div>
             </div>
         </div>
 
