@@ -52,3 +52,30 @@ jobs:
         run: uv sync
       - name: Mypy
         run: uv run mypy scatter --ignore-missing-imports
+
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync
+      - name: Smoke test — target project analysis
+        run: |
+          uv run scatter \
+            --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+            --search-scope . \
+            --output-format json \
+            --output-file /tmp/target-smoke.json
+          python -c "import json; d=json.load(open('/tmp/target-smoke.json')); assert len(d) > 0, 'No results'"
+      - name: Smoke test — graph analysis
+        run: |
+          uv run scatter \
+            --graph \
+            --search-scope . \
+            --output-format json \
+            --output-file /tmp/graph-smoke.json
+          python -c "import json; d=json.load(open('/tmp/graph-smoke.json')); assert len(d) > 0, 'Empty graph'"

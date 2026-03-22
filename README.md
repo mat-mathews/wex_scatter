@@ -1,5 +1,7 @@
 # Scatter
 
+[![CI](https://github.com/mat-mathews/wex_scatter/actions/workflows/ci.yml/badge.svg)](https://github.com/mat-mathews/wex_scatter/actions/workflows/ci.yml)
+
 *A .NET dependency graph engine and impact analysis tool*
 
 Scatter builds a dependency graph of your .NET codebase and uses it to answer questions like "If I change this class, which projects are actually affected?" and "What's the blast radius of this work request?"

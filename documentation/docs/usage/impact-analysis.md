@@ -4,7 +4,7 @@ A work request lands on your desk. Before anyone writes code, you need to know w
 
 Describe the change in plain English. Get back a risk-rated blast radius report with a tree view of affected consumers, confidence labels by depth, and an AI-generated narrative you can paste straight into a ticket.
 
-Requires a Google Gemini API key. There is no fallback -- if you want impact analysis, you need AI in the loop.
+The `--sow` mode requires a Google Gemini API key for work request parsing. Other modes (`--target-project`, `--branch-name`, `--graph`) work without AI. The core consumer tracing, graph building, and blast radius tree are pure code -- AI adds risk ratings, coupling narratives, complexity estimates, and executive summaries on top.
 
 ## Basic Example
 

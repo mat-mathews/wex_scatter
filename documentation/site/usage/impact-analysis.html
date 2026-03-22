@@ -47,6 +47,10 @@
 </li>
                                     
 <li>
+    <a href="../quick-tour.html" class="dropdown-item">Quick Tour</a>
+</li>
+                                    
+<li>
     <a href="target-project.html" class="dropdown-item">Target Project Analysis</a>
 </li>
                                     
@@ -232,7 +236,7 @@
 <h1 id="impact-analysis">Impact Analysis<a class="headerlink" href="#impact-analysis" title="Permanent link">&para;</a></h1>
 <p>A work request lands on your desk. Before anyone writes code, you need to know what it'll touch and how risky it is. This mode turns Scatter from a developer tool into a project-scoping tool.</p>
 <p>Describe the change in plain English. Get back a risk-rated blast radius report with a tree view of affected consumers, confidence labels by depth, and an AI-generated narrative you can paste straight into a ticket.</p>
-<p>Requires a Google Gemini API key. There is no fallback -- if you want impact analysis, you need AI in the loop.</p>
+<p>The <code>--sow</code> mode requires a Google Gemini API key for work request parsing. Other modes (<code>--target-project</code>, <code>--branch-name</code>, <code>--graph</code>) work without AI. The core consumer tracing, graph building, and blast radius tree are pure code -- AI adds risk ratings, coupling narratives, complexity estimates, and executive summaries on top.</p>
 <h2 id="basic-example">Basic Example<a class="headerlink" href="#basic-example" title="Permanent link">&para;</a></h2>
 <pre><code class="language-bash">python scatter.py \
   --sow &quot;Modify PortalDataService in GalaxyWorks.Data to add a new parameter to sp_InsertPortalConfiguration&quot; \

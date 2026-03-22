@@ -160,7 +160,18 @@ def main():
                 logging.warning("Hybrid git analysis will fall back to regex extraction.")
                 args.enable_hybrid_git = False
             if is_impact_mode:
-                logging.error("Impact analysis requires a working AI provider. Exiting.")
+                print(
+                    "\nImpact analysis (--sow) requires a Google API key for work request parsing.\n"
+                    "\n"
+                    "  Set the GOOGLE_API_KEY environment variable:\n"
+                    "    export GOOGLE_API_KEY=your-key-here\n"
+                    "\n"
+                    "  Or use a mode that doesn't require AI:\n"
+                    "    scatter --target-project ./MyApp/MyApp.csproj --search-scope .\n"
+                    "    scatter --branch-name feature/my-branch --search-scope .\n"
+                    "    scatter --graph --search-scope .\n",
+                    file=sys.stderr,
+                )
                 sys.exit(1)
 
     repo_path_abs: Optional[Path] = None

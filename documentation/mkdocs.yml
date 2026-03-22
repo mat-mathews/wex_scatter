@@ -16,6 +16,7 @@ nav:
   - User Guide:
       - Home: index.md
       - Getting Started: getting-started.md
+      - Quick Tour: quick-tour.md
       - Target Project Analysis: usage/target-project.md
       - Git Branch Analysis: usage/git-branch.md
       - Stored Procedure Analysis: usage/stored-procedure.md
