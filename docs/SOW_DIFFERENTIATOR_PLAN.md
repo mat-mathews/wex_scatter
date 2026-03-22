@@ -448,24 +448,171 @@ narratives, complexity estimate, and executive summary.
 
 ---
 
+## Phase 3: Evaluator Experience
+
+**Branch:** feature/evaluator-experience
+**Team review:** 2026-03-22 (Priya, Marcus, Anya, Fatima, Sam, Kai)
+
+### 3.1 CI Badge (Kai)
+
+Add GitHub Actions badge to README.md right after `# Scatter`:
+
+```markdown
+[![CI](https://github.com/mat-mathews/wex_scatter/actions/workflows/ci.yml/badge.svg)](https://github.com/mat-mathews/wex_scatter/actions/workflows/ci.yml)
+```
+
+### 3.2 Fix No-API-Key Error Message (Fatima)
+
+Current behavior when running `--sow` without `GOOGLE_API_KEY`:
+```
+ERROR - AI provider configuration failed.
+ERROR - Impact analysis requires a working AI provider. Exiting.
+```
+
+New behavior — single actionable message with alternatives:
+```
+Impact analysis (--sow) requires a Google API key for work request parsing.
+
+  Set the GOOGLE_API_KEY environment variable:
+    export GOOGLE_API_KEY=your-key-here
+
+  Or use a mode that doesn't require AI:
+    scatter --target-project ./MyApp/MyApp.csproj --search-scope .
+    scatter --branch-name feature/my-branch --search-scope .
+    scatter --graph --search-scope .
+```
+
+Verify exit code is non-zero (exit 1, not exit 0) on this path.
+
+### 3.3 CI Smoke Test (Anya, Kai)
+
+Add a `smoke` job to `.github/workflows/ci.yml` that runs scatter end-to-end
+against the sample projects. No API key needed — uses `--target-project` and
+`--graph` modes. Proves the CLI entry point works, not just unit tests.
+
+```yaml
+smoke:
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+    - uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+        enable-cache: true
+    - name: Install dependencies
+      run: uv sync
+    - name: Smoke test — target project analysis
+      run: |
+        uv run scatter \
+          --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+          --search-scope . \
+          --output-format json \
+          --output-file /tmp/target-smoke.json
+        python -c "import json; d=json.load(open('/tmp/target-smoke.json')); assert len(d) > 0, 'No results'"
+    - name: Smoke test — graph analysis
+      run: |
+        uv run scatter \
+          --graph \
+          --search-scope . \
+          --output-format json \
+          --output-file /tmp/graph-smoke.json
+        python -c "import json; d=json.load(open('/tmp/graph-smoke.json')); assert 'projects' in d or 'nodes' in d or len(d) > 0, 'Empty graph'"
+```
+
+Two commands, two modes validated, ~10s total. If the CLI entry point breaks,
+this catches it.
+
+### 3.4 Quick Tour Page (Priya, Marcus, Sam)
+
+Create a standalone `documentation/docs/quick-tour.md` — the one-pager you
+hand to an evaluator. Separate from the existing impact-analysis.md reference.
+
+**Structure (Sam):**
+
+1. **What you'll see** — one paragraph setting expectations
+2. **Run the demo** — `scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .`
+   (no API key needed, works out of the box)
+3. **The output, explained** — real captured output with annotations for each
+   section (Summary, Targets, Blast Radius, Affected Projects, Next Steps)
+4. **What AI adds** — show the enriched version (labeled "with AI enrichment"),
+   explaining risk ratings, coupling narratives, complexity, and executive summary
+5. **Try it on your code** — link to Getting Started for installation
+
+**Key decisions:**
+- Use **real output** from running against sample projects, not fabricated (Marcus)
+- Show both without-AI and with-AI output so evaluators know what to expect (Marcus)
+- Keep it under 2 pages of scrolling (Sam)
+- Call it "Quick Tour", not "Evaluator Guide" — external-facing language (Sam)
+- Place after "Getting Started" in mkdocs nav (Sam)
+
+### 3.5 Fix impact-analysis.md Claims
+
+Line 7 says: "Requires a Google Gemini API key. There is no fallback."
+
+Fix to: `--sow` mode requires a Google API key for work request parsing.
+Other modes (`--target-project`, `--branch-name`, `--graph`) work without AI.
+The core consumer tracing, graph building, and blast radius tree are pure code.
+AI adds risk ratings, coupling narratives, complexity estimates, and executive
+summaries on top.
+
+### Implementation Sequence
+
+1. CI badge (30 seconds)
+2. Fix no-API-key error message + verify exit code
+3. Add smoke test job to ci.yml
+4. Capture real output from sample projects for Quick Tour
+5. Create Quick Tour page with annotations
+6. Fix impact-analysis.md "no fallback" claim
+7. Rebuild mkdocs
+8. Run `bash tools/check.sh`
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `README.md` | CI badge |
+| `scatter/__main__.py` | Actionable no-API-key error message, exit code fix |
+| `.github/workflows/ci.yml` | Add `smoke` job |
+| **NEW** `documentation/docs/quick-tour.md` | Standalone evaluator walkthrough |
+| `documentation/docs/usage/impact-analysis.md` | Fix "no fallback" claim |
+| `documentation/mkdocs.yml` | Add Quick Tour to nav after Getting Started |
+| `documentation/site/` | Rebuilt |
+
+### Design Decisions (from Phase 3 review)
+
+| Decision | Rationale | Who |
+|----------|-----------|-----|
+| Separate Quick Tour page, not more in impact-analysis.md | Impact-analysis.md is already 195 lines of reference. Evaluators need a focused one-pager, not more scrolling. | Priya |
+| Use real captured output, not fabricated | Current docs have hand-crafted output that doesn't match actual scatter output. Evaluators will notice. | Marcus |
+| Show with-AI and without-AI side by side | Evaluators without API keys see what they get; evaluators with keys see what AI adds | Marcus |
+| CI smoke test using --target-project (no API key) | --sow requires AI. --target-project proves the core pipeline without external deps. | Anya |
+| Add --graph to smoke test too | Two modes, two commands, ~10s. Validates graph build + CLI dispatch. | Kai |
+| Single actionable error message with alternatives | Two ERROR lines and a bare exit destroys first-impression trust. Show what to do instead. | Fatima |
+| Verify exit code is 1, not 0, on failure | Scripts and CI depend on exit codes. Silent success on failure is a bug. | Fatima |
+| Call it "Quick Tour", place after Getting Started | Inviting name, prominent nav position. First thing after install. | Sam |
+| Under 2 pages of scrolling | If it's longer, the evaluator bounces. | Sam |
+
+---
+
 ## Risk
 
-**Low.** Effort A is purely additive (new test file). Effort B modifies only
-the markdown and console reporters — the analysis pipeline, AI tasks, data
-models, JSON reporter, and CSV reporter are untouched. Existing tests for
-markdown output will need assertion updates, but those are mechanical.
-
-The e2e tests will catch any regression from the reporter changes immediately.
+**Low.** Phases 1-2 are purely additive (new test file, new reporters). Phase 3
+modifies the error path in `__main__.py` (low risk, tested by existing e2e),
+adds a CI smoke job (additive), and creates new documentation (no code changes).
 
 ---
 
 ## Success Criteria
 
-1. `test_impact_e2e.py` proves the SOW → impact pipeline works end-to-end
-   on real sample projects (not just synthetic fixtures)
-2. Running `scatter --sow "Modify PortalDataService..." --search-scope . --output-format markdown`
-   produces a report that an evaluator can paste into a PR or Confluence page
-   and it looks professional, scannable, and actionable
-3. Core tracing works without an API key — blast radius tree shows even when
-   AI enrichment is unavailable
-4. `bash tools/check.sh` passes (all existing + new tests, ruff, mypy)
+### Phase 1 ✅ (shipped 2026-03-22)
+1. 22 e2e tests prove the SOW → impact pipeline works end-to-end
+2. Polished markdown report with Summary, Targets, Affected Projects, Next Steps
+3. Core tracing works without an API key
+4. `bash tools/check.sh` passes
+
+### Phase 3
+1. CI badge visible in README
+2. Running `--sow` without API key produces a clear, actionable message (not a traceback)
+3. CI smoke test validates CLI entry point on every push
+4. Quick Tour page lets an evaluator understand scatter in under 5 minutes
+5. `bash tools/check.sh` passes (all existing + new tests, ruff, mypy)
