@@ -941,13 +941,23 @@ Ref: OUTPUT_REPORT_EVALUATION.md, Addendum Section F
           - coupling: 15.0
           - consumers: 20
 
-PR BLAST RADIUS COMMENTS (HIGH PRIORITY)
-- [ ] Post impact analysis as PR comment (GitHub)
-- [ ] Post impact analysis as PR comment (Azure DevOps)
-- [ ] Include: affected projects, risk level, pipelines to test
+PR BLAST RADIUS COMMENTS — GITHUB ✅ COMPLETED (2026-03-22)
+- [x] GitHub Action workflow template (tools/github-action/scatter-impact.yml)
+      - Zero-install: clones scatter from source, installs via uv (~30s)
+      - No marketplace action, no org approvals, no Docker
+      - Triggers on PR to main when .cs/.csproj/.sln files change
+      - Posts markdown impact report as PR comment via GITHUB_TOKEN
+      - Updates existing comment on subsequent pushes (no spam)
+      - Optional AI enrichment via GOOGLE_API_KEY env var
+      - Pinnable scatter version via SCATTER_REF repo variable
+      - Skips draft PRs, cancels in-progress runs for same PR
+      - Path filtering, concurrency control, explicit error handling
+- [x] Setup README with troubleshooting and advanced config (graph caching)
+- [x] mkdocs documentation page (reference/github-action.md)
+- [x] CI/CD Integration section in main README
+- [ ] Post impact analysis as PR comment (Azure DevOps) — deferred
 - [ ] Configurable: suppress comment if blast radius = 0
-- [ ] Provide GitHub Action template
-- [ ] Provide Azure DevOps pipeline task template
+- [ ] Test against a real .NET repo with active PRs
 
 AUTOMATIC BASELINE UPDATES (MEDIUM PRIORITY)
 - [ ] Update baseline automatically on merge to main
@@ -1131,11 +1141,16 @@ Ref: docs/PIPELINE_REGISTRY_DESIGN.md
 PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-22)
 ============================================================================
 
-CODEBASE STATE (updated 2026-03-22):
+CODEBASE STATE (updated 2026-03-22, post CI+SOW+GH Action):
   - scatter/ package with 28 modules across core/, scanners/, analyzers/, ai/, reports/, compat/, store/
   - scatter/core/tree.py: shared tree-building utilities (build_adjacency, CONFIDENCE_LABEL_RANK)
   - scatter.py: 10-line thin entry point (delegates to scatter/__main__.py via runpy)
   - scatter/__main__.py: ~850 lines (CLI argument parsing + 6-mode dispatch + config loading + _require_output_file)
+  - tools/setup.sh + tools/check.sh: developer bootstrap and local CI mirror
+  - tools/demo-impact.sh: one-command SOW impact demo for evaluators
+  - tools/github-action/: GitHub Action workflow template for PR impact comments
+  - .github/workflows/ci.yml: GitHub Actions CI (test 3.10/3.11, ruff, mypy)
+  - .git-blame-ignore-revs: formatting commit excluded from blame
   - scatter/config.py: YAML config system with layered precedence (AIConfig, GraphConfig, DbConfig)
   - scatter/ai/router.py: AI task router with lazy provider creation and caching
   - scatter/_legacy.py: ~150 lines (backward-compat AI/Gemini wrappers)
@@ -1148,7 +1163,8 @@ CODEBASE STATE (updated 2026-03-22):
   - tools/generate_synthetic_codebase.py: synthetic .NET codebase generator (100-800 project presets)
   - tools/benchmark_graph_build.py: graph builder benchmark harness with per-stage timing
   - docs/ADR_GRAPH_PERFORMANCE.md: architecture decision record for graph builder 100x optimization
-  - 811 tests across 31 test files (811 pass, 1 xfail)
+  - 811 tests across 31 test files (811 pass, 1 xfail, 5 subtests)
+  - CI: ruff check + ruff format + mypy (0 errors) + pytest in GitHub Actions
   - Benchmarks exist for Phase 1 file discovery, Phase 2.1 content analysis, and graph builder at scale
   - AI integration: Google Gemini via AIProvider protocol + AIRouter
   - Config: .scatter.yaml (repo) + ~/.scatter/config.yaml (user) + env vars + CLI
