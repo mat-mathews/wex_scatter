@@ -38,6 +38,7 @@ nav:
       - Test Architecture: reference/test-architecture.md
       - Benchmarks: reference/benchmarks.md
       - Sample Projects: reference/sample-projects.md
+      - GitHub Action: reference/github-action.md
       - Development: reference/development.md
       - Contributing: reference/contributing.md
       - Claude Code Skills: reference/claude-skills.md
