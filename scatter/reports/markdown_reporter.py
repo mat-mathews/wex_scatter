@@ -234,9 +234,10 @@ def build_impact_markdown(
         ["Complexity", f"{complexity_str}{effort_str}"],
         ["Direct consumers", str(total_direct)],
         ["Transitive consumers", str(total_transitive)],
-        ["Pipelines affected", pipelines_str],
-        ["Identification confidence", confidence_str],
     ]
+    if unique_pipelines:
+        stats_rows.append(["Pipelines affected", pipelines_str])
+    stats_rows.append(["Identification confidence", confidence_str])
     parts.append(_md_table(["Metric", "Value"], stats_rows))
     parts.append("")
 
@@ -278,15 +279,19 @@ def build_impact_markdown(
 
                 # Flat consumer detail table
                 parts.append("#### Affected Projects\n")
+                has_pipelines = any(c.pipeline_name for c in ti.consumers)
+                has_solutions = any(c.solutions for c in ti.consumers)
                 detail_headers = [
                     "Consumer",
                     "Confidence",
                     "Depth",
                     "Via",
                     "Risk",
-                    "Pipeline",
-                    "Solutions",
                 ]
+                if has_pipelines:
+                    detail_headers.append("Pipeline")
+                if has_solutions:
+                    detail_headers.append("Solutions")
                 if graph_metrics_requested:
                     detail_headers.extend(
                         ["Coupling", "Fan-In", "Fan-Out", "Instability", "In Cycle"]
@@ -296,17 +301,17 @@ def build_impact_markdown(
                     depth_display = "direct" if c.depth == 0 else str(c.depth)
                     via = c.propagation_parent or "\u2014"
                     risk = c.risk_rating or "\u2014"
-                    pipeline_name = c.pipeline_name or "\u2014"
-                    solutions = ", ".join(c.solutions) if c.solutions else "\u2014"
                     row = [
                         c.consumer_name,
                         c.confidence_label,
                         depth_display,
                         via,
                         risk,
-                        pipeline_name,
-                        solutions,
                     ]
+                    if has_pipelines:
+                        row.append(c.pipeline_name or "\u2014")
+                    if has_solutions:
+                        row.append(", ".join(c.solutions) if c.solutions else "\u2014")
                     if graph_metrics_requested:
                         row.extend(
                             [

@@ -341,7 +341,9 @@ def trace_transitive_impact(
                 depth=depth,
                 confidence=conf,
                 confidence_label=_confidence_label(conf),
-                propagation_parent=parent_map.get(consumer_path),
+                # Direct consumers (depth 0) have no parent — they are roots.
+                # Only transitive consumers get a propagation parent.
+                propagation_parent=parent_map.get(consumer_path) if depth > 0 else None,
             )
             all_enriched.append(enriched)
 
