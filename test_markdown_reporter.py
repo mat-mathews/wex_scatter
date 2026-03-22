@@ -1,4 +1,5 @@
 """Tests for Initiative 6 Phase 4: Markdown Output Format."""
+
 import sys
 from io import StringIO
 from pathlib import Path
@@ -36,6 +37,7 @@ from scatter.reports.markdown_reporter import (
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_pipeline() -> FilterPipeline:
     return FilterPipeline(
@@ -145,15 +147,39 @@ def _make_graph() -> DependencyGraph:
 
 def _make_metrics() -> dict:
     return {
-        "A": ProjectMetrics(fan_in=0, fan_out=2, instability=1.0, coupling_score=2.0,
-                            afferent_coupling=0, efferent_coupling=2,
-                            shared_db_density=0.0, type_export_count=3, consumer_count=0),
-        "B": ProjectMetrics(fan_in=1, fan_out=1, instability=0.5, coupling_score=1.5,
-                            afferent_coupling=1, efferent_coupling=1,
-                            shared_db_density=0.0, type_export_count=2, consumer_count=1),
-        "C": ProjectMetrics(fan_in=2, fan_out=0, instability=0.0, coupling_score=1.0,
-                            afferent_coupling=2, efferent_coupling=0,
-                            shared_db_density=0.0, type_export_count=1, consumer_count=2),
+        "A": ProjectMetrics(
+            fan_in=0,
+            fan_out=2,
+            instability=1.0,
+            coupling_score=2.0,
+            afferent_coupling=0,
+            efferent_coupling=2,
+            shared_db_density=0.0,
+            type_export_count=3,
+            consumer_count=0,
+        ),
+        "B": ProjectMetrics(
+            fan_in=1,
+            fan_out=1,
+            instability=0.5,
+            coupling_score=1.5,
+            afferent_coupling=1,
+            efferent_coupling=1,
+            shared_db_density=0.0,
+            type_export_count=2,
+            consumer_count=1,
+        ),
+        "C": ProjectMetrics(
+            fan_in=2,
+            fan_out=0,
+            instability=0.0,
+            coupling_score=1.0,
+            afferent_coupling=2,
+            efferent_coupling=0,
+            shared_db_density=0.0,
+            type_export_count=1,
+            consumer_count=2,
+        ),
     }
 
 
@@ -170,10 +196,15 @@ def _make_cycles() -> list:
 
 def _make_cluster(name, projects, **kwargs):
     defaults = dict(
-        internal_edges=1, external_edges=0, cohesion=0.8,
-        coupling_to_outside=0.2, cross_boundary_dependencies=[],
-        shared_db_objects=[], extraction_feasibility="moderate",
-        feasibility_score=0.650, feasibility_details={},
+        internal_edges=1,
+        external_edges=0,
+        cohesion=0.8,
+        coupling_to_outside=0.2,
+        cross_boundary_dependencies=[],
+        shared_db_objects=[],
+        extraction_feasibility="moderate",
+        feasibility_score=0.650,
+        feasibility_details={},
     )
     defaults.update(kwargs)
     return Cluster(name=name, projects=projects, **defaults)
@@ -224,15 +255,17 @@ class TestBuildLegacyMarkdown:
     def test_target_grouping(self):
         results = _make_legacy_results()
         # Add a second target group
-        results.append({
-            "TargetProjectName": "Other.Project",
-            "TargetProjectPath": "src/Other/Other.csproj",
-            "TriggeringType": "N/A (Project Reference)",
-            "ConsumerProjectName": "SomeConsumer",
-            "ConsumerProjectPath": "src/Some/Some.csproj",
-            "ConsumingSolutions": [],
-            "PipelineName": None,
-        })
+        results.append(
+            {
+                "TargetProjectName": "Other.Project",
+                "TargetProjectPath": "src/Other/Other.csproj",
+                "TriggeringType": "N/A (Project Reference)",
+                "ConsumerProjectName": "SomeConsumer",
+                "ConsumerProjectPath": "src/Some/Some.csproj",
+                "ConsumingSolutions": [],
+                "PipelineName": None,
+            }
+        )
         md = build_markdown(results)
         assert "## GalaxyWorks.Data" in md
         assert "## Other.Project" in md
@@ -250,15 +283,17 @@ class TestBuildLegacyMarkdown:
         assert len(set(counts)) == 1
 
     def test_omits_na_type(self):
-        results = [{
-            "TargetProjectName": "MyProject",
-            "TargetProjectPath": "src/My/My.csproj",
-            "TriggeringType": "N/A (Project Reference)",
-            "ConsumerProjectName": "Consumer",
-            "ConsumerProjectPath": "src/C/C.csproj",
-            "ConsumingSolutions": [],
-            "PipelineName": None,
-        }]
+        results = [
+            {
+                "TargetProjectName": "MyProject",
+                "TargetProjectPath": "src/My/My.csproj",
+                "TriggeringType": "N/A (Project Reference)",
+                "ConsumerProjectName": "Consumer",
+                "ConsumerProjectPath": "src/C/C.csproj",
+                "ConsumingSolutions": [],
+                "PipelineName": None,
+            }
+        ]
         md = build_markdown(results)
         assert "Type/Level" not in md
 
@@ -281,21 +316,22 @@ class TestBuildImpactMarkdown:
         md = build_impact_markdown(_make_impact_report())
         assert md.startswith("# Impact Analysis")
 
-    def test_risk_complexity_line(self):
+    def test_risk_complexity_in_summary(self):
         md = build_impact_markdown(_make_impact_report())
-        assert "**Overall Risk:** High" in md
-        assert "**Complexity:** Medium" in md
+        assert "## Summary" in md
+        assert "High" in md  # risk
+        assert "Medium" in md  # complexity
 
     def test_blast_radius_tree(self):
         md = build_impact_markdown(_make_impact_report())
-        assert "### Blast Radius" in md
+        assert "#### Blast Radius" in md
         assert "```text" in md
         # Box-drawing characters from the tree
         assert "\u251c\u2500\u2500" in md or "\u2514\u2500\u2500" in md
 
     def test_consumer_detail_table(self):
         md = build_impact_markdown(_make_impact_report())
-        assert "### Consumer Detail" in md
+        assert "#### Affected Projects" in md
         assert "| Consumer | Confidence | Depth | Via | Risk | Pipeline | Solutions |" in md
 
     def test_detail_table_column_count(self):
@@ -318,7 +354,9 @@ class TestBuildImpactMarkdown:
         md = build_impact_markdown(_make_impact_report())
         # Find the table rows — direct consumer shows "direct", transitive shows "1"
         lines = md.splitlines()
-        table_rows = [l for l in lines if l.startswith("| WebPortal") or l.startswith("| BatchProcessor")]
+        table_rows = [
+            l for l in lines if l.startswith("| WebPortal") or l.startswith("| BatchProcessor")
+        ]
         web_row = [l for l in table_rows if "WebPortal" in l][0]
         batch_row = [l for l in table_rows if "BatchProcessor" in l][0]
         assert "| direct |" in web_row
@@ -334,7 +372,7 @@ class TestBuildImpactMarkdown:
         md = build_impact_markdown(_make_impact_report())
         assert "### Complexity" in md
         assert "Multiple consumers with one transitive chain" in md
-        assert "### Impact Summary" in md
+        # Narrative now in Summary section (prose before stats)
         assert "core data access service" in md
 
     def test_no_targets(self):
@@ -412,14 +450,23 @@ class TestBuildGraphMarkdown:
         g = _make_graph()
         m = _make_metrics()
         dashboard = HealthDashboard(
-            total_projects=3, total_edges=2,
-            total_cycles=0, total_clusters=0,
-            avg_fan_in=1.0, avg_fan_out=1.0,
-            avg_instability=0.5, avg_coupling_score=1.5,
-            max_coupling_project="A", max_coupling_score=2.0,
+            total_projects=3,
+            total_edges=2,
+            total_cycles=0,
+            total_clusters=0,
+            avg_fan_in=1.0,
+            avg_fan_out=1.0,
+            avg_instability=0.5,
+            avg_coupling_score=1.5,
+            max_coupling_project="A",
+            max_coupling_score=2.0,
             observations=[
-                Observation(severity="warning", rule="high_coupling",
-                            project="A", message="A has high coupling"),
+                Observation(
+                    severity="warning",
+                    rule="high_coupling",
+                    project="A",
+                    message="A has high coupling",
+                ),
             ],
         )
         md = build_graph_markdown(g, m, _make_ranked(m), [], dashboard=dashboard)
@@ -483,15 +530,17 @@ class TestMdTableEdgeCases:
 class TestEscapeCellEndToEnd:
     def test_pipe_in_consumer_name(self):
         """Pipe character in a field value is escaped in final markdown output."""
-        results = [{
-            "TargetProjectName": "X",
-            "TargetProjectPath": "x.csproj",
-            "TriggeringType": "N/A",
-            "ConsumerProjectName": "Foo|Bar",
-            "ConsumerProjectPath": "fb.csproj",
-            "ConsumingSolutions": [],
-            "PipelineName": None,
-        }]
+        results = [
+            {
+                "TargetProjectName": "X",
+                "TargetProjectPath": "x.csproj",
+                "TriggeringType": "N/A",
+                "ConsumerProjectName": "Foo|Bar",
+                "ConsumerProjectPath": "fb.csproj",
+                "ConsumingSolutions": [],
+                "PipelineName": None,
+            }
+        ]
         md = build_markdown(results)
         assert "Foo\\|Bar" in md
 

@@ -196,17 +196,73 @@ def build_impact_markdown(
     sow_display = report.sow_text[:200] + "..." if len(report.sow_text) > 200 else report.sow_text
     parts.append(f"**Work Request:** {sow_display}\n")
 
-    # Risk / complexity summary
+    # --- Summary section ---
+    parts.append("## Summary\n")
+
+    # Narrative first (prose before numbers)
+    if report.impact_narrative:
+        parts.append(f"{report.impact_narrative}\n")
+
+    # Stats table
     risk_str = report.overall_risk or "Not assessed"
     complexity_str = report.complexity_rating or "Not assessed"
     effort_str = f" ({report.effort_estimate})" if report.effort_estimate else ""
-    parts.append(f"**Overall Risk:** {risk_str} | **Complexity:** {complexity_str}{effort_str}\n")
 
+    total_direct = sum(ti.total_direct for ti in (report.targets or []))
+    total_transitive = sum(ti.total_transitive for ti in (report.targets or []))
+
+    # Collect unique pipeline names
+    all_pipelines: List[str] = []
+    for ti in report.targets or []:
+        for c in ti.consumers:
+            if c.pipeline_name:
+                all_pipelines.append(c.pipeline_name)
+    unique_pipelines = sorted(set(all_pipelines))
+    pipelines_str = ", ".join(unique_pipelines) if unique_pipelines else "\u2014"
+
+    # Identification confidence
+    if report.ambiguity_level and report.avg_target_confidence is not None:
+        confidence_str = (
+            f"{report.ambiguity_level.capitalize()} "
+            f"({len(report.targets or [])} target(s), avg {report.avg_target_confidence:.2f})"
+        )
+    else:
+        confidence_str = "\u2014"
+
+    stats_rows = [
+        ["Risk", risk_str],
+        ["Complexity", f"{complexity_str}{effort_str}"],
+        ["Direct consumers", str(total_direct)],
+        ["Transitive consumers", str(total_transitive)],
+        ["Pipelines affected", pipelines_str],
+        ["Identification confidence", confidence_str],
+    ]
+    parts.append(_md_table(["Metric", "Value"], stats_rows))
+    parts.append("")
+
+    # --- Targets section ---
     if not report.targets:
         parts.append("No analysis targets were identified.\n")
     else:
+        parts.append("## Targets\n")
+
         for ti in report.targets:
-            parts.append(f"## {ti.target.name}\n")
+            parts.append(f"### {ti.target.name}\n")
+
+            # Target confidence and evidence
+            if ti.target.match_evidence:
+                conf_label = (
+                    "HIGH"
+                    if ti.target.confidence >= 0.7
+                    else "MEDIUM"
+                    if ti.target.confidence >= 0.4
+                    else "LOW"
+                )
+                parts.append(
+                    f"**Confidence:** {ti.target.confidence:.2f} ({conf_label}) "
+                    f"\u2014 {ti.target.match_evidence}\n"
+                )
+
             parts.append(
                 f"Direct Consumers: {ti.total_direct} | Transitive: {ti.total_transitive}\n"
             )
@@ -215,13 +271,13 @@ def build_impact_markdown(
                 # Blast radius tree in code block
                 tree_lines = render_tree(ti.consumers)
                 if tree_lines:
-                    parts.append("### Blast Radius\n")
+                    parts.append("#### Blast Radius\n")
                     parts.append("```text")
                     parts.extend(tree_lines)
                     parts.append("```\n")
 
                 # Flat consumer detail table
-                parts.append("### Consumer Detail\n")
+                parts.append("#### Affected Projects\n")
                 detail_headers = [
                     "Consumer",
                     "Confidence",
@@ -274,16 +330,55 @@ def build_impact_markdown(
         parts.append("### Complexity\n")
         parts.append(f"{report.complexity_rating}: {report.complexity_justification}\n")
 
-    # Impact narrative
-    if report.impact_narrative:
-        parts.append("### Impact Summary\n")
-        parts.append(f"{report.impact_narrative}\n")
+    # --- Next Steps section ---
+    next_steps = _build_next_steps(report, total_direct, total_transitive, unique_pipelines)
+    if next_steps:
+        parts.append("## Next Steps\n")
+        for step in next_steps:
+            parts.append(f"- {step}")
+        parts.append("")
 
     meta = _fmt_metadata(metadata)
     if meta:
         parts.append(f"---\n{meta.lstrip()}")
 
     return "\n".join(parts)
+
+
+def _build_next_steps(
+    report: ImpactReport,
+    total_direct: int,
+    total_transitive: int,
+    unique_pipelines: List[str],
+) -> List[str]:
+    """Build template-driven next steps based on report data."""
+    steps: List[str] = []
+
+    if total_direct > 0:
+        steps.append(
+            f"Review the **{total_direct} direct consumer(s)** listed above for breaking changes"
+        )
+
+    if unique_pipelines:
+        steps.append(
+            f"Coordinate deployment with pipeline owners for: {', '.join(unique_pipelines)}"
+        )
+
+    risk = report.overall_risk
+    if risk and risk in ("High", "Critical"):
+        steps.append("Consider a design review before proceeding")
+    elif risk and risk == "Medium":
+        steps.append("Blast radius suggests staged rollout may reduce risk")
+
+    if total_transitive > 0:
+        steps.append("Verify transitive consumers (depth > 0) are not affected by contract changes")
+
+    if report.ambiguity_level and report.ambiguity_level == "vague":
+        steps.append(
+            "Target identification has low confidence \u2014 verify targets before acting on this report"
+        )
+
+    return steps
 
 
 def write_impact_markdown_report(
