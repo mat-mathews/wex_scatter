@@ -8,7 +8,7 @@ The page Anya asked for. How to add features, tests, and scanners to Scatter wit
 
 ```bash
 git clone <repo-url>
-cd wex_scatter
+cd scatter
 
 # One-command setup
 bash tools/setup.sh

@@ -7,7 +7,7 @@ python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --
 ```
 
 ```
-Search scope: /code/wex_scatter (scanned 11 projects, 42 files)
+Search scope: /code/scatter (scanned 11 projects, 42 files)
 Filter: 11 -> 10 project refs -> 7 namespace -> 4 class match
 
 Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (4 consumer(s))
