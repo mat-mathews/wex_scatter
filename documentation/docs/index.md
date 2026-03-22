@@ -22,6 +22,18 @@ Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (4 consumer(
 
 That took about three seconds. Now you know who to warn before you merge.
 
+---
+
+You wrote a work request. What's the blast radius?
+
+```bash
+scatter --sow "Add tenant isolation to PortalDataService" --search-scope .
+```
+
+Scatter parses your intent, identifies the affected types, traces transitive consumers, and rates the risk — all from a plain English sentence. No flags to learn, no types to look up manually.
+
+---
+
 **Ready to try it?** [Getting Started](getting-started.md) gets you running in five minutes.
 
 ## Five analysis modes

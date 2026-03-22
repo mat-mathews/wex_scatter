@@ -226,6 +226,12 @@ Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (4 consumer(
 --- Total Consuming Relationships Found: 4 ---
 </code></pre>
 <p>That took about three seconds. Now you know who to warn before you merge.</p>
+<hr />
+<p>You wrote a work request. What's the blast radius?</p>
+<pre><code class="language-bash">scatter --sow &quot;Add tenant isolation to PortalDataService&quot; --search-scope .
+</code></pre>
+<p>Scatter parses your intent, identifies the affected types, traces transitive consumers, and rates the risk — all from a plain English sentence. No flags to learn, no types to look up manually.</p>
+<hr />
 <p><strong>Ready to try it?</strong> <a href="getting-started.html">Getting Started</a> gets you running in five minutes.</p>
 <h2 id="five-analysis-modes">Five analysis modes<a class="headerlink" href="#five-analysis-modes" title="Permanent link">&para;</a></h2>
 <table>
