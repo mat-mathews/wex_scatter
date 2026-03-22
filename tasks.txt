@@ -1069,10 +1069,69 @@ PHASE 5: INITIATIVE 8 TESTING
 - [ ] Test: Docker build succeeds (can be manual or CI)
 
 ============================================================================
-PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-14)
+INITIATIVE 11: SOW DIFFERENTIATOR (v2.1 — HIGH PRIORITY)
+Goal: Polish the SOW/impact analysis feature into an evaluator-ready artifact.
+Ref: docs/SOW_DIFFERENTIATOR_PLAN.md, docs/LEADERSHIP_DESIGN_REVIEW.md
+Dependency: CI pipeline (shipped), codebase index (shipped, Initiative 10)
 ============================================================================
 
-CODEBASE STATE (updated 2026-03-14):
+PHASE 1: E2E TESTS + MARKDOWN POLISH ✅ COMPLETED (2026-03-22)
+Target: Prove the SOW pipeline works end-to-end, make the report shareable.
+- [x] 22 e2e tests (test_impact_e2e.py) against real sample .NET projects
+      - 7 core pipeline, 5 output formats, 4 resilience, 6 error handling
+      - Mock AI provider with prompt-based dispatch (all tasks use model.generate_content)
+      - Tests assert new markdown structure from day one (tests-as-spec, Priya)
+      - Includes: no-AI tracing (Marcus), determinism (Anya), partial AI support (Fatima),
+        large SOW text (Fatima)
+- [x] Restructured markdown report:
+      - Summary section with narrative before stats table (Sam)
+      - Metric | Value table (risk, complexity, consumer counts, pipelines, confidence)
+      - Target confidence + evidence under each target heading
+      - Section renames: Consumer Detail → Affected Projects (Sam)
+      - Template-driven Next Steps footer with observational wording (Fatima, Sam)
+      - Pipeline/Solutions columns suppressed when no data exists
+- [x] Fixed direct consumer propagation_parent bug (BatchProcessor was nested under
+      WebPortal despite being a direct consumer — depth 0 consumers no longer inherit parent)
+- [x] Demo script: tools/demo-impact.sh (works with or without API key)
+- [x] Updated existing markdown tests for new structure (3 assertions)
+- [x] 811 tests passing, all checks green
+
+PHASE 2: REPORT POLISH FOLLOW-UPS (MEDIUM PRIORITY — cosmetic, not blocking)
+- [ ] Show risk once at target level instead of broadcasting identical per-target
+      risk text to every consumer in the tree. Currently all consumers show the
+      same justification because risk is assessed per-target, not per-consumer.
+- [ ] Per-consumer coupling narratives. Currently the tree shows identical coupling
+      text for all direct consumers when using mock AI. In production with real AI
+      each consumer gets a unique narrative, but the demo output should demonstrate
+      this with varied mock responses or a note in the docs.
+- [ ] Evaluate whether Affected Projects table adds value alongside the tree.
+      Tree already shows consumer name, confidence, depth, via, risk, coupling.
+      Table duplicates most of this. Consider: suppress table when <N consumers,
+      or only show table when --graph-metrics adds columns the tree doesn't have.
+
+PHASE 3: EVALUATOR EXPERIENCE (MEDIUM PRIORITY)
+- [ ] Worked example in docs: walk through a real SOW → impact report, explain
+      each section. Hand this to evaluators.
+- [ ] Harden SOW failure modes (Fatima):
+      - Vague SOW → clear "no targets identified" with suggestions
+      - No API key → single-line actionable message
+      - Rate limit / API error → graceful degradation
+- [ ] Demo script in CI as a smoke test (Kai) — proves SOW pipeline can't silently break
+
+============================================================================
+PIPELINE REGISTRY (DESIGN COMPLETE — BLOCKED ON DEVOPS REPO ACCESS)
+Ref: docs/PIPELINE_REGISTRY_DESIGN.md
+- [ ] Phase 1: Module structure + canonical format + Azure DevOps parser
+- [ ] Phase 2: Wire into scatter core (Dict[str,str] → PipelineRegistry)
+- [ ] Phase 3: Resolver + staleness
+- [ ] Phase 4: Additional parsers (as needed)
+============================================================================
+
+============================================================================
+PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-22)
+============================================================================
+
+CODEBASE STATE (updated 2026-03-22):
   - scatter/ package with 28 modules across core/, scanners/, analyzers/, ai/, reports/, compat/, store/
   - scatter/core/tree.py: shared tree-building utilities (build_adjacency, CONFIDENCE_LABEL_RANK)
   - scatter.py: 10-line thin entry point (delegates to scatter/__main__.py via runpy)
@@ -1089,7 +1148,7 @@ CODEBASE STATE (updated 2026-03-14):
   - tools/generate_synthetic_codebase.py: synthetic .NET codebase generator (100-800 project presets)
   - tools/benchmark_graph_build.py: graph builder benchmark harness with per-stage timing
   - docs/ADR_GRAPH_PERFORMANCE.md: architecture decision record for graph builder 100x optimization
-  - 514 tests across 17 test files (513 pass, 1 xfail)
+  - 811 tests across 31 test files (811 pass, 1 xfail)
   - Benchmarks exist for Phase 1 file discovery, Phase 2.1 content analysis, and graph builder at scale
   - AI integration: Google Gemini via AIProvider protocol + AIRouter
   - Config: .scatter.yaml (repo) + ~/.scatter/config.yaml (user) + env vars + CLI
