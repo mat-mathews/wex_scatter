@@ -1,229 +1,1697 @@
-<!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content=".NET dependency graph engine — trace blast radius before you ship">
+      
+      
+      
+      
+        <link rel="prev" href="output-formats.html">
+      
+      
+        <link rel="next" href="ai-features.html">
+      
+      
         
-        
-        
-        <link rel="shortcut icon" href="img/favicon.ico">
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
         <title>Workflows - Scatter // Athena</title>
-        <link href="css/bootstrap.min.css" rel="stylesheet">
-        <link href="css/fontawesome.min.css" rel="stylesheet">
-        <link href="css/brands.min.css" rel="stylesheet">
-        <link href="css/solid.min.css" rel="stylesheet">
-        <link href="css/v4-font-face.min.css" rel="stylesheet">
-        <link href="css/base.css" rel="stylesheet">
-        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/solarized-dark.min.css" >
-        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-        <script>hljs.highlightAll();</script> 
-    </head>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
 
-    <body>
-        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
-            <div class="container">
-                <a class="navbar-brand" href=".">Scatter // Athena</a>
-                <!-- Expander button -->
-                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-
-                <!-- Expanded navigation -->
-                <div id="navbar-collapse" class="navbar-collapse collapse">
-                        <!-- Main navigation -->
-                        <ul class="nav navbar-nav">
-                            <li class="nav-item dropdown">
-                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">User Guide</a>
-                                <ul class="dropdown-menu">
-                                    
-<li>
-    <a href="index.html" class="dropdown-item">Home</a>
-</li>
-                                    
-<li>
-    <a href="getting-started.html" class="dropdown-item">Getting Started</a>
-</li>
-                                    
-<li>
-    <a href="quick-tour.html" class="dropdown-item">Quick Tour</a>
-</li>
-                                    
-<li>
-    <a href="usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
-</li>
-                                    
-<li>
-    <a href="usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
-</li>
-                                    
-<li>
-    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
-</li>
-                                    
-<li>
-    <a href="usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
-</li>
-                                    
-<li>
-    <a href="usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
-</li>
-                                    
-<li>
-    <a href="output-formats.html" class="dropdown-item">Output Formats</a>
-</li>
-                                    
-<li>
-    <a href="workflows.html" class="dropdown-item active" aria-current="page">Workflows</a>
-</li>
-                                    
-<li>
-    <a href="ai-features.html" class="dropdown-item">AI Features</a>
-</li>
-                                    
-<li>
-    <a href="configuration.html" class="dropdown-item">Configuration</a>
-</li>
-                                    
-<li>
-    <a href="cli-reference.html" class="dropdown-item">CLI Reference</a>
-</li>
-                                    
-<li>
-    <a href="testing.html" class="dropdown-item">Testing</a>
-</li>
-                                </ul>
-                            </li>
-                            <li class="nav-item dropdown">
-                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Technical Reference</a>
-                                <ul class="dropdown-menu">
-                                    
-<li>
-    <a href="reference/architecture.html" class="dropdown-item">Architecture Overview</a>
-</li>
-                                    
-<li>
-    <a href="reference/graph-engine.html" class="dropdown-item">Graph Engine</a>
-</li>
-                                    
-<li>
-    <a href="reference/incremental-updates.html" class="dropdown-item">Incremental Updates</a>
-</li>
-                                    
-<li>
-    <a href="reference/coupling-and-cycles.html" class="dropdown-item">Coupling & Cycle Detection</a>
-</li>
-                                    
-<li>
-    <a href="reference/domain-clustering.html" class="dropdown-item">Domain Clustering</a>
-</li>
-                                    
-<li>
-    <a href="reference/consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
-</li>
-                                    
-<li>
-    <a href="reference/type-extraction.html" class="dropdown-item">Type Extraction</a>
-</li>
-                                    
-<li>
-    <a href="reference/test-architecture.html" class="dropdown-item">Test Architecture</a>
-</li>
-                                    
-<li>
-    <a href="reference/benchmarks.html" class="dropdown-item">Benchmarks</a>
-</li>
-                                    
-<li>
-    <a href="reference/sample-projects.html" class="dropdown-item">Sample Projects</a>
-</li>
-                                    
-<li>
-    <a href="reference/github-action.html" class="dropdown-item">GitHub Action</a>
-</li>
-                                    
-<li>
-    <a href="reference/development.html" class="dropdown-item">Development</a>
-</li>
-                                    
-<li>
-    <a href="reference/contributing.html" class="dropdown-item">Contributing</a>
-</li>
-                                    
-<li>
-    <a href="reference/claude-skills.html" class="dropdown-item">Claude Code Skills</a>
-</li>
-                                </ul>
-                            </li>
-                        </ul>
-
-                    <ul class="nav navbar-nav ms-md-auto">
-                        <li class="nav-item">
-                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
-                                <i class="fa fa-search"></i> Search
-                            </a>
-                        </li>
-                            <li class="nav-item">
-                                <a rel="prev" href="output-formats.html" class="nav-link">
-                                    <i class="fa fa-arrow-left"></i> Previous
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a rel="next" href="ai-features.html" class="nav-link">
-                                    Next <i class="fa fa-arrow-right"></i>
-                                </a>
-                            </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="container">
-            <div class="row">
-                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
-    <div class="navbar-header">
-        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
-            <span class="fa fa-angle-down"></span>
-        </button>
-    </div>
 
     
-    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
-        <ul class="nav flex-column">
-            
-            <li class="nav-item" data-bs-level="1"><a href="#workflows" class="nav-link">Workflows</a>
-              <ul class="nav flex-column">
-            <li class="nav-item" data-bs-level="2"><a href="#1-pre-merge-blast-radius-check" class="nav-link">1. Pre-Merge Blast Radius Check</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#2-stored-procedure-change-impact" class="nav-link">2. Stored Procedure Change Impact</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#3-work-request-scoping-with-ai" class="nav-link">3. Work Request Scoping with AI</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#4-architecture-health-assessment" class="nav-link">4. Architecture Health Assessment</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#5-target-project-dependency-audit" class="nav-link">5. Target Project Dependency Audit</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#6-full-codebase-analysis-pipeline" class="nav-link">6. Full Codebase Analysis Pipeline</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-              </ul>
-            </li>
-        </ul>
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#workflows" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
-</div></div>
-                    <div class="col-md-9" role="main">
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="." title="Scatter // Athena" class="md-header__button md-logo" aria-label="Scatter // Athena" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Scatter // Athena
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Workflows
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="." title="Scatter // Athena" class="md-nav__button md-logo" aria-label="Scatter // Athena" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Scatter // Athena
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="getting-started.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="quick-tour.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Tour
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/target-project.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Target Project Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/git-branch.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Git Branch Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/stored-procedure.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Stored Procedure Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/impact-analysis.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Impact Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/dependency-graph.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dependency Graph
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="output-formats.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output Formats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="workflows.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-pre-merge-blast-radius-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Pre-Merge Blast Radius Check
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Pre-Merge Blast Radius Check">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-look-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to Look For
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-stored-procedure-change-impact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Stored Procedure Change Impact
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Stored Procedure Change Impact">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#steps_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-look-for_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to Look For
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-work-request-scoping-with-ai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Work Request Scoping with AI
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Work Request Scoping with AI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#steps_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-look-for_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to Look For
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-architecture-health-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Architecture Health Assessment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Architecture Health Assessment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#steps_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-look-for_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to Look For
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-target-project-dependency-audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Target Project Dependency Audit
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Target Project Dependency Audit">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#steps_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-look-for_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to Look For
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-full-codebase-analysis-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Full Codebase Analysis Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Full Codebase Analysis Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#steps_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-look-for_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to Look For
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ai-features.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Features
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="configuration.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cli-reference.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="testing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/graph-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Graph Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/incremental-updates.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Incremental Updates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/coupling-and-cycles.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coupling & Cycle Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/domain-clustering.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Domain Clustering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/consumer-pipeline.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Consumer Detection Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/type-extraction.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Type Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/test-architecture.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/benchmarks.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmarks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/sample-projects.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample Projects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/github-action.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitHub Action
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/development.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/claude-skills.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Claude Code Skills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-pre-merge-blast-radius-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Pre-Merge Blast Radius Check
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Pre-Merge Blast Radius Check">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-look-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to Look For
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-stored-procedure-change-impact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Stored Procedure Change Impact
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Stored Procedure Change Impact">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#steps_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-look-for_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to Look For
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-work-request-scoping-with-ai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Work Request Scoping with AI
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Work Request Scoping with AI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#steps_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-look-for_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to Look For
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-architecture-health-assessment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Architecture Health Assessment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Architecture Health Assessment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#steps_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-look-for_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to Look For
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-target-project-dependency-audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Target Project Dependency Audit
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Target Project Dependency Audit">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#steps_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-look-for_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to Look For
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-full-codebase-analysis-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Full Codebase Analysis Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Full Codebase Analysis Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#steps_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-look-for_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to Look For
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
 
 <h1 id="workflows">Workflows<a class="headerlink" href="#workflows" title="Permanent link">&para;</a></h1>
 <p>Six real-world scenarios, each one pulled from actual team usage. Not hypothetical -- these are the problems Scatter was built to solve.</p>
@@ -234,26 +1702,26 @@
 <p><strong>Why:</strong> You changed three files in a shared library. You think you know who uses it. You are probably wrong. Scatter tells you who actually uses it, not who you assume does.</p>
 <h3 id="steps">Steps<a class="headerlink" href="#steps" title="Permanent link">&para;</a></h3>
 <p><strong>Quick scan -- what did this branch touch?</strong></p>
-<pre><code class="language-bash">python scatter.py --branch-name feature/add-caching \
-  --repo-path /code/myrepo \
-  --search-scope /code/myrepo
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--branch-name<span class="w"> </span>feature/add-caching<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>--repo-path<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo
+</code></pre></div>
 <p>This compares your branch against <code>main</code>, extracts every type declaration from changed C# files, and finds every project that references those types. Takes seconds on a typical repo.</p>
 <p><strong>Drill into the consumers with AI summaries:</strong></p>
-<pre><code class="language-bash">python scatter.py --branch-name feature/add-caching \
-  --repo-path /code/myrepo \
-  --search-scope /code/myrepo \
-  --summarize-consumers
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--branch-name<span class="w"> </span>feature/add-caching<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span>--repo-path<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span>--summarize-consumers
+</code></pre></div>
 <p>Now each consumer gets a 2-3 sentence summary of how it actually uses the types you changed. The difference between "ProjectX references this namespace" and "ProjectX calls <code>PortalDataService.GetConfig()</code> in its startup pipeline and caches the result for 30 minutes."</p>
 <p><strong>High-precision mode with hybrid analysis:</strong></p>
-<pre><code class="language-bash">python scatter.py --branch-name feature/add-caching \
-  --repo-path /code/myrepo \
-  --search-scope /code/myrepo \
-  --enable-hybrid-git \
-  --summarize-consumers \
-  --output-format markdown | pbcopy
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--branch-name<span class="w"> </span>feature/add-caching<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--repo-path<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>--enable-hybrid-git<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>--summarize-consumers<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span>--output-format<span class="w"> </span>markdown<span class="w"> </span><span class="p">|</span><span class="w"> </span>pbcopy
+</code></pre></div>
 <p>The <code>--enable-hybrid-git</code> flag uses AI to identify precisely which types were affected in each changed file, rather than flagging every type declaration. More accurate, slower, costs API calls. Worth it for files with many types.</p>
 <p>Pipe to clipboard, paste into the PR description. Reviewer sees the blast radius before they read a single line of code.</p>
 <h3 id="what-to-look-for">What to Look For<a class="headerlink" href="#what-to-look-for" title="Permanent link">&para;</a></h3>
@@ -273,28 +1741,28 @@
 <p><strong>Why:</strong> Sproc changes are invisible to Git branch analysis -- the SQL lives in a different repo (or no repo at all). Scatter traces from the sproc name through C# code to find every caller, then finds every consumer of those callers. The full chain.</p>
 <h3 id="steps_1">Steps<a class="headerlink" href="#steps_1" title="Permanent link">&para;</a></h3>
 <p><strong>Find every C# project that references the sproc:</strong></p>
-<pre><code class="language-bash">python scatter.py --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
-  --search-scope /code/myrepo
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo
+</code></pre></div>
 <p>Scatter scans every <code>.cs</code> file for references to the sproc name, identifies which class contains the call, then finds consumers of that class.</p>
 <p><strong>Export a CSV for the DBA team:</strong></p>
-<pre><code class="language-bash">python scatter.py --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
-  --search-scope /code/myrepo \
-  --output-format csv --output-file sproc_impact.csv
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>--output-format<span class="w"> </span>csv<span class="w"> </span>--output-file<span class="w"> </span>sproc_impact.csv
+</code></pre></div>
 <p>DBAs love spreadsheets. Give them a spreadsheet.</p>
 <p><strong>Add pipeline mappings for deployment planning:</strong></p>
-<pre><code class="language-bash">python scatter.py --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
-  --search-scope /code/myrepo \
-  --pipeline-csv pipeline_to_app_mapping.csv \
-  --output-format csv --output-file sproc_impact.csv
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">  </span>--output-format<span class="w"> </span>csv<span class="w"> </span>--output-file<span class="w"> </span>sproc_impact.csv
+</code></pre></div>
 <p>Now each row includes the CI/CD pipeline name. The deployment plan writes itself.</p>
 <p><strong>Narrow to a specific class if the sproc is used in multiple places:</strong></p>
-<pre><code class="language-bash">python scatter.py --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
-  --search-scope /code/myrepo \
-  --class-name PortalDataService
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>--class-name<span class="w"> </span>PortalDataService
+</code></pre></div>
 <h3 id="what-to-look-for_1">What to Look For<a class="headerlink" href="#what-to-look-for_1" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>The containing class matters.</strong> The sproc might be called from <code>PortalDataService</code>, but the consumers are using <code>IPortalDataService</code> through dependency injection. Look at the <code>TriggeringType</code> column to see what's actually being traced.</li>
@@ -311,28 +1779,28 @@
 <p><strong>Why:</strong> Impact analysis mode (<code>--sow</code>) reads a natural language work description, uses AI to identify which projects, classes, or sprocs are affected, then runs the full consumer analysis automatically. It answers "what breaks if we do this" before anyone writes code.</p>
 <h3 id="steps_2">Steps<a class="headerlink" href="#steps_2" title="Permanent link">&para;</a></h3>
 <p><strong>Quick inline description:</strong></p>
-<pre><code class="language-bash">python scatter.py --sow &quot;Add Redis caching to PortalDataService.GetConfiguration method&quot; \
-  --search-scope /code/myrepo
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--sow<span class="w"> </span><span class="s2">&quot;Add Redis caching to PortalDataService.GetConfiguration method&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo
+</code></pre></div>
 <p>The AI parses the description, identifies <code>GalaxyWorks.Data</code> as the target project and <code>PortalDataService</code> as the class, then traces consumers through the dependency graph.</p>
 <p><strong>Longer work request from a file:</strong></p>
-<pre><code class="language-bash">python scatter.py --sow-file /docs/work-requests/WR-2024-0342.txt \
-  --search-scope /code/myrepo \
-  --pipeline-csv pipeline_to_app_mapping.csv
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--sow-file<span class="w"> </span>/docs/work-requests/WR-2024-0342.txt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv
+</code></pre></div>
 <p>For multi-paragraph work requests, point to a file. The AI does a better job with more context.</p>
 <p><strong>Save structured output for the ticket:</strong></p>
-<pre><code class="language-bash">python scatter.py --sow-file /docs/work-requests/WR-2024-0342.txt \
-  --search-scope /code/myrepo \
-  --pipeline-csv pipeline_to_app_mapping.csv \
-  --output-format json --output-file WR-0342-impact.json
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--sow-file<span class="w"> </span>/docs/work-requests/WR-2024-0342.txt<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span>WR-0342-impact.json
+</code></pre></div>
 <p>The JSON includes everything: identified targets, consumer trees, risk ratings, complexity assessment, effort estimate. Attach it to the Jira ticket.</p>
 <p><strong>Paste-ready for a planning meeting:</strong></p>
-<pre><code class="language-bash">python scatter.py --sow &quot;Add Redis caching to PortalDataService.GetConfiguration method&quot; \
-  --search-scope /code/myrepo \
-  --output-format markdown | pbcopy
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--sow<span class="w"> </span><span class="s2">&quot;Add Redis caching to PortalDataService.GetConfiguration method&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span>--output-format<span class="w"> </span>markdown<span class="w"> </span><span class="p">|</span><span class="w"> </span>pbcopy
+</code></pre></div>
 <h3 id="what-to-look-for_2">What to Look For<a class="headerlink" href="#what-to-look-for_2" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Overall Risk and Complexity ratings.</strong> AI-assessed based on the number of consumers, their depth, and the nature of the change. "Low/Medium/High/Critical" with a justification. Not a magic number -- a starting point for discussion.</li>
@@ -350,32 +1818,32 @@
 <p><strong>Why:</strong> Graph mode builds a full dependency graph from every <code>.csproj</code> in scope, computes coupling metrics, detects circular dependencies, identifies domain clusters, and tells you which extractions are feasible and which are fantasy.</p>
 <h3 id="steps_3">Steps<a class="headerlink" href="#steps_3" title="Permanent link">&para;</a></h3>
 <p><strong>Build the graph and see the summary:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo
+</code></pre></div>
 <p>First run builds the graph from scratch and caches it. Subsequent runs load from cache in under a second.</p>
 <p><strong>Get the full report with domain clusters:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo \
-  --output-format markdown | pbcopy
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>--output-format<span class="w"> </span>markdown<span class="w"> </span><span class="p">|</span><span class="w"> </span>pbcopy
+</code></pre></div>
 <p>Paste into Confluence. The Mermaid diagram renders inline. The domain clusters table shows extraction feasibility scores.</p>
 <p><strong>Export JSON for deeper analysis:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo \
-  --output-format json --output-file graph-report.json \
-  --include-graph-topology
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span>graph-report.json<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">  </span>--include-graph-topology
+</code></pre></div>
 <p>The <code>--include-graph-topology</code> flag adds the raw nodes and edges to the JSON. Omitted by default because it can get large, but you need it for custom analysis.</p>
 <p><strong>Include database dependencies:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo \
-  --include-db \
-  --output-format json --output-file graph-with-db.json
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span>--include-db<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span>graph-with-db.json
+</code></pre></div>
 <p>The <code>--include-db</code> flag scans for stored procedure references and direct SQL in C# files. This adds edges to the graph that represent shared database coupling -- the kind of coupling that <code>.csproj</code> references don't show you.</p>
 <p><strong>Export the Mermaid diagram separately:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope . --output-format mermaid &gt; deps.mmd
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--output-format<span class="w"> </span>mermaid<span class="w"> </span>&gt;<span class="w"> </span>deps.mmd
+</code></pre></div>
 <p><strong>Force a rebuild if the cache is suspect:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo --rebuild-graph
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span>--rebuild-graph
+</code></pre></div>
 <h3 id="what-to-look-for_3">What to Look For<a class="headerlink" href="#what-to-look-for_3" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Circular dependencies.</strong> Listed explicitly with the projects involved and the cycle path. Every circular dependency must be broken before you can extract anything cleanly.</li>
@@ -393,30 +1861,30 @@
 <p><strong>Why:</strong> Target project mode gives you a precise, progressively narrowable view of who consumes what. Start broad, filter down to the exact method, get AI explanations of each usage.</p>
 <h3 id="steps_4">Steps<a class="headerlink" href="#steps_4" title="Permanent link">&para;</a></h3>
 <p><strong>Broad scan -- who references this project at all?</strong></p>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope /code/myrepo
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo
+</code></pre></div>
 <p>The filter chain in the output shows the funnel: total projects -&gt; those with a <code>&lt;ProjectReference&gt;</code> -&gt; those using the namespace -&gt; those referencing specific types.</p>
 <p><strong>Narrow to a specific class:</strong></p>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope /code/myrepo \
-  --class-name PortalDataService
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">  </span>--class-name<span class="w"> </span>PortalDataService
+</code></pre></div>
 <p>Now you see only consumers that actually reference <code>PortalDataService</code>, not just the namespace.</p>
 <p><strong>Narrow further to a specific method:</strong></p>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope /code/myrepo \
-  --class-name PortalDataService \
-  --method-name GetConfiguration
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">  </span>--class-name<span class="w"> </span>PortalDataService<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">  </span>--method-name<span class="w"> </span>GetConfiguration
+</code></pre></div>
 <p>Down to the exact call sites. If you're deprecating <code>GetConfiguration()</code>, these are the projects that need updating.</p>
 <p><strong>Add AI summaries to understand the usage patterns:</strong></p>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope /code/myrepo \
-  --class-name PortalDataService \
-  --summarize-consumers \
-  --output-format json --output-file audit.json
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="w">  </span>--class-name<span class="w"> </span>PortalDataService<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="w">  </span>--summarize-consumers<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span>audit.json
+</code></pre></div>
 <p>Each consumer now includes summaries of the relevant C# files, explaining not just that they reference the class but how they use it. "Calls <code>GetConfiguration()</code> during startup and caches the result" versus "Calls <code>GetConfiguration()</code> on every request in a hot loop" are very different migration stories.</p>
 <h3 id="what-to-look-for_4">What to Look For<a class="headerlink" href="#what-to-look-for_4" title="Permanent link">&para;</a></h3>
 <ul>
@@ -435,44 +1903,44 @@
 <p><strong>Why:</strong> One graph report is a picture. A series of graph reports is a story. Coupling trending upward? New cycles appearing? Cluster feasibility eroding? These are the signals that architecture decisions get made from.</p>
 <h3 id="steps_5">Steps<a class="headerlink" href="#steps_5" title="Permanent link">&para;</a></h3>
 <p><strong>Generate a timestamped report:</strong></p>
-<pre><code class="language-bash">TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-python scatter.py --graph --search-scope /code/myrepo \
-  --include-db \
-  --output-format json --output-file &quot;reports/graph_${TIMESTAMP}.json&quot; \
-  --include-graph-topology
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nv">TIMESTAMP</span><span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%Y%m%d_%H%M%S<span class="k">)</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="w">  </span>--include-db<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span><span class="s2">&quot;reports/graph_</span><span class="si">${</span><span class="nv">TIMESTAMP</span><span class="si">}</span><span class="s2">.json&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="w">  </span>--include-graph-topology
+</code></pre></div>
 <p>Run this on a schedule. Each report is a snapshot of the entire dependency graph with full metrics.</p>
 <p><strong>Compare key metrics between two reports:</strong></p>
-<pre><code class="language-python">import json
-
-with open(&quot;reports/graph_20260310_090000.json&quot;) as f:
-    old = json.load(f)
-with open(&quot;reports/graph_20260317_090000.json&quot;) as f:
-    new = json.load(f)
-
-print(f&quot;Nodes: {old['summary']['node_count']} -&gt; {new['summary']['node_count']}&quot;)
-print(f&quot;Edges: {old['summary']['edge_count']} -&gt; {new['summary']['edge_count']}&quot;)
-print(f&quot;Cycles: {old['summary']['cycle_count']} -&gt; {new['summary']['cycle_count']}&quot;)
-
-# Compare top coupled projects
-old_top = {p['project']: p['coupling_score'] for p in old['top_coupled']}
-new_top = {p['project']: p['coupling_score'] for p in new['top_coupled']}
-for project in new_top:
-    delta = new_top[project] - old_top.get(project, 0)
-    if abs(delta) &gt; 0.5:
-        print(f&quot;  {project}: coupling {old_top.get(project, 'NEW'):&gt;6} -&gt; {new_top[project]:&gt;6} ({'+' if delta &gt; 0 else ''}{delta:.1f})&quot;)
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;reports/graph_20260310_090000.json&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>    <span class="n">old</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;reports/graph_20260317_090000.json&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>    <span class="n">new</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Nodes: </span><span class="si">{</span><span class="n">old</span><span class="p">[</span><span class="s1">&#39;summary&#39;</span><span class="p">][</span><span class="s1">&#39;node_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new</span><span class="p">[</span><span class="s1">&#39;summary&#39;</span><span class="p">][</span><span class="s1">&#39;node_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Edges: </span><span class="si">{</span><span class="n">old</span><span class="p">[</span><span class="s1">&#39;summary&#39;</span><span class="p">][</span><span class="s1">&#39;edge_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new</span><span class="p">[</span><span class="s1">&#39;summary&#39;</span><span class="p">][</span><span class="s1">&#39;edge_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cycles: </span><span class="si">{</span><span class="n">old</span><span class="p">[</span><span class="s1">&#39;summary&#39;</span><span class="p">][</span><span class="s1">&#39;cycle_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new</span><span class="p">[</span><span class="s1">&#39;summary&#39;</span><span class="p">][</span><span class="s1">&#39;cycle_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-22-11" name="__codelineno-22-11" href="#__codelineno-22-11"></a>
+<a id="__codelineno-22-12" name="__codelineno-22-12" href="#__codelineno-22-12"></a><span class="c1"># Compare top coupled projects</span>
+<a id="__codelineno-22-13" name="__codelineno-22-13" href="#__codelineno-22-13"></a><span class="n">old_top</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="p">[</span><span class="s1">&#39;project&#39;</span><span class="p">]:</span> <span class="n">p</span><span class="p">[</span><span class="s1">&#39;coupling_score&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">old</span><span class="p">[</span><span class="s1">&#39;top_coupled&#39;</span><span class="p">]}</span>
+<a id="__codelineno-22-14" name="__codelineno-22-14" href="#__codelineno-22-14"></a><span class="n">new_top</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="p">[</span><span class="s1">&#39;project&#39;</span><span class="p">]:</span> <span class="n">p</span><span class="p">[</span><span class="s1">&#39;coupling_score&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">new</span><span class="p">[</span><span class="s1">&#39;top_coupled&#39;</span><span class="p">]}</span>
+<a id="__codelineno-22-15" name="__codelineno-22-15" href="#__codelineno-22-15"></a><span class="k">for</span> <span class="n">project</span> <span class="ow">in</span> <span class="n">new_top</span><span class="p">:</span>
+<a id="__codelineno-22-16" name="__codelineno-22-16" href="#__codelineno-22-16"></a>    <span class="n">delta</span> <span class="o">=</span> <span class="n">new_top</span><span class="p">[</span><span class="n">project</span><span class="p">]</span> <span class="o">-</span> <span class="n">old_top</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">project</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-22-17" name="__codelineno-22-17" href="#__codelineno-22-17"></a>    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">:</span>
+<a id="__codelineno-22-18" name="__codelineno-22-18" href="#__codelineno-22-18"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">project</span><span class="si">}</span><span class="s2">: coupling </span><span class="si">{</span><span class="n">old_top</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">project</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;NEW&#39;</span><span class="p">)</span><span class="si">:</span><span class="s2">&gt;6</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new_top</span><span class="p">[</span><span class="n">project</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;6</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="s1">&#39;+&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">delta</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}{</span><span class="n">delta</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+</code></pre></div>
 <p>This is a 15-line script that tells you more about architecture drift than a week of code review.</p>
 <p><strong>Force a full rebuild if the cache is suspect:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo \
-  --rebuild-graph \
-  --output-format json --output-file &quot;reports/graph_${TIMESTAMP}.json&quot;
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="w">  </span>--rebuild-graph<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span><span class="s2">&quot;reports/graph_</span><span class="si">${</span><span class="nv">TIMESTAMP</span><span class="si">}</span><span class="s2">.json&quot;</span>
+</code></pre></div>
 <p>Cache invalidation is automatic (Scatter checks file hashes and project sets), but if you've moved directories around or done major restructuring, a forced rebuild ensures clean data.</p>
 <p><strong>Generate a Markdown dashboard for the team:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo \
-  --output-format markdown --output-file &quot;reports/health-dashboard.md&quot;
-</code></pre>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="w">  </span>--output-format<span class="w"> </span>markdown<span class="w"> </span>--output-file<span class="w"> </span><span class="s2">&quot;reports/health-dashboard.md&quot;</span>
+</code></pre></div>
 <p>Commit this to the repo wiki. The Mermaid diagram renders inline. Update weekly.</p>
 <h3 id="what-to-look-for_5">What to Look For<a class="headerlink" href="#what-to-look-for_5" title="Permanent link">&para;</a></h3>
 <ul>
@@ -484,82 +1952,67 @@ for project in new_top:
 </ul>
 <blockquote>
 <p><strong>How this works:</strong> Graph reports are JSON snapshots of the full dependency graph with structural metrics. The graph engine caches aggressively and invalidates via git diff. See <a href="reference/architecture.html">Architecture Overview</a> for the graph engine and caching system.</p>
-</blockquote></div>
-            </div>
-        </div>
+</blockquote>
 
-        <footer class="col-md-12">
-            <hr>
-            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
-        </footer>
-        <script src="js/bootstrap.bundle.min.js"></script>
-        <script>
-            var base_url = ".",
-                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
-        </script>
-        <script src="js/base.js"></script>
-        <script src="search/main.js"></script>
 
-        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title" id="searchModalLabel">Search</h4>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
             </div>
-            <div class="modal-body">
-                <p>From here you can search these documents. Enter your search terms below.</p>
-                <form>
-                    <div class="form-group">
-                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
-                    </div>
-                </form>
-                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
-            </div>
-            <div class="modal-footer">
-            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
-    </div>
-</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th style="width: 20%;">Keys</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td class="help shortcut"><kbd>?</kbd></td>
-                    <td>Open this help</td>
-                  </tr>
-                  <tr>
-                    <td class="next shortcut"><kbd>n</kbd></td>
-                    <td>Next page</td>
-                  </tr>
-                  <tr>
-                    <td class="prev shortcut"><kbd>p</kbd></td>
-                    <td>Previous page</td>
-                  </tr>
-                  <tr>
-                    <td class="search shortcut"><kbd>s</kbd></td>
-                    <td>Search</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="modal-footer">
-            </div>
-        </div>
-    </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
 </div>
-
-    </body>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "navigation.top", "content.code.copy", "search.highlight", "search.suggest"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
 </html>

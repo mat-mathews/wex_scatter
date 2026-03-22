@@ -29,6 +29,7 @@ dev = [
     "ruff",
     "mypy",
     "types-pyyaml",
+    "mkdocs-material>=9.7.6",
 ]
 
 [tool.ruff]
