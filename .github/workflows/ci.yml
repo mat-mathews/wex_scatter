@@ -70,7 +70,12 @@ jobs:
             --search-scope . \
             --output-format json \
             --output-file /tmp/target-smoke.json
-          python -c "import json; d=json.load(open('/tmp/target-smoke.json')); assert len(d) > 0, 'No results'"
+          python -c "
+          import json
+          d = json.load(open('/tmp/target-smoke.json'))
+          assert isinstance(d, list) and len(d) > 0, 'No consumer results'
+          assert any('ConsumerProjectName' in r or 'consumer' in str(r).lower() for r in d), 'No consumer data in results'
+          "
       - name: Smoke test — graph analysis
         run: |
           uv run scatter \
@@ -78,4 +83,9 @@ jobs:
             --search-scope . \
             --output-format json \
             --output-file /tmp/graph-smoke.json
-          python -c "import json; d=json.load(open('/tmp/graph-smoke.json')); assert len(d) > 0, 'Empty graph'"
+          python -c "
+          import json
+          d = json.load(open('/tmp/graph-smoke.json'))
+          assert isinstance(d, dict), 'Graph output should be a dict'
+          assert d.get('node_count', 0) > 0 or d.get('projects', 0) > 0 or len(d) > 0, 'Empty graph'
+          "

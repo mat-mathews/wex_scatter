@@ -272,6 +272,10 @@ Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (6 consumer(
 <li><strong>in-cycle</strong> — whether this project is part of a circular dependency</li>
 </ul>
 <p>You didn't ask for graph metrics — Scatter builds the graph automatically on first run, caches it, and enriches every result.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Test projects (like <code>GalaxyWorks.Data.Tests</code>) appear as consumers because they reference the target. In production, exclude test directories via <a href="configuration.html"><code>.scatter.yaml</code> configuration</a>.</p>
+</div>
 <h2 id="try-it-with-markdown-output">Try it with markdown output<a class="headerlink" href="#try-it-with-markdown-output" title="Permanent link">&para;</a></h2>
 <pre><code class="language-bash">uv run scatter \
   --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \

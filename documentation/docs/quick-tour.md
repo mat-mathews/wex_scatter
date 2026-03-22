@@ -57,6 +57,9 @@ Here's what each part means:
 
 You didn't ask for graph metrics — Scatter builds the graph automatically on first run, caches it, and enriches every result.
 
+!!! note
+    Test projects (like `GalaxyWorks.Data.Tests`) appear as consumers because they reference the target. In production, exclude test directories via [`.scatter.yaml` configuration](configuration.md).
+
 ## Try it with markdown output
 
 ```bash
