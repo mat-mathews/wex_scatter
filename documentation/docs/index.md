@@ -1,6 +1,6 @@
 # Scatter
 
-You changed a class. Which projects just broke?
+You changed a class. Which projects could break?
 
 ```bash
 python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
@@ -30,7 +30,7 @@ You wrote a work request. What's the blast radius?
 scatter --sow "Add tenant isolation to PortalDataService" --search-scope .
 ```
 
-Scatter parses your intent, identifies the affected types, traces transitive consumers, and rates the risk — all from a plain English sentence. No flags to learn, no types to look up manually.
+Scatter parses your intent, identifies the affected types, traces transitive consumers, and rates the risk — from a plain English sentence. No flags to learn, no types to look up manually.
 
 ---
 
@@ -62,7 +62,7 @@ You never pass a flag for this. You never configure it. It just happens.
 
 ## Built to last
 
-788 tests. Modular Python package. Actively developed by team Athena.
+800+ tests. Modular Python package. Actively developed by team Athena.
 
 ## Where to go from here
 

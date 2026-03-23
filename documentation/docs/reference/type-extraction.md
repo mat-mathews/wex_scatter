@@ -109,7 +109,7 @@ Rules:
 The response goes through a hardening pipeline:
 
 1. Strip leading/trailing whitespace
-2. If the response starts with `` ``` ``, strip markdown code fences (LLMs love to wrap JSON in fences even when you ask them not to)
+2. If the response starts with `` ``` ``, strip markdown code fences (LLMs love to wrap JSON in fences even when we ask them not to)
 3. Parse as JSON
 4. Validate it's a list
 5. Filter to strings only

@@ -9,56 +9,10 @@ Scatter uses a layered configuration system. You can configure nothing and it wo
 | 1 (highest) | CLI flags | `--max-depth 3`, `--google-api-key ...`, etc. |
 | 2 | Repo config | `.scatter.yaml` in the repo root |
 | 3 | User config | `~/.scatter/config.yaml` |
-| 4 | Environment variables | `GOOGLE_API_KEY`, `SCATTER_DEFAULT_PROVIDER` |
+| 4 | Environment variables | `GOOGLE_API_KEY`, `WEX_AI_API_KEY`, `SCATTER_DEFAULT_PROVIDER` |
 | 5 (lowest) | Built-in defaults | Hardcoded in `scatter/config.py` |
 
 Missing config files are silently ignored. You do not need `.scatter.yaml` in your repo. You do not need `~/.scatter/config.yaml` at home. Scatter checks for them, shrugs if they are absent, and moves on. No warnings, no errors.
-
-## Full .scatter.yaml Schema
-
-```yaml
-# AI provider settings
-ai:
-  default_provider: gemini              # Only "gemini" supported today
-  gemini_model: gemini-1.5-flash        # Model for summarization and impact analysis
-  task_overrides:                       # Route specific AI tasks to different models
-    risk_assess: gemini-1.5-pro         # e.g., use a stronger model for risk assessment
-  credentials:
-    gemini:
-      api_key: your-key-here            # Or use env var / CLI flag instead
-
-# Search behavior
-search:
-  max_depth: 2                          # Transitive tracing depth for impact analysis
-  exclude_patterns:                     # Glob patterns to skip during file discovery
-    - "*/bin/*"                         # NOTE: this REPLACES the defaults entirely.
-    - "*/obj/*"                         # If you add custom patterns, re-list bin/obj
-    - "*/node_modules/*"               # or they will no longer be excluded.
-
-# Parallel processing
-multiprocessing:
-  disabled: false                       # Set true to force sequential execution
-  max_workers: 14                       # Upper bound on worker processes
-  chunk_size: 75                        # Directories per worker batch
-
-# Dependency graph
-graph:
-  cache_dir: null                       # Override default .scatter/ cache location
-  rebuild: false                        # Force full rebuild (ignore cache)
-  invalidation: git                     # "git" (default) or "mtime" fallback
-  coupling_weights:                     # Override edge type weights for coupling score
-    project_reference: 1.0
-    namespace_usage: 0.5
-    type_usage: 0.3
-    sproc_shared: 0.8
-
-# Database dependency scanning
-db:
-  sproc_prefixes:                       # Prefixes that identify stored procedures
-    - "sp_"
-    - "usp_"
-  include_db_edges: true                # Add sproc_shared edges to the graph
-```
 
 ## Typical Setup
 
@@ -109,18 +63,81 @@ python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope . --max-d
 
 | Variable | What it does |
 |----------|-------------|
-| `GOOGLE_API_KEY` | Google API key for Gemini. Used when no key is provided via CLI flag or config file. |
-| `SCATTER_DEFAULT_PROVIDER` | Override the default AI provider (currently only `gemini` is supported). |
+| `GOOGLE_API_KEY` | Google API key for the Gemini provider. Used when no key is provided via CLI flag or config file. |
+| `WEX_AI_API_KEY` | API key for the WEX AI Platform provider. |
+| `WEX_AI_ENDPOINT` | WEX AI Platform endpoint URL (default: `https://ai.wexinc.com`). |
+| `SCATTER_DEFAULT_PROVIDER` | Override the default AI provider (`gemini` or `wex`). |
 
-## Google API Key Setup
+## AI Provider Setup
 
-Three ways to provide it, in order of precedence:
+You only need an API key for AI features: `--summarize-consumers`, `--enable-hybrid-git`, `--sow`, and `--sow-file`. All other Scatter functionality works without one.
+
+### Google Gemini (Current Default)
+
+Three ways to provide the API key, in order of precedence:
 
 1. **CLI flag**: `--google-api-key YOUR_KEY` -- highest priority, useful for CI/CD
 2. **Config file**: Set in `~/.scatter/config.yaml` or `.scatter.yaml` under `ai.credentials.gemini.api_key`
 3. **Environment variable**: `export GOOGLE_API_KEY=YOUR_KEY`
 
-You only need an API key for AI features: `--summarize-consumers`, `--enable-hybrid-git`, `--sow`, and `--sow-file`. All other Scatter functionality works without one.
+### WEX AI Platform (Coming Soon)
+
+The WEX AI Platform provider is stubbed and ready for integration. Once the API contract is finalized, it will become the default provider. Configure it the same way:
+
+1. **CLI flag**: `--wex-api-key YOUR_KEY`
+2. **Config file**: `ai.credentials.wex.api_key` in config YAML
+3. **Environment variable**: `export WEX_AI_API_KEY=YOUR_KEY`
+
+To switch providers: set `ai.default_provider: wex` in your config or `export SCATTER_DEFAULT_PROVIDER=wex`.
+
+## Full .scatter.yaml Schema
+
+```yaml
+# AI provider settings
+ai:
+  default_provider: gemini              # "gemini" (current) or "wex" (coming soon)
+  gemini_model: gemini-2.0-flash        # Gemini model name
+  wex_model: default                    # WEX AI Platform model name
+  task_overrides:                       # Route specific AI tasks to different providers
+    risk_assessment: gemini             # e.g., keep risk assessment on Gemini
+  credentials:
+    gemini:
+      api_key: your-key-here            # Or use env var / CLI flag instead
+    wex:
+      api_key: your-wex-key-here        # Or use WEX_AI_API_KEY env var
+
+# Search behavior
+search:
+  max_depth: 2                          # Transitive tracing depth for impact analysis
+  exclude_patterns:                     # Glob patterns to skip during file discovery
+    - "*/bin/*"                         # NOTE: this REPLACES the defaults entirely.
+    - "*/obj/*"                         # If you add custom patterns, re-list bin/obj
+    - "*/node_modules/*"               # or they will no longer be excluded
+
+# Parallel processing
+multiprocessing:
+  disabled: false                       # Set true to force sequential execution
+  max_workers: 14                       # Upper bound on worker processes
+  chunk_size: 75                        # Directories per worker batch
+
+# Dependency graph
+graph:
+  cache_dir: null                       # Override default .scatter/ cache location
+  rebuild: false                        # Force full rebuild (ignore cache)
+  invalidation: git                     # "git" (default) or "mtime" fallback
+  coupling_weights:                     # Override edge type weights for coupling score
+    project_reference: 1.0
+    namespace_usage: 0.5
+    type_usage: 0.3
+    sproc_shared: 0.8
+
+# Database dependency scanning
+db:
+  sproc_prefixes:                       # Prefixes that identify stored procedures
+    - "sp_"
+    - "usp_"
+  include_db_edges: true                # Add sproc_shared edges to the graph
+```
 
 ## Pipeline Mapping
 

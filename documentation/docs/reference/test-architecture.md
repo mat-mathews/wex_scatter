@@ -123,7 +123,7 @@ For each mutation, the test:
 5. Builds a fresh graph from the mutated codebase
 6. Asserts the patched graph equals the fresh graph (nodes, edges, metrics)
 
-This is as close to property-based testing as we get without hypothesis. The synthetic codebase generator (see [Benchmarks](benchmarks.md)) can produce arbitrary-scale codebases for fuzz-like coverage.
+This is as close to property-based testing as you get without hypothesis. The synthetic codebase generator (see [Benchmarks](benchmarks.md)) can produce arbitrary-scale codebases for fuzz-like coverage.
 
 ---
 

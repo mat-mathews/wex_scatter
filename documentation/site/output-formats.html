@@ -1,1463 +1,313 @@
-
-<!doctype html>
-<html lang="en" class="no-js">
-  <head>
-    
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width,initial-scale=1">
-      
-        <meta name="description" content=".NET dependency graph engine — trace blast radius before you ship">
-      
-      
-      
-      
-        <link rel="prev" href="usage/dependency-graph.html">
-      
-      
-        <link rel="next" href="workflows.html">
-      
-      
-        
-      
-      
-      <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
-    
-    
-      
-        <title>Output Formats - Scatter // Athena</title>
-      
-    
-    
-      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
-      
-        
-        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
-      
-      
-
-
-    
-    
-      
-    
-    
-      
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
-        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
-      
-    
-    
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
-    
-      
-
-    
-    
-  </head>
-  
-  
-    
-    
-      
-    
-    
-    
-    
-    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber">
-  
-    
-    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
-    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
-    <label class="md-overlay" for="__drawer"></label>
-    <div data-md-component="skip">
-      
         
-        <a href="#output-formats" class="md-skip">
-          Skip to content
-        </a>
-      
-    </div>
-    <div data-md-component="announce">
-      
-    </div>
-    
-    
-      
+        <link rel="shortcut icon" href="img/favicon.ico">
+        <title>Output Formats - Scatter</title>
+        <link href="css/bootstrap.min.css" rel="stylesheet">
+        <link href="css/fontawesome.min.css" rel="stylesheet">
+        <link href="css/brands.min.css" rel="stylesheet">
+        <link href="css/solid.min.css" rel="stylesheet">
+        <link href="css/v4-font-face.min.css" rel="stylesheet">
+        <link href="css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/solarized-dark.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
 
-  
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href=".">Scatter</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
 
-<header class="md-header md-header--shadow" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="Scatter // Athena" class="md-header__button md-logo" aria-label="Scatter // Athena" data-md-component="logo">
-      
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">User Guide</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="index.html" class="dropdown-item">Home</a>
+</li>
+                                    
+<li>
+    <a href="getting-started.html" class="dropdown-item">Getting Started</a>
+</li>
+                                    
+<li>
+    <a href="quick-tour.html" class="dropdown-item">Quick Tour</a>
+</li>
+                                    
+<li>
+    <a href="usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
+</li>
+                                    
+<li>
+    <a href="usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
+</li>
+                                    
+<li>
+    <a href="output-formats.html" class="dropdown-item active" aria-current="page">Output Formats</a>
+</li>
+                                    
+<li>
+    <a href="workflows.html" class="dropdown-item">Workflows</a>
+</li>
+                                    
+<li>
+    <a href="ai-features.html" class="dropdown-item">AI Features</a>
+</li>
+                                    
+<li>
+    <a href="configuration.html" class="dropdown-item">Configuration</a>
+</li>
+                                    
+<li>
+    <a href="cli-reference.html" class="dropdown-item">CLI Reference</a>
+</li>
+                                    
+<li>
+    <a href="testing.html" class="dropdown-item">Testing</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Technical Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="reference/architecture.html" class="dropdown-item">Architecture Overview</a>
+</li>
+                                    
+<li>
+    <a href="reference/graph-engine.html" class="dropdown-item">Graph Engine</a>
+</li>
+                                    
+<li>
+    <a href="reference/incremental-updates.html" class="dropdown-item">Incremental Updates</a>
+</li>
+                                    
+<li>
+    <a href="reference/coupling-and-cycles.html" class="dropdown-item">Coupling & Cycle Detection</a>
+</li>
+                                    
+<li>
+    <a href="reference/domain-clustering.html" class="dropdown-item">Domain Clustering</a>
+</li>
+                                    
+<li>
+    <a href="reference/consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="reference/type-extraction.html" class="dropdown-item">Type Extraction</a>
+</li>
+                                    
+<li>
+    <a href="reference/test-architecture.html" class="dropdown-item">Test Architecture</a>
+</li>
+                                    
+<li>
+    <a href="reference/benchmarks.html" class="dropdown-item">Benchmarks</a>
+</li>
+                                    
+<li>
+    <a href="reference/sample-projects.html" class="dropdown-item">Sample Projects</a>
+</li>
+                                    
+<li>
+    <a href="reference/github-action.html" class="dropdown-item">GitHub Action</a>
+</li>
+                                    
+<li>
+    <a href="reference/development.html" class="dropdown-item">Development</a>
+</li>
+                                    
+<li>
+    <a href="reference/contributing.html" class="dropdown-item">Contributing</a>
+</li>
+                                    
+<li>
+    <a href="reference/claude-skills.html" class="dropdown-item">Claude Code Skills</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
 
-    </a>
-    <label class="md-header__button md-icon" for="__drawer">
-      
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
-    </label>
-    <div class="md-header__title" data-md-component="header-title">
-      <div class="md-header__ellipsis">
-        <div class="md-header__topic">
-          <span class="md-ellipsis">
-            Scatter // Athena
-          </span>
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="usage/dependency-graph.html" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="workflows.html" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
         </div>
-        <div class="md-header__topic" data-md-component="header-topic">
-          <span class="md-ellipsis">
-            
-              Output Formats
-            
-          </span>
-        </div>
-      </div>
-    </div>
-    
-      
-        <form class="md-header__option" data-md-component="palette">
-  
-    
-    
-    
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
-    
-      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
-      </label>
-    
-  
-    
-    
-    
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
-    
-      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
-      </label>
-    
-  
-</form>
-      
-    
-    
-      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
-    
-    
-    
-      
-      
-        <label class="md-header__button md-icon" for="__search">
-          
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
-        </label>
-        <div class="md-search" data-md-component="search" role="dialog">
-  <label class="md-search__overlay" for="__search"></label>
-  <div class="md-search__inner" role="search">
-    <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
-      <label class="md-search__icon md-icon" for="__search">
-        
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
-        
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
-      </label>
-      <nav class="md-search__options" aria-label="Search">
-        
-        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
-          
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
         </button>
-      </nav>
-      
-        <div class="md-search__suggest" data-md-component="search-suggest"></div>
-      
-    </form>
-    <div class="md-search__output">
-      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
-        <div class="md-search-result" data-md-component="search-result">
-          <div class="md-search-result__meta">
-            Initializing search
-          </div>
-          <ol class="md-search-result__list" role="presentation"></ol>
-        </div>
-      </div>
     </div>
-  </div>
-</div>
-      
+
     
-    
-  </nav>
-  
-</header>
-    
-    <div class="md-container" data-md-component="container">
-      
-      
-        
-          
-        
-      
-      <main class="md-main" data-md-component="main">
-        <div class="md-main__inner md-grid">
-          
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
             
-              
-              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
-                <div class="md-sidebar__scrollwrap">
-                  <div class="md-sidebar__inner">
-                    
-
-
-
-<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
-  <label class="md-nav__title" for="__drawer">
-    <a href="." title="Scatter // Athena" class="md-nav__button md-logo" aria-label="Scatter // Athena" data-md-component="logo">
-      
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
-
-    </a>
-    Scatter // Athena
-  </label>
-  
-  <ul class="md-nav__list" data-md-scrollfix>
-    
-      
-      
-  
-  
-    
-  
-  
-  
-    
-    
-    
-    
-      
-        
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
-        
-          
-          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    User Guide
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_1">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    User Guide
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="index.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Home
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="getting-started.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Getting Started
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="quick-tour.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Quick Tour
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="usage/target-project.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Target Project Analysis
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="usage/git-branch.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Git Branch Analysis
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="usage/stored-procedure.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Stored Procedure Analysis
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="usage/impact-analysis.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Impact Analysis
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="usage/dependency-graph.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Dependency Graph
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Output Formats
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="output-formats.html" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Output Formats
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-console-default" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Console (default)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-json" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. JSON
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-csv" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. CSV
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-markdown" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Markdown
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-mermaid" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Mermaid
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-pipelines" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Pipelines
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quick-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick Reference
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="workflows.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Workflows
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="ai-features.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    AI Features
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="configuration.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Configuration
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="cli-reference.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    CLI Reference
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="testing.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Testing
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-        
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
-      
-        
-        
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
-        
-          
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Technical Reference
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Technical Reference
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/architecture.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Architecture Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/graph-engine.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Graph Engine
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/incremental-updates.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Incremental Updates
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/coupling-and-cycles.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Coupling & Cycle Detection
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/domain-clustering.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Domain Clustering
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/consumer-pipeline.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Consumer Detection Pipeline
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/type-extraction.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Type Extraction
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/test-architecture.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Test Architecture
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/benchmarks.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Benchmarks
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/sample-projects.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sample Projects
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/github-action.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    GitHub Action
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/development.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Development
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/contributing.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Contributing
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="reference/claude-skills.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Claude Code Skills
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-  </ul>
-</nav>
-                  </div>
-                </div>
-              </div>
-            
-            
-              
-              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
-                <div class="md-sidebar__scrollwrap">
-                  <div class="md-sidebar__inner">
-                    
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-console-default" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Console (default)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-json" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. JSON
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-csv" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. CSV
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-markdown" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Markdown
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-mermaid" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Mermaid
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-pipelines" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Pipelines
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quick-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick Reference
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-                  </div>
-                </div>
-              </div>
-            
-          
-          
-            <div class="md-content" data-md-component="content">
-              
-              <article class="md-content__inner md-typeset">
-                
-                  
-
-
+            <li class="nav-item" data-bs-level="1"><a href="#output-formats" class="nav-link">Output Formats</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#1-console-default" class="nav-link">1. Console (default)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#2-json" class="nav-link">2. JSON</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#3-csv" class="nav-link">3. CSV</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#4-markdown" class="nav-link">4. Markdown</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#5-mermaid" class="nav-link">5. Mermaid</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#6-pipelines" class="nav-link">6. Pipelines</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#quick-reference" class="nav-link">Quick Reference</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
 
 <h1 id="output-formats">Output Formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h1>
 <p>Scatter speaks six output languages. Each exists because someone had a real need -- a PR review, a deployment checklist, a Confluence page, a Mermaid diagram. The <code>--output-format</code> flag controls which one you get. Default is <code>console</code>.</p>
 <hr />
 <h2 id="1-console-default">1. Console (default)<a class="headerlink" href="#1-console-default" title="Permanent link">&para;</a></h2>
 <p>When you just want to see what's going on. No flags, no files, no ceremony.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Search scope: /code/myrepo (scanned 142 projects, 3,891 files)
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>Filter: 142 -&gt; 8 project refs -&gt; 5 namespace -&gt; 3 class match
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>--- Combined Consumer Analysis Report ---
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>--- Consuming Relationships Found ---
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (3 consumer(s))
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    Type/Level: PortalDataService
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>         -&gt; Consumed by: MyGalaxyConsumerApp (MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj) [Pipeline: galaxy-consumer-ci]
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>           Solutions: GalaxyWorks.sln
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>         -&gt; Consumed by: MyGalaxyConsumerApp2 (MyGalaxyConsumerApp2/MyGalaxyConsumerApp2.csproj) [Pipeline: galaxy-consumer2-ci]
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>           Solutions: GalaxyWorks.sln
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>         -&gt; Consumed by: PortalBatchProcessor (PortalBatchProcessor/PortalBatchProcessor.csproj) [Pipeline: portal-batch-ci]
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>           Solutions: PortalServices.sln
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>           Batch Job Status: portal-nightly-sync in app-config
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>--- Total Consuming Relationships Found: 3 ---
-</code></pre></div>
+<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --pipeline-csv pipeline_to_app_mapping.csv
+</code></pre>
+<pre><code>Search scope: /code/myrepo (scanned 142 projects, 3,891 files)
+Filter: 142 -&gt; 8 project refs -&gt; 5 namespace -&gt; 3 class match
+
+--- Combined Consumer Analysis Report ---
+
+--- Consuming Relationships Found ---
+
+Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (3 consumer(s))
+    Type/Level: PortalDataService
+         -&gt; Consumed by: MyGalaxyConsumerApp (MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj) [Pipeline: galaxy-consumer-ci]
+           Solutions: GalaxyWorks.sln
+         -&gt; Consumed by: MyGalaxyConsumerApp2 (MyGalaxyConsumerApp2/MyGalaxyConsumerApp2.csproj) [Pipeline: galaxy-consumer2-ci]
+           Solutions: GalaxyWorks.sln
+         -&gt; Consumed by: PortalBatchProcessor (PortalBatchProcessor/PortalBatchProcessor.csproj) [Pipeline: portal-batch-ci]
+           Solutions: PortalServices.sln
+           Batch Job Status: portal-nightly-sync in app-config
+
+--- Total Consuming Relationships Found: 3 ---
+</code></pre>
 <p>When a graph cache exists, each consumer gets an extra line with metrics:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>         -&gt; Consumed by: MyGalaxyConsumerApp (MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj)
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>           Graph: coupling=4.30, fan-in=1, fan-out=3, instability=0.750, in-cycle=no
-</code></pre></div>
+<pre><code>         -&gt; Consumed by: MyGalaxyConsumerApp (MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj)
+           Graph: coupling=4.30, fan-in=1, fan-out=3, instability=0.750, in-cycle=no
+</code></pre>
 <p>High coupling score + in-cycle=yes is a project you do not want to surprise with a breaking change on a Friday afternoon.</p>
 <hr />
 <h2 id="2-json">2. JSON<a class="headerlink" href="#2-json" title="Permanent link">&para;</a></h2>
 <p>Structured data for programmatic consumption -- ticket automation, dashboards, diffing between runs.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span>report.json
-</code></pre></div>
+<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --output-format json --output-file report.json
+</code></pre>
 <p>Requires <code>--output-file</code>. Scatter won't dump JSON to stdout -- that path leads to accidental pipe disasters with multi-megabyte payloads.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">{</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">        </span><span class="nt">&quot;scatter_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.12.0&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">        </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-17T14:32:01.123456+00:00&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">        </span><span class="nt">&quot;cli_args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;...&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span><span class="p">},</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">        </span><span class="nt">&quot;search_scope&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/code/myrepo&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">        </span><span class="nt">&quot;duration_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.41</span><span class="p">,</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">        </span><span class="nt">&quot;graph_enriched&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">    </span><span class="p">},</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">    </span><span class="nt">&quot;filter_pipeline&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">        </span><span class="nt">&quot;search_scope&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/code/myrepo&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">        </span><span class="nt">&quot;total_projects_scanned&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">142</span><span class="p">,</span>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="w">        </span><span class="nt">&quot;total_files_scanned&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3891</span><span class="p">,</span>
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="w">        </span><span class="nt">&quot;stages&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span><span class="p">]</span>
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="w">    </span><span class="p">},</span>
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a><span class="w">    </span><span class="nt">&quot;pipeline_summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="w">        </span><span class="s2">&quot;galaxy-consumer-ci&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a><span class="w">        </span><span class="s2">&quot;galaxy-consumer2-ci&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="w">        </span><span class="s2">&quot;portal-batch-ci&quot;</span>
-<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="w">    </span><span class="p">],</span>
-<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="w">    </span><span class="nt">&quot;all_results&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a><span class="w">        </span><span class="p">{</span>
-<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="w">            </span><span class="nt">&quot;TargetProjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GalaxyWorks.Data&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="w">            </span><span class="nt">&quot;TargetProjectPath&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GalaxyWorks.Data/GalaxyWorks.Data.csproj&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a><span class="w">            </span><span class="nt">&quot;TriggeringType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PortalDataService&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="w">            </span><span class="nt">&quot;ConsumerProjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MyGalaxyConsumerApp&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a><span class="w">            </span><span class="nt">&quot;ConsumerProjectPath&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a><span class="w">            </span><span class="nt">&quot;ConsumingSolutions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;GalaxyWorks.sln&quot;</span><span class="p">],</span>
-<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a><span class="w">            </span><span class="nt">&quot;ConsumerFileSummaries&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
-<a id="__codelineno-4-30" name="__codelineno-4-30" href="#__codelineno-4-30"></a><span class="w">            </span><span class="nt">&quot;PipelineName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;galaxy-consumer-ci&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-31" name="__codelineno-4-31" href="#__codelineno-4-31"></a><span class="w">            </span><span class="nt">&quot;BatchJobVerification&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
-<a id="__codelineno-4-32" name="__codelineno-4-32" href="#__codelineno-4-32"></a><span class="w">            </span><span class="nt">&quot;CouplingScore&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">4.3</span><span class="p">,</span>
-<a id="__codelineno-4-33" name="__codelineno-4-33" href="#__codelineno-4-33"></a><span class="w">            </span><span class="nt">&quot;FanIn&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-4-34" name="__codelineno-4-34" href="#__codelineno-4-34"></a><span class="w">            </span><span class="nt">&quot;FanOut&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
-<a id="__codelineno-4-35" name="__codelineno-4-35" href="#__codelineno-4-35"></a><span class="w">            </span><span class="nt">&quot;Instability&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.75</span><span class="p">,</span>
-<a id="__codelineno-4-36" name="__codelineno-4-36" href="#__codelineno-4-36"></a><span class="w">            </span><span class="nt">&quot;InCycle&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
-<a id="__codelineno-4-37" name="__codelineno-4-37" href="#__codelineno-4-37"></a><span class="w">        </span><span class="p">}</span>
-<a id="__codelineno-4-38" name="__codelineno-4-38" href="#__codelineno-4-38"></a><span class="w">    </span><span class="p">]</span>
-<a id="__codelineno-4-39" name="__codelineno-4-39" href="#__codelineno-4-39"></a><span class="p">}</span>
-</code></pre></div>
+<pre><code class="language-json">{
+    &quot;metadata&quot;: {
+        &quot;scatter_version&quot;: &quot;0.12.0&quot;,
+        &quot;timestamp&quot;: &quot;2026-03-17T14:32:01.123456+00:00&quot;,
+        &quot;cli_args&quot;: { &quot;...&quot; : &quot;...&quot; },
+        &quot;search_scope&quot;: &quot;/code/myrepo&quot;,
+        &quot;duration_seconds&quot;: 2.41,
+        &quot;graph_enriched&quot;: true
+    },
+    &quot;filter_pipeline&quot;: {
+        &quot;search_scope&quot;: &quot;/code/myrepo&quot;,
+        &quot;total_projects_scanned&quot;: 142,
+        &quot;total_files_scanned&quot;: 3891,
+        &quot;stages&quot;: [ &quot;...&quot; ]
+    },
+    &quot;pipeline_summary&quot;: [
+        &quot;galaxy-consumer-ci&quot;,
+        &quot;galaxy-consumer2-ci&quot;,
+        &quot;portal-batch-ci&quot;
+    ],
+    &quot;all_results&quot;: [
+        {
+            &quot;TargetProjectName&quot;: &quot;GalaxyWorks.Data&quot;,
+            &quot;TargetProjectPath&quot;: &quot;GalaxyWorks.Data/GalaxyWorks.Data.csproj&quot;,
+            &quot;TriggeringType&quot;: &quot;PortalDataService&quot;,
+            &quot;ConsumerProjectName&quot;: &quot;MyGalaxyConsumerApp&quot;,
+            &quot;ConsumerProjectPath&quot;: &quot;MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj&quot;,
+            &quot;ConsumingSolutions&quot;: [&quot;GalaxyWorks.sln&quot;],
+            &quot;ConsumerFileSummaries&quot;: {},
+            &quot;PipelineName&quot;: &quot;galaxy-consumer-ci&quot;,
+            &quot;BatchJobVerification&quot;: null,
+            &quot;CouplingScore&quot;: 4.3,
+            &quot;FanIn&quot;: 1,
+            &quot;FanOut&quot;: 3,
+            &quot;Instability&quot;: 0.75,
+            &quot;InCycle&quot;: false
+        }
+    ]
+}
+</code></pre>
 <p>A few things worth knowing:</p>
 <ul>
 <li><strong><code>pipeline_summary</code></strong> is sorted and deduplicated. Quick "what needs to deploy" check without iterating <code>all_results</code>.</li>
@@ -1469,92 +319,92 @@
 <hr />
 <h2 id="3-csv">3. CSV<a class="headerlink" href="#3-csv" title="Permanent link">&para;</a></h2>
 <p>One row per consumer. For Excel, pivot tables, and people who think in spreadsheets.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--output-format<span class="w"> </span>csv<span class="w"> </span>--output-file<span class="w"> </span>report.csv
-</code></pre></div>
+<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --output-format csv --output-file report.csv
+</code></pre>
 <p>Requires <code>--output-file</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a># Search scope: /code/myrepo (142 projects, 3,891 files)
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a># Filter: 142 -&gt; 8 project refs -&gt; 5 namespace -&gt; 3 class match
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>TargetProjectName,TargetProjectPath,TriggeringType,ConsumerProjectName,ConsumerProjectPath,ConsumingSolutions,PipelineName,BatchJobVerification
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>GalaxyWorks.Data,GalaxyWorks.Data/GalaxyWorks.Data.csproj,PortalDataService,MyGalaxyConsumerApp,MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj,GalaxyWorks.sln,galaxy-consumer-ci,
-</code></pre></div>
+<pre><code># Search scope: /code/myrepo (142 projects, 3,891 files)
+# Filter: 142 -&gt; 8 project refs -&gt; 5 namespace -&gt; 3 class match
+TargetProjectName,TargetProjectPath,TriggeringType,ConsumerProjectName,ConsumerProjectPath,ConsumingSolutions,PipelineName,BatchJobVerification
+GalaxyWorks.Data,GalaxyWorks.Data/GalaxyWorks.Data.csproj,PortalDataService,MyGalaxyConsumerApp,MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj,GalaxyWorks.sln,galaxy-consumer-ci,
+</code></pre>
 <p>The <code>#</code>-prefixed lines at the top are comment headers showing the search scope and filter chain. Most CSV parsers skip them automatically. If yours doesn't, strip lines starting with <code>#</code> before parsing.</p>
 <p>When graph enrichment is active, five additional columns appear: <code>CouplingScore</code>, <code>FanIn</code>, <code>FanOut</code>, <code>Instability</code>, <code>InCycle</code>.</p>
 <p><code>ConsumingSolutions</code> uses semicolons as the delimiter when a consumer belongs to multiple solutions (e.g., <code>GalaxyWorks.sln; PortalServices.sln</code>).</p>
 <hr />
 <h2 id="4-markdown">4. Markdown<a class="headerlink" href="#4-markdown" title="Permanent link">&para;</a></h2>
 <p>Paste-ready for PRs, Jira tickets, Confluence pages, ADO work items. Designed for humans reading rendered text, not raw data.</p>
-<p>Unlike CSV and JSON, Markdown does <strong>not</strong> require <code>--output-file</code>. Without it, Scatter prints to stdout. This is intentional -- pipe straight to clipboard:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--output-format<span class="w"> </span>markdown<span class="w"> </span><span class="p">|</span><span class="w"> </span>pbcopy
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="gh"># Consumer Analysis Report</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="k">&gt; </span><span class="ge">**Search scope:** /code/myrepo (scanned 142 projects, 3,891 files)</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="k">&gt; </span><span class="ge">**Filter:** 142 -&gt; 8 project refs -&gt; 5 namespace -&gt; 3 class match</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="gu">## GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (3 consumer(s))</span>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>Type/Level: PortalDataService
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>| Consumer | Path | Pipeline | Solutions |
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>| --- | --- | --- | --- |
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>| MyGalaxyConsumerApp | MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj | galaxy-consumer-ci | GalaxyWorks.sln |
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>| MyGalaxyConsumerApp2 | MyGalaxyConsumerApp2/MyGalaxyConsumerApp2.csproj | galaxy-consumer2-ci | GalaxyWorks.sln |
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>| PortalBatchProcessor | PortalBatchProcessor/PortalBatchProcessor.csproj | portal-batch-ci | PortalServices.sln |
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>
-<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>---
-<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="gs">**Total:**</span> 3 consuming relationship(s) across 1 target(s).
-</code></pre></div>
+<p>Unlike CSV and JSON, Markdown does <strong>not</strong> require <code>--output-file</code>. Without it, Scatter prints to stdout. This is intentional -- pipe it straight to clipboard:</p>
+<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --output-format markdown | pbcopy
+</code></pre>
+<pre><code class="language-markdown"># Consumer Analysis Report
+
+&gt; **Search scope:** /code/myrepo (scanned 142 projects, 3,891 files)
+&gt; **Filter:** 142 -&gt; 8 project refs -&gt; 5 namespace -&gt; 3 class match
+
+## GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (3 consumer(s))
+
+Type/Level: PortalDataService
+
+| Consumer | Path | Pipeline | Solutions |
+| --- | --- | --- | --- |
+| MyGalaxyConsumerApp | MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj | galaxy-consumer-ci | GalaxyWorks.sln |
+| MyGalaxyConsumerApp2 | MyGalaxyConsumerApp2/MyGalaxyConsumerApp2.csproj | galaxy-consumer2-ci | GalaxyWorks.sln |
+| PortalBatchProcessor | PortalBatchProcessor/PortalBatchProcessor.csproj | portal-batch-ci | PortalServices.sln |
+
+---
+**Total:** 3 consuming relationship(s) across 1 target(s).
+</code></pre>
 <p>Impact mode includes a blast radius tree rendered as a code block (so it survives Markdown rendering without losing structure):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>+-- MyGalaxyConsumerApp  [HIGH]  direct
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>|   Pipeline: galaxy-consumer-ci
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>|   +-- GalaxyPortalUI  [MEDIUM]  via MyGalaxyConsumerApp
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>+-- MyGalaxyConsumerApp2  [HIGH]  direct
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>|   Pipeline: galaxy-consumer2-ci
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>+-- PortalBatchProcessor  [HIGH]  direct
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    Pipeline: portal-batch-ci
-</code></pre></div>
+<pre><code class="language-text">+-- MyGalaxyConsumerApp  [HIGH]  direct
+|   Pipeline: galaxy-consumer-ci
+|   +-- GalaxyPortalUI  [MEDIUM]  via MyGalaxyConsumerApp
++-- MyGalaxyConsumerApp2  [HIGH]  direct
+|   Pipeline: galaxy-consumer2-ci
++-- PortalBatchProcessor  [HIGH]  direct
+    Pipeline: portal-batch-ci
+</code></pre>
 <p>When <code>--graph-metrics</code> is active, the table gains five extra columns: Coupling, Fan-In, Fan-Out, Instability, In Cycle.</p>
 <hr />
 <h2 id="5-mermaid">5. Mermaid<a class="headerlink" href="#5-mermaid" title="Permanent link">&para;</a></h2>
 <p>Graph mode only. Raw Mermaid diagram syntax -- no wrapping markdown, no summary tables.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--output-format<span class="w"> </span>mermaid
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>graph TD
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>  GalaxyWorks_Data[&quot;GalaxyWorks.Data&quot;]
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>  MyDotNetApp[&quot;MyDotNetApp&quot;]
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>  MyDotNetApp_Consumer[&quot;MyDotNetApp.Consumer&quot;]
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>  MyGalaxyConsumerApp[&quot;MyGalaxyConsumerApp&quot;]
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>  MyGalaxyConsumerApp2[&quot;MyGalaxyConsumerApp2&quot;]
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>  MyDotNetApp_Consumer --&gt; MyDotNetApp
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>  MyGalaxyConsumerApp --&gt; GalaxyWorks_Data
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>  MyGalaxyConsumerApp2 --&gt; GalaxyWorks_Data
-</code></pre></div>
+<pre><code class="language-bash">python scatter.py --graph --search-scope . --output-format mermaid
+</code></pre>
+<pre><code>graph TD
+  GalaxyWorks_Data[&quot;GalaxyWorks.Data&quot;]
+  MyDotNetApp[&quot;MyDotNetApp&quot;]
+  MyDotNetApp_Consumer[&quot;MyDotNetApp.Consumer&quot;]
+  MyGalaxyConsumerApp[&quot;MyGalaxyConsumerApp&quot;]
+  MyGalaxyConsumerApp2[&quot;MyGalaxyConsumerApp2&quot;]
+  MyDotNetApp_Consumer --&gt; MyDotNetApp
+  MyGalaxyConsumerApp --&gt; GalaxyWorks_Data
+  MyGalaxyConsumerApp2 --&gt; GalaxyWorks_Data
+</code></pre>
 <p>If domain clusters were detected, nodes are grouped into Mermaid subgraphs. Renders natively in GitHub PRs, Azure DevOps wikis, and Confluence.</p>
 <p>Using <code>--output-format mermaid</code> outside of <code>--graph</code> mode is an error -- Scatter will tell you so and exit.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Save to file</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--output-format<span class="w"> </span>mermaid<span class="w"> </span>--output-file<span class="w"> </span>deps.mmd
-</code></pre></div>
+<pre><code class="language-bash"># Save to file
+python scatter.py --graph --search-scope . --output-format mermaid --output-file deps.mmd
+</code></pre>
 <hr />
 <h2 id="6-pipelines">6. Pipelines<a class="headerlink" href="#6-pipelines" title="Permanent link">&para;</a></h2>
 <p>One pipeline name per line, sorted alphabetically. Built for deployment scripts and shell pipelines (the other kind).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">  </span>--output-format<span class="w"> </span>pipelines
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>galaxy-consumer-ci
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>galaxy-consumer2-ci
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>portal-batch-ci
-</code></pre></div>
+<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --pipeline-csv pipeline_to_app_mapping.csv \
+  --output-format pipelines
+</code></pre>
+<pre><code>galaxy-consumer-ci
+galaxy-consumer2-ci
+portal-batch-ci
+</code></pre>
 <p>Three lines, three pipelines that need to deploy. That's the entire output.</p>
 <p>Requires <code>--pipeline-csv</code> to map consumer projects to pipeline names. Without it, the output will be empty. Scatter warns you about this, but won't stop you.</p>
 <p>Not supported in <code>--graph</code> mode. Graph analysis is about architecture, not deployments.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Feed directly into a deployment script</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="w">  </span>--output-format<span class="w"> </span>pipelines<span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>-I<span class="w"> </span><span class="o">{}</span><span class="w"> </span>./trigger-pipeline.sh<span class="w"> </span><span class="o">{}</span>
-</code></pre></div>
+<pre><code class="language-bash"># Feed directly into a deployment script
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --pipeline-csv pipeline_to_app_mapping.csv \
+  --output-format pipelines | xargs -I {} ./trigger-pipeline.sh {}
+</code></pre>
 <hr />
 <h2 id="quick-reference">Quick Reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
 <table>
@@ -1600,67 +450,82 @@
 </table>
 <blockquote>
 <p><strong>How this works:</strong> Each reporter is a standalone module in <code>scatter/reports/</code>. See <a href="reference/architecture.html">Architecture Overview</a> for the module map.</p>
-</blockquote>
-
-
-
-
-
-
-
-
-
-
-
-
-                
-              </article>
+</blockquote></div>
             </div>
-          
-          
-<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
-        
-          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
-  Back to top
-</button>
-        
-      </main>
-      
-        <footer class="md-footer">
-  
-  <div class="md-footer-meta md-typeset">
-    <div class="md-footer-meta__inner md-grid">
-      <div class="md-copyright">
-  
-  
-    Made with
-    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
-      Material for MkDocs
-    </a>
-  
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = ".",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="js/base.js"></script>
+        <script src="search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
 </div>
-      
-    </div>
-  </div>
-</footer>
-      
-    </div>
-    <div class="md-dialog" data-md-component="dialog">
-      <div class="md-dialog__inner md-typeset"></div>
-    </div>
-    
-    
-    
-      
-      
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "navigation.top", "content.code.copy", "search.highlight", "search.suggest"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
-    
-    
-      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
-      
-    
-  </body>
+
+    </body>
 </html>

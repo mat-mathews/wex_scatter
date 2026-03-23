@@ -1,1454 +1,286 @@
-
-<!doctype html>
-<html lang="en" class="no-js">
-  <head>
-    
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width,initial-scale=1">
-      
-        <meta name="description" content=".NET dependency graph engine — trace blast radius before you ship">
-      
-      
-      
-      
-        <link rel="prev" href="stored-procedure.html">
-      
-      
-        <link rel="next" href="dependency-graph.html">
-      
-      
-        
-      
-      
-      <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
-    
-    
-      
-        <title>Impact Analysis - Scatter // Athena</title>
-      
-    
-    
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
-      
-        
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
-      
-      
-
-
-    
-    
-      
-    
-    
-      
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
-        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
-      
-    
-    
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
-    
-      
-
-    
-    
-  </head>
-  
-  
-    
-    
-      
-    
-    
-    
-    
-    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber">
-  
-    
-    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
-    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
-    <label class="md-overlay" for="__drawer"></label>
-    <div data-md-component="skip">
-      
         
-        <a href="#impact-analysis" class="md-skip">
-          Skip to content
-        </a>
-      
-    </div>
-    <div data-md-component="announce">
-      
-    </div>
-    
-    
-      
+        <link rel="shortcut icon" href="../img/favicon.ico">
+        <title>Impact Analysis - Scatter</title>
+        <link href="../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../css/brands.min.css" rel="stylesheet">
+        <link href="../css/solid.min.css" rel="stylesheet">
+        <link href="../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/solarized-dark.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
 
-  
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="..">Scatter</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
 
-<header class="md-header md-header--shadow" data-md-component="header">
-  <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Scatter // Athena" class="md-header__button md-logo" aria-label="Scatter // Athena" data-md-component="logo">
-      
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">User Guide</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../index.html" class="dropdown-item">Home</a>
+</li>
+                                    
+<li>
+    <a href="../getting-started.html" class="dropdown-item">Getting Started</a>
+</li>
+                                    
+<li>
+    <a href="../quick-tour.html" class="dropdown-item">Quick Tour</a>
+</li>
+                                    
+<li>
+    <a href="target-project.html" class="dropdown-item">Target Project Analysis</a>
+</li>
+                                    
+<li>
+    <a href="git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+</li>
+                                    
+<li>
+    <a href="stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+</li>
+                                    
+<li>
+    <a href="impact-analysis.html" class="dropdown-item active" aria-current="page">Impact Analysis</a>
+</li>
+                                    
+<li>
+    <a href="dependency-graph.html" class="dropdown-item">Dependency Graph</a>
+</li>
+                                    
+<li>
+    <a href="../output-formats.html" class="dropdown-item">Output Formats</a>
+</li>
+                                    
+<li>
+    <a href="../workflows.html" class="dropdown-item">Workflows</a>
+</li>
+                                    
+<li>
+    <a href="../ai-features.html" class="dropdown-item">AI Features</a>
+</li>
+                                    
+<li>
+    <a href="../configuration.html" class="dropdown-item">Configuration</a>
+</li>
+                                    
+<li>
+    <a href="../cli-reference.html" class="dropdown-item">CLI Reference</a>
+</li>
+                                    
+<li>
+    <a href="../testing.html" class="dropdown-item">Testing</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Technical Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../reference/architecture.html" class="dropdown-item">Architecture Overview</a>
+</li>
+                                    
+<li>
+    <a href="../reference/graph-engine.html" class="dropdown-item">Graph Engine</a>
+</li>
+                                    
+<li>
+    <a href="../reference/incremental-updates.html" class="dropdown-item">Incremental Updates</a>
+</li>
+                                    
+<li>
+    <a href="../reference/coupling-and-cycles.html" class="dropdown-item">Coupling & Cycle Detection</a>
+</li>
+                                    
+<li>
+    <a href="../reference/domain-clustering.html" class="dropdown-item">Domain Clustering</a>
+</li>
+                                    
+<li>
+    <a href="../reference/consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="../reference/type-extraction.html" class="dropdown-item">Type Extraction</a>
+</li>
+                                    
+<li>
+    <a href="../reference/test-architecture.html" class="dropdown-item">Test Architecture</a>
+</li>
+                                    
+<li>
+    <a href="../reference/benchmarks.html" class="dropdown-item">Benchmarks</a>
+</li>
+                                    
+<li>
+    <a href="../reference/sample-projects.html" class="dropdown-item">Sample Projects</a>
+</li>
+                                    
+<li>
+    <a href="../reference/github-action.html" class="dropdown-item">GitHub Action</a>
+</li>
+                                    
+<li>
+    <a href="../reference/development.html" class="dropdown-item">Development</a>
+</li>
+                                    
+<li>
+    <a href="../reference/contributing.html" class="dropdown-item">Contributing</a>
+</li>
+                                    
+<li>
+    <a href="../reference/claude-skills.html" class="dropdown-item">Claude Code Skills</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
 
-    </a>
-    <label class="md-header__button md-icon" for="__drawer">
-      
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
-    </label>
-    <div class="md-header__title" data-md-component="header-title">
-      <div class="md-header__ellipsis">
-        <div class="md-header__topic">
-          <span class="md-ellipsis">
-            Scatter // Athena
-          </span>
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="stored-procedure.html" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="dependency-graph.html" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
         </div>
-        <div class="md-header__topic" data-md-component="header-topic">
-          <span class="md-ellipsis">
-            
-              Impact Analysis
-            
-          </span>
-        </div>
-      </div>
-    </div>
-    
-      
-        <form class="md-header__option" data-md-component="palette">
-  
-    
-    
-    
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
-    
-      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
-      </label>
-    
-  
-    
-    
-    
-    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="amber"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
-    
-      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
-      </label>
-    
-  
-</form>
-      
-    
-    
-      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
-    
-    
-    
-      
-      
-        <label class="md-header__button md-icon" for="__search">
-          
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
-        </label>
-        <div class="md-search" data-md-component="search" role="dialog">
-  <label class="md-search__overlay" for="__search"></label>
-  <div class="md-search__inner" role="search">
-    <form class="md-search__form" name="search">
-      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
-      <label class="md-search__icon md-icon" for="__search">
-        
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
-        
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
-      </label>
-      <nav class="md-search__options" aria-label="Search">
-        
-        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
-          
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
         </button>
-      </nav>
-      
-        <div class="md-search__suggest" data-md-component="search-suggest"></div>
-      
-    </form>
-    <div class="md-search__output">
-      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
-        <div class="md-search-result" data-md-component="search-result">
-          <div class="md-search-result__meta">
-            Initializing search
-          </div>
-          <ol class="md-search-result__list" role="presentation"></ol>
-        </div>
-      </div>
     </div>
-  </div>
-</div>
-      
+
     
-    
-  </nav>
-  
-</header>
-    
-    <div class="md-container" data-md-component="container">
-      
-      
-        
-          
-        
-      
-      <main class="md-main" data-md-component="main">
-        <div class="md-main__inner md-grid">
-          
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
             
-              
-              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
-                <div class="md-sidebar__scrollwrap">
-                  <div class="md-sidebar__inner">
-                    
-
-
-
-<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
-  <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Scatter // Athena" class="md-nav__button md-logo" aria-label="Scatter // Athena" data-md-component="logo">
-      
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
-
-    </a>
-    Scatter // Athena
-  </label>
-  
-  <ul class="md-nav__list" data-md-scrollfix>
-    
-      
-      
-  
-  
-    
-  
-  
-  
-    
-    
-    
-    
-      
-        
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
-        
-          
-          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    User Guide
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_1">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    User Guide
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../index.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Home
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../getting-started.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Getting Started
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../quick-tour.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Quick Tour
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="target-project.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Target Project Analysis
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="git-branch.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Git Branch Analysis
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="stored-procedure.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Stored Procedure Analysis
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Impact Analysis
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="impact-analysis.html" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Impact Analysis
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#basic-example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Basic Example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reading-the-report" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reading the Report
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#from-a-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        From a File
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#codebase-index" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Codebase Index
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#target-quality" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Target Quality
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#confidence-filtering" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Confidence Filtering
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#deeper-tracing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deeper Tracing
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#output-formats" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Output Formats
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="dependency-graph.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Dependency Graph
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../output-formats.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Output Formats
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../workflows.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Workflows
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../ai-features.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    AI Features
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../configuration.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Configuration
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../cli-reference.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    CLI Reference
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../testing.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Testing
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-      
-        
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
-      
-        
-        
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
-        
-          
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Technical Reference
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Technical Reference
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../reference/architecture.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Architecture Overview
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../reference/graph-engine.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Graph Engine
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../reference/incremental-updates.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Incremental Updates
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../reference/coupling-and-cycles.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Coupling & Cycle Detection
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../reference/domain-clustering.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Domain Clustering
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../reference/consumer-pipeline.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Consumer Detection Pipeline
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../reference/type-extraction.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Type Extraction
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../reference/test-architecture.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Test Architecture
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../reference/benchmarks.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Benchmarks
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../reference/sample-projects.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Sample Projects
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../reference/github-action.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    GitHub Action
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../reference/development.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Development
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../reference/contributing.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Contributing
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../reference/claude-skills.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Claude Code Skills
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-  </ul>
-</nav>
-                  </div>
-                </div>
-              </div>
-            
-            
-              
-              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
-                <div class="md-sidebar__scrollwrap">
-                  <div class="md-sidebar__inner">
-                    
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#basic-example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Basic Example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reading-the-report" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reading the Report
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#from-a-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        From a File
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#codebase-index" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Codebase Index
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#target-quality" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Target Quality
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#confidence-filtering" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Confidence Filtering
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#deeper-tracing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deeper Tracing
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#output-formats" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Output Formats
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-                  </div>
-                </div>
-              </div>
-            
-          
-          
-            <div class="md-content" data-md-component="content">
-              
-              <article class="md-content__inner md-typeset">
-                
-                  
-
-
+            <li class="nav-item" data-bs-level="1"><a href="#impact-analysis" class="nav-link">Impact Analysis</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#basic-example" class="nav-link">Basic Example</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#reading-the-report" class="nav-link">Reading the Report</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#from-a-file" class="nav-link">From a File</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#codebase-index" class="nav-link">Codebase Index</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#target-quality" class="nav-link">Target Quality</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#confidence-filtering" class="nav-link">Confidence Filtering</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#deeper-tracing" class="nav-link">Deeper Tracing</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#output-formats" class="nav-link">Output Formats</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
 
 <h1 id="impact-analysis">Impact Analysis<a class="headerlink" href="#impact-analysis" title="Permanent link">&para;</a></h1>
-<p>A work request lands on your desk. Before anyone writes code, you need to know what it'll touch and how risky it is. This mode turns Scatter from a developer tool into a project-scoping tool.</p>
+<p>A work request or CSE comes in... Before anyone writes code, you need to know what it'll touch and how risky it is. This mode turns Scatter from a developer tool into a project-scoping tool.</p>
 <p>Describe the change in plain English. Get back a risk-rated blast radius report with a tree view of affected consumers, confidence labels by depth, and an AI-generated narrative you can paste straight into a ticket.</p>
-<p>The <code>--sow</code> mode requires a Google Gemini API key for work request parsing. Other modes (<code>--target-project</code>, <code>--branch-name</code>, <code>--graph</code>) work without AI. The core consumer tracing, graph building, and blast radius tree are pure code -- AI adds risk ratings, coupling narratives, complexity estimates, and executive summaries on top.</p>
+<p>The <code>--sow</code> mode requires a configured AI provider (currently Google Gemini via <code>--google-api-key</code> or <code>$GOOGLE_API_KEY</code>; WEX AI Platform coming soon). Other modes (<code>--target-project</code>, <code>--branch-name</code>, <code>--graph</code>) work without AI. The core consumer tracing, graph building, and blast radius tree are pure code -- AI adds risk ratings, coupling narratives, complexity estimates, and executive summaries on top.</p>
 <h2 id="basic-example">Basic Example<a class="headerlink" href="#basic-example" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span>--sow<span class="w"> </span><span class="s2">&quot;Modify PortalDataService in GalaxyWorks.Data to add a new parameter to sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span>
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>=== Impact Analysis Report ===
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>Work Request: Modify PortalDataService in GalaxyWorks.Data to add a new parameter...
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>Overall Risk: High | Complexity: Medium (3-5 developer-days)
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>--- Target: GalaxyWorks.Data ---
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>Direct Consumers: 4 | Transitive: 2
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>+-- GalaxyWorks.WebPortal  [HIGH]  direct
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>|   Risk: High -- &quot;WebPortal directly invokes StorePortalConfigurationAsync&quot;
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>|   Pipeline: galaxyworks-webportal-ci
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>|   Coupling: WebPortal uses PortalDataService in 3 controller files for
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>|     all portal configuration CRUD operations.
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>|   Coupling vectors: method_invocation, constructor_injection
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>|   +-- GalaxyWorks.BatchProcessor  [MEDIUM]  via GalaxyWorks.WebPortal
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>|       Risk: Medium -- &quot;Transitively affected through WebPortal dependency&quot;
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>|       Pipeline: galaxyworks-batch-ci
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>+-- MyGalaryConsumerApp  [HIGH]  direct
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>|   Risk: Medium -- &quot;Uses PortalDataService but only reads, does not write&quot;
-<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>|   Coupling vectors: method_invocation
-<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>+-- MyGalaryConsumerApp2  [HIGH]  direct
-<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>|   Risk: Medium -- &quot;Minimal usage of PortalDataService&quot;
-<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>+-- GalaxyWorks.Api  [HIGH]  direct
-<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    Risk: High -- &quot;API controller exposes PortalDataService methods to external callers&quot;
-<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    Pipeline: galaxyworks-api-ci
-<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>
-<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>--- Complexity ---
-<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>Medium: Change requires modifying one class in GalaxyWorks.Data and updating
-<a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>4 direct consumers. Two consumers require signature changes in controller code.
-<a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>
-<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>--- Impact Summary ---
-<a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>This change affects the core data access layer used by 4 direct consumers and
-<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>2 transitive consumers. The highest risk is in GalaxyWorks.WebPortal and
-<a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>GalaxyWorks.Api, which both directly invoke the affected method. Recommend
-<a id="__codelineno-1-34" name="__codelineno-1-34" href="#__codelineno-1-34"></a>coordinated deployment with WebPortal and API teams.
-<a id="__codelineno-1-35" name="__codelineno-1-35" href="#__codelineno-1-35"></a>
-<a id="__codelineno-1-36" name="__codelineno-1-36" href="#__codelineno-1-36"></a>Analysis complete. 6 consumer(s) found across 1 target(s).
-</code></pre></div>
-<p>That's a lot of useful information from a one-line description. Let's break down what you're looking at.</p>
+<pre><code class="language-bash">python scatter.py \
+  --sow &quot;Modify PortalDataService in GalaxyWorks.Data to add a new parameter to sp_InsertPortalConfiguration&quot; \
+  --search-scope . \
+  --google-api-key $GOOGLE_API_KEY
+</code></pre>
+<pre><code>=== Impact Analysis Report ===
+Work Request: Modify PortalDataService in GalaxyWorks.Data to add a new parameter...
+Overall Risk: High | Complexity: Medium (3-5 developer-days)
+
+--- Target: GalaxyWorks.Data ---
+Direct Consumers: 4 | Transitive: 2
+
++-- GalaxyWorks.WebPortal  [HIGH]  direct
+|   Risk: High -- &quot;WebPortal directly invokes StorePortalConfigurationAsync&quot;
+|   Pipeline: galaxyworks-webportal-ci
+|   Coupling: WebPortal uses PortalDataService in 3 controller files for
+|     all portal configuration CRUD operations.
+|   Coupling vectors: method_invocation, constructor_injection
+|   +-- GalaxyWorks.BatchProcessor  [MEDIUM]  via GalaxyWorks.WebPortal
+|       Risk: Medium -- &quot;Transitively affected through WebPortal dependency&quot;
+|       Pipeline: galaxyworks-batch-ci
++-- MyGalaryConsumerApp  [HIGH]  direct
+|   Risk: Medium -- &quot;Uses PortalDataService but only reads, does not write&quot;
+|   Coupling vectors: method_invocation
++-- MyGalaryConsumerApp2  [HIGH]  direct
+|   Risk: Medium -- &quot;Minimal usage of PortalDataService&quot;
++-- GalaxyWorks.Api  [HIGH]  direct
+    Risk: High -- &quot;API controller exposes PortalDataService methods to external callers&quot;
+    Pipeline: galaxyworks-api-ci
+
+--- Complexity ---
+Medium: Change requires modifying one class in GalaxyWorks.Data and updating
+4 direct consumers. Two consumers require signature changes in controller code.
+
+--- Impact Summary ---
+This change affects the core data access layer used by 4 direct consumers and
+2 transitive consumers. The highest risk is in GalaxyWorks.WebPortal and
+GalaxyWorks.Api, which both directly invoke the affected method. Recommend
+coordinated deployment with WebPortal and API teams.
+
+Analysis complete. 6 consumer(s) found across 1 target(s).
+</code></pre>
+<p>That's a lot of information from a one-line description. Let's break down what you're looking at.</p>
 <h2 id="reading-the-report">Reading the Report<a class="headerlink" href="#reading-the-report" title="Permanent link">&para;</a></h2>
 <p><strong>Overall Risk and Complexity</strong> appear at the top. Risk is the worst-case across all consumers (if any consumer is Critical, the whole report is Critical). Complexity is an AI estimate of effort.</p>
 <p><strong>The tree view</strong> shows direct consumers at the root level and transitive consumers nested beneath the consumer they flow through. The brackets show confidence:</p>
@@ -1460,24 +292,24 @@
 <p><strong>Coupling vectors</strong> tell you how a consumer is connected: <code>method_invocation</code>, <code>constructor_injection</code>, <code>type_reference</code>, etc. These help you estimate how hard the consumer update will be.</p>
 <p><strong>The impact summary</strong> at the bottom is AI-generated prose, suitable for pasting into a Jira ticket or a Slack message to your manager. It covers the scope, highest-risk consumers, and a deployment recommendation.</p>
 <h2 id="from-a-file">From a File<a class="headerlink" href="#from-a-file" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--sow-file<span class="w"> </span>docs/sample_sow.txt<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span>
-</code></pre></div>
+<pre><code class="language-bash">python scatter.py \
+  --sow-file docs/sample_sow.txt \
+  --search-scope . \
+  --google-api-key $GOOGLE_API_KEY
+</code></pre>
 <p>For longer work requests -- feature specs, change proposals, migration plans -- write the description in a text file and pass it via <code>--sow-file</code>. The file is read as UTF-8.</p>
 <h2 id="codebase-index">Codebase Index<a class="headerlink" href="#codebase-index" title="Permanent link">&para;</a></h2>
 <p>When a dependency graph is available (which it usually is -- Scatter builds and caches one automatically), impact analysis sends a compact <strong>codebase index</strong> alongside the SOW to the LLM. This index lists every project, its types, and its stored procedures, so the LLM can match domain language to real code artifacts instead of guessing.</p>
 <p>The index is what makes vague SOWs work. A request like "update the portal configuration workflow to support multi-tenant isolation" maps to <code>GalaxyWorks.Data</code>, <code>PortalDataService</code>, and <code>dbo.sp_InsertPortalConfiguration</code> because those names are in the index.</p>
 <p>You can inspect the index directly:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span>--dump-index<span class="w"> </span>--search-scope<span class="w"> </span>.
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>=== Codebase Index (11 projects) ===
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>P=Project NS=Namespace (omitted when same as project name) T=Types SP=StoredProcs
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>P:GalaxyWorks.Data T:PortalDataService,PortalConfiguration,IDataAccessor SP:dbo.sp_InsertPortalConfiguration,...
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>P:GalaxyWorks.WebPortal T:PortalController,PortalCacheService SP:dbo.sp_GetPortalConfigurationDetails,...
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>...
-</code></pre></div>
+<pre><code class="language-bash">python scatter.py --dump-index --search-scope .
+</code></pre>
+<pre><code>=== Codebase Index (11 projects) ===
+P=Project NS=Namespace (omitted when same as project name) T=Types SP=StoredProcs
+P:GalaxyWorks.Data T:PortalDataService,PortalConfiguration,IDataAccessor SP:dbo.sp_InsertPortalConfiguration,...
+P:GalaxyWorks.WebPortal T:PortalController,PortalCacheService SP:dbo.sp_GetPortalConfigurationDetails,...
+...
+</code></pre>
 <p>When the LLM returns a target name not found in the index, its confidence is automatically halved. This prevents hallucinated project names from driving analysis.</p>
 <h2 id="target-quality">Target Quality<a class="headerlink" href="#target-quality" title="Permanent link">&para;</a></h2>
 <p>After parsing, Scatter classifies the target set:</p>
@@ -1487,119 +319,132 @@
 <li><strong>vague</strong> -- more than 10 targets, or average confidence below 0.4. The SOW is broad.</li>
 </ul>
 <p>This appears in the report header:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>Target Quality: moderate (7 targets, avg confidence 0.62)
-</code></pre></div>
+<pre><code>Target Quality: moderate (7 targets, avg confidence 0.62)
+</code></pre>
 <p>Each target also shows <strong>match evidence</strong> -- a one-sentence explanation of why the LLM identified it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>--- Target: GalaxyWorks.Data ---
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>Evidence: Project contains PortalDataService which handles portal configuration persistence
-</code></pre></div>
+<pre><code>--- Target: GalaxyWorks.Data ---
+Evidence: Project contains PortalDataService which handles portal configuration persistence
+</code></pre>
 <h2 id="confidence-filtering">Confidence Filtering<a class="headerlink" href="#confidence-filtering" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--sow-file<span class="w"> </span>docs/sample_sow.md<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">  </span>--sow-min-confidence<span class="w"> </span><span class="m">0</span>.5
-</code></pre></div>
+<pre><code class="language-bash">python scatter.py \
+  --sow-file docs/sample_sow.md \
+  --search-scope . \
+  --google-api-key $GOOGLE_API_KEY \
+  --sow-min-confidence 0.5
+</code></pre>
 <p>The <code>--sow-min-confidence</code> flag (default: 0.3) excludes targets below the threshold. Excluded targets are logged:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Excluded target &#39;Billing.Data&#39; (confidence 0.30, threshold 0.50)
-</code></pre></div>
+<pre><code>Excluded target 'Billing.Data' (confidence 0.30, threshold 0.50)
+</code></pre>
 <p>Use a higher threshold when you want fewer, higher-confidence results. Use the default when you want broader coverage and are willing to triage.</p>
 <h2 id="deeper-tracing">Deeper Tracing<a class="headerlink" href="#deeper-tracing" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--sow<span class="w"> </span><span class="s2">&quot;Refactor GalaxyWorks.Data to split PortalDataService into separate read/write classes&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span>--max-depth<span class="w"> </span><span class="m">3</span>
-</code></pre></div>
+<pre><code class="language-bash">python scatter.py \
+  --sow &quot;Refactor GalaxyWorks.Data to split PortalDataService into separate read/write classes&quot; \
+  --search-scope . \
+  --google-api-key $GOOGLE_API_KEY \
+  --max-depth 3
+</code></pre>
 <p>Default transitive depth is 2. Increase <code>--max-depth</code> when you need to trace further through the dependency chain. Be aware that each depth level multiplies the consumer detection calls, and each hop reduces confidence. Depth 3 is usually sufficient. Beyond that, you're mapping theoretical risk rather than practical impact.</p>
 <h2 id="output-formats">Output Formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h2>
 <p><strong>JSON</strong> -- includes everything: targets, consumers with depth and confidence, risk ratings, coupling vectors, complexity estimates, and narrative summaries. This is the format for feeding impact data into other tools.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span>--sow<span class="w"> </span><span class="s2">&quot;Add caching to GalaxyWorks.Data&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">  </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span>impact_report.json
-</code></pre></div>
+<pre><code class="language-bash">python scatter.py \
+  --sow &quot;Add caching to GalaxyWorks.Data&quot; \
+  --search-scope . \
+  --google-api-key $GOOGLE_API_KEY \
+  --output-format json --output-file impact_report.json
+</code></pre>
 <p><strong>CSV</strong> -- flattens the tree into rows (one per consumer) with columns for depth, confidence, risk rating, and pipeline name. Good for spreadsheet triage.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span>--sow<span class="w"> </span><span class="s2">&quot;Modify stored procedure sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">  </span>--output-format<span class="w"> </span>csv<span class="w"> </span>--output-file<span class="w"> </span>impact_report.csv
-</code></pre></div>
+<pre><code class="language-bash">python scatter.py \
+  --sow &quot;Modify stored procedure sp_InsertPortalConfiguration&quot; \
+  --search-scope . \
+  --google-api-key $GOOGLE_API_KEY \
+  --output-format csv --output-file impact_report.csv
+</code></pre>
 <p><strong>Markdown</strong> -- prints to stdout without <code>--output-file</code>. Pipe it into a PR description, paste it into Confluence, or redirect to a file.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>python<span class="w"> </span>scatter.py<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>--sow<span class="w"> </span><span class="s2">&quot;Deprecate FakeDatabaseHelper&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">  </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">  </span>--output-format<span class="w"> </span>markdown
-</code></pre></div>
+<pre><code class="language-bash">python scatter.py \
+  --sow &quot;Deprecate FakeDatabaseHelper&quot; \
+  --search-scope . \
+  --google-api-key $GOOGLE_API_KEY \
+  --output-format markdown
+</code></pre>
 <p>See <a href="../output-formats.html">Output Formats</a> for detailed structure of each format.</p>
 <hr />
-<div class="admonition info">
-<p class="admonition-title">How this works</p>
-<p>When a dependency graph is available, Scatter builds a compact codebase index (project names, types, sprocs) and sends it alongside the SOW to the LLM. The AI parses your work request into structured targets grounded in actual code artifacts, Scatter runs consumer detection per target, then BFS traces transitive consumers up to <code>--max-depth</code>. Five AI enrichment tasks (parsing, risk, coupling, complexity, narrative) add context to the raw dependency data. Target names not in the index get their confidence halved automatically. See <a href="../reference/architecture.html">Architecture Overview</a> for the full pipeline.</p>
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-                
-              </article>
+<p>!!! info "How this works"
+    When a dependency graph is available, Scatter builds a compact codebase index (project names, types, sprocs) and sends it alongside the SOW to the LLM. The AI parses the work request into structured targets grounded in actual code artifacts, Scatter runs consumer detection per target, then BFS traces transitive consumers up to <code>--max-depth</code>. Five AI enrichment tasks (parsing, risk, coupling, complexity, narrative) add context to the raw dependency data. Target names not in the index get their confidence halved automatically. See <a href="../reference/architecture.html">Architecture Overview</a> for the full pipeline.</p></div>
             </div>
-          
-          
-<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
-        
-          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
-  Back to top
-</button>
-        
-      </main>
-      
-        <footer class="md-footer">
-  
-  <div class="md-footer-meta md-typeset">
-    <div class="md-footer-meta__inner md-grid">
-      <div class="md-copyright">
-  
-  
-    Made with
-    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
-      Material for MkDocs
-    </a>
-  
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../js/base.js"></script>
+        <script src="../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
 </div>
-      
-    </div>
-  </div>
-</footer>
-      
-    </div>
-    <div class="md-dialog" data-md-component="dialog">
-      <div class="md-dialog__inner md-typeset"></div>
-    </div>
-    
-    
-    
-      
-      
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "navigation.top", "content.code.copy", "search.highlight", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
-    
-    
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
-      
-    
-  </body>
+
+    </body>
 </html>

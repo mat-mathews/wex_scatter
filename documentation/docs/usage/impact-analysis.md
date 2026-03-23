@@ -1,10 +1,10 @@
 # Impact Analysis
 
-A work request lands on your desk. Before anyone writes code, you need to know what it'll touch and how risky it is. This mode turns Scatter from a developer tool into a project-scoping tool.
+A work request or CSE comes in... Before anyone writes code, you need to know what it'll touch and how risky it is. This mode turns Scatter from a developer tool into a project-scoping tool.
 
 Describe the change in plain English. Get back a risk-rated blast radius report with a tree view of affected consumers, confidence labels by depth, and an AI-generated narrative you can paste straight into a ticket.
 
-The `--sow` mode requires a Google Gemini API key for work request parsing. Other modes (`--target-project`, `--branch-name`, `--graph`) work without AI. The core consumer tracing, graph building, and blast radius tree are pure code -- AI adds risk ratings, coupling narratives, complexity estimates, and executive summaries on top.
+The `--sow` mode requires a configured AI provider (currently Google Gemini via `--google-api-key` or `$GOOGLE_API_KEY`; WEX AI Platform coming soon). Other modes (`--target-project`, `--branch-name`, `--graph`) work without AI. The core consumer tracing, graph building, and blast radius tree are pure code -- AI adds risk ratings, coupling narratives, complexity estimates, and executive summaries on top.
 
 ## Basic Example
 
@@ -54,7 +54,7 @@ coordinated deployment with WebPortal and API teams.
 Analysis complete. 6 consumer(s) found across 1 target(s).
 ```
 
-That's a lot of useful information from a one-line description. Let's break down what you're looking at.
+That's a lot of information from a one-line description. Let's break down what you're looking at.
 
 ## Reading the Report
 
@@ -191,4 +191,4 @@ See [Output Formats](../output-formats.md) for detailed structure of each format
 ---
 
 !!! info "How this works"
-    When a dependency graph is available, Scatter builds a compact codebase index (project names, types, sprocs) and sends it alongside the SOW to the LLM. The AI parses your work request into structured targets grounded in actual code artifacts, Scatter runs consumer detection per target, then BFS traces transitive consumers up to `--max-depth`. Five AI enrichment tasks (parsing, risk, coupling, complexity, narrative) add context to the raw dependency data. Target names not in the index get their confidence halved automatically. See [Architecture Overview](../reference/architecture.md) for the full pipeline.
+    When a dependency graph is available, Scatter builds a compact codebase index (project names, types, sprocs) and sends it alongside the SOW to the LLM. The AI parses the work request into structured targets grounded in actual code artifacts, Scatter runs consumer detection per target, then BFS traces transitive consumers up to `--max-depth`. Five AI enrichment tasks (parsing, risk, coupling, complexity, narrative) add context to the raw dependency data. Target names not in the index get their confidence halved automatically. See [Architecture Overview](../reference/architecture.md) for the full pipeline.

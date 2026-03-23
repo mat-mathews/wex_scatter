@@ -1,6 +1,6 @@
 # Getting Started
 
-Install Scatter and verify it works. Takes about two minutes.
+Install Scatter and verify it works. Should take about two minutes.
 
 ## Prerequisites
 
@@ -44,6 +44,10 @@ uv run scatter --help
 
 You should see the five analysis modes (`--target-project`, `--branch-name`, `--stored-procedure`, `--sow`, `--graph`) and all the common options. If you see that, you're good.
 
+## Next: see it in action
+
+Head to the [Quick Tour](quick-tour.md) to run your first analysis and see what the output looks like.
+
 ## Using with Claude Code
 
 If you use Claude Code, the setup script already linked five analysis skills. Ask Claude directly:
@@ -55,7 +59,3 @@ If you use Claude Code, the setup script already linked five analysis skills. As
 Three skills auto-invoke based on your question (graph, consumers, impact). Two are manual slash commands (`/scatter-sproc`, `/scatter-branch`).
 
 See [Claude Code Skills documentation](reference/claude-skills.md) for details.
-
-## Next: see it in action
-
-Head to the [Quick Tour](quick-tour.md) to run your first analysis and see what the output looks like.

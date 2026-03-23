@@ -22,7 +22,7 @@ Verify everything works:
 bash tools/check.sh
 ```
 
-You should see all four checks pass (ruff check, ruff format, mypy, pytest — 789 tests, 1 xfail). If anything fails, fix your environment before writing code.
+You should see all four checks pass (ruff check, ruff format, mypy, pytest). If anything fails, fix your environment before writing code.
 
 ---
 
@@ -45,7 +45,7 @@ scatter/
                    #   health_analyzer, impact_analyzer, git_analyzer, graph_enrichment
   reports/         # console_reporter, json_reporter, csv_reporter, markdown_reporter,
                    #   pipeline_reporter, graph_reporter
-  ai/              # base (protocol + types), providers/gemini_provider, router, tasks/*
+  ai/              # base (protocol + types), providers/{gemini,wex}_provider, router, tasks/*
   core/            # graph (DependencyGraph), models (dataclasses), patterns (regex), parallel
   store/           # graph_cache, graph_patcher
   cli.py           # Mode handlers and dispatch
@@ -223,11 +223,11 @@ class AITaskType(Enum):
     YOUR_TASK_TYPE = "your_task_type"
 ```
 
-3. **Implement `supports()` in the provider.** In `scatter/ai/providers/gemini_provider.py`, add your task type to the supported set.
+3. **Implement `supports()` in the provider(s).** In `scatter/ai/providers/gemini_provider.py` (and `wex_provider.py` when implemented), add your task type to the supported set.
 
 4. **Wire into the appropriate mode handler in `cli.py`.** Follow the pattern of existing AI tasks -- check if provider is available, call your task function, handle None return gracefully.
 
-5. **Mock the provider in tests. Never make real API calls.**
+5. **Mock the provider in tests. Never make real API calls.** Note: `WexProvider(api_key="test")` can be instantiated for config validation tests, but all its analysis methods raise `NotImplementedError` until the API contract is implemented.
 
 ```python
 from unittest.mock import MagicMock
@@ -325,7 +325,7 @@ Current baseline: 0 errors. Keep it that way.
 Follow the patterns in the existing code:
 
 - **Free functions preferred.** If you're reaching for a class, ask yourself if a function would work. It usually does.
-- **Dataclasses for structured data.** Not dicts, not NamedTuples. Dataclasses give you type hints, defaults, and readability.
+- **Dataclasses for structured data.** Not dicts, not NamedTuples. Dataclasses give us type hints, defaults, and readability.
 - **Type hints on public APIs.** Every function that another module imports should have parameter and return type annotations. Internal helpers can skip them if the types are obvious.
 - **Docstrings on public functions.** One-liner is fine for simple functions. Multi-line for anything with non-obvious behavior.
 - **Logging, not print.** Use `logging.info()`, `logging.warning()`, etc. The CLI controls the log level.

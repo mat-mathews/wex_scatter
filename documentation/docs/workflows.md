@@ -1,6 +1,6 @@
 # Workflows
 
-Six real-world scenarios, each one pulled from actual team usage. Not hypothetical -- these are the problems Scatter was built to solve.
+Seven real-world scenarios, each one pulled from actual team usage. Not hypothetical -- these are the problems Scatter was built to solve.
 
 ---
 
@@ -61,7 +61,101 @@ Pipe to clipboard, paste into the PR description. Reviewer sees the blast radius
 
 ---
 
-## 2. Stored Procedure Change Impact
+## 2. Release Night Pipeline List
+
+**Persona:** Developer preparing a DevOps ticket for the monthly release.
+
+**When:** After your changes are merged and before you fill out the deployment request. WEX does monthly releases. The monolith has hundreds of pipelines. Everything touches everything -- except when it doesn't, and that's the part nobody can keep straight.
+
+**Why:** The DevOps team needs an exact list of pipelines to run on release night. Not "probably these five." Not "everything just in case." The actual pipelines affected by what you changed. Getting this wrong means either a broken release (missed a pipeline) or a 4-hour deployment window that should have been 45 minutes (ran everything).
+
+**The pipeline list is only as complete as your `pipeline_to_app_mapping.csv`.** If a consumer project has no entry in the mapping file, it won't appear in the pipeline output. Keep the mapping current. Without `--pipeline-csv`, the `pipelines` output format produces empty output and consumer results won't include pipeline names.
+
+### Steps
+
+**From a feature branch -- what pipelines does my change affect?**
+
+```bash
+python scatter.py --branch-name feature/portal-tenant-isolation \
+  --repo-path /code/myrepo \
+  --search-scope /code/myrepo \
+  --pipeline-csv pipeline_to_app_mapping.csv \
+  --output-format pipelines
+```
+
+```
+galaxyworks-api-ci
+galaxyworks-batch-ci
+galaxyworks-webportal-ci
+portal-consumer-ci
+```
+
+Four lines, four pipelines. Copy-paste into the DevOps ticket. Done.
+
+Note: `--branch-name` requires the branch to still exist (not yet merged and deleted). Run this before merge, or use `--target-project` for changes that have already landed on `main`.
+
+**Same command, different entry points:**
+
+Every analysis mode supports `--pipeline-csv` and `--output-format pipelines`. Pick the entry point that matches your situation:
+
+| Entry point | Flag | When to use |
+|-------------|------|-------------|
+| Feature branch | `--branch-name` | You have an open branch with changes |
+| Target project | `--target-project` | You know which .csproj changed (hotfix, config change, post-merge) |
+| Stored procedure | `--stored-procedure` | Database migration — sproc rename, new parameter, deprecation |
+| Work request | `--sow` | Sprint planning — scope the deployment before writing code |
+
+Just swap the mode flag. The rest of the command is the same: add `--pipeline-csv pipeline_to_app_mapping.csv --output-format pipelines`.
+
+**Get the full consumer report with pipelines for the ticket attachment:**
+
+```bash
+python scatter.py --branch-name feature/portal-tenant-isolation \
+  --repo-path /code/myrepo \
+  --search-scope /code/myrepo \
+  --pipeline-csv pipeline_to_app_mapping.csv \
+  --output-format csv --output-file release-pipelines.csv
+```
+
+The CSV includes one row per consumer with key columns: `ConsumerProjectName`, `PipelineName`, `TargetProjectName`, `TriggeringType`, and (when graph enrichment is available) `CouplingScore`, `FanIn`, `FanOut`, `Instability`, `InCycle`. Attach it to the DevOps ticket as backup evidence for the pipeline list.
+
+**Feed directly into a deployment script:**
+
+```bash
+python scatter.py --branch-name feature/portal-tenant-isolation \
+  --repo-path /code/myrepo \
+  --search-scope /code/myrepo \
+  --pipeline-csv pipeline_to_app_mapping.csv \
+  --output-format pipelines | xargs -I {} ./trigger-pipeline.sh {}
+```
+
+The `pipelines` output format is designed for this -- one name per line, sorted alphabetically, deduplicated. The output is unordered by deployment priority — if your pipelines need to run in a specific sequence (e.g., data migration before API), that sequencing is still a human decision. Pipe the list into whatever your deployment tooling expects.
+
+**Combine pipeline lists from multiple branches for the team's monthly release:**
+
+```bash
+for branch in feature/portal-isolation feature/billing-fix feature/cache-update; do
+  python scatter.py --branch-name $branch \
+    --repo-path /code/myrepo \
+    --search-scope /code/myrepo \
+    --pipeline-csv pipeline_to_app_mapping.csv \
+    --output-format pipelines
+done | sort -u > release-pipelines.txt
+```
+
+### What to Look For
+
+- **Pipeline count.** If your "small change" surfaces 8+ pipelines, that's not a small deployment. Flag it to the release coordinator early.
+- **Unexpected pipelines.** `billing-reports-ci` showed up and you only touched portal code? That's a hidden dependency. Investigate before release night, not during.
+- **Missing pipelines.** If you know a consumer exists but it doesn't appear in the pipeline list, the `pipeline_to_app_mapping.csv` may be out of date. Check the mapping file.
+- **Sproc + code changes in the same release.** Database migrations deploy before application code. If your pipeline list includes both sproc-triggered and code-triggered consumers, make sure the migration is sequenced first in the release runbook.
+- **The total list across all your team's PRs.** Run Scatter for each merged branch, concatenate the pipeline lists, sort and deduplicate. That's your team's release footprint for the month.
+
+> **How this works:** The `pipelines` output format extracts pipeline names from consumer results (mapped via `--pipeline-csv`), deduplicates them, and prints one per line. The pipeline CSV maps `Application Name` to `Pipeline Name`. See [Output Formats](output-formats.md) for details and [Configuration](configuration.md) for pipeline mapping setup.
+
+---
+
+## 3. Stored Procedure Change Impact
 
 **Persona:** Developer or DBA modifying a stored procedure.
 
@@ -119,13 +213,13 @@ python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" \
 
 ---
 
-## 3. Work Request Scoping with AI
+## 4. Work Request Scoping with AI
 
 **Persona:** Tech lead during sprint planning or backlog grooming.
 
 **When:** Someone hands you a work request and asks "how big is this?" You need a number, not a feeling.
 
-**Why:** Impact analysis mode (`--sow`) reads a natural language work description, uses AI to identify which projects, classes, or sprocs are affected, then runs the full consumer analysis automatically. It answers "what breaks if we do this" before anyone writes code.
+**Why:** Impact analysis mode (`--sow`) reads a natural language work description, uses AI to identify which projects, classes, or sprocs are affected, then runs the full consumer analysis automatically. It answers "what breaks if you do this" before anyone writes code.
 
 ### Steps
 
@@ -178,7 +272,7 @@ python scatter.py --sow "Add Redis caching to PortalDataService.GetConfiguration
 
 ---
 
-## 4. Architecture Health Assessment
+## 5. Architecture Health Assessment
 
 **Persona:** Architect evaluating the codebase before a modernization initiative, platform migration, or service extraction.
 
@@ -248,7 +342,7 @@ python scatter.py --graph --search-scope /code/myrepo --rebuild-graph
 
 ---
 
-## 5. Target Project Dependency Audit
+## 6. Target Project Dependency Audit
 
 **Persona:** Developer planning to refactor, version, or deprecate a shared library.
 
@@ -304,14 +398,14 @@ Each consumer now includes summaries of the relevant C# files, explaining not ju
 
 - **The filter funnel.** Watch the numbers drop at each stage: `142 -> 8 project refs -> 5 namespace -> 3 class match -> 2 method match`. If project refs is high but namespace match is low, you may have phantom dependencies from copy-paste .csproj editing.
 - **Solutions column.** A consumer appearing in multiple solutions is harder to coordinate. Single-solution consumers can be updated in one PR.
-- **Zero results at a stage.** The diagnostic hint tells you why: `Hint: 0 of 8 project-reference-matching projects contained 'PortalDataService' -- verify the class name`. Usually a spelling issue or a rename.
+- **Zero results at a stage.** The diagnostic hint tells us why: `Hint: 0 of 8 project-reference-matching projects contained 'PortalDataService' -- verify the class name`. Usually a spelling issue or a rename.
 - **Summarization patterns.** When AI summaries show consumers doing the same thing in slightly different ways, that's a sign you need a shared abstraction, not N individual migrations.
 
 > **How this works:** Target project analysis walks `.csproj` references, then filters by namespace usage, type references, and method calls in successive passes. See [Architecture Overview](reference/architecture.md) for the filtering pipeline and [Target Project](usage/target-project.md) for detailed usage.
 
 ---
 
-## 6. Full Codebase Analysis Pipeline
+## 7. Full Codebase Analysis Pipeline
 
 **Persona:** DevOps engineer or architect running periodic health checks. The person who maintains the "state of the codebase" dashboard.
 

@@ -1,8 +1,8 @@
 # Dependency Graph
 
-You want the full picture: every project, every dependency, every coupling hotspot, every potential service boundary. This isn't "who consumes this one thing?" -- it's "what does our entire dependency landscape look like, and where are the problems?"
+You want the full picture: every project, every dependency, every coupling hotspot, every potential service boundary. This isn't "who consumes this one thing?" -- it's "what does your entire dependency landscape look like, and where are the problems?"
 
-Think of it as a codebase X-ray. You run it, stare at the results, and then have opinions about which refactors to prioritize.
+Think of it as a codebase X-ray. Run it, stare at the results, and then have opinions about which refactors to prioritize.
 
 ## Basic Example
 
@@ -157,8 +157,8 @@ See [Output Formats](../output-formats.md) for detailed structure of each format
 
 ## When to Use This
 
-- **Architecture reviews** -- run before a planning session. Print the top coupled projects table and the cluster feasibility scores. Now the discussion starts with evidence.
-- **Pre-modernization assessments** -- before proposing a microservice extraction, run with `--include-db` to see the real coupling (including database state). The feasibility column will tell you if the extraction is a sprint or a quarter.
+- **Architecture reviews** -- run before a planning session. Print the top coupled projects table and the cluster feasibility scores. Now your discussion starts with evidence.
+- **Pre-modernization assessments** -- before proposing a microservice extraction, run with `--include-db` to see the real coupling (including database state). The feasibility column will tell us if the extraction is a sprint or a quarter.
 - **Tracking coupling trends** -- run periodically and compare the JSON reports. Is coupling going up or down? Are new cycles appearing?
 
 ## Controlling Graph Behavior

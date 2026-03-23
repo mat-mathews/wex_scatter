@@ -25,7 +25,7 @@ Returns a `Dict[str, ProjectMetrics]` keyed by project name.
 |--------|---------|-------------------|
 | `fan_in` | Count of incoming `project_reference` edges | How many projects depend on this one. High fan_in = widely depended upon. |
 | `fan_out` | Count of outgoing `project_reference` edges | How many projects this one depends on. High fan_out = lots of dependencies. |
-| `instability` | `fan_out / (fan_in + fan_out)` | Robert Martin's instability metric. 0.0 = maximally stable (everyone depends on you, you depend on nobody). 1.0 = maximally unstable (you depend on everyone, nobody depends on you). |
+| `instability` | `fan_out / (fan_in + fan_out)` | Robert Martin's instability metric. 0.0 = maximally stable (everyone depends on it, it depends on nobody). 1.0 = maximally unstable (it depends on everyone, nobody depends on it). |
 | `coupling_score` | Weighted sum of all edge weights touching this node | Total coupling intensity. Counts both incoming and outgoing. Bidirectional edges counted twice -- this is intentional, measuring total coupling load, not unique pairs. |
 | `afferent_coupling` | Total incoming edges (all types) | Raw inbound coupling, all edge types. |
 | `efferent_coupling` | Total outgoing edges (all types) | Raw outbound coupling, all edge types. |

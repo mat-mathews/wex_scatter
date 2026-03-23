@@ -61,9 +61,29 @@ class AIRouter:
         """Create a provider by name. Returns None on failure."""
         if provider_name == "gemini":
             return self._create_gemini()
+        if provider_name == "wex":
+            return self._create_wex()
 
         logging.warning(f"Unknown AI provider: '{provider_name}'")
         return None
+
+    def _create_wex(self) -> Optional[AIProvider]:
+        """Create a WexProvider from config credentials.
+
+        Note: WexProvider.__init__ has its own WEX_AI_API_KEY env-var
+        fallback when api_key is None, matching the GeminiProvider pattern.
+        """
+        from scatter.ai.providers.wex_provider import WexProvider
+
+        api_key = self._config.ai.credentials.get("wex", {}).get("api_key")
+        model_name = self._config.ai.wex_model
+        endpoint = self._config.ai.credentials.get("wex", {}).get("endpoint")
+
+        try:
+            return WexProvider(api_key=api_key, model_name=model_name, endpoint=endpoint)
+        except Exception as e:
+            logging.warning(f"Could not create WEX AI provider: {e}")
+            return None
 
     def _create_gemini(self) -> Optional[AIProvider]:
         """Create a GeminiProvider from config credentials.

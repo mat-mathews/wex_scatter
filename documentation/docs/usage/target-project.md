@@ -182,7 +182,7 @@ Filter: 200 -> 12 project refs -> 0 namespace
 
 This usually means the auto-derived namespace doesn't match what the code uses. Fix it with `--target-namespace`.
 
-If the project reference stage itself drops to zero, nobody has a `<ProjectReference>` to your target. Possible causes: the consuming code references it as a NuGet package, or you're looking in the wrong `--search-scope`.
+If the project reference stage itself drops to zero, nobody has a `<ProjectReference>` to the target. Possible causes: the consuming code references it as a NuGet package, or you're looking in the wrong `--search-scope`.
 
 ---
 

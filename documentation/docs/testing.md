@@ -25,10 +25,10 @@ uv run pytest
 ```
 
 ```
-789 passed, 1 xfailed in ~15s
+816 passed, 1 xfailed in ~25s
 ```
 
-789 tests across 30 files. The single xfail is an intentional marker for a tracked edge case, not a failing test someone gave up on.
+800+ tests across 30 files. The single xfail is an intentional marker for a tracked edge case, not a failing test someone gave up on.
 
 ## What the tests cover
 
@@ -49,21 +49,21 @@ No flaky tests. No sleeps. No network calls.
 
 The repo ships with 8 sample .NET projects. Use them to verify Scatter works end-to-end on your machine.
 
-### GalaxyWorks.Data should have 4 consumers
+### GalaxyWorks.Data should have multiple consumers
 
 ```bash
 python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
 ```
 
-Look for: `Found 4 consumer(s)` in the output.
+Look for: at least 4 consumers in the output (exact count depends on the current sample project set).
 
-### MyDotNetApp should have 1 consumer
+### MyDotNetApp should have at least 1 consumer
 
 ```bash
 python scatter.py --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .
 ```
 
-Look for: `Found 1 consumer(s)`.
+Look for: at least 1 consumer.
 
 ### MyDotNetApp2.Exclude should have 0 consumers
 
@@ -71,7 +71,7 @@ Look for: `Found 1 consumer(s)`.
 python scatter.py --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .
 ```
 
-Look for: `Found 0 consumer(s)`. This one is intentionally isolated -- it validates that Scatter doesn't report false positives.
+Look for: `0 consumer(s)`. This one is intentionally isolated -- it validates that Scatter doesn't report false positives.
 
 ### Stored procedure tracing works
 

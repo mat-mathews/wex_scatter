@@ -72,6 +72,7 @@ from scatter._legacy import (
 )
 from scatter.ai.base import AITaskType, AnalysisResult, AIProvider
 from scatter.ai.providers.gemini_provider import GeminiProvider
+from scatter.ai.providers.wex_provider import WexProvider
 from scatter.ai.router import AIRouter
 from scatter.config import ScatterConfig, AIConfig, GraphConfig, DbConfig, load_config
 from scatter.scanners.db_scanner import (

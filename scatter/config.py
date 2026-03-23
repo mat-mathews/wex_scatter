@@ -23,6 +23,7 @@ class AIConfig:
     task_overrides: Dict[str, str] = field(default_factory=dict)
     credentials: Dict[str, Dict[str, str]] = field(default_factory=dict)
     gemini_model: str = "gemini-2.0-flash"
+    wex_model: str = "default"
 
 
 @dataclass
@@ -72,6 +73,8 @@ def _merge_ai_config(target: AIConfig, source: Dict[str, Any]) -> None:
         target.default_provider = source["default_provider"]
     if "gemini_model" in source:
         target.gemini_model = source["gemini_model"]
+    if "wex_model" in source:
+        target.wex_model = source["wex_model"]
     if "task_overrides" in source and isinstance(source["task_overrides"], dict):
         target.task_overrides.update(source["task_overrides"])
     if "credentials" in source and isinstance(source["credentials"], dict):
@@ -131,6 +134,14 @@ def _apply_env_vars(config: ScatterConfig) -> None:
     if api_key:
         config.ai.credentials.setdefault("gemini", {})["api_key"] = api_key
 
+    wex_api_key = os.environ.get("WEX_AI_API_KEY")
+    if wex_api_key:
+        config.ai.credentials.setdefault("wex", {})["api_key"] = wex_api_key
+
+    wex_endpoint = os.environ.get("WEX_AI_ENDPOINT")
+    if wex_endpoint:
+        config.ai.credentials.setdefault("wex", {})["endpoint"] = wex_endpoint
+
     default_provider = os.environ.get("SCATTER_DEFAULT_PROVIDER")
     if default_provider:
         config.ai.default_provider = default_provider
@@ -143,6 +154,12 @@ def _apply_cli_overrides(config: ScatterConfig, overrides: Dict[str, Any]) -> No
             config.ai.credentials.setdefault("gemini", {})["api_key"] = value
         elif key == "ai.gemini_model":
             config.ai.gemini_model = value
+        elif key == "ai.credentials.wex.api_key":
+            config.ai.credentials.setdefault("wex", {})["api_key"] = value
+        elif key == "ai.credentials.wex.endpoint":
+            config.ai.credentials.setdefault("wex", {})["endpoint"] = value
+        elif key == "ai.wex_model":
+            config.ai.wex_model = value
         elif key == "ai.default_provider":
             config.ai.default_provider = value
         elif key == "multiprocessing.disabled":

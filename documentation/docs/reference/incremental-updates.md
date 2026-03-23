@@ -10,7 +10,7 @@ Every time Scatter runs, it needs an up-to-date dependency graph. The naive appr
 
 ## The Solution
 
-`git diff` tells us exactly which files changed. We use that to surgically patch the cached graph -- update only the projects affected by the change, leave everything else untouched.
+`git diff` tells you exactly which files changed. Scatter uses that to surgically patch the cached graph -- update only the projects affected by the change, leave everything else untouched.
 
 The algorithm lives in `store/graph_patcher.py`.
 

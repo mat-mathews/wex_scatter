@@ -717,7 +717,21 @@ python scatter.py --graph --search-scope . --rebuild-graph \
 
 ## AI Features
 
-Scatter integrates with the Google Gemini API in three distinct ways. Each is optional and activated by specific flags. All require a Gemini API key via `--google-api-key` or the `GOOGLE_API_KEY` environment variable.
+Scatter uses a pluggable AI provider system with three AI-powered features. Each is optional and activated by specific flags.
+
+### AI Providers
+
+| Provider | Status | Configuration |
+|----------|--------|---------------|
+| **WEX AI Platform** | Stubbed (coming soon) | `--wex-api-key` or `WEX_AI_API_KEY` env var |
+| **Google Gemini** | Current default | `--google-api-key` or `GOOGLE_API_KEY` env var |
+| **Claude (Anthropic)** | Backlog | Pending approval / WEX AI Platform integration |
+
+The **WEX AI Platform** is the company's centralized AI gateway (rate limiting, security, model routing) and will become the default provider once the API contract is finalized. **Google Gemini** is the current working provider. Future providers will likely be routed through the WEX AI Platform for centralized controls.
+
+Switch providers via config (`ai.default_provider: wex`) or environment (`SCATTER_DEFAULT_PROVIDER=wex`). Route specific tasks to specific providers with `ai.task_overrides`.
+
+### AI Feature Summary
 
 | Feature | Flag | Available In | Purpose |
 |---------|------|-------------|---------|
@@ -1004,14 +1018,17 @@ Both `.scatter.yaml` (repo-level) and `~/.scatter/config.yaml` (user-level) use 
 ```yaml
 # .scatter.yaml — place in repo root (next to .git/)
 ai:
-  default_provider: gemini               # AI provider to use (currently only "gemini")
+  default_provider: gemini               # AI provider: "gemini" (current) or "wex" (coming soon)
   gemini_model: gemini-2.0-flash         # Gemini model name
+  wex_model: default                     # WEX AI Platform model name
   task_overrides:                         # route specific AI tasks to specific providers
     work_request_parsing: gemini
     risk_assessment: gemini
   credentials:
     gemini:
       api_key: ""                         # prefer env var or user config for secrets
+    wex:
+      api_key: ""                         # or use WEX_AI_API_KEY env var
 
 search:
   max_depth: 2                            # transitive tracing depth for impact analysis
@@ -1062,7 +1079,9 @@ python scatter.py --sow "Modify PortalDataService" --search-scope . --gemini-mod
 | Variable | Maps to | Description |
 |----------|---------|-------------|
 | `GOOGLE_API_KEY` | `ai.credentials.gemini.api_key` | Google Gemini API key |
-| `SCATTER_DEFAULT_PROVIDER` | `ai.default_provider` | Default AI provider name |
+| `WEX_AI_API_KEY` | `ai.credentials.wex.api_key` | WEX AI Platform API key |
+| `WEX_AI_ENDPOINT` | `ai.credentials.wex.endpoint` | WEX AI Platform endpoint URL |
+| `SCATTER_DEFAULT_PROVIDER` | `ai.default_provider` | Default AI provider name (`gemini` or `wex`) |
 
 Environment variables sit below config files in precedence — a `.scatter.yaml` value overrides the env var, and a CLI flag overrides both.
 
@@ -1141,13 +1160,15 @@ Use `--app-config-path` to verify if consumer projects correspond to known batch
 |------|-------------|
 | `--sproc-regex-pattern PATTERN` | Custom regex for finding sproc references |
 
-### AI / Summarization Options
+### AI Provider Options
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--summarize-consumers` | `false` | AI-summarize relevant consumer files |
 | `--google-api-key KEY` | `$GOOGLE_API_KEY` | Google Gemini API key |
-| `--gemini-model MODEL` | `gemini-1.5-flash` | Gemini model to use |
+| `--gemini-model MODEL` | `gemini-2.0-flash` | Gemini model to use |
+| `--wex-api-key KEY` | `$WEX_AI_API_KEY` | WEX AI Platform API key |
+| `--wex-model MODEL` | `default` | WEX AI Platform model to use |
 
 Run `python scatter.py --help` for the full list with defaults.
 
@@ -1580,7 +1601,8 @@ scatter/
 │   ├── base.py            # AIProvider protocol, AITaskType enum
 │   ├── router.py          # AIRouter — provider selection per task type
 │   ├── providers/
-│   │   └── gemini_provider.py
+│   │   ├── gemini_provider.py
+│   │   └── wex_provider.py    # WEX AI Platform (stubbed)
 │   └── tasks/
 │       ├── parse_work_request.py    # SOW → AnalysisTarget list
 │       ├── risk_assess.py           # Per-target risk rating
@@ -2121,4 +2143,4 @@ The `feasibility_details` dict breaks down each penalty, making it actionable �
 
 ### Deferred (Tier 4)
 
-- Unified report data model, additional AI providers, watch mode, AI response caching, token budget manager — see `tasks.txt` for details
+- Unified report data model, watch mode, AI response caching, token budget manager — see `tasks.txt` for details

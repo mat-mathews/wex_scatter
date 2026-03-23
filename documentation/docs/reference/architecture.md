@@ -36,7 +36,8 @@ scatter/
 │   ├── base.py        # AIProvider protocol, AITaskType enum, AnalysisResult
 │   ├── router.py      # AIRouter with lazy creation and task-type routing
 │   ├── providers/
-│   │   └── gemini_provider.py
+│   │   ├── gemini_provider.py
+│   │   └── wex_provider.py    # WEX AI Platform (stubbed)
 │   └── tasks/
 │       ├── parse_work_request.py
 │       ├── risk_assess.py
@@ -217,9 +218,11 @@ provider = router.get_provider(AITaskType.SUMMARIZATION)
 
 Each `ai/tasks/` module contains prompt templates and response parsing for a specific task type. The task module builds the prompt, the provider executes it, the task module parses the response. Clean separation.
 
-### Current Provider: GeminiProvider
+### Providers
 
-`ai/providers/gemini_provider.py` wraps the `google-generativeai` SDK. Supports all eight task types. Model defaults to `gemini-1.5-flash`, configurable via `ai.gemini_model` in config or `--gemini-model` CLI flag.
+**GeminiProvider** (`ai/providers/gemini_provider.py`) — the current default. Wraps the `google-generativeai` SDK. Supports all eight task types. Model defaults to `gemini-2.0-flash`, configurable via `ai.gemini_model` in config or `--gemini-model` CLI flag.
+
+**WexProvider** (`ai/providers/wex_provider.py`) — stubbed for the WEX AI Platform, the company's centralized AI gateway. Instantiation succeeds (validates API key), but analysis calls raise `NotImplementedError` until the API contract is finalized. Will become the default provider once integrated. Configurable via `WEX_AI_API_KEY` env var or `--wex-api-key` CLI flag.
 
 ---
 

@@ -250,4 +250,4 @@ Low alignment is valuable, not a problem. It surfaces three common scenarios:
 
 ### Design Decision
 
-The clustering algorithm does **not** use solution membership as input. Label propagation runs on pure graph topology. This is intentional: if we biased clustering toward solutions, we'd suppress the divergence signal that architects need to see. The alignment score reports how reality (graph) compares to intent (solutions), without one distorting the other.
+The clustering algorithm does **not** use solution membership as input. Label propagation runs on pure graph topology. This is intentional: if clustering were biased toward solutions, it would suppress the divergence signal that architects need to see. The alignment score reports how reality (graph) compares to intent (solutions), without one distorting the other.

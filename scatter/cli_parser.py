@@ -6,7 +6,7 @@ from typing import Any, Dict
 from scatter.core.models import DEFAULT_MAX_WORKERS, DEFAULT_CHUNK_SIZE
 
 
-_REDACTED_CLI_KEYS = frozenset({"google_api_key"})
+_REDACTED_CLI_KEYS = frozenset({"google_api_key", "wex_api_key"})
 
 
 def _build_cli_overrides(args) -> Dict[str, Any]:
@@ -21,6 +21,10 @@ def _build_cli_overrides(args) -> Dict[str, Any]:
         overrides["ai.credentials.gemini.api_key"] = args.google_api_key
     if args.gemini_model is not None:
         overrides["ai.gemini_model"] = args.gemini_model
+    if getattr(args, "wex_api_key", None) is not None:
+        overrides["ai.credentials.wex.api_key"] = args.wex_api_key
+    if getattr(args, "wex_model", None) is not None:
+        overrides["ai.wex_model"] = args.wex_model
     if args.disable_multiprocessing:
         overrides["multiprocessing.disabled"] = True
     if args.max_depth is not None:
@@ -35,7 +39,7 @@ def _build_cli_overrides(args) -> Dict[str, Any]:
 def build_parser() -> argparse.ArgumentParser:
     """Build and return the Scatter CLI argument parser."""
     parser = argparse.ArgumentParser(
-        description="Analyzes .NET project consumers based on Git branch changes OR a specific target project. Can optionally summarize consumer files using Gemini API.",
+        description="Analyzes .NET project consumers based on Git branch changes OR a specific target project. Can optionally summarize consumer files using AI (WEX AI Platform or Google Gemini).",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
@@ -183,21 +187,31 @@ def build_parser() -> argparse.ArgumentParser:
     common_group.add_argument(
         "-v", "--verbose", action="store_true", help="Enable detailed DEBUG level logging."
     )
-    summarize_group = parser.add_argument_group("Summarization Options (using Google Gemini)")
-    summarize_group.add_argument(
+    ai_group = parser.add_argument_group("AI Provider Options")
+    ai_group.add_argument(
         "--summarize-consumers",
         action="store_true",
-        help="Enable summarization of relevant C# files in consuming projects using the Gemini API.",
+        help="Enable summarization of relevant C# files in consuming projects using the configured AI provider.",
     )
-    summarize_group.add_argument(
+    ai_group.add_argument(
         "--google-api-key",
         default=None,
-        help="Google API Key for Gemini. If not provided, uses the GOOGLE_API_KEY environment variable.",
+        help="Google API Key for Gemini provider. If not provided, uses the GOOGLE_API_KEY environment variable.",
     )
-    summarize_group.add_argument(
+    ai_group.add_argument(
         "--gemini-model",
         default=None,
-        help="The Gemini model to use for summarization (default: gemini-2.0-flash).",
+        help="The Gemini model to use (default: gemini-2.0-flash).",
+    )
+    ai_group.add_argument(
+        "--wex-api-key",
+        default=None,
+        help="WEX AI Platform API key. If not provided, uses the WEX_AI_API_KEY environment variable.",
+    )
+    ai_group.add_argument(
+        "--wex-model",
+        default=None,
+        help="The WEX AI Platform model to use (default: default).",
     )
     common_group.add_argument(
         "--output-format",

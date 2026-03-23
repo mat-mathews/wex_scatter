@@ -13,7 +13,7 @@ from scatter.ai.router import AIRouter
 
 
 # Env vars the config system reads — cleared by the autouse fixture below
-_CONFIG_ENV_VARS = ("GOOGLE_API_KEY", "SCATTER_DEFAULT_PROVIDER")
+_CONFIG_ENV_VARS = ("GOOGLE_API_KEY", "SCATTER_DEFAULT_PROVIDER", "WEX_AI_API_KEY", "WEX_AI_ENDPOINT")
 
 
 @pytest.fixture(autouse=True)
@@ -110,6 +110,18 @@ class TestScatterConfig:
         with patch.dict(os.environ, {"GOOGLE_API_KEY": "test-key-123"}):
             config = load_config(repo_root=tmp_path)
         assert config.ai.credentials["gemini"]["api_key"] == "test-key-123"
+
+    def test_env_var_wex_credentials(self, tmp_path):
+        """WEX_AI_API_KEY env var flows to ai.credentials.wex.api_key."""
+        with patch.dict(os.environ, {"WEX_AI_API_KEY": "wex-key-456"}):
+            config = load_config(repo_root=tmp_path)
+        assert config.ai.credentials["wex"]["api_key"] == "wex-key-456"
+
+    def test_env_var_wex_endpoint(self, tmp_path):
+        """WEX_AI_ENDPOINT env var flows to ai.credentials.wex.endpoint."""
+        with patch.dict(os.environ, {"WEX_AI_ENDPOINT": "https://ai-staging.wexinc.com"}):
+            config = load_config(repo_root=tmp_path)
+        assert config.ai.credentials["wex"]["endpoint"] == "https://ai-staging.wexinc.com"
 
     def test_env_var_default_provider(self, tmp_path):
         """SCATTER_DEFAULT_PROVIDER env var sets default provider."""
@@ -331,3 +343,41 @@ class TestAIRouter:
 
         assert provider is None
         assert any("Unknown AI provider" in r.message for r in caplog.records)
+
+    @patch("scatter.ai.router.AIRouter._create_wex")
+    def test_wex_provider_routing(self, mock_create):
+        """Router dispatches to WEX provider when configured."""
+        mock_provider = MagicMock()
+        mock_provider.supports.return_value = True
+        mock_create.return_value = mock_provider
+
+        ai = AIConfig(default_provider="wex")
+        ai.credentials = {"wex": {"api_key": "test-wex-key"}}
+        config = ScatterConfig(ai=ai)
+        router = AIRouter(config)
+        provider = router.get_provider()
+
+        assert provider is mock_provider
+        mock_create.assert_called_once()
+
+    def test_wex_provider_no_credentials(self, tmp_path):
+        """WEX provider returns None when API key is missing."""
+        config = load_config(repo_root=tmp_path)
+        config.ai.default_provider = "wex"
+        router = AIRouter(config)
+        provider = router.get_provider()
+        assert provider is None
+
+    def test_wex_provider_stub_raises(self):
+        """WEX provider methods raise NotImplementedError."""
+        from scatter.ai.providers.wex_provider import WexProvider
+
+        provider = WexProvider(api_key="test-key")
+        assert provider.name == "wex:default"
+        assert provider.supports(AITaskType.SUMMARIZATION)
+
+        with pytest.raises(NotImplementedError, match="not yet implemented"):
+            provider.analyze("prompt", "context", AITaskType.SUMMARIZATION)
+
+        with pytest.raises(NotImplementedError, match="not yet implemented"):
+            provider.extract_affected_symbols("content", "diff", "file.cs")

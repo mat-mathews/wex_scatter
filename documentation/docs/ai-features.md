@@ -1,6 +1,6 @@
 # AI Features
 
-Scatter has three AI integrations. All of them are optional. None of them run unless you ask for them. Each one is activated by a specific flag, and all of them need a Google Gemini API key -- either via `--google-api-key` on the command line or the `GOOGLE_API_KEY` environment variable.
+Scatter has three AI-powered features. All of them are optional. None of them run unless you ask for them. Each one is activated by a specific flag and requires a configured AI provider.
 
 | Feature | Flag | Available In | What it does |
 |---------|------|-------------|--------------|
@@ -10,13 +10,86 @@ Scatter has three AI integrations. All of them are optional. None of them run un
 
 ---
 
+## AI Providers
+
+Scatter uses a pluggable AI provider system. All AI calls go through an `AIProvider` protocol with a task router that selects providers per task type. This means you can swap providers via configuration without changing any analysis commands.
+
+### WEX AI Platform (Primary — Coming Soon)
+
+The **WEX AI Platform** is the company's centralized AI gateway. It handles rate limiting, security controls, model routing, and usage tracking for all internal AI consumers. This will be the default provider for Scatter once the API contract is finalized.
+
+The provider is stubbed in the codebase and ready for integration. Configuration is already wired:
+
+```bash
+# Environment variable
+export WEX_AI_API_KEY="your-wex-ai-key"
+
+# CLI flag
+python scatter.py --sow "..." --search-scope . --wex-api-key "your-key"
+```
+
+```yaml
+# .scatter.yaml
+ai:
+  default_provider: wex
+  credentials:
+    wex:
+      api_key: "your-wex-ai-key"
+```
+
+Setting `default_provider: wex` will route all AI tasks through the WEX AI Platform. Configuration is ready — flip the switch when your team gets access.
+
+### Google Gemini (Current Default)
+
+The **Google Gemini** provider is the current working AI backend. All AI features are fully functional with Gemini. Set up your API key and go:
+
+```bash
+# Environment variable (recommended)
+export GOOGLE_API_KEY="your-google-api-key"
+
+# CLI flag
+python scatter.py --sow "..." --search-scope . --google-api-key "your-key"
+
+# Config file (~/.scatter/config.yaml)
+# ai:
+#   credentials:
+#     gemini:
+#       api_key: "your-key"
+```
+
+### Future Providers
+
+Additional providers are on the backlog. These will likely be routed through the WEX AI Platform rather than integrated directly, as the platform provides centralized rate limiting and security controls:
+
+- **Claude (Anthropic)** — pending approval and/or WEX AI Platform integration
+- Other models as the WEX AI Platform adds support
+
+### Provider Configuration
+
+Use `SCATTER_DEFAULT_PROVIDER` or `ai.default_provider` in config to switch providers. Use `ai.task_overrides` to route specific AI tasks to specific providers:
+
+```yaml
+ai:
+  default_provider: gemini          # or "wex" when ready
+  task_overrides:
+    risk_assessment: wex            # route risk assessment to WEX AI Platform
+    summarization: gemini           # keep summarization on Gemini
+  credentials:
+    gemini:
+      api_key: ""
+    wex:
+      api_key: ""
+```
+
+---
+
 ## Consumer Summarization
 
 **Flag:** `--summarize-consumers`
 
-You run Scatter and it tells you 37 projects consume your library. Great. But what do those 37 projects *do* with it? You could open each one and read the code. Or you could let Gemini do that for you.
+You run Scatter and it tells you 37 projects consume your library. Great. But what do those 37 projects *do* with it? You could open each one and read the code. Or you could let the AI do that for you.
 
-When you pass `--summarize-consumers`, Scatter identifies the specific `.cs` files in each consumer that caused the match -- the ones with the `using` statement, the type reference, the sproc call. It sends each file to Gemini and gets back a 2-3 sentence summary of what that file does.
+When you pass `--summarize-consumers`, Scatter identifies the specific `.cs` files in each consumer that caused the match -- the ones with the `using` statement, the type reference, the sproc call. It sends each file to the configured AI provider and gets back a 2-3 sentence summary of what that file does.
 
 This is most useful when you have dozens of consumers and need to triage which ones actually matter for your change, without opening every single file.
 
@@ -72,7 +145,7 @@ Say you change one line inside `PortalDataService` in a file that also declares 
 
 ### The Solution
 
-When you pass `--enable-hybrid-git`, Scatter sends the file content and the git diff to Gemini. The AI reads the diff, determines which type bodies and signatures actually changed, and returns only the affected type names.
+When you pass `--enable-hybrid-git`, Scatter sends the file content and the git diff to the AI provider. The LLM reads the diff, determines which type bodies and signatures actually changed, and returns only the affected type names.
 
 Comment-only changes? Empty list -- no unnecessary downstream analysis. One-line fix inside a single class in a five-class file? You get exactly one type back.
 

@@ -138,7 +138,7 @@ When graph enrichment is active, five additional columns appear: `CouplingScore`
 
 Paste-ready for PRs, Jira tickets, Confluence pages, ADO work items. Designed for humans reading rendered text, not raw data.
 
-Unlike CSV and JSON, Markdown does **not** require `--output-file`. Without it, Scatter prints to stdout. This is intentional -- pipe straight to clipboard:
+Unlike CSV and JSON, Markdown does **not** require `--output-file`. Without it, Scatter prints to stdout. This is intentional -- pipe it straight to clipboard:
 
 ```bash
 python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
