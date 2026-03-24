@@ -15,7 +15,7 @@ import tempfile
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from scatter.core.graph import DependencyGraph
 
@@ -43,10 +43,14 @@ class ProjectFacts:
     csproj_content_hash: str = ""  # sha256 of .csproj contents
 
 
-def compute_content_hash(file_path: Path) -> str:
-    """Compute SHA-256 hash of a file's contents."""
+def compute_content_hash(file_path_or_content: Union[Path, str, bytes], /) -> str:
+    """Compute SHA-256 hash. Accepts Path (reads file), str, or bytes."""
+    if isinstance(file_path_or_content, (bytes, bytearray)):
+        return hashlib.sha256(file_path_or_content).hexdigest()
+    if isinstance(file_path_or_content, str):
+        return hashlib.sha256(file_path_or_content.encode("utf-8")).hexdigest()
     try:
-        content = file_path.read_bytes()
+        content = file_path_or_content.read_bytes()
         return hashlib.sha256(content).hexdigest()
     except OSError:
         return ""
@@ -114,7 +118,7 @@ def save_graph(
     )
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(envelope, f, indent=2)
+            json.dump(envelope, f, separators=(",", ":"))
         os.replace(tmp_path, str(cache_path))
     except BaseException:
         # Clean up temp file on any failure

@@ -129,6 +129,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Force graph rebuild, ignoring cached data (only used with --graph).",
     )
     common_group.add_argument(
+        "--full-type-scan",
+        action="store_true",
+        help="Compute type_usage edges between all project pairs, not just those "
+        "connected by project_reference or namespace_usage edges.",
+    )
+    common_group.add_argument(
         "--include-db",
         action="store_true",
         help="Include database dependency scanning (sprocs, EF models, direct SQL) in --graph mode.",

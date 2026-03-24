@@ -8,6 +8,14 @@ Usage:
     python tools/benchmark_graph_build.py /tmp/synthetic_monolith
     python tools/benchmark_graph_build.py /tmp/synthetic_monolith --include-db
     python tools/benchmark_graph_build.py /tmp/synthetic_monolith --runs 3
+
+Note on --mode stages vs --mode full:
+    'stages' re-implements graph building step-by-step with per-stage timing.
+    It runs sequentially to give clean isolated measurements per stage.
+    'full' calls build_dependency_graph() as a black box, which uses
+    ThreadPoolExecutor internally for type extraction. This means stages-mode
+    numbers will be higher than full-mode for I/O-bound stages. Compare
+    stages-mode runs to other stages-mode runs, and full-mode to full-mode.
 """
 import argparse
 import gc
@@ -44,18 +52,19 @@ class StageTimer:
 
     def __enter__(self):
         gc.collect()
-        # Snapshot current heap allocation
-        snapshot = tracemalloc.take_snapshot()
-        self.heap_before = sum(stat.size for stat in snapshot.statistics("filename"))
-        tracemalloc.clear_traces()
+        if tracemalloc.is_tracing():
+            snapshot = tracemalloc.take_snapshot()
+            self.heap_before = sum(stat.size for stat in snapshot.statistics("filename"))
+            tracemalloc.clear_traces()
         self._start = time.perf_counter()
         return self
 
     def __exit__(self, *args):
         self.elapsed = time.perf_counter() - self._start
-        _, self.heap_peak = tracemalloc.get_traced_memory()
-        snapshot = tracemalloc.take_snapshot()
-        self.heap_after = sum(stat.size for stat in snapshot.statistics("filename"))
+        if tracemalloc.is_tracing():
+            _, self.heap_peak = tracemalloc.get_traced_memory()
+            snapshot = tracemalloc.take_snapshot()
+            self.heap_after = sum(stat.size for stat in snapshot.statistics("filename"))
 
     @property
     def heap_delta_mb(self) -> float:
@@ -66,7 +75,7 @@ class StageTimer:
         return self.heap_peak / 1024 / 1024
 
 
-def run_benchmark(search_scope: Path, include_db: bool = False) -> dict:
+def run_benchmark(search_scope: Path, include_db: bool = False, full_type_scan: bool = False) -> dict:
     """Run scatter's actual graph builder with stage-level instrumentation."""
 
     from scatter.analyzers.graph_builder import build_dependency_graph
@@ -87,6 +96,7 @@ def run_benchmark(search_scope: Path, include_db: bool = False) -> dict:
         graph = build_dependency_graph(
             search_scope,
             include_db_dependencies=include_db,
+            full_type_scan=full_type_scan,
         )
     stages["build_dependency_graph"] = {
         "elapsed": t.elapsed,
@@ -169,7 +179,7 @@ def run_benchmark(search_scope: Path, include_db: bool = False) -> dict:
     }
 
 
-def run_instrumented_build(search_scope: Path, include_db: bool = False) -> dict:
+def run_instrumented_build(search_scope: Path, include_db: bool = False, full_type_scan: bool = False) -> dict:
     """Run graph builder with internal stage instrumentation.
 
     Monkeypatches the graph_builder to measure each internal stage
@@ -240,9 +250,9 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False) -> dict
         project_dir_index = gb._build_project_directory_index(csproj_files)
         project_cs_files = defaultdict(list)
         for cs_path in cs_files:
-            project_name = gb._map_cs_to_project(cs_path, project_dir_index)
-            if project_name:
-                project_cs_files[project_name].append(cs_path)
+            mapped_name = gb._map_cs_to_project(cs_path, project_dir_index)
+            if mapped_name:
+                project_cs_files[mapped_name].append(cs_path)
     stages["cs_mapping"] = {
         "elapsed": t.elapsed,
         "heap_delta_mb": t.heap_delta_mb,
@@ -251,13 +261,14 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False) -> dict
     }
 
     # -------------------------------------------------------------------
-    # Stage 4: Type/namespace/sproc extraction (BOTTLENECK CANDIDATE)
+    # Stage 4: Type/namespace/sproc extraction + identifier caching
     # -------------------------------------------------------------------
     with StageTimer("type_extraction") as t:
         project_types = defaultdict(set)
         project_sprocs = defaultdict(set)
         project_using_ns = defaultdict(set)
         project_ns_evidence = defaultdict(lambda: defaultdict(list))
+        file_identifier_cache = {}
         files_read = 0
 
         for project_name, cs_paths in project_cs_files.items():
@@ -267,6 +278,7 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False) -> dict
                     files_read += 1
                 except OSError:
                     continue
+                file_identifier_cache[cs_path] = {m.group() for m in gb._IDENT_PATTERN.finditer(content)}
                 types = extract_type_names_from_content(content)
                 project_types[project_name].update(types)
                 for match in gb._SPROC_PATTERN.finditer(content):
@@ -344,11 +356,9 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False) -> dict
     }
 
     # -------------------------------------------------------------------
-    # Stage 7: Type usage edges (inverted index + comment stripping)
+    # Stage 7: Type usage edges (cached identifiers + reachable-set scoping)
     # -------------------------------------------------------------------
     with StageTimer("type_usage_edges") as t:
-        from scatter.scanners.db_scanner import _strip_cs_comments
-
         type_to_projects = defaultdict(set)
         for pname, types in project_types.items():
             for tname in types:
@@ -356,26 +366,34 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False) -> dict
 
         type_name_set = set(type_to_projects.keys())
         type_edge_count = 0
-        files_reread = 0
         total_matches = 0
 
+        # Build reachable targets from existing edges
+        if not full_type_scan:
+            reachable_targets = defaultdict(set)
+            for source_name in [n.name for n in graph.get_all_nodes()]:
+                for edge in graph.get_edges_from(source_name):
+                    if edge.edge_type in ("project_reference", "namespace_usage"):
+                        reachable_targets[source_name].add(edge.target)
+
+        _empty = frozenset()
         for source_project, cs_paths in project_cs_files.items():
             if source_project not in graph._nodes:
                 continue
             type_usage_evidence = defaultdict(list)
             for cs_path in cs_paths:
-                try:
-                    content = cs_path.read_text(encoding="utf-8", errors="ignore")
-                    files_reread += 1
-                except OSError:
+                file_identifiers = file_identifier_cache.get(cs_path)
+                if file_identifiers is None:
                     continue
-                content = _strip_cs_comments(content)
-                file_identifiers = set(gb._IDENT_PATTERN.findall(content))
                 matched_types = file_identifiers & type_name_set
                 total_matches += len(matched_types)
                 for type_name in matched_types:
                     for owner in type_to_projects[type_name]:
-                        if owner != source_project and owner in graph._nodes:
+                        if (
+                            owner != source_project
+                            and owner in graph._nodes
+                            and (full_type_scan or owner in reachable_targets.get(source_project, _empty))
+                        ):
                             type_usage_evidence[owner].append(f"{cs_path}:{type_name}")
 
             for target, evidence in type_usage_evidence.items():
@@ -385,11 +403,14 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False) -> dict
                     weight=len(evidence), evidence=evidence,
                 ))
                 type_edge_count += 1
+
+        del file_identifier_cache
+
     stages["type_usage_edges"] = {
         "elapsed": t.elapsed,
         "heap_delta_mb": t.heap_delta_mb,
         "heap_peak_mb": t.heap_peak_mb,
-        "detail": f"{type_edge_count} edges, {files_reread} files re-read, {total_matches:,} type matches via set intersection",
+        "detail": f"{type_edge_count} edges, {total_matches:,} type matches via set intersection",
     }
 
     # -------------------------------------------------------------------
@@ -567,8 +588,14 @@ def main():
     parser.add_argument("--warmup", action="store_true",
                         help="Run one untimed warmup pass first (populates OS file cache)")
     parser.add_argument("--mode", choices=["full", "stages"], default="stages",
-                        help="'full' calls build_dependency_graph() as a black box; "
-                             "'stages' instruments each internal stage separately (default)")
+                        help="'full' calls build_dependency_graph() as a black box (with threading); "
+                             "'stages' instruments each internal stage sequentially (default). "
+                             "Numbers are not directly comparable between modes.")
+    parser.add_argument("--full-type-scan", action="store_true",
+                        help="Compute type_usage edges between all project pairs (disables reachable-set scoping)")
+    parser.add_argument("--tracemalloc", action=argparse.BooleanOptionalAction,
+                        default=None,
+                        help="Enable tracemalloc heap tracking (default: on for stages, off for full)")
     parser.add_argument("--json", action="store_true",
                         help="Output results as JSON")
     parser.add_argument("--output-file", "-o", type=str,
@@ -583,21 +610,23 @@ def main():
 
     logging.basicConfig(level=logging.WARNING)
 
-    # Start memory tracing
-    tracemalloc.start()
+    # Start memory tracing (default: on for stages, off for full)
+    use_tracemalloc = args.tracemalloc if args.tracemalloc is not None else (args.mode == "stages")
+    if use_tracemalloc:
+        tracemalloc.start()
 
     run_fn = run_instrumented_build if args.mode == "stages" else run_benchmark
 
     # Optional warmup (populates OS file cache, not timed)
     if args.warmup:
         print("Warmup run (not timed)...")
-        run_fn(search_scope, include_db=args.include_db)
+        run_fn(search_scope, include_db=args.include_db, full_type_scan=args.full_type_scan)
         print("Warmup complete.\n")
 
     # Benchmark runs
     all_results = []
     for i in range(args.runs):
-        results = run_fn(search_scope, include_db=args.include_db)
+        results = run_fn(search_scope, include_db=args.include_db, full_type_scan=args.full_type_scan)
         all_results.append(results)
 
         if args.json or args.output_file:
@@ -615,7 +644,8 @@ def main():
     elif len(all_results) > 1:
         print_summary(all_results)
 
-    tracemalloc.stop()
+    if tracemalloc.is_tracing():
+        tracemalloc.stop()
 
 
 if __name__ == "__main__":

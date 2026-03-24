@@ -58,9 +58,7 @@ class WexProvider(AIProvider):
             )
 
         self._api_key = resolved_api_key
-        self._endpoint = endpoint or os.getenv(
-            "WEX_AI_ENDPOINT", "https://ai.wexinc.com"
-        )
+        self._endpoint = endpoint or os.getenv("WEX_AI_ENDPOINT", "https://ai.wexinc.com")
 
         logging.info(
             f"WEX AI Platform provider initialized "

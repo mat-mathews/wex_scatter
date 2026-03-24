@@ -18,13 +18,12 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set
 
 from scatter.core.graph import DependencyEdge, DependencyGraph
 from scatter.core.patterns import IDENT_PATTERN as _IDENT_PATTERN
 from scatter.core.patterns import SPROC_PATTERN as _SPROC_PATTERN
 from scatter.core.patterns import USING_PATTERN as _USING_PATTERN
-from scatter.scanners.db_scanner import _strip_cs_comments
 from scatter.scanners.project_scanner import (
     derive_namespace,
     parse_csproj_all_references,
@@ -61,17 +60,13 @@ def extract_file_facts(
     search_scope: Path,
 ) -> FileFacts:
     """Read a single .cs file and extract types, namespaces, sprocs, content hash."""
-    content_hash = compute_content_hash(cs_path)
-
     try:
         content = cs_path.read_text(encoding="utf-8", errors="ignore")
     except OSError:
         rel = str(cs_path.relative_to(search_scope)) if search_scope else str(cs_path)
-        return FileFacts(
-            path=rel,
-            project=project_name,
-            content_hash=content_hash,
-        )
+        return FileFacts(path=rel, project=project_name, content_hash="")
+
+    content_hash = compute_content_hash(content)
 
     types = sorted(extract_type_names_from_content(content))
 
@@ -360,6 +355,28 @@ def patch_graph(
         # Update node type_declarations and sproc_references from current facts
         _update_node_metadata(graph, file_facts, affected_projects, project_to_files)
 
+        # Build identifier cache: full cache when declarations changed (all-projects
+        # rebuild needed), partial cache (affected projects only) otherwise.
+        # Memory note: full cache at medium (~4,760 files) peaks ~220MB; at xlarge
+        # (~30K files) expect ~800MB+. Acceptable since graph_builder uses the same
+        # pattern. If the patcher runs in constrained environments, consider chunked
+        # per-project loading instead.
+        if declarations_changed:
+            cache_rel_paths: list[str] = list(file_facts.keys())
+        else:
+            cache_rel_paths = [
+                rel for rel, ff in file_facts.items() if ff.project in affected_projects
+            ]
+
+        file_identifier_cache: Dict[str, Set[str]] = {}
+        for rel_path in cache_rel_paths:
+            cs_abs = search_scope / rel_path
+            try:
+                content = cs_abs.read_text(encoding="utf-8", errors="ignore")
+                file_identifier_cache[rel_path] = set(_IDENT_PATTERN.findall(content))
+            except OSError:
+                pass
+
         for project_name in affected_projects:
             if project_name not in all_project_names:
                 continue
@@ -389,6 +406,7 @@ def patch_graph(
                 type_to_projects,
                 search_scope,
                 project_files,
+                file_identifier_cache,
             )
 
             # Rebuild sproc_shared edges
@@ -425,7 +443,10 @@ def patch_graph(
                         project_to_files.get(node.name, []),
                     )
 
-        # If declarations changed, rebuild type_usage edges for ALL projects
+        # If declarations changed, rebuild type_usage edges for ALL projects.
+        # Reachable-set scoping inside _rebuild_type_usage_edges is safe here:
+        # non-affected projects' namespace_usage and project_reference edges are
+        # unchanged, so their reachable sets are stable.
         if declarations_changed:
             type_to_projects = _build_type_to_projects(file_facts)
             for node in graph.get_all_nodes():
@@ -438,7 +459,10 @@ def patch_graph(
                         type_to_projects,
                         search_scope,
                         project_to_files.get(node.name, []),
+                        file_identifier_cache,
                     )
+
+        del file_identifier_cache
 
     elapsed = (time.monotonic() - start) * 1000
 
@@ -495,25 +519,45 @@ def _rebuild_type_usage_edges(
     type_to_projects: Dict[str, Set[str]],
     search_scope: Path,
     project_files: List[str],
+    file_identifier_cache: Optional[Dict[str, Set[str]]] = None,
 ) -> None:
-    """Rebuild type_usage edges from project by re-tokenizing its .cs files."""
+    """Rebuild type_usage edges from project by tokenizing its .cs files.
+
+    Uses file_identifier_cache when available to avoid re-reading files.
+    Scopes type checks to reachable targets via project_reference/namespace_usage edges.
+
+    Note: reachable-set scoping is a behavioral change from the pre-Phase-2 code which
+    checked all projects. The scoped results are a strict subset — type_usage edges are
+    only meaningful between projects that already have a project_reference or
+    namespace_usage relationship.
+    """
     type_name_set = set(type_to_projects.keys())
     type_usage_evidence: Dict[str, List[str]] = defaultdict(list)
 
-    for rel_path in project_files:
-        cs_abs = search_scope / rel_path
-        try:
-            content = cs_abs.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
-            continue
+    # Build reachable targets from existing edges to scope type_usage checks
+    reachable: Set[str] = set()
+    for edge in graph.get_edges_from(project):
+        if edge.edge_type in ("project_reference", "namespace_usage"):
+            reachable.add(edge.target)
 
-        content = _strip_cs_comments(content)
-        file_identifiers = set(_IDENT_PATTERN.findall(content))
+    for rel_path in project_files:
+        if file_identifier_cache is not None:
+            file_identifiers = file_identifier_cache.get(rel_path)
+            if file_identifiers is None:
+                continue
+        else:
+            cs_abs = search_scope / rel_path
+            try:
+                content = cs_abs.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
+            file_identifiers = set(_IDENT_PATTERN.findall(content))
+
         matched_types = file_identifiers & type_name_set
 
         for type_name in matched_types:
             for owner in type_to_projects[type_name]:
-                if owner != project and graph.get_node(owner):
+                if owner != project and owner in reachable and graph.get_node(owner):
                     type_usage_evidence[owner].append(f"{rel_path}:{type_name}")
 
     for target, evidence in type_usage_evidence.items():
@@ -621,22 +665,25 @@ def _no_patch(graph, file_facts, project_facts, start) -> PatchResult:
     )
 
 
-def _build_project_dir_index(graph: DependencyGraph, search_scope: Path) -> List[Tuple[Path, str]]:
-    """Build project directory index from graph nodes, sorted deepest first."""
-    index = []
-    for node in graph.get_all_nodes():
-        project_dir = node.path.parent
-        index.append((project_dir, node.name))
-    index.sort(key=lambda x: -len(x[0].parts))
-    return index
+def _build_project_dir_index(graph: DependencyGraph, search_scope: Path) -> Dict[Path, str]:
+    """Build project directory index from graph nodes."""
+    return {node.path.parent: node.name for node in graph.get_all_nodes()}
 
 
-def _map_file_to_project(file_path: Path, project_dirs: List[Tuple[Path, str]]) -> Optional[str]:
+_MAX_WALK_DEPTH = 64  # safety cap against symlink loops or degenerate paths
+
+
+def _map_file_to_project(file_path: Path, project_dirs: Dict[Path, str]) -> Optional[str]:
     """Find the closest ancestor project for a file."""
-    parents = set(file_path.parents)
-    for project_dir, project_name in project_dirs:
-        if project_dir in parents or project_dir == file_path.parent:
-            return project_name
+    current = file_path.parent
+    for _ in range(_MAX_WALK_DEPTH):
+        name = project_dirs.get(current)
+        if name is not None:
+            return name
+        parent = current.parent
+        if parent == current:
+            return None
+        current = parent
     return None
 
 

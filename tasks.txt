@@ -1707,3 +1707,101 @@ INITIATIVE 11 — NOT IN SCOPE (build later if needed):
 - Solution-level risk scoring
 - Multi-pass recursive expansion (re-analyze if Pass 2 discovers new solutions)
 - Custom solution groupings via manifest file
+
+============================================================================
+INITIATIVE 12: XLARGE PERFORMANCE — GRAPH BUILD & CACHE OPTIMIZATION
+Target: < 5 min full graph build, sub-30s cached queries at 800-project scale
+Reference: docs/XLARGE_BENCHMARK_RESULTS.md
+============================================================================
+
+PHASE 1: IMMEDIATE WINS (this week)
+----------------------------------------------------------------------
+- [ ] Drop `indent=2` from json.dump in graph_cache.py line 117
+      ~40% smaller cache file, faster serialization and deserialization.
+      One-line change, zero risk.
+
+- [ ] Cache file identifiers + comment-stripped content in Step 4
+      During the type_extraction loop (graph_builder.py lines 117-159),
+      also run _strip_cs_comments(content) and set(_IDENT_PATTERN.findall(...)).
+      Stash results in a dict keyed by cs_path. In Step 5c (lines 218-247),
+      look up cached values instead of re-reading 30K files + re-running regex.
+      Eliminates 30K redundant file reads and 30K regex passes.
+      ~20 lines, low risk.
+
+- [ ] Scope type_usage edges to reachable project pairs
+      Only compute type_usage edges between projects connected by
+      project_reference or namespace_usage edges. Reduces inner loop from
+      800x800=640K project pairs to ~800x15=12K reachable pairs (~50x reduction).
+      Add --full-type-scan flag to preserve current unscoped behavior for auditing.
+      Trade-off: misses type usages via fully-qualified names without a using
+      statement (rare in C#). ~15 lines, medium risk (changes graph semantics).
+
+PHASE 2: MEASURE AND VALIDATE
+----------------------------------------------------------------------
+- [ ] Re-run xlarge benchmark after Phase 1 fixes
+      Run tools/benchmark_graph_build.py --mode stages on xlarge preset.
+      Gate: if build < 3 min and cache load < 30s, defer SQLite and
+      parallelization (Phase 3 items).
+
+- [ ] Correctness validation for scoped type_usage
+      Build graph with current code and with scoped code, diff edge sets.
+      Count type_usage edges between projects with NO project_reference or
+      namespace_usage edge. If < 1% of total, scoping is safe. If 10%, revisit.
+
+PHASE 3: CONDITIONAL (only if Phase 1 insufficient)
+----------------------------------------------------------------------
+- [ ] Parallelize Step 5c (type_usage_edges)
+      Partition files across workers, merge evidence dicts. Each project's
+      type_usage computation is independent — embarrassingly parallel.
+      ~30 lines, low risk. Only pursue if still too slow after Phase 1.
+
+- [ ] SQLite graph cache
+      Replace JSON serialization with SQLite for O(1) node/edge lookups
+      without loading the full graph into memory. Benefits:
+      - Query "all edges where target = X" in milliseconds
+      - Atomic writes (no half-written cache on crash)
+      - Ships with Python (no new dependency)
+      - --target-project becomes a SQL query on indexed table
+      ~200 lines, medium risk (migration path needed for existing caches).
+      Only pursue if cache load still bottlenecked after dropping indent.
+
+PHASE 3 FOLLOW-UPS (from leadership review)
+----------------------------------------------------------------------
+- [ ] Move compute_content_hash to scatter.core (e.g. scatter.core.hashing)
+      Currently lives in scatter.store.graph_cache but is a pure function with
+      no store dependencies. graph_builder importing it creates an analyzers→store
+      coupling that feels wrong. Low risk, small refactor.
+
+- [ ] Measure SHA-256 cost when capture_facts=False
+      _extract_file_data computes content_hash unconditionally, even when nobody
+      reads it. Profile to confirm it's <5% of type_extraction stage. If not,
+      make it conditional (pass a flag or use a sentinel value).
+
+- [ ] Add --threads flag to benchmark for worker count sweeps
+      Optimal thread count for file I/O + regex depends on cache state and
+      machine. Allow sweeping [1, 2, 4, 8, 16] to find the knee. Useful for
+      tuning DEFAULT_MAX_WORKERS on real hardware.
+
+- [ ] Thread graph_patcher.py identifier cache loop (lines 368-375)
+      Same sequential file-read pattern as graph_builder Step 4. Threading
+      candidate if it shows up in profiling after other optimizations land.
+
+PHASE 4: LATER
+----------------------------------------------------------------------
+- [ ] Profile Louvain clustering at scale
+      89s at xlarge (3.8% of total). Edge density 544K/800 = 680 edges/node.
+      Consider sparse representations or approximate clustering for dense graphs.
+
+- [ ] Add medium preset benchmark to CI with regression threshold
+      ~10s per run — cheap enough to catch perf regressions before they ship.
+
+- [ ] Validate edge density against real WEX monolith
+      Synthetic xlarge has 650 edges/project which may be pathologically dense.
+      Real monolith may have far fewer type_usage edges. Results may recalibrate
+      all optimization priorities.
+
+- [ ] Fix declaration-change incremental path
+      Currently 0.8x "speedup" (slower than full rebuild due to patch overhead).
+      Options: fall back to full rebuild when declaration changes detected,
+      or implement targeted index update (only types in changed files) to avoid
+      global type index rebuild.
