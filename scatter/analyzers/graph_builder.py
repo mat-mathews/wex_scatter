@@ -12,7 +12,7 @@ Single-pass O(P+F) construction:
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, NamedTuple, Optional, Set, Tuple
 
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.core.models import DEFAULT_CHUNK_SIZE, DEFAULT_MAX_WORKERS
@@ -25,6 +25,33 @@ from scatter.core.patterns import IDENT_PATTERN as _IDENT_PATTERN
 from scatter.core.patterns import SPROC_PATTERN as _SPROC_PATTERN
 from scatter.core.patterns import USING_PATTERN as _USING_PATTERN
 from scatter.scanners.type_scanner import extract_type_names_from_content
+from scatter.store.graph_cache import compute_content_hash
+
+
+class _FileExtraction(NamedTuple):
+    """Per-file extraction results — lightweight, immutable, thread-safe."""
+    cs_path: Path
+    identifiers: Set[str]
+    types: Set[str]
+    sprocs: Set[str]
+    namespaces: Set[str]
+    content_hash: str
+
+
+def _extract_file_data(cs_path: Path) -> Optional[_FileExtraction]:
+    """Read a .cs file and extract all relevant data. Pure function, safe for threads."""
+    try:
+        content = cs_path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return None
+    return _FileExtraction(
+        cs_path=cs_path,
+        identifiers={m.group() for m in _IDENT_PATTERN.finditer(content)},
+        types=extract_type_names_from_content(content),
+        sprocs={m.group().strip("\"'") for m in _SPROC_PATTERN.finditer(content)},
+        namespaces={m.group(1) for m in _USING_PATTERN.finditer(content)},
+        content_hash=compute_content_hash(content),
+    )
 
 
 def build_dependency_graph(
@@ -102,67 +129,67 @@ def build_dependency_graph(
             project_cs_files[mapped_name].append(cs_path)
 
     # Step 4: For each project's .cs files, extract type declarations, sproc refs, namespace usages
-    # When capture_facts=True, we also build FileFacts inline to avoid re-reading files.
+    # Uses ThreadPoolExecutor for I/O-bound file reads (GIL released during I/O).
     project_types: Dict[str, Set[str]] = defaultdict(set)
     project_sprocs: Dict[str, Set[str]] = defaultdict(set)
     project_using_namespaces: Dict[str, Set[str]] = defaultdict(set)
-    # Track which files use which namespaces for evidence
     project_namespace_evidence: Dict[str, Dict[str, List[str]]] = defaultdict(
         lambda: defaultdict(list)
     )
 
-    # Inline fact capture (avoids second pass over all .cs files)
     captured_file_facts: Optional[Dict] = {} if capture_facts else None
-
-    # Cache identifiers per file during Step 4 to avoid re-reading in Step 5c
     file_identifier_cache: Dict[Path, Set[str]] = {}
 
-    for project_name, cs_paths in project_cs_files.items():
-        for cs_path in cs_paths:
+    # Flatten project→files for dispatch
+    all_file_tasks: List[Tuple[str, Path]] = [
+        (pname, cspath)
+        for pname, cs_paths in project_cs_files.items()
+        for cspath in cs_paths
+    ]
+
+    if disable_multiprocessing or len(all_file_tasks) < 100:
+        file_extractions = [
+            (pname, result)
+            for pname, cspath in all_file_tasks
+            if (result := _extract_file_data(cspath)) is not None
+        ]
+    else:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            results = list(executor.map(
+                _extract_file_data,
+                [cspath for _, cspath in all_file_tasks],
+            ))
+        file_extractions = [
+            (pname, result)
+            for (pname, _), result in zip(all_file_tasks, results)
+            if result is not None
+        ]
+
+    # Aggregate results (main thread)
+    for project_name, ext in file_extractions:
+        file_identifier_cache[ext.cs_path] = ext.identifiers
+        project_types[project_name].update(ext.types)
+        project_sprocs[project_name].update(ext.sprocs)
+        for ns in ext.namespaces:
+            project_using_namespaces[project_name].add(ns)
+            project_namespace_evidence[project_name][ns].append(str(ext.cs_path))
+
+        if captured_file_facts is not None:
+            from scatter.store.graph_cache import FileFacts
+
             try:
-                content = cs_path.read_text(encoding="utf-8", errors="ignore")
-            except OSError as e:
-                logging.debug(f"Could not read {cs_path}: {e}")
-                continue
-
-            # Cache identifiers for Step 5c reuse (skip comment stripping — see design notes)
-            file_identifier_cache[cs_path] = set(_IDENT_PATTERN.findall(content))
-
-            # Type declarations
-            types = extract_type_names_from_content(content)
-            project_types[project_name].update(types)
-
-            # Sproc references
-            file_sprocs: Set[str] = set()
-            for match in _SPROC_PATTERN.finditer(content):
-                sproc_name = match.group().strip("\"'")
-                project_sprocs[project_name].add(sproc_name)
-                file_sprocs.add(sproc_name)
-
-            # Using statements → namespace usages
-            file_namespaces: Set[str] = set()
-            for match in _USING_PATTERN.finditer(content):
-                ns = match.group(1)
-                project_using_namespaces[project_name].add(ns)
-                project_namespace_evidence[project_name][ns].append(str(cs_path))
-                file_namespaces.add(ns)
-
-            # Capture per-file facts inline (single read)
-            if captured_file_facts is not None:
-                from scatter.store.graph_cache import FileFacts, compute_content_hash
-
-                try:
-                    rel = str(cs_path.relative_to(search_scope))
-                except ValueError:
-                    rel = str(cs_path)
-                captured_file_facts[rel] = FileFacts(
-                    path=rel,
-                    project=project_name,
-                    types_declared=sorted(types),
-                    namespaces_used=sorted(file_namespaces),
-                    sprocs_referenced=sorted(file_sprocs),
-                    content_hash=compute_content_hash(content),
-                )
+                rel = str(ext.cs_path.relative_to(search_scope))
+            except ValueError:
+                rel = str(ext.cs_path)
+            captured_file_facts[rel] = FileFacts(
+                path=rel,
+                project=project_name,
+                types_declared=sorted(ext.types),
+                namespaces_used=sorted(ext.namespaces),
+                sprocs_referenced=sorted(ext.sprocs),
+                content_hash=ext.content_hash,
+            )
 
     logging.debug(
         f"Identifier cache: {len(file_identifier_cache)} files, "
@@ -287,7 +314,7 @@ def build_dependency_graph(
         return graph
 
     # File facts were captured inline during Step 4 — build project facts now
-    from scatter.store.graph_cache import ProjectFacts, compute_content_hash
+    from scatter.store.graph_cache import ProjectFacts
 
     captured_project_facts: Dict[str, "ProjectFacts"] = {}
     all_names = set(project_metadata.keys())

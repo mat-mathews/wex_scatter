@@ -8,6 +8,14 @@ Usage:
     python tools/benchmark_graph_build.py /tmp/synthetic_monolith
     python tools/benchmark_graph_build.py /tmp/synthetic_monolith --include-db
     python tools/benchmark_graph_build.py /tmp/synthetic_monolith --runs 3
+
+Note on --mode stages vs --mode full:
+    'stages' re-implements graph building step-by-step with per-stage timing.
+    It runs sequentially to give clean isolated measurements per stage.
+    'full' calls build_dependency_graph() as a black box, which uses
+    ThreadPoolExecutor internally for type extraction. This means stages-mode
+    numbers will be higher than full-mode for I/O-bound stages. Compare
+    stages-mode runs to other stages-mode runs, and full-mode to full-mode.
 """
 import argparse
 import gc
@@ -44,18 +52,19 @@ class StageTimer:
 
     def __enter__(self):
         gc.collect()
-        # Snapshot current heap allocation
-        snapshot = tracemalloc.take_snapshot()
-        self.heap_before = sum(stat.size for stat in snapshot.statistics("filename"))
-        tracemalloc.clear_traces()
+        if tracemalloc.is_tracing():
+            snapshot = tracemalloc.take_snapshot()
+            self.heap_before = sum(stat.size for stat in snapshot.statistics("filename"))
+            tracemalloc.clear_traces()
         self._start = time.perf_counter()
         return self
 
     def __exit__(self, *args):
         self.elapsed = time.perf_counter() - self._start
-        _, self.heap_peak = tracemalloc.get_traced_memory()
-        snapshot = tracemalloc.take_snapshot()
-        self.heap_after = sum(stat.size for stat in snapshot.statistics("filename"))
+        if tracemalloc.is_tracing():
+            _, self.heap_peak = tracemalloc.get_traced_memory()
+            snapshot = tracemalloc.take_snapshot()
+            self.heap_after = sum(stat.size for stat in snapshot.statistics("filename"))
 
     @property
     def heap_delta_mb(self) -> float:
@@ -269,7 +278,7 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False, full_ty
                     files_read += 1
                 except OSError:
                     continue
-                file_identifier_cache[cs_path] = set(gb._IDENT_PATTERN.findall(content))
+                file_identifier_cache[cs_path] = {m.group() for m in gb._IDENT_PATTERN.finditer(content)}
                 types = extract_type_names_from_content(content)
                 project_types[project_name].update(types)
                 for match in gb._SPROC_PATTERN.finditer(content):
@@ -579,10 +588,14 @@ def main():
     parser.add_argument("--warmup", action="store_true",
                         help="Run one untimed warmup pass first (populates OS file cache)")
     parser.add_argument("--mode", choices=["full", "stages"], default="stages",
-                        help="'full' calls build_dependency_graph() as a black box; "
-                             "'stages' instruments each internal stage separately (default)")
+                        help="'full' calls build_dependency_graph() as a black box (with threading); "
+                             "'stages' instruments each internal stage sequentially (default). "
+                             "Numbers are not directly comparable between modes.")
     parser.add_argument("--full-type-scan", action="store_true",
                         help="Compute type_usage edges between all project pairs (disables reachable-set scoping)")
+    parser.add_argument("--tracemalloc", action=argparse.BooleanOptionalAction,
+                        default=None,
+                        help="Enable tracemalloc heap tracking (default: on for stages, off for full)")
     parser.add_argument("--json", action="store_true",
                         help="Output results as JSON")
     parser.add_argument("--output-file", "-o", type=str,
@@ -597,8 +610,10 @@ def main():
 
     logging.basicConfig(level=logging.WARNING)
 
-    # Start memory tracing
-    tracemalloc.start()
+    # Start memory tracing (default: on for stages, off for full)
+    use_tracemalloc = args.tracemalloc if args.tracemalloc is not None else (args.mode == "stages")
+    if use_tracemalloc:
+        tracemalloc.start()
 
     run_fn = run_instrumented_build if args.mode == "stages" else run_benchmark
 
@@ -629,7 +644,8 @@ def main():
     elif len(all_results) > 1:
         print_summary(all_results)
 
-    tracemalloc.stop()
+    if tracemalloc.is_tracing():
+        tracemalloc.stop()
 
 
 if __name__ == "__main__":
