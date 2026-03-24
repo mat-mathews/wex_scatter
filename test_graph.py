@@ -372,7 +372,7 @@ class TestProjectDirectoryIndex:
         ]
         index = _build_project_directory_index(paths)
         assert len(index) == 2
-        dirs = {str(d) for d, _ in index}
+        dirs = {str(d) for d in index}
         assert "/repo/ProjectA" in dirs
         assert "/repo/ProjectB" in dirs
 

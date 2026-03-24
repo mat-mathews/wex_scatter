@@ -241,9 +241,9 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False, full_ty
         project_dir_index = gb._build_project_directory_index(csproj_files)
         project_cs_files = defaultdict(list)
         for cs_path in cs_files:
-            project_name = gb._map_cs_to_project(cs_path, project_dir_index)
-            if project_name:
-                project_cs_files[project_name].append(cs_path)
+            mapped_name = gb._map_cs_to_project(cs_path, project_dir_index)
+            if mapped_name:
+                project_cs_files[mapped_name].append(cs_path)
     stages["cs_mapping"] = {
         "elapsed": t.elapsed,
         "heap_delta_mb": t.heap_delta_mb,

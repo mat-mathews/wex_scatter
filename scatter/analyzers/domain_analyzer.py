@@ -168,6 +168,16 @@ def _label_propagation(
     sorted_nodes = sorted(component_nodes)
     labels = {node: node for node in sorted_nodes}
 
+    # Pre-compute bidirectional weight matrix to avoid get_edges_between in inner loop.
+    # For each outgoing edge A→B, we credit both (A,B) and (B,A). This gives the same
+    # total as get_edges_between(a,b) which sums edges in both directions.
+    pair_weights: Dict[Tuple[str, str], float] = defaultdict(float)
+    for node in sorted_nodes:
+        for edge in graph.get_edges_from(node):
+            if edge.target in component_set:
+                pair_weights[(node, edge.target)] += edge.weight
+                pair_weights[(edge.target, node)] += edge.weight
+
     for _ in range(LABEL_PROPAGATION_MAX_ITERATIONS):
         changed = False
         for node in sorted_nodes:
@@ -179,8 +189,7 @@ def _label_propagation(
 
             label_votes: Dict[str, float] = defaultdict(float)
             for neighbor in neighbors:
-                edges = graph.get_edges_between(node, neighbor)
-                total_weight = sum(e.weight for e in edges)
+                total_weight = pair_weights.get((node, neighbor), 0.0)
                 label_votes[labels[neighbor]] += total_weight
 
             # Best label: highest vote, tie-break by lowest label alphabetically

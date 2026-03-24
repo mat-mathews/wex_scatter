@@ -161,7 +161,7 @@ def build_dependency_graph(
                     types_declared=sorted(types),
                     namespaces_used=sorted(file_namespaces),
                     sprocs_referenced=sorted(file_sprocs),
-                    content_hash=compute_content_hash(cs_path),
+                    content_hash=compute_content_hash(content),
                 )
 
     logging.debug(
@@ -362,32 +362,28 @@ def _build_project_reference_edges(
 
 def _build_project_directory_index(
     csproj_paths: List[Path],
-) -> List[Tuple[Path, str]]:
-    """Build reverse index: list of (project_directory, project_name).
+) -> Dict[Path, str]:
+    """Build reverse index: directory → project_name."""
+    return {csproj_path.parent: csproj_path.stem for csproj_path in csproj_paths}
 
-    Sorted by path depth (deepest first) so nested projects
-    match before parent projects.
-    """
-    index = []
-    for csproj_path in csproj_paths:
-        project_dir = csproj_path.parent
-        project_name = csproj_path.stem
-        index.append((project_dir, project_name))
 
-    # Sort deepest first (most path parts = most specific)
-    index.sort(key=lambda x: -len(x[0].parts))
-    return index
+_MAX_WALK_DEPTH = 64  # safety cap against symlink loops or degenerate paths
 
 
 def _map_cs_to_project(
     cs_path: Path,
-    project_dirs: List[Tuple[Path, str]],
+    project_dirs: Dict[Path, str],
 ) -> Optional[str]:
     """Find the closest ancestor project for a .cs file."""
-    cs_parents = set(cs_path.parents)
-    for project_dir, project_name in project_dirs:
-        if project_dir in cs_parents or project_dir == cs_path.parent:
-            return project_name
+    current = cs_path.parent
+    for _ in range(_MAX_WALK_DEPTH):
+        name = project_dirs.get(current)
+        if name is not None:
+            return name
+        parent = current.parent
+        if parent == current:
+            return None
+        current = parent
     return None
 
 
