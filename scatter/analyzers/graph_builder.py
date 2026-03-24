@@ -24,7 +24,6 @@ from scatter.scanners.project_scanner import (
 from scatter.core.patterns import IDENT_PATTERN as _IDENT_PATTERN
 from scatter.core.patterns import SPROC_PATTERN as _SPROC_PATTERN
 from scatter.core.patterns import USING_PATTERN as _USING_PATTERN
-from scatter.scanners.db_scanner import _strip_cs_comments
 from scatter.scanners.type_scanner import extract_type_names_from_content
 
 
@@ -37,6 +36,7 @@ def build_dependency_graph(
     include_db_dependencies: bool = False,
     sproc_prefixes: Optional[List[str]] = None,
     capture_facts: bool = False,
+    full_type_scan: bool = False,
 ):
     """Build a complete dependency graph from a codebase directory.
 
@@ -114,6 +114,9 @@ def build_dependency_graph(
     # Inline fact capture (avoids second pass over all .cs files)
     captured_file_facts: Optional[Dict] = {} if capture_facts else None
 
+    # Cache identifiers per file during Step 4 to avoid re-reading in Step 5c
+    file_identifier_cache: Dict[Path, Set[str]] = {}
+
     for project_name, cs_paths in project_cs_files.items():
         for cs_path in cs_paths:
             try:
@@ -121,6 +124,9 @@ def build_dependency_graph(
             except OSError as e:
                 logging.debug(f"Could not read {cs_path}: {e}")
                 continue
+
+            # Cache identifiers for Step 5c reuse (skip comment stripping — see design notes)
+            file_identifier_cache[cs_path] = set(_IDENT_PATTERN.findall(content))
 
             # Type declarations
             types = extract_type_names_from_content(content)
@@ -157,6 +163,11 @@ def build_dependency_graph(
                     sprocs_referenced=sorted(file_sprocs),
                     content_hash=compute_content_hash(cs_path),
                 )
+
+    logging.debug(
+        f"Identifier cache: {len(file_identifier_cache)} files, "
+        f"{sum(len(v) for v in file_identifier_cache.values())} total identifiers"
+    )
 
     # Build nodes
     for project_name, meta in project_metadata.items():
@@ -215,24 +226,31 @@ def build_dependency_graph(
 
     type_name_set = set(type_to_projects.keys())
 
+    # Build reachable targets from existing edges to scope type_usage checks
+    if not full_type_scan:
+        reachable_targets: Dict[str, Set[str]] = defaultdict(set)
+        for source, edges in graph._outgoing.items():
+            for edge in edges:
+                if edge.edge_type in ("project_reference", "namespace_usage"):
+                    reachable_targets[source].add(edge.target)
+
     for source_project, cs_paths in project_cs_files.items():
         if source_project not in graph._nodes:
             continue
         # Track type usages per target project
         type_usage_evidence: Dict[str, List[str]] = defaultdict(list)
         for cs_path in cs_paths:
-            try:
-                content = cs_path.read_text(encoding="utf-8", errors="ignore")
-            except OSError:
+            file_identifiers = file_identifier_cache.get(cs_path)
+            if file_identifiers is None:
                 continue
-            # Strip comments to eliminate false positives
-            content = _strip_cs_comments(content)
-            # Tokenize once, intersect with known type names
-            file_identifiers = set(_IDENT_PATTERN.findall(content))
             matched_types = file_identifiers & type_name_set
             for type_name in matched_types:
                 for owner_project in type_to_projects[type_name]:
-                    if owner_project != source_project and owner_project in graph._nodes:
+                    if (
+                        owner_project != source_project
+                        and owner_project in graph._nodes
+                        and (full_type_scan or owner_project in reachable_targets.get(source_project, set()))
+                    ):
                         type_usage_evidence[owner_project].append(f"{cs_path}:{type_name}")
 
         for target_project, evidence in type_usage_evidence.items():
@@ -245,6 +263,8 @@ def build_dependency_graph(
                     evidence=evidence,
                 )
             )
+
+    del file_identifier_cache
 
     # Step 6 (optional): DB dependency scan → sproc_shared edges
     if include_db_dependencies:

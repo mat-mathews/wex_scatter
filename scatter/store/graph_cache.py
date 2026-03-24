@@ -114,7 +114,7 @@ def save_graph(
     )
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(envelope, f, indent=2)
+            json.dump(envelope, f, separators=(",", ":"))
         os.replace(tmp_path, str(cache_path))
     except BaseException:
         # Clean up temp file on any failure

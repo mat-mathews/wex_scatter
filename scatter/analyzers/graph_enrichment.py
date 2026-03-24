@@ -132,6 +132,7 @@ def build_graph_context(
                 include_db_dependencies=config.db.include_db_edges,
                 sproc_prefixes=config.db.sproc_prefixes,
                 capture_facts=True,
+                full_type_scan=getattr(args, "full_type_scan", False),
             )
             graph, file_facts, project_facts = build_result
             # Post-process: populate solution membership

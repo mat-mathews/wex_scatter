@@ -97,6 +97,7 @@ def main():
                 search_scope_abs,
                 disable_multiprocessing=args.disable_multiprocessing,
                 exclude_patterns=config.exclude_patterns,
+                full_type_scan=getattr(args, "full_type_scan", False),
             )
             # Populate solutions before caching
             dump_solutions = scan_solutions(search_scope_abs)
@@ -564,6 +565,7 @@ def main():
                 exclude_patterns=config.exclude_patterns,
                 include_db_dependencies=config.db.include_db_edges,
                 sproc_prefixes=config.db.sproc_prefixes,
+                full_type_scan=getattr(args, "full_type_scan", False),
             )
             _populate_graph_solutions(graph, solution_index)
             save_graph(graph, cache_path, search_scope_abs)
