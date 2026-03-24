@@ -362,11 +362,10 @@ def patch_graph(
         # pattern. If the patcher runs in constrained environments, consider chunked
         # per-project loading instead.
         if declarations_changed:
-            cache_rel_paths = file_facts.keys()
+            cache_rel_paths: list[str] = list(file_facts.keys())
         else:
             cache_rel_paths = [
-                rel for rel, ff in file_facts.items()
-                if ff.project in affected_projects
+                rel for rel, ff in file_facts.items() if ff.project in affected_projects
             ]
 
         file_identifier_cache: Dict[str, Set[str]] = {}
@@ -558,11 +557,7 @@ def _rebuild_type_usage_edges(
 
         for type_name in matched_types:
             for owner in type_to_projects[type_name]:
-                if (
-                    owner != project
-                    and owner in reachable
-                    and graph.get_node(owner)
-                ):
+                if owner != project and owner in reachable and graph.get_node(owner):
                     type_usage_evidence[owner].append(f"{rel_path}:{type_name}")
 
     for target, evidence in type_usage_evidence.items():

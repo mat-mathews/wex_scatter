@@ -30,6 +30,7 @@ from scatter.store.graph_cache import compute_content_hash
 
 class _FileExtraction(NamedTuple):
     """Per-file extraction results — lightweight, immutable, thread-safe."""
+
     cs_path: Path
     identifiers: Set[str]
     types: Set[str]
@@ -142,9 +143,7 @@ def build_dependency_graph(
 
     # Flatten project→files for dispatch
     all_file_tasks: List[Tuple[str, Path]] = [
-        (pname, cspath)
-        for pname, cs_paths in project_cs_files.items()
-        for cspath in cs_paths
+        (pname, cspath) for pname, cs_paths in project_cs_files.items() for cspath in cs_paths
     ]
 
     if disable_multiprocessing or len(all_file_tasks) < 100:
@@ -155,11 +154,14 @@ def build_dependency_graph(
         ]
     else:
         from concurrent.futures import ThreadPoolExecutor
+
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            results = list(executor.map(
-                _extract_file_data,
-                [cspath for _, cspath in all_file_tasks],
-            ))
+            results = list(
+                executor.map(
+                    _extract_file_data,
+                    [cspath for _, cspath in all_file_tasks],
+                )
+            )
         file_extractions = [
             (pname, result)
             for (pname, _), result in zip(all_file_tasks, results)
@@ -217,11 +219,11 @@ def build_dependency_graph(
     _build_project_reference_edges(graph, project_refs, csproj_files, project_metadata)
 
     # 5b: namespace_usage edges (project A uses a namespace that matches project B's namespace)
-    namespace_to_project = {}
+    namespace_to_project: Dict[str, str] = {}
     for pname, meta in project_metadata.items():
-        ns = meta.get("namespace") or meta.get("assembly_name")
-        if ns:
-            namespace_to_project[ns] = pname
+        proj_ns = meta.get("namespace") or meta.get("assembly_name")
+        if proj_ns:
+            namespace_to_project[proj_ns] = pname
 
     for source_project, used_namespaces in project_using_namespaces.items():
         if source_project not in graph._nodes:
@@ -276,7 +278,10 @@ def build_dependency_graph(
                     if (
                         owner_project != source_project
                         and owner_project in graph._nodes
-                        and (full_type_scan or owner_project in reachable_targets.get(source_project, set()))
+                        and (
+                            full_type_scan
+                            or owner_project in reachable_targets.get(source_project, set())
+                        )
                     ):
                         type_usage_evidence[owner_project].append(f"{cs_path}:{type_name}")
 
