@@ -73,8 +73,9 @@ jobs:
           python -c "
           import json
           d = json.load(open('/tmp/target-smoke.json'))
-          assert isinstance(d, list) and len(d) > 0, 'No consumer results'
-          assert any('ConsumerProjectName' in r or 'consumer' in str(r).lower() for r in d), 'No consumer data in results'
+          results = d.get('all_results', d) if isinstance(d, dict) else d
+          assert isinstance(results, list) and len(results) > 0, 'No consumer results'
+          assert any('ConsumerProjectName' in r or 'consumer' in str(r).lower() for r in results), 'No consumer data in results'
           "
       - name: Smoke test — graph analysis
         run: |
