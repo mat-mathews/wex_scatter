@@ -39,6 +39,7 @@ class ModeContext:
     solution_file_cache: List[Path]
     batch_job_map: Dict[str, List[str]]
     ai_provider: Optional[AIProvider]
+    repo_path: Optional[Path] = None
     graph_ctx: Optional["GraphContext"] = None  # mutable, updated by _apply_graph_enrichment
     solution_index: Optional[Dict] = None
     graph_enriched: bool = False  # mutable, updated by _apply_graph_enrichment
