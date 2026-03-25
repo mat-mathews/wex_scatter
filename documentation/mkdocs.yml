@@ -15,13 +15,14 @@ nav:
       - Home: index.md
       - Getting Started: getting-started.md
       - Quick Tour: quick-tour.md
-      - Target Project Analysis: usage/target-project.md
-      - Git Branch Analysis: usage/git-branch.md
-      - Stored Procedure Analysis: usage/stored-procedure.md
-      - Impact Analysis: usage/impact-analysis.md
-      - Dependency Graph: usage/dependency-graph.md
-      - Output Formats: output-formats.md
       - Workflows: workflows.md
+      - Analysis Modes:
+          - Target Project: usage/target-project.md
+          - Git Branch: usage/git-branch.md
+          - Stored Procedure: usage/stored-procedure.md
+          - Impact Analysis: usage/impact-analysis.md
+          - Dependency Graph: usage/dependency-graph.md
+      - Output Formats: output-formats.md
       - AI Features: ai-features.md
       - Configuration: configuration.md
       - CLI Reference: cli-reference.md

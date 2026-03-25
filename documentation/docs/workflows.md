@@ -6,9 +6,9 @@ Seven real-world scenarios, each one pulled from actual team usage. Not hypothet
 
 ## 1. Pre-Merge Blast Radius Check
 
-**Persona:** Developer preparing a PR for a feature branch.
+**Persona:** Developer preparing a PR for a branch.
 
-**When:** Before requesting review. Before you write "small change" in the PR description and regret it.
+**When:** Before requesting review. Before you write "Just small change" in the PR description and regret it when it comes instantly back.
 
 **Why:** You changed three files in a shared library. You think you know who uses it. You are probably wrong. Scatter tells you who actually uses it, not who you assume does.
 
@@ -22,7 +22,7 @@ python scatter.py --branch-name feature/add-caching \
   --search-scope /code/myrepo
 ```
 
-This compares your branch against `main`, extracts every type declaration from changed C# files, and finds every project that references those types. Takes seconds on a typical repo.
+This compares your branch against `main`, extracts every type declaration from changed C# files, and finds every project that references those types. Takes seconds on a typical repo, but we are probably in the monolith, so could take a bit longer. Scatter will try to be a fast as possible.
 
 **Drill into the consumers with AI summaries:**
 
@@ -61,11 +61,11 @@ Pipe to clipboard, paste into the PR description. Reviewer sees the blast radius
 
 ---
 
-## 2. Release Night Pipeline List
+## 2. Release Night Pipelines
 
 **Persona:** Developer preparing a DevOps ticket for the monthly release.
 
-**When:** After your changes are merged and before you fill out the deployment request. WEX does monthly releases. The monolith has hundreds of pipelines. Everything touches everything -- except when it doesn't, and that's the part nobody can keep straight.
+**When:** As your changes are being merged and before you fill out the deployment request. This is directly related to the above workflow. WEX does monthly releases. The monolith has hundreds of pipelines. Everything touches everything... except when it doesn't, and that's the part that harder for a dev to keep straight.
 
 **Why:** The DevOps team needs an exact list of pipelines to run on release night. Not "probably these five." Not "everything just in case." The actual pipelines affected by what you changed. Getting this wrong means either a broken release (missed a pipeline) or a 4-hour deployment window that should have been 45 minutes (ran everything).
 
@@ -73,7 +73,7 @@ Pipe to clipboard, paste into the PR description. Reviewer sees the blast radius
 
 ### Steps
 
-**From a feature branch -- what pipelines does my change affect?**
+**From a branch -- what pipelines does my change affect?**
 
 ```bash
 python scatter.py --branch-name feature/portal-tenant-isolation \
@@ -182,7 +182,7 @@ python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" \
   --output-format csv --output-file sproc_impact.csv
 ```
 
-DBAs love spreadsheets. Give them a spreadsheet.
+Some folks love spreadsheets. Give them a spreadsheet.
 
 **Add pipeline mappings for deployment planning:**
 

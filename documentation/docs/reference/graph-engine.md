@@ -252,14 +252,3 @@ The cache envelope (in `graph_cache.py`) wraps the graph dict with metadata:
 
 ---
 
-## Performance Data
-
-Build times measured on representative .NET codebases (sequential mode, M-series Mac):
-
-| Codebase Size | .csproj Count | .cs File Count | Build Time | Notes |
-|---------------|--------------|----------------|------------|-------|
-| Small | ~100 | ~2,000 | ~1.1s | Dominated by file I/O |
-| Medium | ~250 | ~8,000 | ~9.5s | type_usage edges are the bottleneck |
-| Large | ~500 | ~20,000 | ~42.8s | Scales roughly linearly with file count |
-
-With `capture_facts=True`, add roughly 10-15% overhead for inline fact extraction. This cost is paid once -- subsequent runs use incremental patching.
