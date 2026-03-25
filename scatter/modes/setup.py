@@ -10,7 +10,11 @@ from typing import Dict, List, Optional, Tuple
 from scatter.cli import ModeContext
 from scatter.cli_parser import _build_cli_overrides
 from scatter.config import ScatterConfig, load_config
-from scatter.scanners.solution_scanner import SolutionInfo, scan_solutions, build_project_to_solutions
+from scatter.scanners.solution_scanner import (
+    SolutionInfo,
+    scan_solutions,
+    build_project_to_solutions,
+)
 
 
 @dataclass
@@ -322,8 +326,15 @@ def build_graph_context_if_needed(args, config, search_scope, solution_index) ->
 
 
 def build_mode_context(
-    args, paths, config, ai_provider, solutions, batch_jobs, pipeline_map,
-    graph_ctx, graph_enriched,
+    args,
+    paths,
+    config,
+    ai_provider,
+    solutions,
+    batch_jobs,
+    pipeline_map,
+    graph_ctx,
+    graph_enriched,
 ) -> ModeContext:
     """Assemble ModeContext from resolved components."""
     return ModeContext(

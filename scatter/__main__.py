@@ -50,8 +50,15 @@ def main():
         args, config, paths.search_scope, solutions.index
     )
     ctx = build_mode_context(
-        args, paths, config, ai_provider, solutions, batch_jobs,
-        pipeline_map, graph_ctx, graph_enriched,
+        args,
+        paths,
+        config,
+        ai_provider,
+        solutions,
+        batch_jobs,
+        pipeline_map,
+        graph_ctx,
+        graph_enriched,
     )
 
     # Mode dispatch

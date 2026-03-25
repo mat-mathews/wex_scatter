@@ -39,9 +39,7 @@ def run_graph_mode(args, ctx: ModeContext, start_time: float) -> None:
     # Check cache
     graph = None
     if not config.graph.rebuild:
-        cache_result = load_and_validate(
-            cache_path, search_scope_abs, config.graph.invalidation
-        )
+        cache_result = load_and_validate(cache_path, search_scope_abs, config.graph.invalidation)
         if cache_result is not None:
             graph = cache_result[0]
             logging.info("Using cached dependency graph.")
