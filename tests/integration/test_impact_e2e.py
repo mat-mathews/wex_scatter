@@ -143,7 +143,7 @@ MOCK_EMPTY_RESPONSE = json.dumps([])
 @pytest.fixture
 def search_scope():
     """Repo root — contains the 8 sample .NET projects."""
-    return Path(__file__).parent
+    return Path(__file__).parent.parent.parent
 
 
 def _build_mock_provider(parse_response=None, supports_all=True, unsupported_tasks=None):

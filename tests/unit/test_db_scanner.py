@@ -17,7 +17,7 @@ from scatter.scanners.db_scanner import (
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.config import DbConfig, ScatterConfig, load_config
 
-REPO_ROOT = Path(__file__).parent
+REPO_ROOT = Path(__file__).parent.parent.parent
 
 
 # ===========================================================================

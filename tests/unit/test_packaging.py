@@ -14,7 +14,7 @@ class TestVersionConsistency:
 
         from scatter.__version__ import __version__
 
-        pyproject_path = Path(__file__).parent / "pyproject.toml"
+        pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
         with open(pyproject_path, "rb") as f:
             pyproject = tomllib.load(f)
 

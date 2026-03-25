@@ -16,7 +16,7 @@ from scatter.scanners.project_scanner import parse_csproj_all_references
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-REPO_ROOT = Path(__file__).parent
+REPO_ROOT = Path(__file__).parent.parent.parent
 
 
 def _make_node(name: str, **kwargs) -> ProjectNode:
@@ -613,7 +613,7 @@ class TestSolutionPopulationIntegration:
         from scatter.analyzers.graph_builder import build_dependency_graph
         from scatter.scanners.solution_scanner import scan_solutions, build_project_to_solutions
 
-        repo_root = Path(__file__).parent
+        repo_root = Path(__file__).parent.parent.parent
         graph = build_dependency_graph(repo_root, disable_multiprocessing=True)
         solutions = scan_solutions(repo_root)
         sol_index = build_project_to_solutions(solutions)

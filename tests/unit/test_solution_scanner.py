@@ -186,7 +186,7 @@ class TestParseSolutionFile:
 class TestScanSolutions:
     def test_scan_real_repo(self):
         """Integration test against the actual GalaxyWorks.sln in the repo."""
-        repo_root = Path(__file__).parent
+        repo_root = Path(__file__).parent.parent.parent
         solutions = scan_solutions(repo_root)
 
         names = [s.name for s in solutions]

@@ -29,7 +29,7 @@ from scatter.store.graph_patcher import (
     _build_type_to_projects,
 )
 
-REPO_ROOT = Path(__file__).parent
+REPO_ROOT = Path(__file__).parent.parent.parent
 
 
 # ===========================================================================

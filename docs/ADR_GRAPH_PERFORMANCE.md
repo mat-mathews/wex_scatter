@@ -2,6 +2,8 @@
 
 **March 2026**
 
+> **Update (2026-03-24):** Initiative 12 (Phases 1-3) shipped the optimizations described in the roadmap below. Current numbers: 250 projects in 2.6s, 800 projects / 30K files in 38.7s. The "Where We'd Go Next" section is now mostly done — identifier caching, reachable-set scoping, label propagation weight matrix, threaded file extraction, and optional tracemalloc are all shipped. See [documentation/docs/reference/benchmarks.md](../documentation/docs/reference/benchmarks.md) for current numbers and [XLARGE_BENCHMARK_RESULTS.md](XLARGE_BENCHMARK_RESULTS.md) for the pre-optimization baseline that motivated this work.
+
 ---
 
 ## The Story

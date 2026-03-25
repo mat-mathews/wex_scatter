@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).parent
+REPO_ROOT = Path(__file__).parent.parent.parent
 
 
 def _run_scatter(*args, **kwargs):

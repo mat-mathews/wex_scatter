@@ -17,7 +17,7 @@ from scatter.store.graph_cache import (
 )
 from scatter.config import GraphConfig, ScatterConfig, load_config
 
-REPO_ROOT = Path(__file__).parent
+REPO_ROOT = Path(__file__).parent.parent.parent
 
 
 # ---------------------------------------------------------------------------

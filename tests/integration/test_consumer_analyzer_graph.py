@@ -16,7 +16,7 @@ from scatter.core.models import (
     STAGE_DISCOVERY, STAGE_PROJECT_REFERENCE,
 )
 
-REPO_ROOT = Path(__file__).parent
+REPO_ROOT = Path(__file__).parent.parent.parent
 
 
 # ---------------------------------------------------------------------------

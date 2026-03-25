@@ -56,9 +56,12 @@ warn_unused_configs = true
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["."]
+testpaths = ["tests"]
 python_files = "test_*.py"
 addopts = "-q"
+markers = [
+    "integration: tests that hit the filesystem or run multi-module pipelines",
+]
 
 [tool.coverage.run]
 source = ["scatter"]

@@ -19,7 +19,7 @@ from scatter.analyzers.coupling_analyzer import (
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-REPO_ROOT = Path(__file__).parent
+REPO_ROOT = Path(__file__).parent.parent.parent
 
 
 def _make_node(name: str, **kwargs) -> ProjectNode:

@@ -17,7 +17,7 @@ from scatter.scanners.project_scanner import (
     parse_csproj_all_references,
 )
 
-REPO_ROOT = Path(__file__).parent
+REPO_ROOT = Path(__file__).parent.parent.parent
 
 
 # ===========================================================================
