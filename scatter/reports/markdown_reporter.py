@@ -69,6 +69,105 @@ def _md_table(headers: List[str], rows: List[List[str]]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Risk highlights & column legend (for PR comments)
+# ---------------------------------------------------------------------------
+
+
+def _build_risk_highlights(results: List[Dict[str, Any]]) -> str:
+    """Identify highest-risk consumers and return a readable summary."""
+    # Only consider rows with graph metrics populated
+    enriched = [
+        r for r in results if r.get("FanIn") is not None and r.get("Instability") is not None
+    ]
+    if not enriched:
+        return ""
+
+    # Find consumers worth calling out:
+    # 1. Stable + high fan-in = most dangerous (change ripples widely)
+    # 2. In a dependency cycle = entangled, harder to isolate
+    stable_and_popular = sorted(
+        [r for r in enriched if r["Instability"] <= 0.5 and r["FanIn"] >= 5],
+        key=lambda r: r["FanIn"],
+        reverse=True,
+    )
+    most_coupled = sorted(enriched, key=lambda r: r.get("CouplingScore", 0) or 0, reverse=True)
+    lowest_risk = sorted(
+        [r for r in enriched if r["Instability"] >= 0.7 and not r.get("InCycle")],
+        key=lambda r: r["FanIn"],
+    )
+
+    lines: List[str] = ["### Risk Highlights\n"]
+    has_content = False
+
+    if stable_and_popular:
+        top = stable_and_popular[:3]
+        names = ", ".join(f"**{r['ConsumerProjectName']}**" for r in top)
+        lines.append(
+            f"Highest risk: {names} "
+            f"— stable (low instability) with high fan-in. "
+            f"Many other projects depend on these, so breakage here cascades.\n"
+        )
+        has_content = True
+
+    if most_coupled and most_coupled[0].get("CouplingScore", 0):
+        top = most_coupled[0]
+        score = top["CouplingScore"]
+        if score and score > 500:
+            lines.append(
+                f"Most coupled: **{top['ConsumerProjectName']}** (score {score:.0f}). "
+                f"This project has the densest web of dependencies in the result set.\n"
+            )
+            has_content = True
+
+    if lowest_risk:
+        if len(lowest_risk) <= 3:
+            names = ", ".join(f"**{r['ConsumerProjectName']}**" for r in lowest_risk)
+        else:
+            names = f"{len(lowest_risk)} consumers"
+        lines.append(
+            f"Lowest risk: {names} "
+            f"— unstable (high instability) and not in a cycle. "
+            f"These are leaf-like projects, safe to change.\n"
+        )
+        has_content = True
+
+    cycle_count = sum(1 for r in enriched if r.get("InCycle"))
+    if cycle_count > 0:
+        lines.append(
+            f"{cycle_count} of {len(enriched)} consumer(s) are in a dependency cycle. "
+            f"Changes may propagate in unexpected directions within cycles.\n"
+        )
+        has_content = True
+
+    if not has_content:
+        return ""
+
+    return "\n".join(lines)
+
+
+def _column_legend() -> str:
+    """Return a collapsible legend explaining the graph enrichment columns."""
+    return (
+        "<details>\n"
+        "<summary>What do these columns mean?</summary>\n\n"
+        "| Column | Meaning |\n"
+        "| --- | --- |\n"
+        "| **Coupling** | Weighted sum of all dependency edges touching this project. "
+        "Higher = more interconnected. |\n"
+        "| **Fan-In** | How many projects depend on this one (via project reference). "
+        "High fan-in = widely used. |\n"
+        "| **Fan-Out** | How many projects this one depends on. "
+        "High fan-out = lots of dependencies. |\n"
+        "| **Instability** | `fan-out / (fan-in + fan-out)`. "
+        "0.0 = stable (many dependents, change carefully). "
+        "1.0 = unstable (leaf node, easy to change). |\n"
+        "| **In Cycle** | Part of a circular dependency chain. "
+        "Changes in cycles can propagate in unexpected directions. |\n"
+        "\n</details>\n"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Legacy mode (git / target / sproc)
 # ---------------------------------------------------------------------------
 
@@ -147,6 +246,13 @@ def build_markdown(
             current_rows.append(row)
 
         _flush_table()
+
+        # Risk highlights and column legend (only when graph metrics present)
+        if graph_metrics_requested and detailed_results:
+            highlights = _build_risk_highlights(detailed_results)
+            if highlights:
+                parts.append(highlights)
+            parts.append(_column_legend())
 
         target_names = {item["TargetProjectName"] for item in detailed_results}
         parts.append(

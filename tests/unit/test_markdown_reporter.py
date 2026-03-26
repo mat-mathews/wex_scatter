@@ -23,6 +23,8 @@ from scatter.analyzers.coupling_analyzer import CycleGroup, ProjectMetrics
 from scatter.analyzers.domain_analyzer import Cluster
 from scatter.analyzers.health_analyzer import HealthDashboard, Observation
 from scatter.reports.markdown_reporter import (
+    _build_risk_highlights,
+    _column_legend,
     _escape_cell,
     _fmt_metadata,
     _fmt_pipeline,
@@ -210,10 +212,93 @@ def _make_cluster(name, projects, **kwargs):
     return Cluster(name=name, projects=projects, **defaults)
 
 
+def _make_enriched_results() -> list:
+    """Legacy results with graph metrics populated."""
+    base = _make_legacy_results()
+    base[0].update(
+        CouplingScore=1296.7,
+        FanIn=20,
+        FanOut=18,
+        Instability=0.474,
+        InCycle=True,
+    )
+    base[1].update(
+        CouplingScore=762.6,
+        FanIn=6,
+        FanOut=16,
+        Instability=0.727,
+        InCycle=False,
+    )
+    return base
+
+
 def _table_column_counts(table_text: str) -> list:
     """Return list of pipe counts for each non-empty line in a markdown table."""
     lines = [l for l in table_text.strip().splitlines() if "|" in l]
     return [l.count("|") for l in lines]
+
+
+# ===========================================================================
+# TestRiskHighlights
+# ===========================================================================
+
+
+class TestRiskHighlights:
+    def test_stable_popular_flagged(self):
+        results = _make_enriched_results()
+        highlights = _build_risk_highlights(results)
+        # WebPortal has instability 0.474 and fan-in 20 — should be flagged
+        assert "WebPortal" in highlights
+        assert "Highest risk" in highlights
+
+    def test_cycle_count(self):
+        results = _make_enriched_results()
+        highlights = _build_risk_highlights(results)
+        assert "1 of 2 consumer(s) are in a dependency cycle" in highlights
+
+    def test_lowest_risk_flagged(self):
+        results = _make_enriched_results()
+        highlights = _build_risk_highlights(results)
+        # ConsumerApp has instability 0.727 and not in cycle
+        assert "ConsumerApp" in highlights
+        assert "Lowest risk" in highlights
+
+    def test_most_coupled(self):
+        results = _make_enriched_results()
+        highlights = _build_risk_highlights(results)
+        assert "Most coupled" in highlights
+        assert "WebPortal" in highlights
+        assert "1297" in highlights
+
+    def test_empty_when_no_metrics(self):
+        results = _make_legacy_results()  # no graph metrics
+        highlights = _build_risk_highlights(results)
+        assert highlights == ""
+
+    def test_included_in_build_markdown(self):
+        results = _make_enriched_results()
+        md = build_markdown(results, graph_metrics_requested=True)
+        assert "### Risk Highlights" in md
+        assert "What do these columns mean?" in md
+
+
+class TestColumnLegend:
+    def test_contains_all_columns(self):
+        legend = _column_legend()
+        assert "Coupling" in legend
+        assert "Fan-In" in legend
+        assert "Fan-Out" in legend
+        assert "Instability" in legend
+        assert "In Cycle" in legend
+
+    def test_is_collapsible(self):
+        legend = _column_legend()
+        assert "<details>" in legend
+        assert "<summary>" in legend
+
+    def test_not_included_without_graph_metrics(self):
+        md = build_markdown(_make_legacy_results(), graph_metrics_requested=False)
+        assert "What do these columns mean?" not in md
 
 
 # ===========================================================================
