@@ -175,16 +175,22 @@ def load_config_from_args(args, paths: ResolvedPaths) -> ScatterConfig:
 
 
 def setup_ai_provider(args, config):
-    """Configure AI provider if needed by the selected mode. Returns provider or None.
+    """Configure AI provider if needed by the selected mode.
+
+    Returns (provider_or_None, budget_or_None).  Budget is only created
+    when AI features are requested; callers should treat None as "no AI".
+    When budget exists, max_calls=None means unlimited.
 
     Note: AIRouter is only instantiated when AI features are requested.
     Its __init__ has no side effects (just stores config), so this is safe.
     """
+    from scatter.ai.budget import AIBudget
     from scatter.ai.router import AIRouter
 
     is_impact_mode = args.sow is not None or args.sow_file is not None
 
     ai_provider = None
+    budget = None
     if args.summarize_consumers or args.enable_hybrid_git or is_impact_mode:
         reason = []
         if args.summarize_consumers:
@@ -194,7 +200,10 @@ def setup_ai_provider(args, config):
         if is_impact_mode:
             reason.append("impact analysis")
         logging.info(f"{', '.join(reason).capitalize()} enabled. Configuring AI provider...")
-        router = AIRouter(config)
+        budget = AIBudget(max_calls=config.ai.max_ai_calls)
+        if budget.max_calls is not None:
+            logging.info(f"AI call budget: {budget.max_calls} calls max")
+        router = AIRouter(config, budget=budget)
         ai_provider = router.get_provider()
         if ai_provider is None:
             logging.error("AI provider configuration failed.")
@@ -219,7 +228,7 @@ def setup_ai_provider(args, config):
                 )
                 sys.exit(1)
 
-    return ai_provider
+    return ai_provider, budget
 
 
 def scan_solutions_data(search_scope: Path) -> SolutionData:

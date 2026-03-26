@@ -47,6 +47,7 @@ class WexProvider(AIProvider):
         api_key: Optional[str] = None,
         model_name: str = "default",
         endpoint: Optional[str] = None,
+        budget=None,
     ):
         self._model_name = model_name
 

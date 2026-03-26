@@ -146,7 +146,12 @@ class GeminiProvider(AIProvider):
     get_affected_symbols_from_diff) with a single provider instance.
     """
 
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-2.0-flash"):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model_name: str = "gemini-2.0-flash",
+        budget=None,
+    ):
         self._model_name = model_name
         self._model = None
 
@@ -163,6 +168,12 @@ class GeminiProvider(AIProvider):
         )
         genai.configure(api_key=resolved_api_key)
         self._model = genai.GenerativeModel(model_name)
+
+        if budget is not None:
+            from scatter.ai.budget import RateLimitedModel
+
+            self._model = RateLimitedModel(self._model, budget)
+
         logging.info(f"Gemini configured successfully using model '{model_name}'.")
 
     @property

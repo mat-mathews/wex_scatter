@@ -1,5 +1,6 @@
 """Scatter CLI entry point — argument parsing and mode dispatch."""
 
+import logging
 import time
 
 from scatter.cli_parser import build_parser
@@ -42,7 +43,7 @@ def main():
     # Shared setup
     paths = resolve_paths(args, parser)
     config = load_config_from_args(args, paths)
-    ai_provider = setup_ai_provider(args, config)
+    ai_provider, ai_budget = setup_ai_provider(args, config)
     solutions = scan_solutions_data(paths.search_scope)
     batch_jobs = load_batch_jobs(args)
     pipeline_map = load_pipeline_csv(paths.pipeline_csv)
@@ -72,6 +73,10 @@ def main():
         run_impact_mode(args, ctx, start_time)
     elif args.graph:
         run_graph_mode(args, ctx, start_time)
+
+    # Log AI budget summary if any calls were made
+    if ai_budget and ai_budget.calls_made > 0:
+        logging.info(f"AI usage: {ai_budget.summary()}")
 
 
 if __name__ == "__main__":

@@ -18,8 +18,9 @@ class AIRouter:
     Returns None if the provider cannot be created (e.g. missing credentials).
     """
 
-    def __init__(self, config: ScatterConfig):
+    def __init__(self, config: ScatterConfig, budget=None):
         self._config = config
+        self._budget = budget
         self._providers: Dict[str, AIProvider] = {}
 
     def get_provider(self, task_type: Optional[AITaskType] = None) -> Optional[AIProvider]:
@@ -80,7 +81,9 @@ class AIRouter:
         endpoint = self._config.ai.credentials.get("wex", {}).get("endpoint")
 
         try:
-            return WexProvider(api_key=api_key, model_name=model_name, endpoint=endpoint)
+            return WexProvider(
+                api_key=api_key, model_name=model_name, endpoint=endpoint, budget=self._budget
+            )
         except Exception as e:
             logging.warning(f"Could not create WEX AI provider: {e}")
             return None
@@ -102,7 +105,7 @@ class AIRouter:
         model_name = self._config.ai.gemini_model
 
         try:
-            return GeminiProvider(api_key=api_key, model_name=model_name)
+            return GeminiProvider(api_key=api_key, model_name=model_name, budget=self._budget)
         except Exception as e:
             logging.warning(f"Could not create Gemini provider: {e}")
             return None

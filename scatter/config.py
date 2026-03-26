@@ -24,6 +24,7 @@ class AIConfig:
     credentials: Dict[str, Dict[str, str]] = field(default_factory=dict)
     gemini_model: str = "gemini-2.0-flash"
     wex_model: str = "default"
+    max_ai_calls: Optional[int] = None
 
 
 @dataclass
@@ -81,6 +82,8 @@ def _merge_ai_config(target: AIConfig, source: Dict[str, Any]) -> None:
         for provider_name, creds in source["credentials"].items():
             if isinstance(creds, dict):
                 target.credentials.setdefault(provider_name, {}).update(creds)
+    if "max_ai_calls" in source and source["max_ai_calls"] is not None:
+        target.max_ai_calls = int(source["max_ai_calls"])
 
 
 def _apply_yaml(config: ScatterConfig, data: Dict[str, Any]) -> None:
@@ -146,6 +149,10 @@ def _apply_env_vars(config: ScatterConfig) -> None:
     if default_provider:
         config.ai.default_provider = default_provider
 
+    max_ai_calls = os.environ.get("SCATTER_MAX_AI_CALLS")
+    if max_ai_calls:
+        config.ai.max_ai_calls = int(max_ai_calls)
+
 
 def _apply_cli_overrides(config: ScatterConfig, overrides: Dict[str, Any]) -> None:
     """Apply CLI overrides using dot-notation keys."""
@@ -182,6 +189,8 @@ def _apply_cli_overrides(config: ScatterConfig, overrides: Dict[str, Any]) -> No
             config.db.sproc_prefixes = list(value)
         elif key == "db.include_db_edges":
             config.db.include_db_edges = bool(value)
+        elif key == "ai.max_ai_calls":
+            config.ai.max_ai_calls = int(value) if value is not None else None
 
 
 def load_config(
