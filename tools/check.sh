@@ -76,6 +76,32 @@ assert isinstance(g, dict), 'Graph output should be a dict'
 assert g.get('node_count', 0) > 0 or g.get('projects', 0) > 0 or len(g) > 0, 'Empty graph'
 print(f'  target: {len(results)} consumers, graph: {g.get(\"node_count\", len(g))} nodes')
 "
+
+    # --- AI smoke test (requires GOOGLE_API_KEY, skipped in CI) ---
+    if [ -n "$GOOGLE_API_KEY" ]; then
+        run_step "smoke: ai summarization" uv run scatter \
+            --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+            --search-scope . \
+            --summarize-consumers \
+            --max-ai-calls 3 \
+            --output-format json \
+            --output-file /tmp/scatter-smoke-ai.json
+
+        run_step "smoke: ai validate" python -c "
+import json
+d = json.load(open('/tmp/scatter-smoke-ai.json'))
+results = d.get('all_results', d) if isinstance(d, dict) else d
+assert isinstance(results, list) and len(results) > 0, 'No consumer results'
+has_summary = any(
+    any('summary' in str(f).lower() for f in r.get('RelevantFiles', r.get('relevant_files', [])))
+    for r in results if isinstance(r, dict)
+)
+print(f'  ai smoke: {len(results)} consumers, summaries present: {has_summary}')
+"
+    else
+        echo -e "${DIM}--- smoke: ai (skipped — GOOGLE_API_KEY not set) ---${RESET}"
+        RESULTS+=("${DIM}skip${RESET}  smoke: ai (no GOOGLE_API_KEY)")
+    fi
 fi
 
 # --- Summary ---
