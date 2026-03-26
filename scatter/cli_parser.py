@@ -29,6 +29,8 @@ def _build_cli_overrides(args) -> Dict[str, Any]:
         overrides["multiprocessing.disabled"] = True
     if args.max_depth is not None:
         overrides["search.max_depth"] = args.max_depth
+    if getattr(args, "max_ai_calls", None) is not None:
+        overrides["ai.max_ai_calls"] = args.max_ai_calls
     if hasattr(args, "rebuild_graph") and args.rebuild_graph:
         overrides["graph.rebuild"] = True
     if hasattr(args, "include_db") and args.include_db:
@@ -218,6 +220,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--wex-model",
         default=None,
         help="The WEX AI Platform model to use (default: default).",
+    )
+    ai_group.add_argument(
+        "--max-ai-calls",
+        type=int,
+        default=None,
+        help="Maximum number of AI API calls per run. When exhausted, AI enrichment is skipped gracefully.",
     )
     common_group.add_argument(
         "--output-format",
