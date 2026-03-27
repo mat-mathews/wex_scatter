@@ -90,7 +90,7 @@ def _backoff_delay(attempt: int) -> float:
     """Exponential backoff with jitter: base * 2^attempt + random(0, base)."""
     delay = min(_BACKOFF_BASE * (2**attempt), _BACKOFF_CAP)
     jitter = random.uniform(0, _BACKOFF_BASE)
-    return delay + jitter
+    return float(delay + jitter)
 
 
 class RateLimitedModel:

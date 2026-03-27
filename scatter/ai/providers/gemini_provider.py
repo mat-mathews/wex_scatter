@@ -10,7 +10,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Optional, Set
+from typing import Any, Optional, Set
 
 import google.generativeai as genai
 
@@ -153,7 +153,7 @@ class GeminiProvider(AIProvider):
         budget=None,
     ):
         self._model_name = model_name
-        self._model = None
+        self._model: Any = None
 
         resolved_api_key = api_key or os.getenv("GOOGLE_API_KEY")
         if not resolved_api_key:

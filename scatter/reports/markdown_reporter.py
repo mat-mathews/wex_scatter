@@ -110,11 +110,11 @@ def _build_risk_highlights(results: List[Dict[str, Any]]) -> str:
         has_content = True
 
     if most_coupled and most_coupled[0].get("CouplingScore", 0):
-        top = most_coupled[0]
-        score = top["CouplingScore"]
+        top_coupled = most_coupled[0]
+        score = top_coupled["CouplingScore"]
         if score and score > 500:
             lines.append(
-                f"Most coupled: **{top['ConsumerProjectName']}** (score {score:.0f}). "
+                f"Most coupled: **{top_coupled['ConsumerProjectName']}** (score {score:.0f}). "
                 f"This project has the densest web of dependencies in the result set.\n"
             )
             has_content = True
