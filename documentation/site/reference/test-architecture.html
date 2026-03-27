@@ -51,31 +51,37 @@
 </li>
                                     
 <li>
-    <a href="../usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+    <a href="../workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Analysis Modes</a>
+    <ul class="dropdown-menu">
+            
 <li>
-    <a href="../usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+    <a href="../usage/target-project.html" class="dropdown-item">Target Project</a>
 </li>
-                                    
+            
 <li>
-    <a href="../usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+    <a href="../usage/git-branch.html" class="dropdown-item">Git Branch</a>
 </li>
-                                    
+            
+<li>
+    <a href="../usage/stored-procedure.html" class="dropdown-item">Stored Procedure</a>
+</li>
+            
 <li>
     <a href="../usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
 </li>
-                                    
+            
 <li>
     <a href="../usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
 </li>
+    </ul>
+  </li>
                                     
 <li>
     <a href="../output-formats.html" class="dropdown-item">Output Formats</a>
-</li>
-                                    
-<li>
-    <a href="../workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
 <li>
@@ -121,6 +127,10 @@
                                     
 <li>
     <a href="consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="codebase-index.html" class="dropdown-item">Codebase Index</a>
 </li>
                                     
 <li>
@@ -241,11 +251,11 @@ pytest test_impact_analysis.py::test_something_specific
 # With coverage
 python -m pytest --cov=scatter
 </code></pre>
-<p>The full suite is 683 tests (1 xfail), and runs in roughly 9 seconds. No network calls, no database, no Docker. Just Python and your CPU.</p>
+<p>The full suite is 878 tests (1 xfail), and runs in roughly 25 seconds. No network calls, no database, no Docker. Just Python and your CPU.</p>
 <p>Coverage is configured in <code>pyproject.toml</code> with <code>fail_under=70%</code>. The coverage source is the <code>scatter/</code> package only -- test files themselves are excluded from the metric.</p>
 <hr />
 <h2 id="full-test-inventory">Full Test Inventory<a class="headerlink" href="#full-test-inventory" title="Permanent link">&para;</a></h2>
-<p>25 test files. Here's every one of them, what it covers, and how many tests it contains.</p>
+<p>33 test files. Here's every one of them, what it covers, and how many tests it contains.</p>
 <table>
 <thead>
 <tr>
@@ -487,7 +497,7 @@ testpaths = [&quot;.&quot;]
 python_files = &quot;test_*.py&quot;
 addopts = &quot;-q&quot;
 </code></pre>
-<p>The <code>-q</code> (quiet) default keeps output manageable for 683 tests. Override with <code>-v</code> when debugging.</p>
+<p>The <code>-q</code> (quiet) default keeps output manageable for 878 tests. Override with <code>-v</code> when debugging.</p>
 <hr />
 <h2 id="coverage">Coverage<a class="headerlink" href="#coverage" title="Permanent link">&para;</a></h2>
 <pre><code class="language-bash"># Run with coverage report

@@ -6,7 +6,7 @@ Performance measurement tools and results. Everything here is reproducible on yo
 
 ## Perf
 
-Full graph build (`--mode full`, no tracemalloc, 3 runs with warmup, Apple Silicon):
+Full graph build (`--mode full`, no tracemalloc, Apple M2 Pro, median of 3 runs):
 
 | Scale | Projects | .cs Files | Median Build Time | Peak RSS |
 |-------|----------|-----------|-------------------|----------|
@@ -197,11 +197,11 @@ python tools/benchmark_graph_build.py /tmp/bench --mode stages --runs 3 --warmup
 
 ```bash
 # Sequential
-time python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+time scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
     --search-scope . --disable-multiprocessing
 
 # Parallel (default)
-time python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+time scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
     --search-scope .
 ```
 

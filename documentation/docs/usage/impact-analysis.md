@@ -9,7 +9,7 @@ The `--sow` mode requires a configured AI provider (currently Google Gemini via 
 ## Basic Example
 
 ```bash
-python scatter.py \
+scatter \
   --sow "Modify PortalDataService in GalaxyWorks.Data to add a new parameter to sp_InsertPortalConfiguration" \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY
@@ -73,7 +73,7 @@ That's a lot of information from a one-line description. Let's break down what y
 ## From a File
 
 ```bash
-python scatter.py \
+scatter \
   --sow-file docs/sample_sow.txt \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY
@@ -90,7 +90,7 @@ The index is what makes vague SOWs work. A request like "update the portal confi
 You can inspect the index directly:
 
 ```bash
-python scatter.py --dump-index --search-scope .
+scatter --dump-index --search-scope .
 ```
 
 ```
@@ -127,7 +127,7 @@ Evidence: Project contains PortalDataService which handles portal configuration 
 ## Confidence Filtering
 
 ```bash
-python scatter.py \
+scatter \
   --sow-file docs/sample_sow.md \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY \
@@ -145,7 +145,7 @@ Use a higher threshold when you want fewer, higher-confidence results. Use the d
 ## Deeper Tracing
 
 ```bash
-python scatter.py \
+scatter \
   --sow "Refactor GalaxyWorks.Data to split PortalDataService into separate read/write classes" \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY \
@@ -159,7 +159,7 @@ Default transitive depth is 2. Increase `--max-depth` when you need to trace fur
 **JSON** -- includes everything: targets, consumers with depth and confidence, risk ratings, coupling vectors, complexity estimates, and narrative summaries. This is the format for feeding impact data into other tools.
 
 ```bash
-python scatter.py \
+scatter \
   --sow "Add caching to GalaxyWorks.Data" \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY \
@@ -169,7 +169,7 @@ python scatter.py \
 **CSV** -- flattens the tree into rows (one per consumer) with columns for depth, confidence, risk rating, and pipeline name. Good for spreadsheet triage.
 
 ```bash
-python scatter.py \
+scatter \
   --sow "Modify stored procedure sp_InsertPortalConfiguration" \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY \
@@ -179,7 +179,7 @@ python scatter.py \
 **Markdown** -- prints to stdout without `--output-file`. Pipe it into a PR description, paste it into Confluence, or redirect to a file.
 
 ```bash
-python scatter.py \
+scatter \
   --sow "Deprecate FakeDatabaseHelper" \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY \

@@ -51,31 +51,37 @@
 </li>
                                     
 <li>
-    <a href="target-project.html" class="dropdown-item">Target Project Analysis</a>
+    <a href="../workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Analysis Modes</a>
+    <ul class="dropdown-menu">
+            
 <li>
-    <a href="git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+    <a href="target-project.html" class="dropdown-item">Target Project</a>
 </li>
-                                    
+            
 <li>
-    <a href="stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+    <a href="git-branch.html" class="dropdown-item">Git Branch</a>
 </li>
-                                    
+            
+<li>
+    <a href="stored-procedure.html" class="dropdown-item">Stored Procedure</a>
+</li>
+            
 <li>
     <a href="impact-analysis.html" class="dropdown-item active" aria-current="page">Impact Analysis</a>
 </li>
-                                    
+            
 <li>
     <a href="dependency-graph.html" class="dropdown-item">Dependency Graph</a>
 </li>
+    </ul>
+  </li>
                                     
 <li>
     <a href="../output-formats.html" class="dropdown-item">Output Formats</a>
-</li>
-                                    
-<li>
-    <a href="../workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
 <li>
@@ -121,6 +127,10 @@
                                     
 <li>
     <a href="../reference/consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="../reference/codebase-index.html" class="dropdown-item">Codebase Index</a>
 </li>
                                     
 <li>
@@ -238,7 +248,7 @@
 <p>Describe the change in plain English. Get back a risk-rated blast radius report with a tree view of affected consumers, confidence labels by depth, and an AI-generated narrative you can paste straight into a ticket.</p>
 <p>The <code>--sow</code> mode requires a configured AI provider (currently Google Gemini via <code>--google-api-key</code> or <code>$GOOGLE_API_KEY</code>; WEX AI Platform coming soon). Other modes (<code>--target-project</code>, <code>--branch-name</code>, <code>--graph</code>) work without AI. The core consumer tracing, graph building, and blast radius tree are pure code -- AI adds risk ratings, coupling narratives, complexity estimates, and executive summaries on top.</p>
 <h2 id="basic-example">Basic Example<a class="headerlink" href="#basic-example" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">python scatter.py \
+<pre><code class="language-bash">scatter \
   --sow &quot;Modify PortalDataService in GalaxyWorks.Data to add a new parameter to sp_InsertPortalConfiguration&quot; \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY
@@ -292,7 +302,7 @@ Analysis complete. 6 consumer(s) found across 1 target(s).
 <p><strong>Coupling vectors</strong> tell you how a consumer is connected: <code>method_invocation</code>, <code>constructor_injection</code>, <code>type_reference</code>, etc. These help you estimate how hard the consumer update will be.</p>
 <p><strong>The impact summary</strong> at the bottom is AI-generated prose, suitable for pasting into a Jira ticket or a Slack message to your manager. It covers the scope, highest-risk consumers, and a deployment recommendation.</p>
 <h2 id="from-a-file">From a File<a class="headerlink" href="#from-a-file" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">python scatter.py \
+<pre><code class="language-bash">scatter \
   --sow-file docs/sample_sow.txt \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY
@@ -302,7 +312,7 @@ Analysis complete. 6 consumer(s) found across 1 target(s).
 <p>When a dependency graph is available (which it usually is -- Scatter builds and caches one automatically), impact analysis sends a compact <strong>codebase index</strong> alongside the SOW to the LLM. This index lists every project, its types, and its stored procedures, so the LLM can match domain language to real code artifacts instead of guessing.</p>
 <p>The index is what makes vague SOWs work. A request like "update the portal configuration workflow to support multi-tenant isolation" maps to <code>GalaxyWorks.Data</code>, <code>PortalDataService</code>, and <code>dbo.sp_InsertPortalConfiguration</code> because those names are in the index.</p>
 <p>You can inspect the index directly:</p>
-<pre><code class="language-bash">python scatter.py --dump-index --search-scope .
+<pre><code class="language-bash">scatter --dump-index --search-scope .
 </code></pre>
 <pre><code>=== Codebase Index (11 projects) ===
 P=Project NS=Namespace (omitted when same as project name) T=Types SP=StoredProcs
@@ -326,7 +336,7 @@ P:GalaxyWorks.WebPortal T:PortalController,PortalCacheService SP:dbo.sp_GetPorta
 Evidence: Project contains PortalDataService which handles portal configuration persistence
 </code></pre>
 <h2 id="confidence-filtering">Confidence Filtering<a class="headerlink" href="#confidence-filtering" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">python scatter.py \
+<pre><code class="language-bash">scatter \
   --sow-file docs/sample_sow.md \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY \
@@ -337,7 +347,7 @@ Evidence: Project contains PortalDataService which handles portal configuration 
 </code></pre>
 <p>Use a higher threshold when you want fewer, higher-confidence results. Use the default when you want broader coverage and are willing to triage.</p>
 <h2 id="deeper-tracing">Deeper Tracing<a class="headerlink" href="#deeper-tracing" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">python scatter.py \
+<pre><code class="language-bash">scatter \
   --sow &quot;Refactor GalaxyWorks.Data to split PortalDataService into separate read/write classes&quot; \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY \
@@ -346,21 +356,21 @@ Evidence: Project contains PortalDataService which handles portal configuration 
 <p>Default transitive depth is 2. Increase <code>--max-depth</code> when you need to trace further through the dependency chain. Be aware that each depth level multiplies the consumer detection calls, and each hop reduces confidence. Depth 3 is usually sufficient. Beyond that, you're mapping theoretical risk rather than practical impact.</p>
 <h2 id="output-formats">Output Formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h2>
 <p><strong>JSON</strong> -- includes everything: targets, consumers with depth and confidence, risk ratings, coupling vectors, complexity estimates, and narrative summaries. This is the format for feeding impact data into other tools.</p>
-<pre><code class="language-bash">python scatter.py \
+<pre><code class="language-bash">scatter \
   --sow &quot;Add caching to GalaxyWorks.Data&quot; \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY \
   --output-format json --output-file impact_report.json
 </code></pre>
 <p><strong>CSV</strong> -- flattens the tree into rows (one per consumer) with columns for depth, confidence, risk rating, and pipeline name. Good for spreadsheet triage.</p>
-<pre><code class="language-bash">python scatter.py \
+<pre><code class="language-bash">scatter \
   --sow &quot;Modify stored procedure sp_InsertPortalConfiguration&quot; \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY \
   --output-format csv --output-file impact_report.csv
 </code></pre>
 <p><strong>Markdown</strong> -- prints to stdout without <code>--output-file</code>. Pipe it into a PR description, paste it into Confluence, or redirect to a file.</p>
-<pre><code class="language-bash">python scatter.py \
+<pre><code class="language-bash">scatter \
   --sow &quot;Deprecate FakeDatabaseHelper&quot; \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY \

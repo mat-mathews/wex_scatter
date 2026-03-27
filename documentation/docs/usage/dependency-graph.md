@@ -7,7 +7,7 @@ Think of it as a codebase X-ray. Run it, stare at the results, and then have opi
 ## Basic Example
 
 ```bash
-python scatter.py --graph --search-scope .
+scatter --graph --search-scope .
 ```
 
 ```
@@ -104,7 +104,7 @@ Two health observations fire automatically:
 ## Force Rebuild
 
 ```bash
-python scatter.py --graph --search-scope . --rebuild-graph
+scatter --graph --search-scope . --rebuild-graph
 ```
 
 Scatter caches the graph after the first build. Subsequent runs load the cache and skip the expensive construction step. Use `--rebuild-graph` after major structural changes (new projects added, projects removed, renamed namespaces) when you suspect the cache is stale.
@@ -114,7 +114,7 @@ The cache also accelerates other modes -- when you run `--target-project` and a 
 ## Include Database Dependencies
 
 ```bash
-python scatter.py --graph --search-scope . --include-db
+scatter --graph --search-scope . --include-db
 ```
 
 Adds `sproc_shared` edges by scanning `.cs` files for stored procedure references, EF model patterns, and direct SQL strings. Without this flag, the graph only tracks project references, namespace usage, and type usage.
@@ -126,7 +126,7 @@ Database edges expose hidden coupling. Two projects that share no code reference
 **JSON** -- structured report with summary stats, top coupled projects, cycle details, per-project metrics, cluster analysis, and observations:
 
 ```bash
-python scatter.py --graph --search-scope . \
+scatter --graph --search-scope . \
   --output-format json --output-file graph_report.json
 ```
 
@@ -135,21 +135,21 @@ Add `--include-graph-topology` to include the full node and edge data in the JSO
 **CSV** -- one row per project with columns for all metrics (FanIn, FanOut, Instability, CouplingScore, Cluster, ExtractionFeasibility, etc.). Sort in a spreadsheet and find outliers:
 
 ```bash
-python scatter.py --graph --search-scope . \
+scatter --graph --search-scope . \
   --output-format csv --output-file graph_metrics.csv
 ```
 
 **Markdown** -- includes a Mermaid diagram of the dependency graph. Paste it into a PR, a wiki, or any documentation that renders Mermaid blocks:
 
 ```bash
-python scatter.py --graph --search-scope . \
+scatter --graph --search-scope . \
   --output-format markdown --output-file graph.md
 ```
 
 **Mermaid** -- just the diagram, nothing else. Projects are grouped into subgraph blocks when clusters are present:
 
 ```bash
-python scatter.py --graph --search-scope . \
+scatter --graph --search-scope . \
   --output-format mermaid --output-file graph.mmd
 ```
 

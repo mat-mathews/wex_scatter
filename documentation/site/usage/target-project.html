@@ -8,7 +8,7 @@
         
         
         <link rel="shortcut icon" href="../img/favicon.ico">
-        <title>Target Project Analysis - Scatter</title>
+        <title>Target Project - Scatter</title>
         <link href="../css/bootstrap.min.css" rel="stylesheet">
         <link href="../css/fontawesome.min.css" rel="stylesheet">
         <link href="../css/brands.min.css" rel="stylesheet">
@@ -51,31 +51,37 @@
 </li>
                                     
 <li>
-    <a href="target-project.html" class="dropdown-item active" aria-current="page">Target Project Analysis</a>
+    <a href="../workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Analysis Modes</a>
+    <ul class="dropdown-menu">
+            
 <li>
-    <a href="git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+    <a href="target-project.html" class="dropdown-item active" aria-current="page">Target Project</a>
 </li>
-                                    
+            
 <li>
-    <a href="stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+    <a href="git-branch.html" class="dropdown-item">Git Branch</a>
 </li>
-                                    
+            
+<li>
+    <a href="stored-procedure.html" class="dropdown-item">Stored Procedure</a>
+</li>
+            
 <li>
     <a href="impact-analysis.html" class="dropdown-item">Impact Analysis</a>
 </li>
-                                    
+            
 <li>
     <a href="dependency-graph.html" class="dropdown-item">Dependency Graph</a>
 </li>
+    </ul>
+  </li>
                                     
 <li>
     <a href="../output-formats.html" class="dropdown-item">Output Formats</a>
-</li>
-                                    
-<li>
-    <a href="../workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
 <li>
@@ -124,6 +130,10 @@
 </li>
                                     
 <li>
+    <a href="../reference/codebase-index.html" class="dropdown-item">Codebase Index</a>
+</li>
+                                    
+<li>
     <a href="../reference/type-extraction.html" class="dropdown-item">Type Extraction</a>
 </li>
                                     
@@ -165,7 +175,7 @@
                             </a>
                         </li>
                             <li class="nav-item">
-                                <a rel="prev" href="../quick-tour.html" class="nav-link">
+                                <a rel="prev" href="../workflows.html" class="nav-link">
                                     <i class="fa fa-arrow-left"></i> Previous
                                 </a>
                             </li>
@@ -233,24 +243,30 @@
 <p>You're refactoring a shared library and need to know who's using it. Maybe someone said "we want to modernize GalaxyWorks.Data" and you need to find out how many teams will have opinions about that. This is the mode for that.</p>
 <p>Point Scatter at a <code>.csproj</code> file. It finds every project that references it, confirms they actually import the namespace, and optionally drills down to specific class or method usage.</p>
 <h2 id="basic-example">Basic Example<a class="headerlink" href="#basic-example" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope .
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
 </code></pre>
-<pre><code>Search scope: /path/to/repo (scanned 11 projects, 24 files)
-Filter: 11 -&gt; 7 project refs -&gt; 6 namespace
-
---- Combined Consumer Analysis Report ---
-
---- Consuming Relationships Found ---
+<pre><code>Search scope: /code/scatter (scanned 11 projects, 27 files)
+Filter: 11 → 7 project refs[graph] → 6 namespace
 
 Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (6 consumer(s))
          -&gt; Consumed by: GalaxyWorks.Api (GalaxyWorks.Api/GalaxyWorks.Api.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=7.1, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
          -&gt; Consumed by: GalaxyWorks.BatchProcessor (GalaxyWorks.BatchProcessor/GalaxyWorks.BatchProcessor.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=10.8, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
          -&gt; Consumed by: GalaxyWorks.Data.Tests (GalaxyWorks.Data.Tests/GalaxyWorks.Data.Tests.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=3.5, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
          -&gt; Consumed by: GalaxyWorks.WebPortal (GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=12.7, fan-in=1, fan-out=1, instability=0.500, in-cycle=no
          -&gt; Consumed by: MyGalaryConsumerApp (MyGalaxyConsumerApp/MyGalaryConsumerApp.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=4.3, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
          -&gt; Consumed by: MyGalaryConsumerApp2 (MyGalaxyConsumerApp2/MyGalaryConsumerApp2.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=1.8, fan-in=0, fan-out=1, instability=1.000, in-cycle=no
 
 --- Total Consuming Relationships Found: 6 ---
 
@@ -260,90 +276,69 @@ Analysis complete. 6 consumer(s) found across 1 target(s).
 <h2 id="narrowing-the-results">Narrowing the Results<a class="headerlink" href="#narrowing-the-results" title="Permanent link">&para;</a></h2>
 <p>Six consumers is manageable. But GalaxyWorks.Data exports a lot of types, and maybe you only care about one class.</p>
 <h3 id="filter-by-class">Filter by Class<a class="headerlink" href="#filter-by-class" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --class-name PortalDataService
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --class-name PortalDataService
 </code></pre>
-<pre><code>Filter: 11 -&gt; 7 project refs -&gt; 6 namespace -&gt; 4 class match
+<pre><code>Filter: 11 → 7 project refs[graph] → 6 namespace → 6 class match
 </code></pre>
-<p>Down to 4. Only projects that actually reference <code>PortalDataService</code> in their source code survive the class filter. The other two consumers use different types from GalaxyWorks.Data -- they're not your problem today.</p>
+<p>All 6 consumers reference <code>PortalDataService</code> -- it's the main type in GalaxyWorks.Data. For libraries with multiple types, this filter cuts aggressively.</p>
 <h3 id="filter-by-method">Filter by Method<a class="headerlink" href="#filter-by-method" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --class-name PortalDataService \
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --class-name PortalDataService \
   --method-name StorePortalConfigurationAsync
 </code></pre>
-<pre><code>Filter: 11 -&gt; 7 project refs -&gt; 6 namespace -&gt; 4 class match -&gt; 2 method match
+<pre><code>Filter: 11 → 7 project refs[graph] → 6 namespace → 6 class match → 1 method match
 </code></pre>
-<p>Two projects actually call <code>StorePortalConfigurationAsync</code>. If you're changing that method's signature, these are the only two that need updating.</p>
+<p>Only one project actually calls <code>StorePortalConfigurationAsync</code>. If you're changing that method's signature, this is the only consumer that needs updating.</p>
 <p>Note: <code>--method-name</code> requires <code>--class-name</code>. Pass <code>--method-name</code> alone and Scatter warns and ignores it.</p>
 <h2 id="other-scenarios">Other Scenarios<a class="headerlink" href="#other-scenarios" title="Permanent link">&para;</a></h2>
 <h3 id="mid-tier-library-1-consumer">Mid-Tier Library (1 Consumer)<a class="headerlink" href="#mid-tier-library-1-consumer" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py \
-  --target-project ./GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj \
-  --search-scope .
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj --search-scope .
 </code></pre>
 <p>WebPortal sits in the middle of the dependency chain. Only GalaxyWorks.BatchProcessor references it. One consumer -- small blast radius, straightforward coordination.</p>
 <h3 id="leaf-project-1-consumer">Leaf Project (1 Consumer)<a class="headerlink" href="#leaf-project-1-consumer" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py \
-  --target-project ./MyDotNetApp/MyDotNetApp.csproj \
-  --search-scope .
+<pre><code class="language-bash">scatter --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .
 </code></pre>
 <p>MyDotNetApp has a single consumer: MyDotNetApp.Consumer. Leaf projects are the easy ones. Change it, update the one consumer, move on.</p>
 <h3 id="standalone-project-0-consumers">Standalone Project (0 Consumers)<a class="headerlink" href="#standalone-project-0-consumers" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py \
-  --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj \
-  --search-scope .
+<pre><code class="language-bash">scatter --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .
 </code></pre>
 <p>Nobody references this project. Zero consumers. If you expected consumers and see zero, check whether the consuming code uses NuGet packages instead of <code>&lt;ProjectReference&gt;</code> entries -- Scatter only tracks project references, not package references.</p>
 <h2 id="override-namespace">Override Namespace<a class="headerlink" href="#override-namespace" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --target-namespace Company.Product.OldStuff
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --target-namespace Company.Product.OldStuff
 </code></pre>
 <p>Scatter normally derives the namespace from <code>&lt;RootNamespace&gt;</code> in the target's <code>.csproj</code>. When that doesn't match what the code actually uses (legacy projects, renamed assemblies, shared namespace conventions), override it with <code>--target-namespace</code>. Scatter will look for <code>using Company.Product.OldStuff;</code> instead of the auto-derived namespace.</p>
 <h2 id="ai-summaries">AI Summaries<a class="headerlink" href="#ai-summaries" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --summarize-consumers \
-  --google-api-key $GOOGLE_API_KEY
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --summarize-consumers --google-api-key $GOOGLE_API_KEY
 </code></pre>
 <p>For each consumer, Scatter sends its relevant <code>.cs</code> files to Gemini and gets back a 2-3 sentence summary of what that code does. Useful when you're triaging a long consumer list and need to quickly understand "what does MyGalaryConsumerApp actually do with PortalDataService?" without opening 15 files.</p>
 <h2 id="output-formats">Output Formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h2>
 <p><strong>JSON</strong> -- for downstream tooling:</p>
-<pre><code class="language-bash">python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --output-format json --output-file reports/target_analysis.json
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --output-format json --output-file reports/target_analysis.json
 </code></pre>
 <p><strong>CSV</strong> -- for the teammates who live in spreadsheets:</p>
-<pre><code class="language-bash">python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --output-format csv --output-file reports/target_analysis.csv
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --output-format csv --output-file reports/target_analysis.csv
 </code></pre>
 <p><strong>Markdown</strong> -- for pasting into a PR or wiki:</p>
-<pre><code class="language-bash">python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --output-format markdown --output-file reports/target_analysis.md
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --output-format markdown --output-file reports/target_analysis.md
 </code></pre>
 <p>Markdown also works without <code>--output-file</code> -- it prints to stdout so you can pipe it wherever you need it. See <a href="../output-formats.html">Output Formats</a> for detailed structure of each format.</p>
 <h2 id="reading-the-filter-pipeline">Reading the Filter Pipeline<a class="headerlink" href="#reading-the-filter-pipeline" title="Permanent link">&para;</a></h2>
 <p>The most important line in the output is the arrow chain. Read it left to right:</p>
-<pre><code>Filter: 200 -&gt; 12 project refs -&gt; 8 namespace -&gt; 4 class match
+<pre><code>Filter: 200 → 12 project refs[graph] → 8 namespace → 4 class match
 </code></pre>
 <p>Translation: "200 projects in scope. 12 have a <code>&lt;ProjectReference&gt;</code> to the target. 8 of those import the namespace. 4 of those reference the class."</p>
 <p>Each arrow is a stage that narrows the set. When you're debugging a surprising result -- too many consumers, or zero when you expected some -- this chain tells you exactly where things went wrong.</p>
 <h3 id="when-a-stage-drops-to-zero">When a Stage Drops to Zero<a class="headerlink" href="#when-a-stage-drops-to-zero" title="Permanent link">&para;</a></h3>
 <p>When a filter stage produces zero results, Scatter prints a diagnostic hint:</p>
-<pre><code>Filter: 200 -&gt; 12 project refs -&gt; 0 namespace
+<pre><code>Filter: 200 → 12 project refs[graph] → 0 namespace
   Hint: 0 of 12 project-reference-matching projects contained 'GalaxyWorks.Data'
-        -- verify the namespace name
+        — verify the namespace name
 </code></pre>
 <p>This usually means the auto-derived namespace doesn't match what the code uses. Fix it with <code>--target-namespace</code>.</p>
 <p>If the project reference stage itself drops to zero, nobody has a <code>&lt;ProjectReference&gt;</code> to the target. Possible causes: the consuming code references it as a NuGet package, or you're looking in the wrong <code>--search-scope</code>.</p>

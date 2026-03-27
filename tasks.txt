@@ -289,10 +289,24 @@ becomes a real concern or when latency blocks CI/CD integration.
 - [ ] Cache key based on: code content hash + task type + provider
 - [ ] Invalidate cache entries when source files change (via mtime or git status)
 
+AI CALL BUDGET & RATE LIMITING ✅ COMPLETED (2026-03-26)
+Ref: docs/LEADERSHIP_DESIGN_REVIEW.md (AI Rate Limiting gap)
+- [x] Implement scatter/ai/budget.py — AIBudget dataclass (call counting, cap enforcement)
+- [x] RateLimitedModel proxy wraps model.generate_content() with budget + backoff
+- [x] Exponential backoff with jitter on transient API errors (3 retries, 1-30s delays)
+- [x] BudgetExhaustedError caught by task modules' existing except Exception handlers
+- [x] --max-ai-calls CLI flag, .scatter.yaml config, SCATTER_MAX_AI_CALLS env var
+- [x] Budget wired through AIRouter → GeminiProvider/WexProvider at construction time
+- [x] Budget summary logged at INFO after mode dispatch completes
+- [x] Warning at 50-call threshold (suppressed when user sets a cap below threshold)
+- [x] 22 tests in test_ai_budget.py (budget tracking, proxy, retries, CLI, config)
+- [x] AI smoke test in tools/check.sh (exercises real Gemini API when GOOGLE_API_KEY set)
+- [x] Mypy clean (5 errors fixed: budget.py, gemini_provider.py, markdown_reporter.py)
+
 TOKEN BUDGET MANAGER (TIER 4 — DEFERRED, premature optimization)
 Rationale: Current AI calls are small and targeted. Build when context window
 limits become a real constraint (e.g., summarizing 50+ consumer files in one call).
-- [ ] Implement scatter/ai/budget.py — context chunking when input exceeds model window
+- [ ] Context chunking when input exceeds model window
 - [ ] Smart context selection: send relevant files/excerpts, not entire projects
 - [ ] Pre-call token estimation and cost logging
 - [ ] Configurable per-run token cap (default: 100,000)
@@ -1142,11 +1156,11 @@ Ref: docs/PIPELINE_REGISTRY_DESIGN.md
 ============================================================================
 
 ============================================================================
-PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-22)
+PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-26)
 ============================================================================
 
-CODEBASE STATE (updated 2026-03-25, post __main__.py decomposition + e2e tests):
-  - scatter/ package with 28+ modules across core/, scanners/, analyzers/, ai/, reports/, compat/, store/, modes/
+CODEBASE STATE (updated 2026-03-26, post AI rate limiting + mypy clean):
+  - scatter/ package with 29+ modules across core/, scanners/, analyzers/, ai/, reports/, compat/, store/, modes/
   - scatter/core/tree.py: shared tree-building utilities (build_adjacency, CONFIDENCE_LABEL_RANK)
   - scatter.py: 10-line thin entry point (delegates to scatter/__main__.py via runpy)
   - scatter/__main__.py: 71 lines (parse args → shared setup → mode dispatch)
@@ -1169,11 +1183,13 @@ CODEBASE STATE (updated 2026-03-25, post __main__.py decomposition + e2e tests):
   - tools/generate_synthetic_codebase.py: synthetic .NET codebase generator (100-800 project presets)
   - tools/benchmark_graph_build.py: graph builder benchmark harness with per-stage timing
   - docs/ADR_GRAPH_PERFORMANCE.md: architecture decision record for graph builder 100x optimization
-  - 846 tests across 32 test files (846 pass, 1 xfail, 5 subtests)
+  - 878 tests across 33 test files (878 pass, 1 xfail, 5 subtests)
   - 30 e2e CLI tests (tests/integration/test_cli_e2e.py) covering all 6 modes × all output formats
+  - 22 AI budget tests (tests/unit/test_ai_budget.py) — budget tracking, proxy, retries, CLI, config
   - CI: ruff check + ruff format + mypy (0 errors) + pytest + smoke tests in GitHub Actions
   - Benchmarks exist for Phase 1 file discovery, Phase 2.1 content analysis, and graph builder at scale
-  - AI integration: Google Gemini via AIProvider protocol + AIRouter
+  - AI integration: Google Gemini via AIProvider protocol + AIRouter + AIBudget rate limiting
+  - scatter/ai/budget.py: AIBudget call tracking, RateLimitedModel proxy, exponential backoff + jitter
   - Config: .scatter.yaml (repo) + ~/.scatter/config.yaml (user) + env vars + CLI
   - Output formats: console, CSV, JSON, markdown (+ Mermaid for graph mode)
   - Dependency graph: persistent, cached, with coupling metrics + cycle detection + domain clusters + DB deps
@@ -1329,6 +1345,9 @@ RECOMMENDED EXECUTION ORDER (reprioritized 2026-03-13):
   20. ✅ DONE — Initiative 8 Phase 3: CI pipeline (2026-03-21)
       GitHub Actions: pytest 3.10/3.11 matrix, ruff check+format, mypy,
       smoke tests. .git-blame-ignore-revs. tools/setup.sh + tools/check.sh.
+  20a. ✅ DONE — Initiative 7 Phase 5: AI call safety (2026-03-26)
+      AIBudget + RateLimitedModel proxy, --max-ai-calls, exponential backoff,
+      22 tests. PR #11 merged. Mypy fully clean. 878 total tests.
   21. Initiative 8 Phase 4: Docker support — multi-stage Dockerfile, .dockerignore,
       mount /workspace for repo-under-analysis
 
@@ -1385,7 +1404,7 @@ KEY FINDINGS:
   5. Phase 5 optimization (pool reuse, memory) deferred to v2.0 modularization
      where it can be done properly with a shared pool across the module.
   6. Initiatives 3 & 4 fully complete — config system, AI router, impact analysis all shipped.
-  7. 846 tests across 32 files (846 pass, 1 xfail, 5 subtests).
+  7. 878 tests across 33 files (878 pass, 1 xfail, 5 subtests).
   8. Initiative 5 all 6 phases complete (171 tests) — graph model, coupling metrics, cycle detection,
      graph persistence, DB dependency mapping, domain boundary detection, health dashboard, Mermaid + CSV.
   9. Initiative 6 Phase 1 complete (24 tests) — JSON serialization fixes, metadata, console polish, CSV cleanup.
@@ -1433,6 +1452,15 @@ KEY FINDINGS:
       (197 lines), conftest.py, 3 new test files (test_cli_parser, test_cli_modes,
       test_cli_dispatch). __main__.py reduced from 790 to 67 lines.
       683 total tests (all pass, 1 xfail).
+  25. AI rate limiting shipped (2026-03-26): AIBudget + RateLimitedModel proxy in
+      scatter/ai/budget.py. --max-ai-calls CLI flag, .scatter.yaml config,
+      SCATTER_MAX_AI_CALLS env var. Exponential backoff with jitter on transient
+      API errors (3 retries, 1-30s delays). BudgetExhaustedError caught by existing
+      task module handlers. Zero task module changes — proxy intercepts at model level.
+      22 new tests. AI smoke test in tools/check.sh. PR #11 merged.
+  26. Mypy fully clean (2026-03-26): 5 errors fixed across budget.py,
+      gemini_provider.py, markdown_reporter.py. CI now gates on mypy --strict.
+      878 total tests (all pass, 1 xfail).
 
 ============================================================================
 INITIATIVE 7: STRUCTURAL IMPROVEMENTS (Leadership Review Findings)
@@ -1478,12 +1506,15 @@ PHASE 4: Test Infrastructure (MEDIUM PRIORITY — refactoring safety net)
 - [ ] Move test files into tests/ directory (tests/unit/, tests/integration/)
 - [ ] Wire benchmark suite into CI as a non-blocking performance regression check
 
-PHASE 5: AI Call Safety (MEDIUM PRIORITY)
+PHASE 5: AI Call Safety ✅ COMPLETED (2026-03-26)
 ----------------------------------------------------------------------
-- [ ] Add --max-ai-calls flag (default: 50) to cap summarization API calls
-- [ ] Log total planned API calls before starting summarization loop
-- [ ] Add per-call timeout to AI provider (prevent individual call hangs)
-- [ ] Add exponential backoff on AI call failures (currently retries immediately)
+Ref: AI CALL BUDGET & RATE LIMITING section above (Initiative 3 tier list)
+- [x] Add --max-ai-calls flag to cap AI API calls (AIBudget + CLI + config + env var)
+- [x] Budget summary logged at INFO after mode dispatch completes
+- [x] Add exponential backoff on AI call failures (RateLimitedModel proxy, 3 retries, 1-30s)
+- [x] BudgetExhaustedError caught by task modules — no task module changes needed
+Note: Per-call timeout deferred — Gemini SDK manages its own timeouts.
+      "Log total planned API calls" deferred — not needed with budget cap approach.
 
 PHASE 6: Cleanup (LOW PRIORITY — do when convenient)
 ----------------------------------------------------------------------

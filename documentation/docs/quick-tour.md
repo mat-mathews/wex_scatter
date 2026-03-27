@@ -25,24 +25,29 @@ Filter: 11 → 7 project refs[graph] → 6 namespace
 Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (6 consumer(s))
          -> Consumed by: GalaxyWorks.Api (GalaxyWorks.Api/GalaxyWorks.Api.csproj)
            Solutions: GalaxyWorks.sln
-           Graph: coupling=6.2, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
+           Graph: coupling=7.1, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
          -> Consumed by: GalaxyWorks.BatchProcessor (GalaxyWorks.BatchProcessor/GalaxyWorks.BatchProcessor.csproj)
            Solutions: GalaxyWorks.sln
            Graph: coupling=10.8, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
+         -> Consumed by: GalaxyWorks.Data.Tests (GalaxyWorks.Data.Tests/GalaxyWorks.Data.Tests.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=3.5, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
          -> Consumed by: GalaxyWorks.WebPortal (GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj)
            Solutions: GalaxyWorks.sln
            Graph: coupling=12.7, fan-in=1, fan-out=1, instability=0.500, in-cycle=no
          -> Consumed by: MyGalaryConsumerApp (MyGalaxyConsumerApp/MyGalaryConsumerApp.csproj)
            Solutions: GalaxyWorks.sln
+           Graph: coupling=4.3, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
          -> Consumed by: MyGalaryConsumerApp2 (MyGalaxyConsumerApp2/MyGalaryConsumerApp2.csproj)
            Solutions: GalaxyWorks.sln
+           Graph: coupling=1.8, fan-in=0, fan-out=1, instability=1.000, in-cycle=no
 
 --- Total Consuming Relationships Found: 6 ---
 ```
 
 **Filter line** — the analysis funnel. Started with 11 projects, narrowed to 7 that have a project reference to GalaxyWorks.Data, then to 6 that actually use its namespace. Each stage cuts aggressively so you see real consumers, not false positives.
 
-**Consumer list** — every project that depends on GalaxyWorks.Data. If you change `PortalDataService`, these are the projects that might break.
+**Consumer list** — every project that depends on GalaxyWorks.Data, including test projects. If you change `PortalDataService`, these are the projects that might break.
 
 **Graph metrics** — automatically computed from the dependency graph:
 
@@ -76,24 +81,34 @@ uv run scatter --graph --search-scope .
 ```
 
 ```
-Dependency Graph Health Dashboard
-=================================
+============================================================
+  Dependency Graph Analysis
+============================================================
+  Projects: 11
+  Dependencies: 31
+  Solutions: 1
+  Connected components: 3
+  Circular dependencies: 0
 
-Projects: 11 | Edges: 14 | Cycles: 0 | Clusters: 3
+  Top Coupled Projects:
+  Project                                     Score   Fan-In  Fan-Out  Instab.
+  ---------------------------------------- -------- -------- -------- --------
+  GalaxyWorks.Data                             22.6        7        0     0.00
+  GalaxyWorks.WebPortal                        12.7        1        1     0.50
+  GalaxyWorks.BatchProcessor                   10.8        0        2     1.00
+  GalaxyWorks.Common                           10.0        3        1     0.25
+  GalaxyWorks.Api                               7.1        0        2     1.00
 
-Top Coupled Projects:
-  GalaxyWorks.Data           coupling=6.23  fan-in=4  fan-out=2  instability=0.33
-  MyGalaxyConsumerApp        coupling=4.30  fan-in=1  fan-out=3  instability=0.75
-  ...
+  Domain Clusters:
+  Cluster                          Size   Cohesion   Coupling          Feasibility    Align
+  ------------------------------ ------ ---------- ---------- -------------------- --------
+  cluster_0                           8      0.518      0.000         easy (1.000)     1.00
+  MyDotNetApp                         2      1.000      0.000         easy (1.000)     0.50
 
-Domain Clusters:
-  [1] GalaxyWorks (5 projects) -- extraction feasibility: MODERATE
-  [2] MyDotNet (2 projects) -- extraction feasibility: HIGH
-  [3] Standalone (1 project) -- extraction feasibility: HIGH
-
-Observations:
-  - GalaxyWorks.Data has 4 inbound dependencies (highest fan-in)
-  - No circular dependencies detected
+  Observations:
+    [warning] GalaxyWorks.Data: stable core (fan_in=7, instability=0.00) — change carefully
+    [warning] GalaxyWorks.Data: high coupling score (22.6) — review dependencies
+    [info] dbo.sp_InsertPortalConfiguration: shared by 3 projects — database coupling hotspot
 ```
 
 This builds the complete dependency graph, computes coupling metrics, detects cycles, identifies domain clusters, and generates observations.

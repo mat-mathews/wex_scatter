@@ -9,13 +9,13 @@ Scatter speaks six output languages. Each exists because someone had a real need
 When you just want to see what's going on. No flags, no files, no ceremony.
 
 ```bash
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --pipeline-csv pipeline_to_app_mapping.csv
 ```
 
 ```
 Search scope: /code/myrepo (scanned 142 projects, 3,891 files)
-Filter: 142 -> 8 project refs -> 5 namespace -> 3 class match
+Filter: 142 → 8 project refs[graph] → 5 namespace → 3 class match
 
 --- Combined Consumer Analysis Report ---
 
@@ -50,7 +50,7 @@ High coupling score + in-cycle=yes is a project you do not want to surprise with
 Structured data for programmatic consumption -- ticket automation, dashboards, diffing between runs.
 
 ```bash
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --output-format json --output-file report.json
 ```
 
@@ -113,7 +113,7 @@ A few things worth knowing:
 One row per consumer. For Excel, pivot tables, and people who think in spreadsheets.
 
 ```bash
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --output-format csv --output-file report.csv
 ```
 
@@ -121,7 +121,7 @@ Requires `--output-file`.
 
 ```
 # Search scope: /code/myrepo (142 projects, 3,891 files)
-# Filter: 142 -> 8 project refs -> 5 namespace -> 3 class match
+# Filter: 142 → 8 project refs[graph] → 5 namespace → 3 class match
 TargetProjectName,TargetProjectPath,TriggeringType,ConsumerProjectName,ConsumerProjectPath,ConsumingSolutions,PipelineName,BatchJobVerification
 GalaxyWorks.Data,GalaxyWorks.Data/GalaxyWorks.Data.csproj,PortalDataService,MyGalaxyConsumerApp,MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj,GalaxyWorks.sln,galaxy-consumer-ci,
 ```
@@ -141,7 +141,7 @@ Paste-ready for PRs, Jira tickets, Confluence pages, ADO work items. Designed fo
 Unlike CSV and JSON, Markdown does **not** require `--output-file`. Without it, Scatter prints to stdout. This is intentional -- pipe it straight to clipboard:
 
 ```bash
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --output-format markdown | pbcopy
 ```
 
@@ -149,7 +149,7 @@ python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
 # Consumer Analysis Report
 
 > **Search scope:** /code/myrepo (scanned 142 projects, 3,891 files)
-> **Filter:** 142 -> 8 project refs -> 5 namespace -> 3 class match
+> **Filter:** 142 → 8 project refs[graph] → 5 namespace → 3 class match
 
 ## GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (3 consumer(s))
 
@@ -186,7 +186,7 @@ When `--graph-metrics` is active, the table gains five extra columns: Coupling, 
 Graph mode only. Raw Mermaid diagram syntax -- no wrapping markdown, no summary tables.
 
 ```bash
-python scatter.py --graph --search-scope . --output-format mermaid
+scatter --graph --search-scope . --output-format mermaid
 ```
 
 ```
@@ -207,7 +207,7 @@ Using `--output-format mermaid` outside of `--graph` mode is an error -- Scatter
 
 ```bash
 # Save to file
-python scatter.py --graph --search-scope . --output-format mermaid --output-file deps.mmd
+scatter --graph --search-scope . --output-format mermaid --output-file deps.mmd
 ```
 
 ---
@@ -217,7 +217,7 @@ python scatter.py --graph --search-scope . --output-format mermaid --output-file
 One pipeline name per line, sorted alphabetically. Built for deployment scripts and shell pipelines (the other kind).
 
 ```bash
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --pipeline-csv pipeline_to_app_mapping.csv \
   --output-format pipelines
 ```
@@ -236,7 +236,7 @@ Not supported in `--graph` mode. Graph analysis is about architecture, not deplo
 
 ```bash
 # Feed directly into a deployment script
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --pipeline-csv pipeline_to_app_mapping.csv \
   --output-format pipelines | xargs -I {} ./trigger-pipeline.sh {}
 ```

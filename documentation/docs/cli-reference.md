@@ -2,7 +2,7 @@
 
 Everything Scatter does starts with a mode flag and a search scope. One mode is required. Everything else is optional.
 
-Run `python scatter.py --help` for the full list with defaults.
+Run `scatter --help` for the full list with defaults.
 
 ## Mode Selection
 

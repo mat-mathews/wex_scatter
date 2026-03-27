@@ -51,31 +51,37 @@
 </li>
                                     
 <li>
-    <a href="usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+    <a href="workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Analysis Modes</a>
+    <ul class="dropdown-menu">
+            
 <li>
-    <a href="usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+    <a href="usage/target-project.html" class="dropdown-item">Target Project</a>
 </li>
-                                    
+            
 <li>
-    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+    <a href="usage/git-branch.html" class="dropdown-item">Git Branch</a>
 </li>
-                                    
+            
+<li>
+    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure</a>
+</li>
+            
 <li>
     <a href="usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
 </li>
-                                    
+            
 <li>
     <a href="usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
 </li>
+    </ul>
+  </li>
                                     
 <li>
     <a href="output-formats.html" class="dropdown-item">Output Formats</a>
-</li>
-                                    
-<li>
-    <a href="workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
 <li>
@@ -121,6 +127,10 @@
                                     
 <li>
     <a href="reference/consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="reference/codebase-index.html" class="dropdown-item">Codebase Index</a>
 </li>
                                     
 <li>
@@ -234,9 +244,9 @@
 <p>Or run just the test suite:</p>
 <pre><code class="language-bash">uv run pytest
 </code></pre>
-<pre><code>816 passed, 1 xfailed in ~25s
+<pre><code>~878 passed, 1 xfailed (run `uv run pytest --co -q` for the current count)
 </code></pre>
-<p>800+ tests across 30 files. The single xfail is an intentional marker for a tracked edge case, not a failing test someone gave up on.</p>
+<p>~878 tests across 33 files. The single xfail is an intentional marker for a tracked edge case, not a failing test someone gave up on.</p>
 <h2 id="what-the-tests-cover">What the tests cover<a class="headerlink" href="#what-the-tests-cover" title="Permanent link">&para;</a></h2>
 <p>The short version, without the file-by-file inventory:</p>
 <ul>
@@ -251,44 +261,43 @@
 </ul>
 <p>No flaky tests. No sleeps. No network calls.</p>
 <h2 id="smoke-testing-against-sample-projects">Smoke-testing against sample projects<a class="headerlink" href="#smoke-testing-against-sample-projects" title="Permanent link">&para;</a></h2>
-<p>The repo ships with 8 sample .NET projects. Use them to verify Scatter works end-to-end on your machine.</p>
-<h3 id="galaxyworksdata-should-have-multiple-consumers">GalaxyWorks.Data should have multiple consumers<a class="headerlink" href="#galaxyworksdata-should-have-multiple-consumers" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
+<p>The repo ships with 11 sample .NET projects. Use them to verify Scatter works end-to-end on your machine.</p>
+<h3 id="galaxyworksdata-should-have-6-consumers">GalaxyWorks.Data should have 6 consumers<a class="headerlink" href="#galaxyworksdata-should-have-6-consumers" title="Permanent link">&para;</a></h3>
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
 </code></pre>
-<p>Look for: at least 4 consumers in the output (exact count depends on the current sample project set).</p>
-<h3 id="mydotnetapp-should-have-at-least-1-consumer">MyDotNetApp should have at least 1 consumer<a class="headerlink" href="#mydotnetapp-should-have-at-least-1-consumer" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .
+<p>Look for: <code>6 consumer(s)</code> in the output.</p>
+<h3 id="mydotnetapp-should-have-1-consumer">MyDotNetApp should have 1 consumer<a class="headerlink" href="#mydotnetapp-should-have-1-consumer" title="Permanent link">&para;</a></h3>
+<pre><code class="language-bash">scatter --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .
 </code></pre>
-<p>Look for: at least 1 consumer.</p>
+<p>Look for: <code>1 consumer(s)</code>.</p>
 <h3 id="mydotnetapp2exclude-should-have-0-consumers">MyDotNetApp2.Exclude should have 0 consumers<a class="headerlink" href="#mydotnetapp2exclude-should-have-0-consumers" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .
+<pre><code class="language-bash">scatter --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .
 </code></pre>
 <p>Look for: <code>0 consumer(s)</code>. This one is intentionally isolated -- it validates that Scatter doesn't report false positives.</p>
 <h3 id="stored-procedure-tracing-works">Stored procedure tracing works<a class="headerlink" href="#stored-procedure-tracing-works" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; --search-scope .
+<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; --search-scope .
 </code></pre>
-<p>Should find the sproc in <code>PortalDataService</code> and trace its consumers.</p>
+<p>Should find the sproc in <code>PortalDataService</code> and <code>PortalCacheService</code>, tracing 7 consumers across 2 targets.</p>
 <h3 id="graph-mode-works">Graph mode works<a class="headerlink" href="#graph-mode-works" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py --graph --search-scope .
+<pre><code class="language-bash">scatter --graph --search-scope .
 </code></pre>
 <p>Should produce a health dashboard with project counts, edge counts, coupling metrics, and domain clusters. No errors, no warnings.</p>
 <h2 id="testing-ai-features">Testing AI features<a class="headerlink" href="#testing-ai-features" title="Permanent link">&para;</a></h2>
 <p>These require a <code>$GOOGLE_API_KEY</code> environment variable. If you don't have one, the smoke tests above cover everything that matters for day-to-day use.</p>
 <h3 id="summarization">Summarization<a class="headerlink" href="#summarization" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
   --summarize-consumers --google-api-key $GOOGLE_API_KEY
 </code></pre>
 <h3 id="hybrid-git-analysis">Hybrid git analysis<a class="headerlink" href="#hybrid-git-analysis" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py --branch-name feature/your-branch --repo-path . --search-scope . \
+<pre><code class="language-bash">scatter --branch-name feature/your-branch --repo-path . --search-scope . \
   --enable-hybrid-git --google-api-key $GOOGLE_API_KEY -v
 </code></pre>
 <h3 id="impact-analysis">Impact analysis<a class="headerlink" href="#impact-analysis" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py \
-  --sow &quot;Modify PortalDataService in GalaxyWorks.Data to add a new parameter&quot; \
+<pre><code class="language-bash">scatter --sow &quot;Modify PortalDataService in GalaxyWorks.Data to add a new parameter&quot; \
   --search-scope . --google-api-key $GOOGLE_API_KEY
 </code></pre>
 <h2 id="want-to-go-deeper">Want to go deeper?<a class="headerlink" href="#want-to-go-deeper" title="Permanent link">&para;</a></h2>
-<p>See <a href="reference/test-architecture.html">Test Architecture</a> for the full 25-file test inventory, fixture design, mock patterns, and how to add new tests.</p></div>
+<p>See <a href="reference/test-architecture.html">Test Architecture</a> for the full 33-file test inventory, fixture design, mock patterns, and how to add new tests.</p></div>
             </div>
         </div>
 

@@ -8,7 +8,7 @@ This page covers the two main structural analysis algorithms: coupling metrics a
 
 ### compute_all_metrics
 
-Computes structural metrics for every node in the graph. Single pass: O(N + E).
+Computes structural metrics for every node in the graph in one build: O(N + E).
 
 ```python
 def compute_all_metrics(

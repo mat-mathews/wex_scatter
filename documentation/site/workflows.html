@@ -51,31 +51,37 @@
 </li>
                                     
 <li>
-    <a href="usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+    <a href="workflows.html" class="dropdown-item active" aria-current="page">Workflows</a>
 </li>
                                     
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Analysis Modes</a>
+    <ul class="dropdown-menu">
+            
 <li>
-    <a href="usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+    <a href="usage/target-project.html" class="dropdown-item">Target Project</a>
 </li>
-                                    
+            
 <li>
-    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+    <a href="usage/git-branch.html" class="dropdown-item">Git Branch</a>
 </li>
-                                    
+            
+<li>
+    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure</a>
+</li>
+            
 <li>
     <a href="usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
 </li>
-                                    
+            
 <li>
     <a href="usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
 </li>
+    </ul>
+  </li>
                                     
 <li>
     <a href="output-formats.html" class="dropdown-item">Output Formats</a>
-</li>
-                                    
-<li>
-    <a href="workflows.html" class="dropdown-item active" aria-current="page">Workflows</a>
 </li>
                                     
 <li>
@@ -124,6 +130,10 @@
 </li>
                                     
 <li>
+    <a href="reference/codebase-index.html" class="dropdown-item">Codebase Index</a>
+</li>
+                                    
+<li>
     <a href="reference/type-extraction.html" class="dropdown-item">Type Extraction</a>
 </li>
                                     
@@ -165,12 +175,12 @@
                             </a>
                         </li>
                             <li class="nav-item">
-                                <a rel="prev" href="output-formats.html" class="nav-link">
+                                <a rel="prev" href="quick-tour.html" class="nav-link">
                                     <i class="fa fa-arrow-left"></i> Previous
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a rel="next" href="ai-features.html" class="nav-link">
+                                <a rel="next" href="usage/target-project.html" class="nav-link">
                                     Next <i class="fa fa-arrow-right"></i>
                                 </a>
                             </li>
@@ -198,7 +208,7 @@
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-bs-level="2"><a href="#2-release-night-pipeline-list" class="nav-link">2. Release Night Pipeline List</a>
+            <li class="nav-item" data-bs-level="2"><a href="#2-release-night-pipelines" class="nav-link">2. Release Night Pipelines</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -233,25 +243,25 @@
 <p>Seven real-world scenarios, each one pulled from actual team usage. Not hypothetical -- these are the problems Scatter was built to solve.</p>
 <hr />
 <h2 id="1-pre-merge-blast-radius-check">1. Pre-Merge Blast Radius Check<a class="headerlink" href="#1-pre-merge-blast-radius-check" title="Permanent link">&para;</a></h2>
-<p><strong>Persona:</strong> Developer preparing a PR for a feature branch.</p>
-<p><strong>When:</strong> Before requesting review. Before you write "small change" in the PR description and regret it.</p>
+<p><strong>Persona:</strong> Developer preparing a PR for a branch.</p>
+<p><strong>When:</strong> Before requesting review. Before you write "Just small change" in the PR description and regret it when it comes instantly back.</p>
 <p><strong>Why:</strong> You changed three files in a shared library. You think you know who uses it. You are probably wrong. Scatter tells you who actually uses it, not who you assume does.</p>
 <h3 id="steps">Steps<a class="headerlink" href="#steps" title="Permanent link">&para;</a></h3>
 <p><strong>Quick scan -- what did this branch touch?</strong></p>
-<pre><code class="language-bash">python scatter.py --branch-name feature/add-caching \
+<pre><code class="language-bash">scatter --branch-name feature/add-caching \
   --repo-path /code/myrepo \
   --search-scope /code/myrepo
 </code></pre>
-<p>This compares your branch against <code>main</code>, extracts every type declaration from changed C# files, and finds every project that references those types. Takes seconds on a typical repo.</p>
+<p>This compares your branch against <code>main</code>, extracts every type declaration from changed C# files, and finds every project that references those types. Takes seconds on a typical repo, but we are probably in the monolith, so could take a bit longer. Scatter will try to be a fast as possible.</p>
 <p><strong>Drill into the consumers with AI summaries:</strong></p>
-<pre><code class="language-bash">python scatter.py --branch-name feature/add-caching \
+<pre><code class="language-bash">scatter --branch-name feature/add-caching \
   --repo-path /code/myrepo \
   --search-scope /code/myrepo \
   --summarize-consumers
 </code></pre>
 <p>Now each consumer gets a 2-3 sentence summary of how it actually uses the types you changed. The difference between "ProjectX references this namespace" and "ProjectX calls <code>PortalDataService.GetConfig()</code> in its startup pipeline and caches the result for 30 minutes."</p>
 <p><strong>High-precision mode with hybrid analysis:</strong></p>
-<pre><code class="language-bash">python scatter.py --branch-name feature/add-caching \
+<pre><code class="language-bash">scatter --branch-name feature/add-caching \
   --repo-path /code/myrepo \
   --search-scope /code/myrepo \
   --enable-hybrid-git \
@@ -271,14 +281,14 @@
 <p><strong>How this works:</strong> Git branch analysis uses type extraction (regex or AI-assisted hybrid) to identify changed symbols, then traces consumers through project references and namespace matches. See <a href="reference/architecture.html">Architecture Overview</a> for the analysis pipeline.</p>
 </blockquote>
 <hr />
-<h2 id="2-release-night-pipeline-list">2. Release Night Pipeline List<a class="headerlink" href="#2-release-night-pipeline-list" title="Permanent link">&para;</a></h2>
+<h2 id="2-release-night-pipelines">2. Release Night Pipelines<a class="headerlink" href="#2-release-night-pipelines" title="Permanent link">&para;</a></h2>
 <p><strong>Persona:</strong> Developer preparing a DevOps ticket for the monthly release.</p>
-<p><strong>When:</strong> After your changes are merged and before you fill out the deployment request. WEX does monthly releases. The monolith has hundreds of pipelines. Everything touches everything -- except when it doesn't, and that's the part nobody can keep straight.</p>
+<p><strong>When:</strong> As your changes are being merged and before you fill out the deployment request. This is directly related to the above workflow. WEX does monthly releases. The monolith has hundreds of pipelines. Everything touches everything... except when it doesn't, and that's the part that harder for a dev to keep straight.</p>
 <p><strong>Why:</strong> The DevOps team needs an exact list of pipelines to run on release night. Not "probably these five." Not "everything just in case." The actual pipelines affected by what you changed. Getting this wrong means either a broken release (missed a pipeline) or a 4-hour deployment window that should have been 45 minutes (ran everything).</p>
 <p><strong>The pipeline list is only as complete as your <code>pipeline_to_app_mapping.csv</code>.</strong> If a consumer project has no entry in the mapping file, it won't appear in the pipeline output. Keep the mapping current. Without <code>--pipeline-csv</code>, the <code>pipelines</code> output format produces empty output and consumer results won't include pipeline names.</p>
 <h3 id="steps_1">Steps<a class="headerlink" href="#steps_1" title="Permanent link">&para;</a></h3>
-<p><strong>From a feature branch -- what pipelines does my change affect?</strong></p>
-<pre><code class="language-bash">python scatter.py --branch-name feature/portal-tenant-isolation \
+<p><strong>From a branch -- what pipelines does my change affect?</strong></p>
+<pre><code class="language-bash">scatter --branch-name feature/portal-tenant-isolation \
   --repo-path /code/myrepo \
   --search-scope /code/myrepo \
   --pipeline-csv pipeline_to_app_mapping.csv \
@@ -326,7 +336,7 @@ portal-consumer-ci
 </table>
 <p>Just swap the mode flag. The rest of the command is the same: add <code>--pipeline-csv pipeline_to_app_mapping.csv --output-format pipelines</code>.</p>
 <p><strong>Get the full consumer report with pipelines for the ticket attachment:</strong></p>
-<pre><code class="language-bash">python scatter.py --branch-name feature/portal-tenant-isolation \
+<pre><code class="language-bash">scatter --branch-name feature/portal-tenant-isolation \
   --repo-path /code/myrepo \
   --search-scope /code/myrepo \
   --pipeline-csv pipeline_to_app_mapping.csv \
@@ -334,7 +344,7 @@ portal-consumer-ci
 </code></pre>
 <p>The CSV includes one row per consumer with key columns: <code>ConsumerProjectName</code>, <code>PipelineName</code>, <code>TargetProjectName</code>, <code>TriggeringType</code>, and (when graph enrichment is available) <code>CouplingScore</code>, <code>FanIn</code>, <code>FanOut</code>, <code>Instability</code>, <code>InCycle</code>. Attach it to the DevOps ticket as backup evidence for the pipeline list.</p>
 <p><strong>Feed directly into a deployment script:</strong></p>
-<pre><code class="language-bash">python scatter.py --branch-name feature/portal-tenant-isolation \
+<pre><code class="language-bash">scatter --branch-name feature/portal-tenant-isolation \
   --repo-path /code/myrepo \
   --search-scope /code/myrepo \
   --pipeline-csv pipeline_to_app_mapping.csv \
@@ -343,7 +353,7 @@ portal-consumer-ci
 <p>The <code>pipelines</code> output format is designed for this -- one name per line, sorted alphabetically, deduplicated. The output is unordered by deployment priority — if your pipelines need to run in a specific sequence (e.g., data migration before API), that sequencing is still a human decision. Pipe the list into whatever your deployment tooling expects.</p>
 <p><strong>Combine pipeline lists from multiple branches for the team's monthly release:</strong></p>
 <pre><code class="language-bash">for branch in feature/portal-isolation feature/billing-fix feature/cache-update; do
-  python scatter.py --branch-name $branch \
+  scatter --branch-name $branch \
     --repo-path /code/myrepo \
     --search-scope /code/myrepo \
     --pipeline-csv pipeline_to_app_mapping.csv \
@@ -368,25 +378,25 @@ done | sort -u &gt; release-pipelines.txt
 <p><strong>Why:</strong> Sproc changes are invisible to Git branch analysis -- the SQL lives in a different repo (or no repo at all). Scatter traces from the sproc name through C# code to find every caller, then finds every consumer of those callers. The full chain.</p>
 <h3 id="steps_2">Steps<a class="headerlink" href="#steps_2" title="Permanent link">&para;</a></h3>
 <p><strong>Find every C# project that references the sproc:</strong></p>
-<pre><code class="language-bash">python scatter.py --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
+<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
   --search-scope /code/myrepo
 </code></pre>
 <p>Scatter scans every <code>.cs</code> file for references to the sproc name, identifies which class contains the call, then finds consumers of that class.</p>
 <p><strong>Export a CSV for the DBA team:</strong></p>
-<pre><code class="language-bash">python scatter.py --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
+<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
   --search-scope /code/myrepo \
   --output-format csv --output-file sproc_impact.csv
 </code></pre>
-<p>DBAs love spreadsheets. Give them a spreadsheet.</p>
+<p>Some folks love spreadsheets. Give them a spreadsheet.</p>
 <p><strong>Add pipeline mappings for deployment planning:</strong></p>
-<pre><code class="language-bash">python scatter.py --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
+<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
   --search-scope /code/myrepo \
   --pipeline-csv pipeline_to_app_mapping.csv \
   --output-format csv --output-file sproc_impact.csv
 </code></pre>
 <p>Now each row includes the CI/CD pipeline name. The deployment plan writes itself.</p>
 <p><strong>Narrow to a specific class if the sproc is used in multiple places:</strong></p>
-<pre><code class="language-bash">python scatter.py --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
+<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
   --search-scope /code/myrepo \
   --class-name PortalDataService
 </code></pre>
@@ -406,25 +416,25 @@ done | sort -u &gt; release-pipelines.txt
 <p><strong>Why:</strong> Impact analysis mode (<code>--sow</code>) reads a natural language work description, uses AI to identify which projects, classes, or sprocs are affected, then runs the full consumer analysis automatically. It answers "what breaks if you do this" before anyone writes code.</p>
 <h3 id="steps_3">Steps<a class="headerlink" href="#steps_3" title="Permanent link">&para;</a></h3>
 <p><strong>Quick inline description:</strong></p>
-<pre><code class="language-bash">python scatter.py --sow &quot;Add Redis caching to PortalDataService.GetConfiguration method&quot; \
+<pre><code class="language-bash">scatter --sow &quot;Add Redis caching to PortalDataService.GetConfiguration method&quot; \
   --search-scope /code/myrepo
 </code></pre>
 <p>The AI parses the description, identifies <code>GalaxyWorks.Data</code> as the target project and <code>PortalDataService</code> as the class, then traces consumers through the dependency graph.</p>
 <p><strong>Longer work request from a file:</strong></p>
-<pre><code class="language-bash">python scatter.py --sow-file /docs/work-requests/WR-2024-0342.txt \
+<pre><code class="language-bash">scatter --sow-file /docs/work-requests/WR-2024-0342.txt \
   --search-scope /code/myrepo \
   --pipeline-csv pipeline_to_app_mapping.csv
 </code></pre>
 <p>For multi-paragraph work requests, point to a file. The AI does a better job with more context.</p>
 <p><strong>Save structured output for the ticket:</strong></p>
-<pre><code class="language-bash">python scatter.py --sow-file /docs/work-requests/WR-2024-0342.txt \
+<pre><code class="language-bash">scatter --sow-file /docs/work-requests/WR-2024-0342.txt \
   --search-scope /code/myrepo \
   --pipeline-csv pipeline_to_app_mapping.csv \
   --output-format json --output-file WR-0342-impact.json
 </code></pre>
 <p>The JSON includes everything: identified targets, consumer trees, risk ratings, complexity assessment, effort estimate. Attach it to the Jira ticket.</p>
 <p><strong>Paste-ready for a planning meeting:</strong></p>
-<pre><code class="language-bash">python scatter.py --sow &quot;Add Redis caching to PortalDataService.GetConfiguration method&quot; \
+<pre><code class="language-bash">scatter --sow &quot;Add Redis caching to PortalDataService.GetConfiguration method&quot; \
   --search-scope /code/myrepo \
   --output-format markdown | pbcopy
 </code></pre>
@@ -445,31 +455,31 @@ done | sort -u &gt; release-pipelines.txt
 <p><strong>Why:</strong> Graph mode builds a full dependency graph from every <code>.csproj</code> in scope, computes coupling metrics, detects circular dependencies, identifies domain clusters, and tells you which extractions are feasible and which are fantasy.</p>
 <h3 id="steps_4">Steps<a class="headerlink" href="#steps_4" title="Permanent link">&para;</a></h3>
 <p><strong>Build the graph and see the summary:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo
+<pre><code class="language-bash">scatter --graph --search-scope /code/myrepo
 </code></pre>
 <p>First run builds the graph from scratch and caches it. Subsequent runs load from cache in under a second.</p>
 <p><strong>Get the full report with domain clusters:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo \
+<pre><code class="language-bash">scatter --graph --search-scope /code/myrepo \
   --output-format markdown | pbcopy
 </code></pre>
 <p>Paste into Confluence. The Mermaid diagram renders inline. The domain clusters table shows extraction feasibility scores.</p>
 <p><strong>Export JSON for deeper analysis:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo \
+<pre><code class="language-bash">scatter --graph --search-scope /code/myrepo \
   --output-format json --output-file graph-report.json \
   --include-graph-topology
 </code></pre>
 <p>The <code>--include-graph-topology</code> flag adds the raw nodes and edges to the JSON. Omitted by default because it can get large, but you need it for custom analysis.</p>
 <p><strong>Include database dependencies:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo \
+<pre><code class="language-bash">scatter --graph --search-scope /code/myrepo \
   --include-db \
   --output-format json --output-file graph-with-db.json
 </code></pre>
 <p>The <code>--include-db</code> flag scans for stored procedure references and direct SQL in C# files. This adds edges to the graph that represent shared database coupling -- the kind of coupling that <code>.csproj</code> references don't show you.</p>
 <p><strong>Export the Mermaid diagram separately:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope . --output-format mermaid &gt; deps.mmd
+<pre><code class="language-bash">scatter --graph --search-scope . --output-format mermaid &gt; deps.mmd
 </code></pre>
 <p><strong>Force a rebuild if the cache is suspect:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo --rebuild-graph
+<pre><code class="language-bash">scatter --graph --search-scope /code/myrepo --rebuild-graph
 </code></pre>
 <h3 id="what-to-look-for_4">What to Look For<a class="headerlink" href="#what-to-look-for_4" title="Permanent link">&para;</a></h3>
 <ul>
@@ -488,25 +498,25 @@ done | sort -u &gt; release-pipelines.txt
 <p><strong>Why:</strong> Target project mode gives you a precise, progressively narrowable view of who consumes what. Start broad, filter down to the exact method, get AI explanations of each usage.</p>
 <h3 id="steps_5">Steps<a class="headerlink" href="#steps_5" title="Permanent link">&para;</a></h3>
 <p><strong>Broad scan -- who references this project at all?</strong></p>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope /code/myrepo
 </code></pre>
 <p>The filter chain in the output shows the funnel: total projects -&gt; those with a <code>&lt;ProjectReference&gt;</code> -&gt; those using the namespace -&gt; those referencing specific types.</p>
 <p><strong>Narrow to a specific class:</strong></p>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope /code/myrepo \
   --class-name PortalDataService
 </code></pre>
 <p>Now you see only consumers that actually reference <code>PortalDataService</code>, not just the namespace.</p>
 <p><strong>Narrow further to a specific method:</strong></p>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope /code/myrepo \
   --class-name PortalDataService \
   --method-name GetConfiguration
 </code></pre>
 <p>Down to the exact call sites. If you're deprecating <code>GetConfiguration()</code>, these are the projects that need updating.</p>
 <p><strong>Add AI summaries to understand the usage patterns:</strong></p>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope /code/myrepo \
   --class-name PortalDataService \
   --summarize-consumers \
@@ -531,7 +541,7 @@ done | sort -u &gt; release-pipelines.txt
 <h3 id="steps_6">Steps<a class="headerlink" href="#steps_6" title="Permanent link">&para;</a></h3>
 <p><strong>Generate a timestamped report:</strong></p>
 <pre><code class="language-bash">TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-python scatter.py --graph --search-scope /code/myrepo \
+scatter --graph --search-scope /code/myrepo \
   --include-db \
   --output-format json --output-file &quot;reports/graph_${TIMESTAMP}.json&quot; \
   --include-graph-topology
@@ -559,13 +569,13 @@ for project in new_top:
 </code></pre>
 <p>This is a 15-line script that tells you more about architecture drift than a week of code review.</p>
 <p><strong>Force a full rebuild if the cache is suspect:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo \
+<pre><code class="language-bash">scatter --graph --search-scope /code/myrepo \
   --rebuild-graph \
   --output-format json --output-file &quot;reports/graph_${TIMESTAMP}.json&quot;
 </code></pre>
 <p>Cache invalidation is automatic (Scatter checks file hashes and project sets), but if you've moved directories around or done major restructuring, a forced rebuild ensures clean data.</p>
 <p><strong>Generate a Markdown dashboard for the team:</strong></p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope /code/myrepo \
+<pre><code class="language-bash">scatter --graph --search-scope /code/myrepo \
   --output-format markdown --output-file &quot;reports/health-dashboard.md&quot;
 </code></pre>
 <p>Commit this to the repo wiki. The Mermaid diagram renders inline. Update weekly.</p>

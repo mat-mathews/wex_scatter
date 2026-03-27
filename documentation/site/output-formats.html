@@ -51,31 +51,37 @@
 </li>
                                     
 <li>
-    <a href="usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+    <a href="workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Analysis Modes</a>
+    <ul class="dropdown-menu">
+            
 <li>
-    <a href="usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+    <a href="usage/target-project.html" class="dropdown-item">Target Project</a>
 </li>
-                                    
+            
 <li>
-    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+    <a href="usage/git-branch.html" class="dropdown-item">Git Branch</a>
 </li>
-                                    
+            
+<li>
+    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure</a>
+</li>
+            
 <li>
     <a href="usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
 </li>
-                                    
+            
 <li>
     <a href="usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
 </li>
+    </ul>
+  </li>
                                     
 <li>
     <a href="output-formats.html" class="dropdown-item active" aria-current="page">Output Formats</a>
-</li>
-                                    
-<li>
-    <a href="workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
 <li>
@@ -121,6 +127,10 @@
                                     
 <li>
     <a href="reference/consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="reference/codebase-index.html" class="dropdown-item">Codebase Index</a>
 </li>
                                     
 <li>
@@ -170,7 +180,7 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a rel="next" href="workflows.html" class="nav-link">
+                                <a rel="next" href="ai-features.html" class="nav-link">
                                     Next <i class="fa fa-arrow-right"></i>
                                 </a>
                             </li>
@@ -234,11 +244,11 @@
 <hr />
 <h2 id="1-console-default">1. Console (default)<a class="headerlink" href="#1-console-default" title="Permanent link">&para;</a></h2>
 <p>When you just want to see what's going on. No flags, no files, no ceremony.</p>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --pipeline-csv pipeline_to_app_mapping.csv
 </code></pre>
 <pre><code>Search scope: /code/myrepo (scanned 142 projects, 3,891 files)
-Filter: 142 -&gt; 8 project refs -&gt; 5 namespace -&gt; 3 class match
+Filter: 142 → 8 project refs[graph] → 5 namespace → 3 class match
 
 --- Combined Consumer Analysis Report ---
 
@@ -264,7 +274,7 @@ Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (3 consumer(
 <hr />
 <h2 id="2-json">2. JSON<a class="headerlink" href="#2-json" title="Permanent link">&para;</a></h2>
 <p>Structured data for programmatic consumption -- ticket automation, dashboards, diffing between runs.</p>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --output-format json --output-file report.json
 </code></pre>
 <p>Requires <code>--output-file</code>. Scatter won't dump JSON to stdout -- that path leads to accidental pipe disasters with multi-megabyte payloads.</p>
@@ -319,12 +329,12 @@ Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (3 consumer(
 <hr />
 <h2 id="3-csv">3. CSV<a class="headerlink" href="#3-csv" title="Permanent link">&para;</a></h2>
 <p>One row per consumer. For Excel, pivot tables, and people who think in spreadsheets.</p>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --output-format csv --output-file report.csv
 </code></pre>
 <p>Requires <code>--output-file</code>.</p>
 <pre><code># Search scope: /code/myrepo (142 projects, 3,891 files)
-# Filter: 142 -&gt; 8 project refs -&gt; 5 namespace -&gt; 3 class match
+# Filter: 142 → 8 project refs[graph] → 5 namespace → 3 class match
 TargetProjectName,TargetProjectPath,TriggeringType,ConsumerProjectName,ConsumerProjectPath,ConsumingSolutions,PipelineName,BatchJobVerification
 GalaxyWorks.Data,GalaxyWorks.Data/GalaxyWorks.Data.csproj,PortalDataService,MyGalaxyConsumerApp,MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj,GalaxyWorks.sln,galaxy-consumer-ci,
 </code></pre>
@@ -335,13 +345,13 @@ GalaxyWorks.Data,GalaxyWorks.Data/GalaxyWorks.Data.csproj,PortalDataService,MyGa
 <h2 id="4-markdown">4. Markdown<a class="headerlink" href="#4-markdown" title="Permanent link">&para;</a></h2>
 <p>Paste-ready for PRs, Jira tickets, Confluence pages, ADO work items. Designed for humans reading rendered text, not raw data.</p>
 <p>Unlike CSV and JSON, Markdown does <strong>not</strong> require <code>--output-file</code>. Without it, Scatter prints to stdout. This is intentional -- pipe it straight to clipboard:</p>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --output-format markdown | pbcopy
 </code></pre>
 <pre><code class="language-markdown"># Consumer Analysis Report
 
 &gt; **Search scope:** /code/myrepo (scanned 142 projects, 3,891 files)
-&gt; **Filter:** 142 -&gt; 8 project refs -&gt; 5 namespace -&gt; 3 class match
+&gt; **Filter:** 142 → 8 project refs[graph] → 5 namespace → 3 class match
 
 ## GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (3 consumer(s))
 
@@ -369,7 +379,7 @@ Type/Level: PortalDataService
 <hr />
 <h2 id="5-mermaid">5. Mermaid<a class="headerlink" href="#5-mermaid" title="Permanent link">&para;</a></h2>
 <p>Graph mode only. Raw Mermaid diagram syntax -- no wrapping markdown, no summary tables.</p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope . --output-format mermaid
+<pre><code class="language-bash">scatter --graph --search-scope . --output-format mermaid
 </code></pre>
 <pre><code>graph TD
   GalaxyWorks_Data[&quot;GalaxyWorks.Data&quot;]
@@ -384,12 +394,12 @@ Type/Level: PortalDataService
 <p>If domain clusters were detected, nodes are grouped into Mermaid subgraphs. Renders natively in GitHub PRs, Azure DevOps wikis, and Confluence.</p>
 <p>Using <code>--output-format mermaid</code> outside of <code>--graph</code> mode is an error -- Scatter will tell you so and exit.</p>
 <pre><code class="language-bash"># Save to file
-python scatter.py --graph --search-scope . --output-format mermaid --output-file deps.mmd
+scatter --graph --search-scope . --output-format mermaid --output-file deps.mmd
 </code></pre>
 <hr />
 <h2 id="6-pipelines">6. Pipelines<a class="headerlink" href="#6-pipelines" title="Permanent link">&para;</a></h2>
 <p>One pipeline name per line, sorted alphabetically. Built for deployment scripts and shell pipelines (the other kind).</p>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --pipeline-csv pipeline_to_app_mapping.csv \
   --output-format pipelines
 </code></pre>
@@ -401,7 +411,7 @@ portal-batch-ci
 <p>Requires <code>--pipeline-csv</code> to map consumer projects to pipeline names. Without it, the output will be empty. Scatter warns you about this, but won't stop you.</p>
 <p>Not supported in <code>--graph</code> mode. Graph analysis is about architecture, not deployments.</p>
 <pre><code class="language-bash"># Feed directly into a deployment script
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --pipeline-csv pipeline_to_app_mapping.csv \
   --output-format pipelines | xargs -I {} ./trigger-pipeline.sh {}
 </code></pre>

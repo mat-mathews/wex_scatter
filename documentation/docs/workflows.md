@@ -17,7 +17,7 @@ Seven real-world scenarios, each one pulled from actual team usage. Not hypothet
 **Quick scan -- what did this branch touch?**
 
 ```bash
-python scatter.py --branch-name feature/add-caching \
+scatter --branch-name feature/add-caching \
   --repo-path /code/myrepo \
   --search-scope /code/myrepo
 ```
@@ -27,7 +27,7 @@ This compares your branch against `main`, extracts every type declaration from c
 **Drill into the consumers with AI summaries:**
 
 ```bash
-python scatter.py --branch-name feature/add-caching \
+scatter --branch-name feature/add-caching \
   --repo-path /code/myrepo \
   --search-scope /code/myrepo \
   --summarize-consumers
@@ -38,7 +38,7 @@ Now each consumer gets a 2-3 sentence summary of how it actually uses the types 
 **High-precision mode with hybrid analysis:**
 
 ```bash
-python scatter.py --branch-name feature/add-caching \
+scatter --branch-name feature/add-caching \
   --repo-path /code/myrepo \
   --search-scope /code/myrepo \
   --enable-hybrid-git \
@@ -76,7 +76,7 @@ Pipe to clipboard, paste into the PR description. Reviewer sees the blast radius
 **From a branch -- what pipelines does my change affect?**
 
 ```bash
-python scatter.py --branch-name feature/portal-tenant-isolation \
+scatter --branch-name feature/portal-tenant-isolation \
   --repo-path /code/myrepo \
   --search-scope /code/myrepo \
   --pipeline-csv pipeline_to_app_mapping.csv \
@@ -110,7 +110,7 @@ Just swap the mode flag. The rest of the command is the same: add `--pipeline-cs
 **Get the full consumer report with pipelines for the ticket attachment:**
 
 ```bash
-python scatter.py --branch-name feature/portal-tenant-isolation \
+scatter --branch-name feature/portal-tenant-isolation \
   --repo-path /code/myrepo \
   --search-scope /code/myrepo \
   --pipeline-csv pipeline_to_app_mapping.csv \
@@ -122,7 +122,7 @@ The CSV includes one row per consumer with key columns: `ConsumerProjectName`, `
 **Feed directly into a deployment script:**
 
 ```bash
-python scatter.py --branch-name feature/portal-tenant-isolation \
+scatter --branch-name feature/portal-tenant-isolation \
   --repo-path /code/myrepo \
   --search-scope /code/myrepo \
   --pipeline-csv pipeline_to_app_mapping.csv \
@@ -135,7 +135,7 @@ The `pipelines` output format is designed for this -- one name per line, sorted 
 
 ```bash
 for branch in feature/portal-isolation feature/billing-fix feature/cache-update; do
-  python scatter.py --branch-name $branch \
+  scatter --branch-name $branch \
     --repo-path /code/myrepo \
     --search-scope /code/myrepo \
     --pipeline-csv pipeline_to_app_mapping.csv \
@@ -168,7 +168,7 @@ done | sort -u > release-pipelines.txt
 **Find every C# project that references the sproc:**
 
 ```bash
-python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" \
+scatter --stored-procedure "dbo.sp_InsertPortalConfiguration" \
   --search-scope /code/myrepo
 ```
 
@@ -177,7 +177,7 @@ Scatter scans every `.cs` file for references to the sproc name, identifies whic
 **Export a CSV for the DBA team:**
 
 ```bash
-python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" \
+scatter --stored-procedure "dbo.sp_InsertPortalConfiguration" \
   --search-scope /code/myrepo \
   --output-format csv --output-file sproc_impact.csv
 ```
@@ -187,7 +187,7 @@ Some folks love spreadsheets. Give them a spreadsheet.
 **Add pipeline mappings for deployment planning:**
 
 ```bash
-python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" \
+scatter --stored-procedure "dbo.sp_InsertPortalConfiguration" \
   --search-scope /code/myrepo \
   --pipeline-csv pipeline_to_app_mapping.csv \
   --output-format csv --output-file sproc_impact.csv
@@ -198,7 +198,7 @@ Now each row includes the CI/CD pipeline name. The deployment plan writes itself
 **Narrow to a specific class if the sproc is used in multiple places:**
 
 ```bash
-python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" \
+scatter --stored-procedure "dbo.sp_InsertPortalConfiguration" \
   --search-scope /code/myrepo \
   --class-name PortalDataService
 ```
@@ -226,7 +226,7 @@ python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" \
 **Quick inline description:**
 
 ```bash
-python scatter.py --sow "Add Redis caching to PortalDataService.GetConfiguration method" \
+scatter --sow "Add Redis caching to PortalDataService.GetConfiguration method" \
   --search-scope /code/myrepo
 ```
 
@@ -235,7 +235,7 @@ The AI parses the description, identifies `GalaxyWorks.Data` as the target proje
 **Longer work request from a file:**
 
 ```bash
-python scatter.py --sow-file /docs/work-requests/WR-2024-0342.txt \
+scatter --sow-file /docs/work-requests/WR-2024-0342.txt \
   --search-scope /code/myrepo \
   --pipeline-csv pipeline_to_app_mapping.csv
 ```
@@ -245,7 +245,7 @@ For multi-paragraph work requests, point to a file. The AI does a better job wit
 **Save structured output for the ticket:**
 
 ```bash
-python scatter.py --sow-file /docs/work-requests/WR-2024-0342.txt \
+scatter --sow-file /docs/work-requests/WR-2024-0342.txt \
   --search-scope /code/myrepo \
   --pipeline-csv pipeline_to_app_mapping.csv \
   --output-format json --output-file WR-0342-impact.json
@@ -256,7 +256,7 @@ The JSON includes everything: identified targets, consumer trees, risk ratings, 
 **Paste-ready for a planning meeting:**
 
 ```bash
-python scatter.py --sow "Add Redis caching to PortalDataService.GetConfiguration method" \
+scatter --sow "Add Redis caching to PortalDataService.GetConfiguration method" \
   --search-scope /code/myrepo \
   --output-format markdown | pbcopy
 ```
@@ -285,7 +285,7 @@ python scatter.py --sow "Add Redis caching to PortalDataService.GetConfiguration
 **Build the graph and see the summary:**
 
 ```bash
-python scatter.py --graph --search-scope /code/myrepo
+scatter --graph --search-scope /code/myrepo
 ```
 
 First run builds the graph from scratch and caches it. Subsequent runs load from cache in under a second.
@@ -293,7 +293,7 @@ First run builds the graph from scratch and caches it. Subsequent runs load from
 **Get the full report with domain clusters:**
 
 ```bash
-python scatter.py --graph --search-scope /code/myrepo \
+scatter --graph --search-scope /code/myrepo \
   --output-format markdown | pbcopy
 ```
 
@@ -302,7 +302,7 @@ Paste into Confluence. The Mermaid diagram renders inline. The domain clusters t
 **Export JSON for deeper analysis:**
 
 ```bash
-python scatter.py --graph --search-scope /code/myrepo \
+scatter --graph --search-scope /code/myrepo \
   --output-format json --output-file graph-report.json \
   --include-graph-topology
 ```
@@ -312,7 +312,7 @@ The `--include-graph-topology` flag adds the raw nodes and edges to the JSON. Om
 **Include database dependencies:**
 
 ```bash
-python scatter.py --graph --search-scope /code/myrepo \
+scatter --graph --search-scope /code/myrepo \
   --include-db \
   --output-format json --output-file graph-with-db.json
 ```
@@ -322,13 +322,13 @@ The `--include-db` flag scans for stored procedure references and direct SQL in 
 **Export the Mermaid diagram separately:**
 
 ```bash
-python scatter.py --graph --search-scope . --output-format mermaid > deps.mmd
+scatter --graph --search-scope . --output-format mermaid > deps.mmd
 ```
 
 **Force a rebuild if the cache is suspect:**
 
 ```bash
-python scatter.py --graph --search-scope /code/myrepo --rebuild-graph
+scatter --graph --search-scope /code/myrepo --rebuild-graph
 ```
 
 ### What to Look For
@@ -355,7 +355,7 @@ python scatter.py --graph --search-scope /code/myrepo --rebuild-graph
 **Broad scan -- who references this project at all?**
 
 ```bash
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope /code/myrepo
 ```
 
@@ -364,7 +364,7 @@ The filter chain in the output shows the funnel: total projects -> those with a 
 **Narrow to a specific class:**
 
 ```bash
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope /code/myrepo \
   --class-name PortalDataService
 ```
@@ -374,7 +374,7 @@ Now you see only consumers that actually reference `PortalDataService`, not just
 **Narrow further to a specific method:**
 
 ```bash
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope /code/myrepo \
   --class-name PortalDataService \
   --method-name GetConfiguration
@@ -385,7 +385,7 @@ Down to the exact call sites. If you're deprecating `GetConfiguration()`, these 
 **Add AI summaries to understand the usage patterns:**
 
 ```bash
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope /code/myrepo \
   --class-name PortalDataService \
   --summarize-consumers \
@@ -419,7 +419,7 @@ Each consumer now includes summaries of the relevant C# files, explaining not ju
 
 ```bash
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-python scatter.py --graph --search-scope /code/myrepo \
+scatter --graph --search-scope /code/myrepo \
   --include-db \
   --output-format json --output-file "reports/graph_${TIMESTAMP}.json" \
   --include-graph-topology
@@ -455,7 +455,7 @@ This is a 15-line script that tells you more about architecture drift than a wee
 **Force a full rebuild if the cache is suspect:**
 
 ```bash
-python scatter.py --graph --search-scope /code/myrepo \
+scatter --graph --search-scope /code/myrepo \
   --rebuild-graph \
   --output-format json --output-file "reports/graph_${TIMESTAMP}.json"
 ```
@@ -465,7 +465,7 @@ Cache invalidation is automatic (Scatter checks file hashes and project sets), b
 **Generate a Markdown dashboard for the team:**
 
 ```bash
-python scatter.py --graph --search-scope /code/myrepo \
+scatter --graph --search-scope /code/myrepo \
   --output-format markdown --output-file "reports/health-dashboard.md"
 ```
 

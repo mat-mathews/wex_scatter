@@ -34,6 +34,7 @@ nav:
       - Coupling & Cycle Detection: reference/coupling-and-cycles.md
       - Domain Clustering: reference/domain-clustering.md
       - Consumer Detection Pipeline: reference/consumer-pipeline.md
+      - Codebase Index: reference/codebase-index.md
       - Type Extraction: reference/type-extraction.md
       - Test Architecture: reference/test-architecture.md
       - Benchmarks: reference/benchmarks.md

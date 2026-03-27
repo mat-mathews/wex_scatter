@@ -51,31 +51,37 @@
 </li>
                                     
 <li>
-    <a href="target-project.html" class="dropdown-item">Target Project Analysis</a>
+    <a href="../workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Analysis Modes</a>
+    <ul class="dropdown-menu">
+            
 <li>
-    <a href="git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+    <a href="target-project.html" class="dropdown-item">Target Project</a>
 </li>
-                                    
+            
 <li>
-    <a href="stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+    <a href="git-branch.html" class="dropdown-item">Git Branch</a>
 </li>
-                                    
+            
+<li>
+    <a href="stored-procedure.html" class="dropdown-item">Stored Procedure</a>
+</li>
+            
 <li>
     <a href="impact-analysis.html" class="dropdown-item">Impact Analysis</a>
 </li>
-                                    
+            
 <li>
     <a href="dependency-graph.html" class="dropdown-item active" aria-current="page">Dependency Graph</a>
 </li>
+    </ul>
+  </li>
                                     
 <li>
     <a href="../output-formats.html" class="dropdown-item">Output Formats</a>
-</li>
-                                    
-<li>
-    <a href="../workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
 <li>
@@ -121,6 +127,10 @@
                                     
 <li>
     <a href="../reference/consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="../reference/codebase-index.html" class="dropdown-item">Codebase Index</a>
 </li>
                                     
 <li>
@@ -233,7 +243,7 @@
 <p>You want the full picture: every project, every dependency, every coupling hotspot, every potential service boundary. This isn't "who consumes this one thing?" -- it's "what does your entire dependency landscape look like, and where are the problems?"</p>
 <p>Think of it as a codebase X-ray. Run it, stare at the results, and then have opinions about which refactors to prioritize.</p>
 <h2 id="basic-example">Basic Example<a class="headerlink" href="#basic-example" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">python scatter.py --graph --search-scope .
+<pre><code class="language-bash">scatter --graph --search-scope .
 </code></pre>
 <pre><code>============================================================
   Dependency Graph Analysis
@@ -316,31 +326,31 @@ Analysis complete. 11 projects, 50 dependencies, 0 cycle(s).
 <li><strong>solution_bridge_project</strong> (info) -- a project in 3+ solutions with 5+ incoming dependencies, acting as a coupling bottleneck</li>
 </ul>
 <h2 id="force-rebuild">Force Rebuild<a class="headerlink" href="#force-rebuild" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">python scatter.py --graph --search-scope . --rebuild-graph
+<pre><code class="language-bash">scatter --graph --search-scope . --rebuild-graph
 </code></pre>
 <p>Scatter caches the graph after the first build. Subsequent runs load the cache and skip the expensive construction step. Use <code>--rebuild-graph</code> after major structural changes (new projects added, projects removed, renamed namespaces) when you suspect the cache is stale.</p>
 <p>The cache also accelerates other modes -- when you run <code>--target-project</code> and a graph cache exists, the first two pipeline stages use the graph's reverse index instead of scanning the filesystem.</p>
 <h2 id="include-database-dependencies">Include Database Dependencies<a class="headerlink" href="#include-database-dependencies" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">python scatter.py --graph --search-scope . --include-db
+<pre><code class="language-bash">scatter --graph --search-scope . --include-db
 </code></pre>
 <p>Adds <code>sproc_shared</code> edges by scanning <code>.cs</code> files for stored procedure references, EF model patterns, and direct SQL strings. Without this flag, the graph only tracks project references, namespace usage, and type usage.</p>
 <p>Database edges expose hidden coupling. Two projects that share no code references but both call <code>sp_InsertPortalConfiguration</code> are coupled through shared mutable state -- and that coupling is nearly as hard as a project reference.</p>
 <h2 id="output-formats">Output Formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h2>
 <p><strong>JSON</strong> -- structured report with summary stats, top coupled projects, cycle details, per-project metrics, cluster analysis, and observations:</p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope . \
+<pre><code class="language-bash">scatter --graph --search-scope . \
   --output-format json --output-file graph_report.json
 </code></pre>
 <p>Add <code>--include-graph-topology</code> to include the full node and edge data in the JSON. Omitted by default to keep file size manageable. Include it when you need the raw graph for visualization tools or custom analysis.</p>
 <p><strong>CSV</strong> -- one row per project with columns for all metrics (FanIn, FanOut, Instability, CouplingScore, Cluster, ExtractionFeasibility, etc.). Sort in a spreadsheet and find outliers:</p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope . \
+<pre><code class="language-bash">scatter --graph --search-scope . \
   --output-format csv --output-file graph_metrics.csv
 </code></pre>
 <p><strong>Markdown</strong> -- includes a Mermaid diagram of the dependency graph. Paste it into a PR, a wiki, or any documentation that renders Mermaid blocks:</p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope . \
+<pre><code class="language-bash">scatter --graph --search-scope . \
   --output-format markdown --output-file graph.md
 </code></pre>
 <p><strong>Mermaid</strong> -- just the diagram, nothing else. Projects are grouped into subgraph blocks when clusters are present:</p>
-<pre><code class="language-bash">python scatter.py --graph --search-scope . \
+<pre><code class="language-bash">scatter --graph --search-scope . \
   --output-format mermaid --output-file graph.mmd
 </code></pre>
 <p>See <a href="../output-formats.html">Output Formats</a> for detailed structure of each format.</p>

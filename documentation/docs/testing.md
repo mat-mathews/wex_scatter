@@ -25,10 +25,10 @@ uv run pytest
 ```
 
 ```
-816 passed, 1 xfailed in ~25s
+~878 passed, 1 xfailed (run `uv run pytest --co -q` for the current count)
 ```
 
-800+ tests across 30 files. The single xfail is an intentional marker for a tracked edge case, not a failing test someone gave up on.
+~878 tests across 33 files. The single xfail is an intentional marker for a tracked edge case, not a failing test someone gave up on.
 
 ## What the tests cover
 
@@ -47,28 +47,28 @@ No flaky tests. No sleeps. No network calls.
 
 ## Smoke-testing against sample projects
 
-The repo ships with 8 sample .NET projects. Use them to verify Scatter works end-to-end on your machine.
+The repo ships with 11 sample .NET projects. Use them to verify Scatter works end-to-end on your machine.
 
-### GalaxyWorks.Data should have multiple consumers
-
-```bash
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
-```
-
-Look for: at least 4 consumers in the output (exact count depends on the current sample project set).
-
-### MyDotNetApp should have at least 1 consumer
+### GalaxyWorks.Data should have 6 consumers
 
 ```bash
-python scatter.py --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
 ```
 
-Look for: at least 1 consumer.
+Look for: `6 consumer(s)` in the output.
+
+### MyDotNetApp should have 1 consumer
+
+```bash
+scatter --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .
+```
+
+Look for: `1 consumer(s)`.
 
 ### MyDotNetApp2.Exclude should have 0 consumers
 
 ```bash
-python scatter.py --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .
+scatter --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .
 ```
 
 Look for: `0 consumer(s)`. This one is intentionally isolated -- it validates that Scatter doesn't report false positives.
@@ -76,15 +76,15 @@ Look for: `0 consumer(s)`. This one is intentionally isolated -- it validates th
 ### Stored procedure tracing works
 
 ```bash
-python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .
+scatter --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .
 ```
 
-Should find the sproc in `PortalDataService` and trace its consumers.
+Should find the sproc in `PortalDataService` and `PortalCacheService`, tracing 7 consumers across 2 targets.
 
 ### Graph mode works
 
 ```bash
-python scatter.py --graph --search-scope .
+scatter --graph --search-scope .
 ```
 
 Should produce a health dashboard with project counts, edge counts, coupling metrics, and domain clusters. No errors, no warnings.
@@ -96,25 +96,24 @@ These require a `$GOOGLE_API_KEY` environment variable. If you don't have one, t
 ### Summarization
 
 ```bash
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
   --summarize-consumers --google-api-key $GOOGLE_API_KEY
 ```
 
 ### Hybrid git analysis
 
 ```bash
-python scatter.py --branch-name feature/your-branch --repo-path . --search-scope . \
+scatter --branch-name feature/your-branch --repo-path . --search-scope . \
   --enable-hybrid-git --google-api-key $GOOGLE_API_KEY -v
 ```
 
 ### Impact analysis
 
 ```bash
-python scatter.py \
-  --sow "Modify PortalDataService in GalaxyWorks.Data to add a new parameter" \
+scatter --sow "Modify PortalDataService in GalaxyWorks.Data to add a new parameter" \
   --search-scope . --google-api-key $GOOGLE_API_KEY
 ```
 
 ## Want to go deeper?
 
-See [Test Architecture](reference/test-architecture.md) for the full 25-file test inventory, fixture design, mock patterns, and how to add new tests.
+See [Test Architecture](reference/test-architecture.md) for the full 33-file test inventory, fixture design, mock patterns, and how to add new tests.

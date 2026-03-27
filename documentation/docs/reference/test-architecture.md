@@ -20,7 +20,7 @@ pytest test_impact_analysis.py::test_something_specific
 python -m pytest --cov=scatter
 ```
 
-The full suite is 683 tests (1 xfail), and runs in roughly 9 seconds. No network calls, no database, no Docker. Just Python and your CPU.
+The full suite is 878 tests (1 xfail), and runs in roughly 25 seconds. No network calls, no database, no Docker. Just Python and your CPU.
 
 Coverage is configured in `pyproject.toml` with `fail_under=70%`. The coverage source is the `scatter/` package only -- test files themselves are excluded from the metric.
 
@@ -28,7 +28,7 @@ Coverage is configured in `pyproject.toml` with `fail_under=70%`. The coverage s
 
 ## Full Test Inventory
 
-25 test files. Here's every one of them, what it covers, and how many tests it contains.
+33 test files. Here's every one of them, what it covers, and how many tests it contains.
 
 | File | Tests | What it covers |
 |------|------:|----------------|
@@ -203,7 +203,7 @@ python_files = "test_*.py"
 addopts = "-q"
 ```
 
-The `-q` (quiet) default keeps output manageable for 683 tests. Override with `-v` when debugging.
+The `-q` (quiet) default keeps output manageable for 878 tests. Override with `-v` when debugging.
 
 ---
 

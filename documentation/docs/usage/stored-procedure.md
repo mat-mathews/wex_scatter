@@ -9,43 +9,55 @@ Scatter makes that invisible coupling visible. Give it a sproc name, and it trac
 ## Basic Example
 
 ```bash
-python scatter.py \
-  --stored-procedure "dbo.sp_InsertPortalConfiguration" \
-  --search-scope .
+scatter --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .
 ```
 
 ```
---- Running Stored Procedure Analysis Mode ---
-Identifying projects/classes referencing stored procedure: 'dbo.sp_InsertPortalConfiguration' within scope '.'
-Scanning 42 C# files in '.' for references to sproc 'dbo.sp_InsertPortalConfiguration'.
-Found 1 C# file(s) with potential sproc references. Mapped references to 1 unique class(es) across 1 project(s).
-
---- Analyzing Consumers for Class 1/1: 'PortalDataService' in Project: GalaxyWorks.Data ---
+Search scope: /code/scatter (scanned 11 projects, 38 files)
+Filter: 11 → 7 project refs[graph] → 6 namespace → 6 class match
 
 --- Combined Consumer Analysis Report ---
 
 --- Consuming Relationships Found ---
 
-Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (4 consumer(s))
+Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (6 consumer(s))
     Type/Level: PortalDataService (via Sproc: dbo.sp_InsertPortalConfiguration)
-         -> Consumed by: GalaxyWorks.WebPortal (GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj)
+         -> Consumed by: GalaxyWorks.Api (GalaxyWorks.Api/GalaxyWorks.Api.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=7.1, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
          -> Consumed by: GalaxyWorks.BatchProcessor (GalaxyWorks.BatchProcessor/GalaxyWorks.BatchProcessor.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=10.8, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
+         -> Consumed by: GalaxyWorks.WebPortal (GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=12.7, fan-in=1, fan-out=1, instability=0.500, in-cycle=no
          -> Consumed by: MyGalaryConsumerApp (MyGalaxyConsumerApp/MyGalaryConsumerApp.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=4.3, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
          -> Consumed by: MyGalaryConsumerApp2 (MyGalaxyConsumerApp2/MyGalaryConsumerApp2.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=1.8, fan-in=0, fan-out=1, instability=1.000, in-cycle=no
+         -> Consumed by: GalaxyWorks.Data.Tests (GalaxyWorks.Data.Tests/GalaxyWorks.Data.Tests.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=3.5, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
 
---- Total Consuming Relationships Found: 4 ---
+Target: GalaxyWorks.WebPortal (GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj) (1 consumer(s))
+    Type/Level: PortalCacheService (via Sproc: dbo.sp_InsertPortalConfiguration)
+         -> Consumed by: GalaxyWorks.BatchProcessor (GalaxyWorks.BatchProcessor/GalaxyWorks.BatchProcessor.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=10.8, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
 
-Analysis complete. 4 consumer(s) found across 1 target(s).
+--- Total Consuming Relationships Found: 7 ---
+
+Analysis complete. 7 consumer(s) found across 2 target(s).
 ```
 
-Notice the two-hop chain in the output: the sproc lives in `PortalDataService`, and four projects consume that class. The `(via Sproc: dbo.sp_InsertPortalConfiguration)` annotation preserves the provenance so readers understand why these consumers were flagged.
+Notice the multi-hop chain: the sproc is referenced by `PortalDataService` in GalaxyWorks.Data (6 consumers) and `PortalCacheService` in GalaxyWorks.WebPortal (1 consumer). The `(via Sproc: dbo.sp_InsertPortalConfiguration)` annotation preserves the provenance so readers understand why these consumers were flagged.
 
 ## Different Stored Procedure
 
 ```bash
-python scatter.py \
-  --stored-procedure "dbo.sp_GetPortalConfigurationDetails" \
-  --search-scope .
+scatter --stored-procedure "dbo.sp_GetPortalConfigurationDetails" --search-scope .
 ```
 
 Same flow, different sproc. If multiple classes in multiple projects reference this sproc, Scatter reports all of them and traces their consumers independently.
@@ -53,10 +65,8 @@ Same flow, different sproc. If multiple classes in multiple projects reference t
 ## Filter by Class
 
 ```bash
-python scatter.py \
-  --stored-procedure "dbo.sp_InsertPortalConfiguration" \
-  --search-scope . \
-  --class-name PortalDataService
+scatter --stored-procedure "dbo.sp_InsertPortalConfiguration" \
+  --search-scope . --class-name PortalDataService
 ```
 
 When the sproc is referenced from multiple classes (maybe a test helper also calls it), filter to only the class you care about. The `--class-name` filter is applied before consumer analysis, so it narrows the search early.
@@ -64,10 +74,8 @@ When the sproc is referenced from multiple classes (maybe a test helper also cal
 ## Custom Regex Pattern
 
 ```bash
-python scatter.py \
-  --stored-procedure "dbo.sp_InsertPortalConfiguration" \
-  --search-scope . \
-  --sproc-regex-pattern "EXECUTE\s+{sproc_name_placeholder}"
+scatter --stored-procedure "dbo.sp_InsertPortalConfiguration" \
+  --search-scope . --sproc-regex-pattern "EXECUTE\s+{sproc_name_placeholder}"
 ```
 
 The default regex matches quoted sproc names -- the common ADO.NET and Dapper pattern. If your codebase uses raw SQL strings with `EXECUTE` or a custom invocation pattern, provide a custom regex. The `{sproc_name_placeholder}` token gets replaced with the escaped sproc name.
@@ -75,11 +83,8 @@ The default regex matches quoted sproc names -- the common ADO.NET and Dapper pa
 ## Export for the DBA Team
 
 ```bash
-python scatter.py \
-  --stored-procedure "dbo.sp_InsertPortalConfiguration" \
-  --search-scope . \
-  --output-format csv \
-  --output-file sproc_impact.csv
+scatter --stored-procedure "dbo.sp_InsertPortalConfiguration" \
+  --search-scope . --output-format csv --output-file sproc_impact.csv
 ```
 
 CSV is the lingua franca of cross-team communication. Hand this to your DBA and they can see exactly which applications need coordination before modifying the sproc.
@@ -87,12 +92,9 @@ CSV is the lingua franca of cross-team communication. Hand this to your DBA and 
 ## With Pipeline Mapping
 
 ```bash
-python scatter.py \
-  --stored-procedure "dbo.sp_InsertPortalConfiguration" \
-  --search-scope . \
-  --pipeline-csv build/pipeline_map.csv \
-  --output-format csv \
-  --output-file sproc_impact.csv
+scatter --stored-procedure "dbo.sp_InsertPortalConfiguration" \
+  --search-scope . --pipeline-csv build/pipeline_map.csv \
+  --output-format csv --output-file sproc_impact.csv
 ```
 
 When combined with `--pipeline-csv`, each consumer row includes the CI/CD pipeline name. This answers the deployment question: "if we change this sproc, which pipelines need to be redeployed, and in what order?"

@@ -51,31 +51,37 @@
 </li>
                                     
 <li>
-    <a href="../usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+    <a href="../workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Analysis Modes</a>
+    <ul class="dropdown-menu">
+            
 <li>
-    <a href="../usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+    <a href="../usage/target-project.html" class="dropdown-item">Target Project</a>
 </li>
-                                    
+            
 <li>
-    <a href="../usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+    <a href="../usage/git-branch.html" class="dropdown-item">Git Branch</a>
 </li>
-                                    
+            
+<li>
+    <a href="../usage/stored-procedure.html" class="dropdown-item">Stored Procedure</a>
+</li>
+            
 <li>
     <a href="../usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
 </li>
-                                    
+            
 <li>
     <a href="../usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
 </li>
+    </ul>
+  </li>
                                     
 <li>
     <a href="../output-formats.html" class="dropdown-item">Output Formats</a>
-</li>
-                                    
-<li>
-    <a href="../workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
 <li>
@@ -121,6 +127,10 @@
                                     
 <li>
     <a href="consumer-pipeline.html" class="dropdown-item active" aria-current="page">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="codebase-index.html" class="dropdown-item">Codebase Index</a>
 </li>
                                     
 <li>
@@ -170,7 +180,7 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a rel="next" href="type-extraction.html" class="nav-link">
+                                <a rel="next" href="codebase-index.html" class="nav-link">
                                     Next <i class="fa fa-arrow-right"></i>
                                 </a>
                             </li>
@@ -283,10 +293,10 @@ class FilterStage:
 </code></pre>
 <h3 id="the-arrow-chain">The Arrow Chain<a class="headerlink" href="#the-arrow-chain" title="Permanent link">&para;</a></h3>
 <p>The pipeline produces a human-readable arrow chain for reports:</p>
-<pre><code>Filter: 250 -&gt; 12 project refs -&gt; 8 namespace -&gt; 4 class match -&gt; 2 method match
+<pre><code>Filter: 250 → 12 project refs → 8 namespace → 4 class match → 2 method match
 </code></pre>
 <p>With graph acceleration:</p>
-<pre><code>Filter: 250[graph] -&gt; 12 project refs[graph] -&gt; 8 namespace -&gt; 4 class match
+<pre><code>Filter: 250[graph] → 12 project refs[graph] → 8 namespace → 4 class match
 </code></pre>
 <p>The <code>[graph]</code> annotation tells you which stages used the cached graph instead of the filesystem.</p>
 <h3 id="diagnostic-hints">Diagnostic Hints<a class="headerlink" href="#diagnostic-hints" title="Permanent link">&para;</a></h3>
@@ -439,10 +449,10 @@ except Exception as e:
 <li><strong>Method:</strong> 4 candidates -&gt; 2 call <code>.GetPortalConfig(</code></li>
 </ol>
 <p>Output:</p>
-<pre><code>Filter: 247 -&gt; 11 project refs -&gt; 8 namespace -&gt; 4 class match -&gt; 2 method match
+<pre><code>Filter: 247 → 11 project refs → 8 namespace → 4 class match → 2 method match
 </code></pre>
 <p>If the graph cache exists, stages 1-2 produce the same result in microseconds:</p>
-<pre><code>Filter: 247[graph] -&gt; 11 project refs[graph] -&gt; 8 namespace -&gt; 4 class match -&gt; 2 method match
+<pre><code>Filter: 247[graph] → 11 project refs[graph] → 8 namespace → 4 class match → 2 method match
 </code></pre>
 <p>The FilterPipeline is included in all output formats (console, JSON, CSV, markdown) so you always know how the funnel narrowed.</p></div>
             </div>

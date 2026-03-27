@@ -8,7 +8,7 @@
         
         
         <link rel="shortcut icon" href="../img/favicon.ico">
-        <title>Git Branch Analysis - Scatter</title>
+        <title>Git Branch - Scatter</title>
         <link href="../css/bootstrap.min.css" rel="stylesheet">
         <link href="../css/fontawesome.min.css" rel="stylesheet">
         <link href="../css/brands.min.css" rel="stylesheet">
@@ -51,31 +51,37 @@
 </li>
                                     
 <li>
-    <a href="target-project.html" class="dropdown-item">Target Project Analysis</a>
+    <a href="../workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Analysis Modes</a>
+    <ul class="dropdown-menu">
+            
 <li>
-    <a href="git-branch.html" class="dropdown-item active" aria-current="page">Git Branch Analysis</a>
+    <a href="target-project.html" class="dropdown-item">Target Project</a>
 </li>
-                                    
+            
 <li>
-    <a href="stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+    <a href="git-branch.html" class="dropdown-item active" aria-current="page">Git Branch</a>
 </li>
-                                    
+            
+<li>
+    <a href="stored-procedure.html" class="dropdown-item">Stored Procedure</a>
+</li>
+            
 <li>
     <a href="impact-analysis.html" class="dropdown-item">Impact Analysis</a>
 </li>
-                                    
+            
 <li>
     <a href="dependency-graph.html" class="dropdown-item">Dependency Graph</a>
 </li>
+    </ul>
+  </li>
                                     
 <li>
     <a href="../output-formats.html" class="dropdown-item">Output Formats</a>
-</li>
-                                    
-<li>
-    <a href="../workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
 <li>
@@ -121,6 +127,10 @@
                                     
 <li>
     <a href="../reference/consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="../reference/codebase-index.html" class="dropdown-item">Codebase Index</a>
 </li>
                                     
 <li>
@@ -229,7 +239,7 @@
 <p>You're about to merge a feature branch and want to know what you might break. Someone asks "what's the blast radius?" and you'd rather answer with data than a shrug.</p>
 <p>Give Scatter a branch name. It diffs against the base, extracts the type declarations from changed <code>.cs</code> files (classes, structs, interfaces, enums, records, delegates), and runs consumer detection for each one. The result: a list of every project affected by the types you touched.</p>
 <h2 id="basic-example">Basic Example<a class="headerlink" href="#basic-example" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">python scatter.py --branch-name feature/new-widget --repo-path .
+<pre><code class="language-bash">scatter --branch-name feature/new-widget --repo-path .
 </code></pre>
 <pre><code>--- Running Git Branch Analysis Mode ---
 Comparing branch 'feature/new-widget' against base 'main' in repo '.'
@@ -254,7 +264,7 @@ Analysis complete. 6 consumer(s) found across 2 target(s).
 </code></pre>
 <p>Each type gets its own consumer list. If <code>PortalDataService</code> has 4 consumers and <code>FakeDatabaseHelper</code> has 2, they show up separately so you can see which type drives the most impact.</p>
 <h2 id="different-base-branch">Different Base Branch<a class="headerlink" href="#different-base-branch" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">python scatter.py \
+<pre><code class="language-bash">scatter \
   --branch-name feature/hotfix \
   --base-branch develop \
   --repo-path /path/to/repo
@@ -264,7 +274,7 @@ Analysis complete. 6 consumer(s) found across 2 target(s).
 <p>Scatter offers two ways to figure out which types changed. This is a practical choice, not a technical curiosity.</p>
 <p><strong>Default (regex)</strong> -- fast, no API key needed. Scatter extracts ALL types declared in changed files, even if you only touched a comment inside one of them. On a file with 5 classes where you changed one, it reports all 5.</p>
 <p><strong>Hybrid (<code>--enable-hybrid-git</code>)</strong> -- more precise. Sends each changed file plus its diff to Gemini, which identifies only the types whose body or signature actually changed. Falls back to regex automatically if the API call fails.</p>
-<pre><code class="language-bash">python scatter.py \
+<pre><code class="language-bash">scatter \
   --branch-name feature/refactor-data-layer \
   --repo-path . \
   --enable-hybrid-git \
@@ -309,14 +319,14 @@ Analysis complete. 6 consumer(s) found across 2 target(s).
 </tbody>
 </table>
 <h2 id="filter-by-class">Filter by Class<a class="headerlink" href="#filter-by-class" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">python scatter.py \
+<pre><code class="language-bash">scatter \
   --branch-name feature/new-widget \
   --repo-path . \
   --class-name WidgetFactory
 </code></pre>
 <p>Even though the branch touched files declaring <code>WidgetFactory</code>, <code>WidgetConfig</code>, and <code>WidgetValidator</code>, this restricts analysis to only <code>WidgetFactory</code>. Useful when you know exactly which type you care about and want to skip the noise.</p>
 <h2 id="full-pipeline-integration">Full Pipeline Integration<a class="headerlink" href="#full-pipeline-integration" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">python scatter.py \
+<pre><code class="language-bash">scatter \
   --branch-name feature/data-migration \
   --repo-path /path/to/repo \
   --search-scope /path/to/services \

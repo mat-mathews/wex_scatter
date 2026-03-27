@@ -96,13 +96,13 @@ class FilterStage:
 The pipeline produces a human-readable arrow chain for reports:
 
 ```
-Filter: 250 -> 12 project refs -> 8 namespace -> 4 class match -> 2 method match
+Filter: 250 → 12 project refs → 8 namespace → 4 class match → 2 method match
 ```
 
 With graph acceleration:
 
 ```
-Filter: 250[graph] -> 12 project refs[graph] -> 8 namespace -> 4 class match
+Filter: 250[graph] → 12 project refs[graph] → 8 namespace → 4 class match
 ```
 
 The `[graph]` annotation tells you which stages used the cached graph instead of the filesystem.
@@ -238,13 +238,13 @@ What happens:
 Output:
 
 ```
-Filter: 247 -> 11 project refs -> 8 namespace -> 4 class match -> 2 method match
+Filter: 247 → 11 project refs → 8 namespace → 4 class match → 2 method match
 ```
 
 If the graph cache exists, stages 1-2 produce the same result in microseconds:
 
 ```
-Filter: 247[graph] -> 11 project refs[graph] -> 8 namespace -> 4 class match -> 2 method match
+Filter: 247[graph] → 11 project refs[graph] → 8 namespace → 4 class match → 2 method match
 ```
 
 The FilterPipeline is included in all output formats (console, JSON, CSV, markdown) so you always know how the funnel narrowed.

@@ -113,7 +113,7 @@ Evidence is capped at `MAX_EVIDENCE_ENTRIES = 10` to keep memory bounded. The `e
 
 #### DependencyGraph
 
-Five internal indexes power O(1) lookups:
+Five internal indexes power fast lookups:
 
 ```python
 class DependencyGraph:
@@ -124,7 +124,7 @@ class DependencyGraph:
     _reverse: Dict[str, Set[str]]                 # name -> set of consumer names
 ```
 
-`_forward` and `_reverse` are adjacency sets that mirror the edge lists. They exist so `get_dependency_names()` and `get_consumer_names()` can return in O(1) without scanning edge lists. The trade-off is double bookkeeping on mutation, but edges are written once and read many times.
+`_forward` and `_reverse` are adjacency sets that mirror the edge lists. They exist so `get_dependency_names()` and `get_consumer_names()` can return in O(out-degree) / O(in-degree) via a set copy without scanning edge lists. The trade-off is double bookkeeping on mutation, but edges are written once and read many times.
 
 ### Edge Type Weights
 
@@ -171,7 +171,7 @@ Stages 3-5 (namespace, class, method filtering) still run on the candidate set r
 The consumer pipeline reports where each stage got its data:
 
 ```
-Filter: 250[graph] -> 12 project refs[graph] -> 8 namespace -> 4 class match
+Filter: 250[graph] → 12 project refs[graph] → 8 namespace → 4 class match
 ```
 
 The `[graph]` annotation in the arrow chain comes from `FilterStage.source = "graph"`. If the target is not in the graph (stale cache, new project), the pipeline falls back to filesystem transparently. No caller code changes.
@@ -201,8 +201,8 @@ Typical patch time: 10-315ms for 1-10 files. Full rebuild: 1-60 seconds.
 | `get_all_nodes()` | O(N) | List all projects |
 | `get_consumers(name)` | O(in-degree) | Direct consumers of a project |
 | `get_dependencies(name)` | O(out-degree) | Direct dependencies of a project |
-| `get_consumer_names(name)` | O(1) set copy | Consumer names as a set |
-| `get_dependency_names(name)` | O(1) set copy | Dependency names as a set |
+| `get_consumer_names(name)` | O(in-degree) set copy | Consumer names as a set |
+| `get_dependency_names(name)` | O(out-degree) set copy | Dependency names as a set |
 | `get_edges_from(name)` | O(out-degree) | Outgoing edges with full metadata |
 | `get_edges_to(name)` | O(in-degree) | Incoming edges with full metadata |
 | `get_edges_for(name)` | O(degree) | All edges (both directions) |

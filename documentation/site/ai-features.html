@@ -51,31 +51,37 @@
 </li>
                                     
 <li>
-    <a href="usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+    <a href="workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Analysis Modes</a>
+    <ul class="dropdown-menu">
+            
 <li>
-    <a href="usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+    <a href="usage/target-project.html" class="dropdown-item">Target Project</a>
 </li>
-                                    
+            
 <li>
-    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+    <a href="usage/git-branch.html" class="dropdown-item">Git Branch</a>
 </li>
-                                    
+            
+<li>
+    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure</a>
+</li>
+            
 <li>
     <a href="usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
 </li>
-                                    
+            
 <li>
     <a href="usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
 </li>
+    </ul>
+  </li>
                                     
 <li>
     <a href="output-formats.html" class="dropdown-item">Output Formats</a>
-</li>
-                                    
-<li>
-    <a href="workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
 <li>
@@ -124,6 +130,10 @@
 </li>
                                     
 <li>
+    <a href="reference/codebase-index.html" class="dropdown-item">Codebase Index</a>
+</li>
+                                    
+<li>
     <a href="reference/type-extraction.html" class="dropdown-item">Type Extraction</a>
 </li>
                                     
@@ -165,7 +175,7 @@
                             </a>
                         </li>
                             <li class="nav-item">
-                                <a rel="prev" href="workflows.html" class="nav-link">
+                                <a rel="prev" href="output-formats.html" class="nav-link">
                                     <i class="fa fa-arrow-left"></i> Previous
                                 </a>
                             </li>
@@ -263,7 +273,7 @@
 export WEX_AI_API_KEY=&quot;your-wex-ai-key&quot;
 
 # CLI flag
-python scatter.py --sow &quot;...&quot; --search-scope . --wex-api-key &quot;your-key&quot;
+scatter --sow &quot;...&quot; --search-scope . --wex-api-key &quot;your-key&quot;
 </code></pre>
 <pre><code class="language-yaml"># .scatter.yaml
 ai:
@@ -279,7 +289,7 @@ ai:
 export GOOGLE_API_KEY=&quot;your-google-api-key&quot;
 
 # CLI flag
-python scatter.py --sow &quot;...&quot; --search-scope . --google-api-key &quot;your-key&quot;
+scatter --sow &quot;...&quot; --search-scope . --google-api-key &quot;your-key&quot;
 
 # Config file (~/.scatter/config.yaml)
 # ai:
@@ -313,7 +323,7 @@ python scatter.py --sow &quot;...&quot; --search-scope . --google-api-key &quot;
 <p>When you pass <code>--summarize-consumers</code>, Scatter identifies the specific <code>.cs</code> files in each consumer that caused the match -- the ones with the <code>using</code> statement, the type reference, the sproc call. It sends each file to the configured AI provider and gets back a 2-3 sentence summary of what that file does.</p>
 <p>This is most useful when you have dozens of consumers and need to triage which ones actually matter for your change, without opening every single file.</p>
 <h3 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
     --search-scope . \
     --class-name PortalDataService \
     --summarize-consumers \
@@ -389,10 +399,10 @@ python scatter.py --sow &quot;...&quot; --search-scope . --google-api-key &quot;
 </table>
 <h3 id="example_1">Example<a class="headerlink" href="#example_1" title="Permanent link">&para;</a></h3>
 <pre><code class="language-bash"># Default regex extraction
-python scatter.py --branch-name feature/portal-fix --repo-path . --search-scope .
+scatter --branch-name feature/portal-fix --repo-path . --search-scope .
 
 # Hybrid extraction -- compare the results
-python scatter.py --branch-name feature/portal-fix --repo-path . --search-scope . \
+scatter --branch-name feature/portal-fix --repo-path . --search-scope . \
     --enable-hybrid-git --google-api-key $GOOGLE_API_KEY -v
 </code></pre>
 <p>With <code>-v</code>, you can see what the AI decided:</p>

@@ -7,26 +7,32 @@ Point Scatter at a `.csproj` file. It finds every project that references it, co
 ## Basic Example
 
 ```bash
-python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope .
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
 ```
 
 ```
-Search scope: /path/to/repo (scanned 11 projects, 24 files)
-Filter: 11 -> 7 project refs -> 6 namespace
-
---- Combined Consumer Analysis Report ---
-
---- Consuming Relationships Found ---
+Search scope: /code/scatter (scanned 11 projects, 27 files)
+Filter: 11 → 7 project refs[graph] → 6 namespace
 
 Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (6 consumer(s))
          -> Consumed by: GalaxyWorks.Api (GalaxyWorks.Api/GalaxyWorks.Api.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=7.1, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
          -> Consumed by: GalaxyWorks.BatchProcessor (GalaxyWorks.BatchProcessor/GalaxyWorks.BatchProcessor.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=10.8, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
          -> Consumed by: GalaxyWorks.Data.Tests (GalaxyWorks.Data.Tests/GalaxyWorks.Data.Tests.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=3.5, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
          -> Consumed by: GalaxyWorks.WebPortal (GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=12.7, fan-in=1, fan-out=1, instability=0.500, in-cycle=no
          -> Consumed by: MyGalaryConsumerApp (MyGalaxyConsumerApp/MyGalaryConsumerApp.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=4.3, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
          -> Consumed by: MyGalaryConsumerApp2 (MyGalaxyConsumerApp2/MyGalaryConsumerApp2.csproj)
+           Solutions: GalaxyWorks.sln
+           Graph: coupling=1.8, fan-in=0, fan-out=1, instability=1.000, in-cycle=no
 
 --- Total Consuming Relationships Found: 6 ---
 
@@ -42,33 +48,29 @@ Six consumers is manageable. But GalaxyWorks.Data exports a lot of types, and ma
 ### Filter by Class
 
 ```bash
-python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --class-name PortalDataService
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --class-name PortalDataService
 ```
 
 ```
-Filter: 11 -> 7 project refs -> 6 namespace -> 4 class match
+Filter: 11 → 7 project refs[graph] → 6 namespace → 6 class match
 ```
 
-Down to 4. Only projects that actually reference `PortalDataService` in their source code survive the class filter. The other two consumers use different types from GalaxyWorks.Data -- they're not your problem today.
+All 6 consumers reference `PortalDataService` -- it's the main type in GalaxyWorks.Data. For libraries with multiple types, this filter cuts aggressively.
 
 ### Filter by Method
 
 ```bash
-python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --class-name PortalDataService \
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --class-name PortalDataService \
   --method-name StorePortalConfigurationAsync
 ```
 
 ```
-Filter: 11 -> 7 project refs -> 6 namespace -> 4 class match -> 2 method match
+Filter: 11 → 7 project refs[graph] → 6 namespace → 6 class match → 1 method match
 ```
 
-Two projects actually call `StorePortalConfigurationAsync`. If you're changing that method's signature, these are the only two that need updating.
+Only one project actually calls `StorePortalConfigurationAsync`. If you're changing that method's signature, this is the only consumer that needs updating.
 
 Note: `--method-name` requires `--class-name`. Pass `--method-name` alone and Scatter warns and ignores it.
 
@@ -77,9 +79,7 @@ Note: `--method-name` requires `--class-name`. Pass `--method-name` alone and Sc
 ### Mid-Tier Library (1 Consumer)
 
 ```bash
-python scatter.py \
-  --target-project ./GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj \
-  --search-scope .
+scatter --target-project ./GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj --search-scope .
 ```
 
 WebPortal sits in the middle of the dependency chain. Only GalaxyWorks.BatchProcessor references it. One consumer -- small blast radius, straightforward coordination.
@@ -87,9 +87,7 @@ WebPortal sits in the middle of the dependency chain. Only GalaxyWorks.BatchProc
 ### Leaf Project (1 Consumer)
 
 ```bash
-python scatter.py \
-  --target-project ./MyDotNetApp/MyDotNetApp.csproj \
-  --search-scope .
+scatter --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .
 ```
 
 MyDotNetApp has a single consumer: MyDotNetApp.Consumer. Leaf projects are the easy ones. Change it, update the one consumer, move on.
@@ -97,9 +95,7 @@ MyDotNetApp has a single consumer: MyDotNetApp.Consumer. Leaf projects are the e
 ### Standalone Project (0 Consumers)
 
 ```bash
-python scatter.py \
-  --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj \
-  --search-scope .
+scatter --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .
 ```
 
 Nobody references this project. Zero consumers. If you expected consumers and see zero, check whether the consuming code uses NuGet packages instead of `<ProjectReference>` entries -- Scatter only tracks project references, not package references.
@@ -107,10 +103,8 @@ Nobody references this project. Zero consumers. If you expected consumers and se
 ## Override Namespace
 
 ```bash
-python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --target-namespace Company.Product.OldStuff
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --target-namespace Company.Product.OldStuff
 ```
 
 Scatter normally derives the namespace from `<RootNamespace>` in the target's `.csproj`. When that doesn't match what the code actually uses (legacy projects, renamed assemblies, shared namespace conventions), override it with `--target-namespace`. Scatter will look for `using Company.Product.OldStuff;` instead of the auto-derived namespace.
@@ -118,11 +112,8 @@ Scatter normally derives the namespace from `<RootNamespace>` in the target's `.
 ## AI Summaries
 
 ```bash
-python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --summarize-consumers \
-  --google-api-key $GOOGLE_API_KEY
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --summarize-consumers --google-api-key $GOOGLE_API_KEY
 ```
 
 For each consumer, Scatter sends its relevant `.cs` files to Gemini and gets back a 2-3 sentence summary of what that code does. Useful when you're triaging a long consumer list and need to quickly understand "what does MyGalaryConsumerApp actually do with PortalDataService?" without opening 15 files.
@@ -132,28 +123,22 @@ For each consumer, Scatter sends its relevant `.cs` files to Gemini and gets bac
 **JSON** -- for downstream tooling:
 
 ```bash
-python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --output-format json --output-file reports/target_analysis.json
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --output-format json --output-file reports/target_analysis.json
 ```
 
 **CSV** -- for the teammates who live in spreadsheets:
 
 ```bash
-python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --output-format csv --output-file reports/target_analysis.csv
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --output-format csv --output-file reports/target_analysis.csv
 ```
 
 **Markdown** -- for pasting into a PR or wiki:
 
 ```bash
-python scatter.py \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --output-format markdown --output-file reports/target_analysis.md
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --output-format markdown --output-file reports/target_analysis.md
 ```
 
 Markdown also works without `--output-file` -- it prints to stdout so you can pipe it wherever you need it. See [Output Formats](../output-formats.md) for detailed structure of each format.
@@ -163,7 +148,7 @@ Markdown also works without `--output-file` -- it prints to stdout so you can pi
 The most important line in the output is the arrow chain. Read it left to right:
 
 ```
-Filter: 200 -> 12 project refs -> 8 namespace -> 4 class match
+Filter: 200 → 12 project refs[graph] → 8 namespace → 4 class match
 ```
 
 Translation: "200 projects in scope. 12 have a `<ProjectReference>` to the target. 8 of those import the namespace. 4 of those reference the class."
@@ -175,9 +160,9 @@ Each arrow is a stage that narrows the set. When you're debugging a surprising r
 When a filter stage produces zero results, Scatter prints a diagnostic hint:
 
 ```
-Filter: 200 -> 12 project refs -> 0 namespace
+Filter: 200 → 12 project refs[graph] → 0 namespace
   Hint: 0 of 12 project-reference-matching projects contained 'GalaxyWorks.Data'
-        -- verify the namespace name
+        — verify the namespace name
 ```
 
 This usually means the auto-derived namespace doesn't match what the code uses. Fix it with `--target-namespace`.

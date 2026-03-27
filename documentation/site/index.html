@@ -51,31 +51,37 @@
 </li>
                                     
 <li>
-    <a href="usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+    <a href="workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Analysis Modes</a>
+    <ul class="dropdown-menu">
+            
 <li>
-    <a href="usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+    <a href="usage/target-project.html" class="dropdown-item">Target Project</a>
 </li>
-                                    
+            
 <li>
-    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+    <a href="usage/git-branch.html" class="dropdown-item">Git Branch</a>
 </li>
-                                    
+            
+<li>
+    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure</a>
+</li>
+            
 <li>
     <a href="usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
 </li>
-                                    
+            
 <li>
     <a href="usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
 </li>
+    </ul>
+  </li>
                                     
 <li>
     <a href="output-formats.html" class="dropdown-item">Output Formats</a>
-</li>
-                                    
-<li>
-    <a href="workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
 <li>
@@ -121,6 +127,10 @@
                                     
 <li>
     <a href="reference/consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="reference/codebase-index.html" class="dropdown-item">Codebase Index</a>
 </li>
                                     
 <li>
@@ -219,21 +229,28 @@
 
 <h1 id="scatter">Scatter<a class="headerlink" href="#scatter" title="Permanent link">&para;</a></h1>
 <p>You changed a class. Which projects could break?</p>
-<pre><code class="language-bash">python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
+<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
 </code></pre>
-<pre><code>Search scope: /code/scatter (scanned 11 projects, 42 files)
-Filter: 11 -&gt; 10 project refs -&gt; 7 namespace -&gt; 4 class match
+<pre><code>Search scope: /code/scatter (scanned 11 projects, 27 files)
+Filter: 11 → 7 project refs[graph] → 6 namespace
 
-Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (4 consumer(s))
-    Type/Level: PortalDataService
-         -&gt; Consumed by: MyGalaxyConsumerApp (MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj)
-         -&gt; Consumed by: MyGalaxyConsumerApp2 (MyGalaxyConsumerApp2/MyGalaxyConsumerApp2.csproj)
+Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (6 consumer(s))
          -&gt; Consumed by: GalaxyWorks.Api (GalaxyWorks.Api/GalaxyWorks.Api.csproj)
+           Graph: coupling=7.1, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
          -&gt; Consumed by: GalaxyWorks.BatchProcessor (GalaxyWorks.BatchProcessor/GalaxyWorks.BatchProcessor.csproj)
+           Graph: coupling=10.8, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
+         -&gt; Consumed by: GalaxyWorks.WebPortal (GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj)
+           Graph: coupling=12.7, fan-in=1, fan-out=1, instability=0.500, in-cycle=no
+         -&gt; Consumed by: MyGalaryConsumerApp (MyGalaxyConsumerApp/MyGalaryConsumerApp.csproj)
+           Graph: coupling=4.3, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
+         -&gt; Consumed by: MyGalaryConsumerApp2 (MyGalaxyConsumerApp2/MyGalaryConsumerApp2.csproj)
+           Graph: coupling=1.8, fan-in=0, fan-out=1, instability=1.000, in-cycle=no
+         -&gt; Consumed by: GalaxyWorks.Data.Tests (GalaxyWorks.Data.Tests/GalaxyWorks.Data.Tests.csproj)
+           Graph: coupling=3.5, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
 
---- Total Consuming Relationships Found: 4 ---
+--- Total Consuming Relationships Found: 6 ---
 </code></pre>
-<p>That took about three seconds. Now you know who to warn before you merge.</p>
+<p>Six consumers. Now you know who to warn before you merge.</p>
 <hr />
 <p>You wrote a work request. What's the blast radius?</p>
 <pre><code class="language-bash">scatter --sow &quot;Add tenant isolation to PortalDataService&quot; --search-scope .
@@ -274,15 +291,15 @@ Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (4 consumer(
 </table>
 <p>Each mode feeds into the same enrichment pipeline. Same quality of output regardless of entry point.</p>
 <h2 id="the-graph-builds-itself">The graph builds itself<a class="headerlink" href="#the-graph-builds-itself" title="Permanent link">&para;</a></h2>
-<p>First time you run Scatter against a codebase, it constructs a full dependency graph. Takes roughly 3-5 seconds depending on repo size. That graph gets cached to disk automatically.</p>
+<p>First time you run Scatter against a codebase, it constructs a full dependency graph. ~2.6s for 250 projects, ~39s for 800 projects. That graph gets cached to disk automatically.</p>
 <p>Second run loads from cache: under 1 second.</p>
-<p>After that, Scatter detects what changed via <code>git diff</code> and patches incrementally: around 10 milliseconds.</p>
+<p>After that, Scatter detects what changed via <code>git diff</code> and patches incrementally: ~10ms for typical edits.</p>
 <p>You never pass a flag for this. You never configure it. It just happens.</p>
 <blockquote>
 <p><strong>How this works:</strong> Scatter maintains a content-hashed graph cache with git-aware invalidation. See <a href="reference/graph-engine.html">Graph Engine</a> for the full story.</p>
 </blockquote>
 <h2 id="built-to-last">Built to last<a class="headerlink" href="#built-to-last" title="Permanent link">&para;</a></h2>
-<p>800+ tests. Modular Python package. Actively developed by team Athena.</p>
+<p>~878 tests across 33 files. Modular Python package. Actively developed by team Athena.</p>
 <h2 id="where-to-go-from-here">Where to go from here<a class="headerlink" href="#where-to-go-from-here" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="getting-started.html">Getting Started</a> -- installation, first run, walkthrough</li>

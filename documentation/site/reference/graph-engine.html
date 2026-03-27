@@ -51,31 +51,37 @@
 </li>
                                     
 <li>
-    <a href="../usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+    <a href="../workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Analysis Modes</a>
+    <ul class="dropdown-menu">
+            
 <li>
-    <a href="../usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+    <a href="../usage/target-project.html" class="dropdown-item">Target Project</a>
 </li>
-                                    
+            
 <li>
-    <a href="../usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+    <a href="../usage/git-branch.html" class="dropdown-item">Git Branch</a>
 </li>
-                                    
+            
+<li>
+    <a href="../usage/stored-procedure.html" class="dropdown-item">Stored Procedure</a>
+</li>
+            
 <li>
     <a href="../usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
 </li>
-                                    
+            
 <li>
     <a href="../usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
 </li>
+    </ul>
+  </li>
                                     
 <li>
     <a href="../output-formats.html" class="dropdown-item">Output Formats</a>
-</li>
-                                    
-<li>
-    <a href="../workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
 <li>
@@ -121,6 +127,10 @@
                                     
 <li>
     <a href="consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="codebase-index.html" class="dropdown-item">Codebase Index</a>
 </li>
                                     
 <li>
@@ -211,10 +221,6 @@
               </ul>
             </li>
             <li class="nav-item" data-bs-level="2"><a href="#serialization" class="nav-link">Serialization</a>
-              <ul class="nav flex-column">
-              </ul>
-            </li>
-            <li class="nav-item" data-bs-level="2"><a href="#performance-data" class="nav-link">Performance Data</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -328,7 +334,7 @@ class DependencyEdge:
 </code></pre>
 <p>Evidence is capped at <code>MAX_EVIDENCE_ENTRIES = 10</code> to keep memory bounded. The <code>evidence_total</code> field preserves the true count.</p>
 <h4 id="dependencygraph">DependencyGraph<a class="headerlink" href="#dependencygraph" title="Permanent link">&para;</a></h4>
-<p>Five internal indexes power O(1) lookups:</p>
+<p>Five internal indexes power fast lookups:</p>
 <pre><code class="language-python">class DependencyGraph:
     _nodes: Dict[str, ProjectNode]               # name -&gt; node
     _outgoing: Dict[str, List[DependencyEdge]]    # name -&gt; outgoing edges
@@ -336,7 +342,7 @@ class DependencyEdge:
     _forward: Dict[str, Set[str]]                 # name -&gt; set of dependency names
     _reverse: Dict[str, Set[str]]                 # name -&gt; set of consumer names
 </code></pre>
-<p><code>_forward</code> and <code>_reverse</code> are adjacency sets that mirror the edge lists. They exist so <code>get_dependency_names()</code> and <code>get_consumer_names()</code> can return in O(1) without scanning edge lists. The trade-off is double bookkeeping on mutation, but edges are written once and read many times.</p>
+<p><code>_forward</code> and <code>_reverse</code> are adjacency sets that mirror the edge lists. They exist so <code>get_dependency_names()</code> and <code>get_consumer_names()</code> can return in O(out-degree) / O(in-degree) via a set copy without scanning edge lists. The trade-off is double bookkeeping on mutation, but edges are written once and read many times.</p>
 <h3 id="edge-type-weights">Edge Type Weights<a class="headerlink" href="#edge-type-weights" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -389,7 +395,7 @@ direct_consumers = {
 <p>Stages 3-5 (namespace, class, method filtering) still run on the candidate set regardless of source. They need to read actual .cs file contents, which the graph does not cache.</p>
 <h3 id="transparency">Transparency<a class="headerlink" href="#transparency" title="Permanent link">&para;</a></h3>
 <p>The consumer pipeline reports where each stage got its data:</p>
-<pre><code>Filter: 250[graph] -&gt; 12 project refs[graph] -&gt; 8 namespace -&gt; 4 class match
+<pre><code>Filter: 250[graph] → 12 project refs[graph] → 8 namespace → 4 class match
 </code></pre>
 <p>The <code>[graph]</code> annotation in the arrow chain comes from <code>FilterStage.source = "graph"</code>. If the target is not in the graph (stale cache, new project), the pipeline falls back to filesystem transparently. No caller code changes.</p>
 <hr />
@@ -437,12 +443,12 @@ direct_consumers = {
 </tr>
 <tr>
 <td><code>get_consumer_names(name)</code></td>
-<td>O(1) set copy</td>
+<td>O(in-degree) set copy</td>
 <td>Consumer names as a set</td>
 </tr>
 <tr>
 <td><code>get_dependency_names(name)</code></td>
-<td>O(1) set copy</td>
+<td>O(out-degree) set copy</td>
 <td>Dependency names as a set</td>
 </tr>
 <tr>
@@ -519,44 +525,7 @@ graph = DependencyGraph.from_dict(data)
     &quot;project_set_hash&quot;: &quot;sha256...&quot;
 }
 </code></pre>
-<hr />
-<h2 id="performance-data">Performance Data<a class="headerlink" href="#performance-data" title="Permanent link">&para;</a></h2>
-<p>Build times measured on representative .NET codebases (sequential mode, M-series Mac):</p>
-<table>
-<thead>
-<tr>
-<th>Codebase Size</th>
-<th>.csproj Count</th>
-<th>.cs File Count</th>
-<th>Build Time</th>
-<th>Notes</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Small</td>
-<td>~100</td>
-<td>~2,000</td>
-<td>~1.1s</td>
-<td>Dominated by file I/O</td>
-</tr>
-<tr>
-<td>Medium</td>
-<td>~250</td>
-<td>~8,000</td>
-<td>~9.5s</td>
-<td>type_usage edges are the bottleneck</td>
-</tr>
-<tr>
-<td>Large</td>
-<td>~500</td>
-<td>~20,000</td>
-<td>~42.8s</td>
-<td>Scales roughly linearly with file count</td>
-</tr>
-</tbody>
-</table>
-<p>With <code>capture_facts=True</code>, add roughly 10-15% overhead for inline fact extraction. This cost is paid once -- subsequent runs use incremental patching.</p></div>
+<hr /></div>
             </div>
         </div>
 

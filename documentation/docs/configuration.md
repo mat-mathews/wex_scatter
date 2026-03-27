@@ -56,7 +56,7 @@ db:
 For one-off runs, just pass flags. They override everything.
 
 ```bash
-python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope . --max-depth 4
+scatter --target-project ./MyLib/MyLib.csproj --search-scope . --max-depth 4
 ```
 
 ## Environment Variables
@@ -144,7 +144,7 @@ db:
 Map consumer projects to their CI/CD pipelines using `--pipeline-csv`:
 
 ```bash
-python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope . \
+scatter --target-project ./MyLib/MyLib.csproj --search-scope . \
   --pipeline-csv build/pipeline_to_app_mapping.csv
 ```
 

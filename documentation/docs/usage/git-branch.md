@@ -7,7 +7,7 @@ Give Scatter a branch name. It diffs against the base, extracts the type declara
 ## Basic Example
 
 ```bash
-python scatter.py --branch-name feature/new-widget --repo-path .
+scatter --branch-name feature/new-widget --repo-path .
 ```
 
 ```
@@ -38,7 +38,7 @@ Each type gets its own consumer list. If `PortalDataService` has 4 consumers and
 ## Different Base Branch
 
 ```bash
-python scatter.py \
+scatter \
   --branch-name feature/hotfix \
   --base-branch develop \
   --repo-path /path/to/repo
@@ -55,7 +55,7 @@ Scatter offers two ways to figure out which types changed. This is a practical c
 **Hybrid (`--enable-hybrid-git`)** -- more precise. Sends each changed file plus its diff to Gemini, which identifies only the types whose body or signature actually changed. Falls back to regex automatically if the API call fails.
 
 ```bash
-python scatter.py \
+scatter \
   --branch-name feature/refactor-data-layer \
   --repo-path . \
   --enable-hybrid-git \
@@ -77,7 +77,7 @@ The practical difference: on a branch that touches 15 files across 3 projects, r
 ## Filter by Class
 
 ```bash
-python scatter.py \
+scatter \
   --branch-name feature/new-widget \
   --repo-path . \
   --class-name WidgetFactory
@@ -88,7 +88,7 @@ Even though the branch touched files declaring `WidgetFactory`, `WidgetConfig`, 
 ## Full Pipeline Integration
 
 ```bash
-python scatter.py \
+scatter \
   --branch-name feature/data-migration \
   --repo-path /path/to/repo \
   --search-scope /path/to/services \

@@ -51,31 +51,37 @@
 </li>
                                     
 <li>
-    <a href="usage/target-project.html" class="dropdown-item">Target Project Analysis</a>
+    <a href="workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
+  <li class="dropdown-submenu">
+    <a href="#" class="dropdown-item">Analysis Modes</a>
+    <ul class="dropdown-menu">
+            
 <li>
-    <a href="usage/git-branch.html" class="dropdown-item">Git Branch Analysis</a>
+    <a href="usage/target-project.html" class="dropdown-item">Target Project</a>
 </li>
-                                    
+            
 <li>
-    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure Analysis</a>
+    <a href="usage/git-branch.html" class="dropdown-item">Git Branch</a>
 </li>
-                                    
+            
+<li>
+    <a href="usage/stored-procedure.html" class="dropdown-item">Stored Procedure</a>
+</li>
+            
 <li>
     <a href="usage/impact-analysis.html" class="dropdown-item">Impact Analysis</a>
 </li>
-                                    
+            
 <li>
     <a href="usage/dependency-graph.html" class="dropdown-item">Dependency Graph</a>
 </li>
+    </ul>
+  </li>
                                     
 <li>
     <a href="output-formats.html" class="dropdown-item">Output Formats</a>
-</li>
-                                    
-<li>
-    <a href="workflows.html" class="dropdown-item">Workflows</a>
 </li>
                                     
 <li>
@@ -121,6 +127,10 @@
                                     
 <li>
     <a href="reference/consumer-pipeline.html" class="dropdown-item">Consumer Detection Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="reference/codebase-index.html" class="dropdown-item">Codebase Index</a>
 </li>
                                     
 <li>
@@ -302,7 +312,7 @@ db:
 </code></pre>
 <h3 id="cli-overrides">CLI overrides<a class="headerlink" href="#cli-overrides" title="Permanent link">&para;</a></h3>
 <p>For one-off runs, just pass flags. They override everything.</p>
-<pre><code class="language-bash">python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope . --max-depth 4
+<pre><code class="language-bash">scatter --target-project ./MyLib/MyLib.csproj --search-scope . --max-depth 4
 </code></pre>
 <h2 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
 <table>
@@ -396,7 +406,7 @@ db:
 </code></pre>
 <h2 id="pipeline-mapping">Pipeline Mapping<a class="headerlink" href="#pipeline-mapping" title="Permanent link">&para;</a></h2>
 <p>Map consumer projects to their CI/CD pipelines using <code>--pipeline-csv</code>:</p>
-<pre><code class="language-bash">python scatter.py --target-project ./MyLib/MyLib.csproj --search-scope . \
+<pre><code class="language-bash">scatter --target-project ./MyLib/MyLib.csproj --search-scope . \
   --pipeline-csv build/pipeline_to_app_mapping.csv
 </code></pre>
 <p>The CSV needs two columns: <code>Application Name</code> and <code>Pipeline Name</code>. Scatter matches discovered consumer project names against the Application Name column and includes pipeline information in the output.</p>

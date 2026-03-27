@@ -25,7 +25,7 @@ The provider is stubbed in the codebase and ready for integration. Configuration
 export WEX_AI_API_KEY="your-wex-ai-key"
 
 # CLI flag
-python scatter.py --sow "..." --search-scope . --wex-api-key "your-key"
+scatter --sow "..." --search-scope . --wex-api-key "your-key"
 ```
 
 ```yaml
@@ -48,7 +48,7 @@ The **Google Gemini** provider is the current working AI backend. All AI feature
 export GOOGLE_API_KEY="your-google-api-key"
 
 # CLI flag
-python scatter.py --sow "..." --search-scope . --google-api-key "your-key"
+scatter --sow "..." --search-scope . --google-api-key "your-key"
 
 # Config file (~/.scatter/config.yaml)
 # ai:
@@ -96,7 +96,7 @@ This is most useful when you have dozens of consumers and need to triage which o
 ### Example
 
 ```bash
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
     --search-scope . \
     --class-name PortalDataService \
     --summarize-consumers \
@@ -165,10 +165,10 @@ If the AI call fails for any reason (network, rate limit, malformed response), S
 
 ```bash
 # Default regex extraction
-python scatter.py --branch-name feature/portal-fix --repo-path . --search-scope .
+scatter --branch-name feature/portal-fix --repo-path . --search-scope .
 
 # Hybrid extraction -- compare the results
-python scatter.py --branch-name feature/portal-fix --repo-path . --search-scope . \
+scatter --branch-name feature/portal-fix --repo-path . --search-scope . \
     --enable-hybrid-git --google-api-key $GOOGLE_API_KEY -v
 ```
 

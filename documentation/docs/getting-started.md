@@ -7,7 +7,7 @@ Install Scatter and verify it works. Should take about two minutes.
 - **Python 3.10+** -- Scatter uses modern type hints and dataclass features
 - **Git** -- needed for branch analysis mode and for incremental graph patching
 
-That's it. The repo ships with 8 sample .NET projects, so you don't need a production codebase to start.
+That's it. The repo ships with 11 sample .NET projects, so you don't need a production codebase to start.
 
 ## Installation
 
