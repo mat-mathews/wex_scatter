@@ -1,8 +1,8 @@
 # Leadership Design Review — Scatter
 
-**Last updated**: 2026-03-24
+**Last updated**: 2026-03-26
 **Scope**: Full codebase review, main branch
-**Status**: ~11K lines Python, 816 tests (all pass), 5 analysis modes, CI green (pytest + ruff + mypy)
+**Status**: ~11K lines Python, 877 tests (all pass), 5 analysis modes, CI green (pytest + ruff + mypy)
 
 ---
 
@@ -22,7 +22,7 @@ Don't compete on static analysis depth (NDepend wins there). Compete on **operat
 |------|--------|--------|
 | **Scale** | Full graph build < 5 min on WEX monolith | Met on synthetic (38.7s at 800 projects / 30K files). Real monolith untested. |
 | **Accuracy** | False positive rate < 15% on known dependency set | Untested on real data |
-| **Integration** | GitHub Action comments on real PRs | Action scaffold exists (`tools/github-action/`), not deployed |
+| **Integration** | GitHub Action comments on real PRs | **Deployed** to synthetic_monolith, real PR comments with risk highlights |
 | **Adoption** | 3+ engineers use output for merge/deploy decisions | Not yet |
 
 Priority order: anything that doesn't move a gate forward is tech debt, not a blocker.
@@ -31,9 +31,9 @@ Priority order: anything that doesn't move a gate forward is tech debt, not a bl
 
 ## 3. Overall Assessment
 
-### Grade: B+
+### Grade: A-
 
-The architecture is clean, the engineering is disciplined, the problem space is real. The graph engine now handles 800 projects in under 40 seconds with threaded extraction and incremental patching. CI is wired. The gap to A- is deploying it against real code and getting it into a real workflow.
+The architecture is clean, the engineering is disciplined, the problem space is real. The graph engine handles 800 projects in under 40 seconds with threaded extraction and incremental patching. CI is wired. Since last review: GitHub Action deployed to a real repo with PR impact comments (including risk highlights and column legends), AI rate limiting shipped with budget caps and exponential backoff, and mypy is fully clean. The gap to A is running against the real WEX monolith and proving accuracy at scale.
 
 ### What's Strong
 - Multi-mode CLI (git branch, target project, sproc, SOW impact, graph health) — product thinking, not just engineering
@@ -43,11 +43,17 @@ The architecture is clean, the engineering is disciplined, the problem space is 
 - AI-enriched risk assessment and coupling narratives
 - Ruff + mypy + pytest CI with smoke tests
 
-### What's Missing for A-
+### What Got Us to A-
+- **PR integration deployed** — GitHub Action running on synthetic_monolith, real PR comments with risk highlights, column legends, and graph metrics
+- **AI rate limiting shipped** — `--max-ai-calls` budget cap, exponential backoff with jitter on transient errors, `BudgetExhaustedError` caught gracefully by all task modules, 22 new tests
+- **Mypy fully clean** — zero type errors across 63 source files
+- **AI smoke test** — local `check.sh` exercises real Gemini API with budget cap when `GOOGLE_API_KEY` is set
+
+### What's Missing for A
 - **No real monolith validation** — all numbers are synthetic. Until it runs against the WEX monolith, scale and accuracy gates are theoretical.
-- **No PR integration deployed** — the Action scaffold exists but nobody's getting impact comments on their PRs yet. An imperfect tool in the workflow beats a perfect tool nobody runs.
 - **No interactive exploration** — the graph is powerful but you can only access it through CLI flags and JSON dumps. A web UI or TUI would make it tangible.
 - **AI is bolted on, not integrated** — could be doing semantic breaking change detection, test coverage gap identification, merge conflict prediction. Currently it summarizes files and parses SOWs.
+- **No end-to-end CLI tests** — no tests invoke `main()` with real args against the sample .NET projects.
 
 ---
 
@@ -67,14 +73,8 @@ The architecture is clean, the engineering is disciplined, the problem space is 
 
 ## 5. What Blocks Monolith Use
 
-### No PR Integration
-The highest-leverage item. GitHub Action scaffold exists in `tools/github-action/` and CI smoke tests pass, but it's not deployed to a real repo. Until it is, scatter is a tool people have to remember to run.
-
 ### No End-to-End CLI Tests
 No tests invoke `main()` with real args against the sample .NET projects. Prerequisite for safely refactoring the entry point.
-
-### No AI Rate Limiting
-`_summarize_consumer_files` makes synchronous AI calls per file — no backoff, no rate limit, no budget cap. One bad API day and the CLI hangs for 20 minutes. Need `--max-ai-calls` and a total-budget cap.
 
 ### No Real Monolith Validation
 All benchmarks are synthetic. Regex-based parsing may have different false positive rates on real code. Need to run against the actual WEX monolith, document time / project count / accuracy.
@@ -92,6 +92,9 @@ Issues previously flagged as blockers, now shipped:
 | **No benchmarks** | Three benchmark tools, published numbers, CI smoke tests | Initiative 12 |
 | **ConsumerResult migration** | Typed dataclass replaced untyped dicts across 8 production files | Shipped |
 | **Tracemalloc inflating measurements** | Optional `--tracemalloc` flag, off by default in full mode | `986475d` |
+| **No PR integration** | GitHub Action deployed to synthetic_monolith with risk highlights and column legends | PR #11, `78ba320` |
+| **No AI rate limiting** | `AIBudget` + `RateLimitedModel` proxy, `--max-ai-calls`, backoff+jitter, 22 tests | PR #11, `cf170bc` |
+| **Mypy errors** | All 5 errors fixed across budget, gemini_provider, markdown_reporter | `f1330ee` |
 
 ### Current Benchmark Numbers
 
@@ -138,17 +141,17 @@ Ordered by impact on monolith readiness gates.
 
 | # | Action | Gate | Status |
 |---|--------|------|--------|
-| 1 | **Deploy GitHub Action** to a real repo | Integration, Adoption | Scaffold exists, needs deployment |
+| 1 | **Deploy GitHub Action** to a real repo | Integration, Adoption | **Done** — deployed to synthetic_monolith |
 | 2 | **Add end-to-end CLI tests** | Safety net | Not started |
 | 3 | **Run against the WEX monolith** | Scale, Accuracy | Blocked on repo access |
 
 ### Next — Harden
 
-| # | Action | Gate |
-|---|--------|------|
-| 4 | **AI rate limiter / budget cap** (`--max-ai-calls`) | Scale (reliability) |
-| 5 | **Focused SOW index** (solution-scoped two-tier index) | Accuracy, Adoption |
-| 6 | **CI benchmark regression gate** (medium preset, fail on >2x regression) | Scale |
+| # | Action | Gate | Status |
+|---|--------|------|--------|
+| 4 | **AI rate limiter / budget cap** (`--max-ai-calls`) | Scale (reliability) | **Done** — PR #11 |
+| 5 | **Focused SOW index** (solution-scoped two-tier index) | Accuracy, Adoption | Not started |
+| 6 | **CI benchmark regression gate** (medium preset, fail on >2x regression) | Scale | Not started |
 
 ### Later — Differentiate
 
