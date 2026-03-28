@@ -1,13 +1,10 @@
 """Build a compact text index from the dependency graph for LLM context."""
 
-import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
 from scatter.core.graph import DependencyGraph
-
-MAX_INDEX_SIZE = 100_000  # 100KB safety valve
 
 
 @dataclass
@@ -30,8 +27,8 @@ def build_codebase_index(
 
     The index uses a one-line-per-project format optimized for token efficiency.
     File stems are only collected for the file_count metric (not included in the
-    LLM prompt). If the index exceeds MAX_INDEX_SIZE, type declarations are
-    capped at 10 per project.
+    LLM prompt). All types are always included — if the index exceeds a model's
+    context window, the API call will error with an actionable message.
     """
     nodes = graph.get_all_nodes()
     if not nodes:
@@ -61,18 +58,8 @@ def build_codebase_index(
             sproc_to_projects.setdefault(sproc, []).append(node.name)
 
     # Build compact index text
-    text = _build_index_text(nodes, sproc_to_projects, max_types_per_project=None)
+    text = _build_index_text(nodes, sproc_to_projects)
     size_bytes = len(text.encode("utf-8"))
-
-    # Truncation: cap types at 10 per project if too large
-    if size_bytes > MAX_INDEX_SIZE:
-        logging.warning(
-            f"Codebase index size ({size_bytes:,} bytes) exceeds limit "
-            f"({MAX_INDEX_SIZE:,} bytes). Capping types to 10 per project."
-        )
-        text = _build_index_text(nodes, sproc_to_projects, max_types_per_project=10)
-        size_bytes = len(text.encode("utf-8"))
-        total_type_count = sum(min(len(n.type_declarations), 10) for n in nodes)
 
     return CodebaseIndex(
         text=text,
@@ -87,7 +74,6 @@ def build_codebase_index(
 def _build_index_text(
     nodes,
     sproc_to_projects: dict[str, List[str]],
-    max_types_per_project: Optional[int],
 ) -> str:
     """Build compact one-line-per-project index text.
 
@@ -109,13 +95,8 @@ def _build_index_text(
         if node.namespace and node.namespace != node.name:
             parts.append(f"NS:{node.namespace}")
 
-        types = node.type_declarations
-        if types:
-            if max_types_per_project is not None and len(types) > max_types_per_project:
-                types = types[:max_types_per_project]
-                parts.append(f"T:{','.join(types)}...")
-            else:
-                parts.append(f"T:{','.join(types)}")
+        if node.type_declarations:
+            parts.append(f"T:{','.join(node.type_declarations)}")
 
         if node.sproc_references:
             parts.append(f"SP:{','.join(node.sproc_references)}")
