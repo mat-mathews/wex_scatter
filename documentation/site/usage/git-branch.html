@@ -241,24 +241,19 @@
 <h2 id="basic-example">Basic Example<a class="headerlink" href="#basic-example" title="Permanent link">&para;</a></h2>
 <pre><code class="language-bash">scatter --branch-name feature/new-widget --repo-path .
 </code></pre>
-<pre><code>--- Running Git Branch Analysis Mode ---
-Comparing branch 'feature/new-widget' against base 'main' in repo '.'
+<pre><code>============================================================
+  Consumer Analysis
+============================================================
+  Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+  Consumers: 4
+  Triggering type: PortalDataService
 
-Step 1: Analyzing Git changes...
-Processed 3 changed C# file(s). Identified 2 project(s) with changes.
-
-Step 2: Extracting type declarations from changed C# files...
-Found 5 unique type declaration(s) across 2 project(s).
-
-Step 3: Analyzing consumers...
-
---- Analyzing Target Project 1/2: GalaxyWorks.Data ---
-Analyzing consumers for 3 types detected in changed files: FakeDatabaseHelper, IDataAccessor, PortalDataService
-
-Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (4 consumer(s))
-    Type/Level: PortalDataService
-         -&gt; Consumed by: GalaxyWorks.WebPortal (GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj)
-         -&gt; Consumed by: GalaxyWorks.BatchProcessor (GalaxyWorks.BatchProcessor/GalaxyWorks.BatchProcessor.csproj)
+  Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
+  ---------------------------------------- ------- ------- ------- ------- -------------------------
+  GalaxyWorks.WebPortal                       12.7       1       1    0.50 GalaxyWorks.sln
+  GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
+  GalaxyWorks.Api                              7.1       0       2    1.00 GalaxyWorks.sln
+  MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
 
 Analysis complete. 6 consumer(s) found across 2 target(s).
 </code></pre>

@@ -330,14 +330,25 @@ scatter --sow &quot;...&quot; --search-scope . --google-api-key &quot;your-key&q
     --google-api-key $GOOGLE_API_KEY
 </code></pre>
 <h3 id="sample-console-output">Sample Console Output<a class="headerlink" href="#sample-console-output" title="Permanent link">&para;</a></h3>
-<pre><code>Target: GalaxyWorks.Data (./GalaxyWorks.Data/GalaxyWorks.Data.csproj) (2 consumer(s))
-    Type/Level: class PortalDataService
-         -&gt; Consumed by: MyGalaxyConsumerApp (./MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj)
-           Summaries:
-             File: Services/PortalSync.cs
-              This file implements the PortalSync service, which orchestrates
-              portal configuration synchronization by calling PortalDataService
-              to read and write portal settings to the database.
+<pre><code>============================================================
+  Consumer Analysis
+============================================================
+  Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+  Consumers: 2
+  Triggering type: PortalDataService
+
+  Consumer                                 Solutions
+  ---------------------------------------- -------------------------
+  MyGalaxyConsumerApp                      GalaxyWorks.sln
+  MyGalaxyConsumerApp2                     GalaxyWorks.sln
+
+    MyGalaxyConsumerApp
+      Services/PortalSync.cs
+        This file implements the PortalSync service, which orchestrates
+        portal configuration synchronization by calling PortalDataService
+        to read and write portal settings to the database.
+
+Analysis complete. 2 consumer(s) found across 1 target(s).
 </code></pre>
 <h3 id="sample-json-output">Sample JSON Output<a class="headerlink" href="#sample-json-output" title="Permanent link">&para;</a></h3>
 <p>The summaries land in the <code>ConsumerFileSummaries</code> field, keyed by relative file path:</p>
@@ -432,11 +443,13 @@ scatter --branch-name feature/portal-fix --repo-path . --search-scope . \
 <p>These metrics appear in all output formats (console, JSON, CSV, markdown).</p>
 <p>Use <code>--no-graph</code> to disable graph loading entirely if you want faster runs and don't care about structural metrics.</p>
 <h3 id="sample-console-output_1">Sample Console Output<a class="headerlink" href="#sample-console-output_1" title="Permanent link">&para;</a></h3>
-<pre><code>         -&gt; Consumed by: MyGalaxyConsumerApp (./MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj)
-           Graph: coupling=4.60, fan-in=2, fan-out=1, instability=0.333, in-cycle=no
+<p>Graph metrics appear as table columns when a graph cache exists:</p>
+<pre><code>  Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
+  ---------------------------------------- ------- ------- ------- ------- -------------------------
+  MyGalaxyConsumerApp                          4.6       2       1    0.33 GalaxyWorks.sln
 </code></pre>
-<p>When a consumer project exists outside the graph's search scope:</p>
-<pre><code>           Graph: (not in graph)
+<p>When a consumer project exists outside the graph's search scope, dashes appear in the metric columns:</p>
+<pre><code>  ExternalConsumer                              —       —       —       — ExternalSolution.sln
 </code></pre>
 <blockquote>
 <p><strong>How this works:</strong> AI calls go through an <code>AIProvider</code> protocol with a task router that selects providers per task type. All calls are structured JSON in, structured JSON out. Graph metrics are computed from the dependency graph with no AI involvement. See <a href="reference/architecture.html">Architecture Overview</a> for the provider system and graph engine.</p>
