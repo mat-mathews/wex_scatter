@@ -9,7 +9,6 @@ from scatter.core.graph import DependencyGraph, ProjectNode
 from scatter.ai.codebase_index import (
     CodebaseIndex,
     build_codebase_index,
-    MAX_INDEX_SIZE,
 )
 from scatter.ai.tasks.parse_work_request import (
     parse_work_request_with_model,
@@ -202,33 +201,22 @@ class TestCodebaseIndex:
         index = build_codebase_index(graph, search_scope=None)
         assert index.file_count == 0
 
-    def test_index_size_under_limit_for_moderate_graph(self):
-        """A graph with ~50 projects should be well under 100KB."""
+    def test_large_graph_returns_all_types_no_truncation(self):
+        """A large graph (100 projects, 50 types each) returns all types — no truncation."""
         projects = [
             (f"Project{i}", f"Namespace{i}",
-             [f"Class{j}" for j in range(5)],
-             [f"dbo.sp_Proc{i}_{j}" for j in range(2)])
-            for i in range(50)
+             [f"Type{j}" for j in range(50)],
+             [])
+            for i in range(100)
         ]
         graph = _make_graph_with_projects(projects)
         index = build_codebase_index(graph)
-        assert index.size_bytes < MAX_INDEX_SIZE
-        assert index.project_count == 50
-
-    def test_truncation_caps_types_when_too_large(self):
-        """When index exceeds MAX_INDEX_SIZE, types are capped to 10 per project."""
-        projects = []
-        for i in range(100):
-            projects.append((
-                f"Project{i}", f"Namespace{i}",
-                [f"VeryLongTypeName{j}ForTestingTruncation" for j in range(50)],
-                [],
-            ))
-        graph = _make_graph_with_projects(projects)
-
-        with patch('scatter.ai.codebase_index.MAX_INDEX_SIZE', 5000):
-            index = build_codebase_index(graph)
-            assert "..." in index.text
+        assert index.project_count == 100
+        assert index.type_count == 5000
+        # No truncation markers
+        assert "..." not in index.text
+        # Spot-check: last type of last project is present
+        assert "Type49" in index.text
 
     def test_sample_projects_in_index(self):
         """Index built from sample-like projects contains all project names."""
@@ -356,7 +344,8 @@ class TestExtractIndexNames:
         assert "dbo.sp_Insert" in names
         assert "dbo.sp_Update" in names
 
-    def test_handles_truncated_types(self):
+    def test_handles_legacy_truncated_types(self):
+        """Parser still handles '...' suffix from pre-removal truncation format."""
         text = "P:MyApp T:ClassA,ClassB...\n"
         names = _extract_index_names(text)
         assert "ClassA" in names
@@ -441,6 +430,53 @@ class TestConfidenceFiltering:
         target_names = [ti.target.name for ti in report.targets]
         assert "HighConf" in target_names
         assert "LowConf" not in target_names
+
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
+    def test_context_too_large_raises_actionable_error(self, mock_parse):
+        """InvalidArgument from the AI provider is wrapped with an actionable message."""
+        # Simulate google.api_core.exceptions.InvalidArgument by name
+        exc = type("InvalidArgument", (Exception,), {})("request too large")
+        mock_parse.side_effect = exc
+        provider = _make_mock_provider("[]")
+
+        with pytest.raises(RuntimeError, match="narrowing --search-scope"):
+            run_impact_analysis(
+                sow_text="test", search_scope=Path("/search"),
+                ai_provider=provider,
+            )
+
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
+    def test_unrelated_exception_propagates(self, mock_parse):
+        """Exceptions unrelated to context limits propagate unchanged."""
+        mock_parse.side_effect = KeyError("something unrelated")
+        provider = _make_mock_provider("[]")
+
+        with pytest.raises(KeyError, match="something unrelated"):
+            run_impact_analysis(
+                sow_text="test", search_scope=Path("/search"),
+                ai_provider=provider,
+            )
+
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
+    def test_context_error_includes_token_estimate(self, mock_parse):
+        """The wrapped error message includes an estimated token count from the index."""
+        exc = type("InvalidArgument", (Exception,), {})("request too large")
+        mock_parse.side_effect = exc
+        provider = _make_mock_provider("[]")
+
+        # Build a graph so the index has a known size
+        graph = _make_graph_with_projects([
+            ("MyApp", "MyApp", ["Service"], []),
+        ])
+
+        with pytest.raises(RuntimeError, match="estimated") as exc_info:
+            run_impact_analysis(
+                sow_text="test", search_scope=Path("/search"),
+                ai_provider=provider, graph=graph,
+            )
+        # Should mention tokens and contain the original exception
+        assert "tokens" in str(exc_info.value)
+        assert exc_info.value.__cause__ is exc
 
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
     def test_ambiguity_computed_before_filtering(self, mock_parse):

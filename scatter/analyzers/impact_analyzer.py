@@ -88,12 +88,27 @@ def run_impact_analysis(
     logging.info("Step 1: Parsing work request into analysis targets...")
     from scatter.ai.tasks.parse_work_request import parse_work_request
 
-    targets = parse_work_request(
-        sow_text,
-        ai_provider,
-        search_scope,
-        codebase_index=codebase_index,
-    )
+    # Note: parse_work_request is currently the only AI call that receives the
+    # full codebase index. If other tasks start sending it, move this catch to
+    # a shared wrapper closer to the AI call boundary.
+    try:
+        targets = parse_work_request(
+            sow_text,
+            ai_provider,
+            search_scope,
+            codebase_index=codebase_index,
+        )
+    except Exception as exc:
+        # Gemini raises google.api_core.exceptions.InvalidArgument for oversized requests.
+        # Match by class name to avoid importing google.api_core when AI is unused.
+        if type(exc).__name__ == "InvalidArgument":
+            index_tokens = codebase_index.size_bytes // 4 if codebase_index else 0
+            raise RuntimeError(
+                f"Codebase index is ~{index_tokens:,} tokens (estimated), which exceeds "
+                f"the model's context window. Try narrowing --search-scope or using a "
+                f"model with a larger context window."
+            ) from exc
+        raise
 
     if not targets:
         logging.warning("No analysis targets could be extracted from the work request.")

@@ -35,15 +35,11 @@ Key design decisions:
 - **Sproc cross-reference** — stored procedures used by 2+ projects get a dedicated section, surfacing shared database coupling that project references alone would miss
 - **No source code** — only structural metadata (names, types, namespaces, sprocs). Source file contents are never sent to the LLM
 
-## Size constraints
+## Size considerations
 
-The index has a 100KB safety valve (`MAX_INDEX_SIZE`). If the index exceeds this:
+The index always includes all types — there is no truncation. At WEX scale (250-800 projects), the full index is ~120K tokens, roughly 12% of a 1M context window. This is well within the budget for modern LLMs.
 
-1. Type declarations are capped at 10 per project
-2. A warning is logged
-3. The truncated index is used instead
-
-At typical WEX scale (250-800 projects), the index fits comfortably within this limit. The 100KB cap exists to prevent runaway token usage on extremely large monorepos.
+If the index exceeds a model's context window, the API call will fail with an actionable error message suggesting you narrow `--search-scope` or use a model with a larger context window.
 
 ## How it integrates
 
@@ -104,6 +100,6 @@ The index is implemented in `scatter/ai/codebase_index.py`:
 
 - `CodebaseIndex` — dataclass holding the text and metrics
 - `build_codebase_index(graph, search_scope)` — builds the index from a `DependencyGraph`
-- `_build_index_text(nodes, sproc_to_projects, max_types_per_project)` — formats the compact text
+- `_build_index_text(nodes, sproc_to_projects)` — formats the compact text
 
 The dump mode handler lives in `scatter/modes/dump_index.py`.
