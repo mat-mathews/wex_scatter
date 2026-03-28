@@ -84,7 +84,7 @@ class TestTargetProjectMode:
             "--target-project", str(EXCLUDE_CSPROJ),
             "--search-scope", str(REPO_ROOT),
         )
-        assert "0 consumer" in r.stdout.lower()
+        assert "no consuming relationships found" in r.stdout.lower()
 
     def test_class_name_filter(self):
         r = run_scatter(
@@ -138,7 +138,7 @@ class TestTargetProjectMode:
             "--search-scope", str(REPO_ROOT),
             "--graph-metrics",
         )
-        assert "coupling" in r.stdout.lower()
+        assert "score" in r.stdout.lower()
 
     def test_no_graph_flag(self):
         r = run_scatter(
@@ -189,7 +189,7 @@ class TestStoredProcedureMode:
             "--stored-procedure", "dbo.sp_DoesNotExist",
             "--search-scope", str(REPO_ROOT),
         )
-        assert "0 consumer" in r.stdout.lower()
+        assert "no consuming relationships found" in r.stdout.lower()
 
 
 # ======================================================================

@@ -181,19 +181,19 @@ class TestMetadata:
 class TestConsolePolish:
     """Verify console formatting improvements."""
 
-    def _capture_console(self, results):
+    def _capture_console(self, results, graph_metrics_requested=False):
         """Run print_console_report and capture stdout."""
         with patch('sys.stdout', new_callable=io.StringIO) as mock_out:
-            print_console_report(results)
+            print_console_report(results, graph_metrics_requested=graph_metrics_requested)
             return mock_out.getvalue()
 
     def test_na_type_suppressed(self):
         output = self._capture_console([_make_result(TriggeringType='N/A (Project Reference)')])
-        assert 'Type/Level:' not in output
+        assert 'Triggering type:' not in output
 
     def test_real_type_shown(self):
         output = self._capture_console([_make_result(TriggeringType='MyService')])
-        assert 'Type/Level: MyService' in output
+        assert 'Triggering type: MyService' in output
 
     def test_per_target_count_in_output(self):
         results = [
@@ -201,7 +201,7 @@ class TestConsolePolish:
             _make_result(ConsumerProjectName='App.Api'),
         ]
         output = self._capture_console(results)
-        assert '(2 consumer(s))' in output
+        assert 'Consumers: 2' in output
 
     def test_count_is_per_group_not_per_project(self):
         """When a target has multiple triggering types, each group shows its own count."""
@@ -213,9 +213,75 @@ class TestConsolePolish:
             _make_result(TriggeringType='ClassB', ConsumerProjectName='App.Api'),
         ]
         output = self._capture_console(results)
-        assert '(3 consumer(s))' in output  # ClassA group
-        assert '(2 consumer(s))' in output  # ClassB group
-        assert '(5 consumer(s))' not in output  # should NOT show total
+        assert 'Consumers: 3' in output  # ClassA group
+        assert 'Consumers: 2' in output  # ClassB group
+        assert 'Consumers: 5' not in output  # should NOT show total
+
+    def test_header_uses_equals_separator(self):
+        output = self._capture_console([_make_result()])
+        assert '=' * 60 in output
+
+    def test_empty_results_message(self):
+        output = self._capture_console([])
+        assert 'No consuming relationships found.' in output
+
+    def test_graph_metrics_table_columns(self):
+        result = _make_result(coupling_score=5.0, fan_in=2, fan_out=3, instability=0.6)
+        output = self._capture_console([result], graph_metrics_requested=True)
+        assert 'Score' in output
+        assert 'Fan-In' in output
+        assert 'Fan-Out' in output
+        assert 'Instab.' in output
+
+    def test_instability_two_decimals(self):
+        result = _make_result(coupling_score=5.0, fan_in=2, fan_out=3, instability=0.5)
+        output = self._capture_console([result], graph_metrics_requested=True)
+        assert '0.50' in output
+        assert '0.500' not in output
+
+    def test_long_consumer_name(self):
+        long_name = 'MyCompany.Platform.Services.Authentication.OAuth'
+        result = _make_result(ConsumerProjectName=long_name)
+        output = self._capture_console([result])
+        assert long_name in output
+
+    def test_missing_coupling_score_shows_dash(self):
+        result = _make_result(coupling_score=None)
+        output = self._capture_console([result], graph_metrics_requested=True)
+        assert '\u2014' in output  # em dash
+
+    def test_consumers_sorted_by_coupling_desc(self):
+        results = [
+            _make_result(ConsumerProjectName='Low', coupling_score=1.0, fan_in=0, fan_out=1, instability=0.5),
+            _make_result(ConsumerProjectName='High', coupling_score=10.0, fan_in=0, fan_out=1, instability=0.5),
+        ]
+        output = self._capture_console(results, graph_metrics_requested=True)
+        high_pos = output.index('High')
+        low_pos = output.index('Low')
+        assert high_pos < low_pos
+
+    def test_consumers_sorted_alpha_without_metrics(self):
+        results = [
+            _make_result(ConsumerProjectName='Zebra'),
+            _make_result(ConsumerProjectName='Alpha'),
+        ]
+        output = self._capture_console(results)
+        alpha_pos = output.index('Alpha')
+        zebra_pos = output.index('Zebra')
+        assert alpha_pos < zebra_pos
+
+    def test_scrambled_input_groups_correctly(self):
+        """groupby works even when input is not pre-sorted by target/type."""
+        results = [
+            _make_result(TriggeringType='ClassB', ConsumerProjectName='App.Web'),
+            _make_result(TriggeringType='ClassA', ConsumerProjectName='App.Api'),
+            _make_result(TriggeringType='ClassB', ConsumerProjectName='App.Api'),
+            _make_result(TriggeringType='ClassA', ConsumerProjectName='App.Web'),
+            _make_result(TriggeringType='ClassA', ConsumerProjectName='App.Worker'),
+        ]
+        output = self._capture_console(results)
+        assert 'Consumers: 3' in output  # ClassA group
+        assert 'Consumers: 2' in output  # ClassB group
 
 
 # ── 1d: CSV Cleanup ─────────────────────────────────────────────────

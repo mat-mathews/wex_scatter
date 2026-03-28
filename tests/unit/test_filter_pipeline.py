@@ -258,7 +258,7 @@ class TestConsoleFilterOutput(unittest.TestCase):
         with contextlib.redirect_stdout(captured):
             print_console_report([], pipeline=None)
         output = captured.getvalue()
-        self.assertIn("No Consuming Relationships Found", output)
+        self.assertIn("No consuming relationships found.", output)
         self.assertNotIn("Search scope:", output)
 
 

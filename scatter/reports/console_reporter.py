@@ -1,7 +1,7 @@
 """Console output formatting for analysis results."""
 
 import textwrap
-from collections import Counter
+from itertools import groupby
 from typing import List, Optional
 
 from scatter.core.models import (
@@ -45,54 +45,79 @@ def print_console_report(
     if pipeline is not None:
         print_filter_pipeline(pipeline)
 
-    print("\n--- Combined Consumer Analysis Report ---")
+    print(f"\n{'=' * 60}")
+    print("  Consumer Analysis")
+    print(f"{'=' * 60}")
+
     if not all_results:
-        print("\n--- No Consuming Relationships Found ---")
-    else:
-        print("\n--- Consuming Relationships Found ---")
-        group_counts = Counter((r.target_project_name, r.triggering_type) for r in all_results)
-        last_target_type = None
-        for r in all_results:
-            current_target_type = (r.target_project_name, r.triggering_type)
-            if current_target_type != last_target_type:
-                count = group_counts[current_target_type]
-                print(
-                    f"\nTarget: {r.target_project_name} ({r.target_project_path}) ({count} consumer(s))"
-                )
-                if "N/A" not in r.triggering_type:
-                    print(f"    Type/Level: {r.triggering_type}")
-                last_target_type = current_target_type
+        print("  No consuming relationships found.")
+        return
 
-            pipeline_info = f" [Pipeline: {r.pipeline_name}]" if r.pipeline_name else ""
-            print(
-                f"         -> Consumed by: {r.consumer_project_name} ({r.consumer_project_path}){pipeline_info}"
-            )
+    def group_key(r: "ConsumerResult") -> tuple:
+        return (r.target_project_name, r.target_project_path, r.triggering_type)
 
-            if r.consuming_solutions:
-                print(f"           Solutions: {', '.join(r.consuming_solutions)}")
+    all_results = sorted(all_results, key=group_key)
+    groups = []
+    for key, members in groupby(all_results, key=group_key):
+        groups.append((key, list(members)))
 
-            if r.batch_job_verification:
-                print(f"           Batch Job Status: {r.batch_job_verification} in app-config")
+    for (target_name, target_path, triggering_type), consumers in groups:
+        print(f"  Target: {target_name} ({target_path})")
+        print(f"  Consumers: {len(consumers)}")
+        if "N/A" not in triggering_type:
+            print(f"  Triggering type: {triggering_type}")
 
-            if r.consumer_file_summaries:
-                print("           Summaries:")
-                for file_rel_path, summary in r.consumer_file_summaries.items():
-                    indented_summary = textwrap.indent(summary, " " * 14)
-                    print(f"             File: {file_rel_path}\n{indented_summary}")
+        # Sort: by coupling score desc when graph metrics, else alphabetical
+        if graph_metrics_requested:
+            consumers.sort(key=lambda r: (r.coupling_score is None, -(r.coupling_score or 0)))
+        else:
+            consumers.sort(key=lambda r: r.consumer_project_name)
 
-            if graph_metrics_requested:
+        # Dynamic column width for consumer name
+        col_w = min(max((len(r.consumer_project_name) for r in consumers), default=40), 60)
+        col_w = max(col_w, 40)
+
+        print()
+        if graph_metrics_requested:
+            print(f"  {'Consumer':<{col_w}} {'Score':>7} {'Fan-In':>7} {'Fan-Out':>7} {'Instab.':>7} Solutions")
+            print(f"  {'-' * col_w} {'-' * 7} {'-' * 7} {'-' * 7} {'-' * 7} {'-' * 25}")
+            for r in consumers:
+                solutions = ", ".join(r.consuming_solutions) if r.consuming_solutions else ""
                 if r.coupling_score is not None:
                     fi = r.fan_in or 0
                     fo = r.fan_out or 0
                     inst = r.instability or 0.0
-                    cycle = "yes" if r.in_cycle else "no"
-                    print(
-                        f"           Graph: coupling={r.coupling_score}, fan-in={fi}, fan-out={fo}, instability={inst:.3f}, in-cycle={cycle}"
-                    )
+                    print(f"  {r.consumer_project_name:<{col_w}} {r.coupling_score:>7.1f} {fi:>7} {fo:>7} {inst:>7.2f} {solutions}")
                 else:
-                    print("           Graph: (not in graph)")
+                    print(f"  {r.consumer_project_name:<{col_w}} {'—':>7} {'—':>7} {'—':>7} {'—':>7} {solutions}")
+        else:
+            print(f"  {'Consumer':<{col_w}} Solutions")
+            print(f"  {'-' * col_w} {'-' * 25}")
+            for r in consumers:
+                solutions = ", ".join(r.consuming_solutions) if r.consuming_solutions else ""
+                print(f"  {r.consumer_project_name:<{col_w}} {solutions}")
 
-        print(f"\n--- Total Consuming Relationships Found: {len(all_results)} ---")
+        # Batch job status (minimal, beneath table)
+        batch_results = [r for r in consumers if r.batch_job_verification]
+        if batch_results:
+            print()
+            for r in batch_results:
+                print(f"    [{r.batch_job_verification}] {r.consumer_project_name}")
+
+        # AI summaries (minimal, beneath table)
+        summary_results = [r for r in consumers if r.consumer_file_summaries]
+        if summary_results:
+            print()
+            for r in summary_results:
+                print(f"    {r.consumer_project_name}")
+                for file_rel_path, summary in r.consumer_file_summaries.items():
+                    print(f"      {file_rel_path}")
+                    wrapped = textwrap.fill(summary, width=76, initial_indent="        ", subsequent_indent="        ")
+                    print(wrapped)
+
+        print()
+
+    print(f"Analysis complete. {len(all_results)} consumer(s) found across {len(groups)} target(s).")
 
 
 def render_tree(consumers: List[EnrichedConsumer]) -> List[str]:
@@ -160,7 +185,7 @@ def render_tree(consumers: List[EnrichedConsumer]) -> List[str]:
                 lines.append(
                     f"{child_prefix}Graph: coupling={consumer.coupling_score}, "
                     f"fan-in={consumer.fan_in}, fan-out={consumer.fan_out}, "
-                    f"instability={consumer.instability:.3f}, in-cycle={cycle}"
+                    f"instability={consumer.instability:.2f}, in-cycle={cycle}"
                 )
 
             # Recurse into children of this consumer

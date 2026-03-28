@@ -251,8 +251,8 @@ class TestSchemaWithGraphMetrics:
         enrich_legacy_results(results, ctx)
         print_console_report(results, graph_metrics_requested=True)
         output = capsys.readouterr().out
-        assert "Graph: coupling=" in output
-        assert "in-cycle=yes" in output
+        assert "Score" in output
+        assert "Fan-In" in output
 
 
 # ---------------------------------------------------------------------------
