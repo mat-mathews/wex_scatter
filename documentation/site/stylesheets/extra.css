@@ -1,0 +1,14 @@
+/* Constrain sidebar height to viewport so content can scroll */
+.md-sidebar {
+  height: calc(100vh - 2.4rem);
+}
+
+.md-sidebar__scrollwrap {
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+/* Bottom padding so last item isn't flush with viewport edge */
+.md-sidebar__inner {
+  padding-bottom: 3rem;
+}

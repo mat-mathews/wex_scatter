@@ -67,6 +67,18 @@ After install, run via `uv run scatter` (or just `scatter` if you `pip install`)
 
 For full development setup (uv, deps, git config, Claude Code skills): `bash tools/setup.sh`
 
+### Docker
+
+No Python required. Mount your repo and go:
+
+```bash
+docker build -t scatter .
+docker run -v /path/to/repo:/workspace scatter \
+  --target-project /workspace/MyApp/MyApp.csproj --search-scope /workspace
+```
+
+See [Docker usage](documentation/docs/usage/docker.md) for AI features, interactive sessions, and cache persistence.
+
 ---
 
 ## Quick tour

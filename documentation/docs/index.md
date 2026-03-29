@@ -70,13 +70,10 @@ You never pass a flag for this. You never configure it. It just happens.
 
 ## Built to last
 
-~878 tests across 33 files. Modular Python package. Actively developed by team Athena.
+Comprehensive test suite. Modular Python package. Actively developed by team Athena.
 
 ## Where to go from here
 
-- [Getting Started](getting-started.md) -- installation, first run, walkthrough
-- [Output Formats](output-formats.md) -- console, JSON, CSV, markdown, mermaid, pipelines
-- [CLI Reference](cli-reference.md) -- every flag, every option
-- [Workflows](workflows.md) -- real-world scenarios chaining modes together
-- [Configuration](configuration.md) -- YAML config, env vars, project-specific overrides
-- [Claude Code Skills](getting-started.md#using-with-claude-code) -- ask Claude about dependencies in natural language
+- **Try it** -- [Getting Started](getting-started.md) with Python/uv, or [Docker](usage/docker.md) if you don't have Python
+- **See what it can do** -- [Quick Tour](quick-tour.md) walks through all five modes with real output
+- **Run it in CI** -- [Docker](usage/docker.md) for containerized runs, [GitHub Action](reference/github-action.md) for PR comments

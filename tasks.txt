@@ -1156,10 +1156,46 @@ Ref: docs/PIPELINE_REGISTRY_DESIGN.md
 ============================================================================
 
 ============================================================================
-PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-26)
+DEMO RELEASE CANDIDATE — GAP ITEMS (2026-03-28)
+Scatter is shippable for team evaluation. These are the gaps that could
+matter during a demo or hands-on eval. Items are cross-references to
+existing tasks above — not new work, just prioritization for the demo.
 ============================================================================
 
-CODEBASE STATE (updated 2026-03-26, post AI rate limiting + mypy clean):
+BLOCKING (evaluator cannot complete workflow without these):
+  (none — all 5 modes, 6 output formats, AI features, and CLI work end-to-end)
+
+HIGH IMPACT (evaluator will notice, affects credibility):
+- [ ] Test against a real .NET repo with active PRs (Initiative 7, line ~974)
+      Without this, we're shipping on synthetic data confidence only.
+- [ ] Worked example in docs: walk through a real SOW → impact report,
+      explain each section (Initiative 11 Phase 3, line ~1142)
+      Evaluators need a guided path, not just --help.
+- [ ] Docker support (Initiative 8 Phase 4, line ~1081)
+      Evaluator without Python/uv installed hits a wall at step 1.
+
+MEDIUM IMPACT (polish, evaluator may notice):
+- [ ] --fail-on exit codes (Initiative 7, line ~942)
+      Without this, scatter is a read-only tool — can't enforce gates in CI.
+- [ ] Risk text duplicated across consumers in impact report
+      (Initiative 11 Phase 2, line ~1128)
+      Same justification on every consumer looks like a bug.
+- [ ] Per-consumer coupling narratives show identical text with mock AI
+      (Initiative 11 Phase 2, line ~1131)
+      Demo output looks repetitive.
+
+LOW IMPACT (nice-to-have, unlikely to block eval):
+- [ ] Evaluate whether Affected Projects table adds value alongside tree
+      (Initiative 11 Phase 2, line ~1135)
+- [ ] Harden SOW failure modes — vague SOW, no API key, rate limit
+      (Initiative 11 Phase 3, line ~1143)
+- [ ] Demo script in CI as smoke test (Initiative 11 Phase 3, line ~1147)
+
+============================================================================
+PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-28)
+============================================================================
+
+CODEBASE STATE (updated 2026-03-28, post console reporter redesign + truncation removal):
   - scatter/ package with 29+ modules across core/, scanners/, analyzers/, ai/, reports/, compat/, store/, modes/
   - scatter/core/tree.py: shared tree-building utilities (build_adjacency, CONFIDENCE_LABEL_RANK)
   - scatter.py: 10-line thin entry point (delegates to scatter/__main__.py via runpy)
