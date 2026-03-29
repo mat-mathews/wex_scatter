@@ -108,7 +108,6 @@ def dispatch_legacy_output(
     ``args`` attributes read: output_format, output_file, and all attributes
     forwarded to ``_build_metadata`` (everything except ``_REDACTED_CLI_KEYS``).
     """
-    logging.info("\n\n\n################################################################\n\n")
     logging.info("\n--- Consolidating and reporting results ---")
     if not all_results:
         logging.info(
@@ -196,11 +195,7 @@ def dispatch_legacy_output(
             graph_metrics_requested=graph_enriched,
         )
 
-    target_names = {r.target_project_name for r in all_results} if all_results else set()
-    if args.output_format != "pipelines":
-        print(
-            f"\nAnalysis complete. {len(all_results)} consumer(s) found across {len(target_names)} target(s).\n"
-        )
+    # Summary line is printed by each reporter; no duplicate needed here.
 
 
 def _summarize_consumer_files(

@@ -187,13 +187,20 @@ scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-sco
 Scatter scans the entire codebase and reports back:
 
 ```
-Target: GalaxyWorks.Data
-    -> Consumed by: GalaxyWorks.WebPortal
-    -> Consumed by: GalaxyWorks.BatchProcessor
-    -> Consumed by: MyGalaryConsumerApp
-    -> Consumed by: MyGalaryConsumerApp2
+============================================================
+  Consumer Analysis
+============================================================
+  Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+  Consumers: 4
 
-Total Consuming Relationships Found: 4
+  Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
+  ---------------------------------------- ------- ------- ------- ------- -------------------------
+  GalaxyWorks.WebPortal                       12.7       1       1    0.50 GalaxyWorks.sln
+  GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
+  MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
+  MyGalaryConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
+
+Analysis complete. 4 consumer(s) found across 1 target(s).
 ```
 
 The tech lead now has a concrete list of affected teams and pipelines.
@@ -209,16 +216,29 @@ scatter --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .
 Scatter searches all C# files for references to the sproc, identifies the containing class, and traces downstream consumers:
 
 ```
-Target: GalaxyWorks.Data — PortalDataService (via Sproc)
-    -> Consumed by: GalaxyWorks.WebPortal
-    -> Consumed by: GalaxyWorks.BatchProcessor
-    -> Consumed by: MyGalaryConsumerApp
-    -> Consumed by: MyGalaryConsumerApp2
+============================================================
+  Consumer Analysis
+============================================================
+  Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+  Consumers: 4
+  Triggering type: PortalDataService (via Sproc: dbo.sp_InsertPortalConfiguration)
 
-Target: GalaxyWorks.WebPortal — PortalCacheService (via Sproc)
-    -> Consumed by: GalaxyWorks.BatchProcessor
+  Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
+  ---------------------------------------- ------- ------- ------- ------- -------------------------
+  GalaxyWorks.WebPortal                       12.7       1       1    0.50 GalaxyWorks.sln
+  GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
+  MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
+  MyGalaryConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
 
-Total Consuming Relationships Found: 5
+  Target: GalaxyWorks.WebPortal (GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj)
+  Consumers: 1
+  Triggering type: PortalCacheService (via Sproc: dbo.sp_InsertPortalConfiguration)
+
+  Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
+  ---------------------------------------- ------- ------- ------- ------- -------------------------
+  GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
+
+Analysis complete. 5 consumer(s) found across 2 target(s).
 ```
 
 This shows that the sproc change affects more than the obvious consumers — `PortalCacheService` in `WebPortal` also calls it, and `BatchProcessor` depends on that as well. This kind of transitive dependency through the data layer is easy to miss manually.

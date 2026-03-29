@@ -22,39 +22,33 @@ This analyzes the sample `GalaxyWorks.Data` project and finds every project that
 Search scope: /code/scatter (scanned 11 projects, 27 files)
 Filter: 11 → 7 project refs[graph] → 6 namespace
 
-Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (6 consumer(s))
-         -> Consumed by: GalaxyWorks.Api (GalaxyWorks.Api/GalaxyWorks.Api.csproj)
-           Solutions: GalaxyWorks.sln
-           Graph: coupling=7.1, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
-         -> Consumed by: GalaxyWorks.BatchProcessor (GalaxyWorks.BatchProcessor/GalaxyWorks.BatchProcessor.csproj)
-           Solutions: GalaxyWorks.sln
-           Graph: coupling=10.8, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
-         -> Consumed by: GalaxyWorks.Data.Tests (GalaxyWorks.Data.Tests/GalaxyWorks.Data.Tests.csproj)
-           Solutions: GalaxyWorks.sln
-           Graph: coupling=3.5, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
-         -> Consumed by: GalaxyWorks.WebPortal (GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj)
-           Solutions: GalaxyWorks.sln
-           Graph: coupling=12.7, fan-in=1, fan-out=1, instability=0.500, in-cycle=no
-         -> Consumed by: MyGalaryConsumerApp (MyGalaxyConsumerApp/MyGalaryConsumerApp.csproj)
-           Solutions: GalaxyWorks.sln
-           Graph: coupling=4.3, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
-         -> Consumed by: MyGalaryConsumerApp2 (MyGalaxyConsumerApp2/MyGalaryConsumerApp2.csproj)
-           Solutions: GalaxyWorks.sln
-           Graph: coupling=1.8, fan-in=0, fan-out=1, instability=1.000, in-cycle=no
+============================================================
+  Consumer Analysis
+============================================================
+  Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+  Consumers: 6
 
---- Total Consuming Relationships Found: 6 ---
+  Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
+  ---------------------------------------- ------- ------- ------- ------- -------------------------
+  GalaxyWorks.WebPortal                       12.7       1       1    0.50 GalaxyWorks.sln
+  GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
+  GalaxyWorks.Api                              7.1       0       2    1.00 GalaxyWorks.sln
+  MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
+  GalaxyWorks.Data.Tests                       3.5       0       2    1.00 GalaxyWorks.sln
+  MyGalaryConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
+
+Analysis complete. 6 consumer(s) found across 1 target(s).
 ```
 
 **Filter line** — the analysis funnel. Started with 11 projects, narrowed to 7 that have a project reference to GalaxyWorks.Data, then to 6 that actually use its namespace. Each stage cuts aggressively so you see real consumers, not false positives.
 
-**Consumer list** — every project that depends on GalaxyWorks.Data, including test projects. If you change `PortalDataService`, these are the projects that might break.
+**Consumer table** — every project that depends on GalaxyWorks.Data, sorted by coupling score (highest risk first). If you change `PortalDataService`, these are the projects that might break.
 
-**Graph metrics** — automatically computed from the dependency graph:
+**Graph columns** — automatically computed from the dependency graph:
 
-- **coupling** — how connected this project is (higher = more risk when changing)
-- **fan-in / fan-out** — incoming vs outgoing dependencies
-- **instability** — 0.0 (stable, many dependents) to 1.0 (unstable, depends on others)
-- **in-cycle** — whether this project is part of a circular dependency
+- **Score** — coupling score: how connected this project is (higher = more risk when changing)
+- **Fan-In / Fan-Out** — incoming vs outgoing dependencies
+- **Instab.** — instability index: 0.00 (stable, many dependents) to 1.00 (unstable, depends on others)
 
 You didn't ask for graph metrics — Scatter builds the graph automatically on first run, caches it, and enriches every result.
 

@@ -3,7 +3,18 @@ site_description: ".NET dependency graph engine — trace blast radius before yo
 use_directory_urls: false
 
 theme:
-  name: solar
+  name: material
+  palette:
+    scheme: slate
+    primary: deep purple
+    accent: amber
+  features:
+    - navigation.expand
+    - content.code.copy
+    - search.highlight
+
+extra_css:
+  - stylesheets/extra.css
 
 markdown_extensions:
   - toc:
@@ -14,6 +25,7 @@ nav:
   - User Guide:
       - Home: index.md
       - Getting Started: getting-started.md
+      - Docker: usage/docker.md
       - Quick Tour: quick-tour.md
       - Workflows: workflows.md
       - Analysis Modes:

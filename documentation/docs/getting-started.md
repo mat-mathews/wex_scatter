@@ -2,6 +2,8 @@
 
 Install Scatter and verify it works. Should take about two minutes.
 
+**Don't have Python?** Use [Docker](usage/docker.md) instead — no Python or uv required.
+
 ## Prerequisites
 
 - **Python 3.10+** -- Scatter uses modern type hints and dataclass features

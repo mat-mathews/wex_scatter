@@ -145,7 +145,7 @@ diff parallel_results.txt sequential_results.txt
 ```bash
 python scatter.py --target-project ./GalaxyWorks.Data --search-scope . --class-name "PortalDataService" --verbose
 ```
-**Expected Result**: Should find 2 consumers, report "Type/Level: PortalDataService"
+**Expected Result**: Should find 2 consumers, report "Triggering type: PortalDataService"
 
 #### Test: Find consumers of model class
 ```bash

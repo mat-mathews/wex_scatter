@@ -3,16 +3,25 @@
 ```bash
 $ scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
 
-Search scope: /code/myrepo (scanned 11 projects, 27 files)
+Search scope: /code/scatter (scanned 11 projects, 27 files)
 Filter: 11 → 7 project refs[graph] → 6 namespace
 
-Target: GalaxyWorks.Data (6 consumers)
-  → GalaxyWorks.Api            coupling=7.1   instability=1.00   in-cycle=no
-  → GalaxyWorks.BatchProcessor coupling=10.8   instability=1.00   in-cycle=no
-  → GalaxyWorks.WebPortal      coupling=12.7   instability=0.50   in-cycle=no
-  → MyGalaxyConsumerApp        coupling=4.3   instability=1.00   in-cycle=no
-  → MyGalaxyConsumerApp2       coupling=1.8   instability=1.00   in-cycle=no
-  → GalaxyWorks.Data.Tests     coupling=3.5   instability=1.00   in-cycle=no
+============================================================
+  Consumer Analysis
+============================================================
+  Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+  Consumers: 6
+
+  Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
+  ---------------------------------------- ------- ------- ------- ------- -------------------------
+  GalaxyWorks.WebPortal                       12.7       1       1    0.50 GalaxyWorks.sln
+  GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
+  GalaxyWorks.Api                              7.1       0       2    1.00 GalaxyWorks.sln
+  MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
+  GalaxyWorks.Data.Tests                       3.5       0       2    1.00 GalaxyWorks.sln
+  MyGalaryConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
+
+Analysis complete. 6 consumer(s) found across 1 target(s).
 ```
 
 **A .NET dependency analyzer that maps the blast radius of code changes.**
@@ -58,6 +67,18 @@ After install, run via `uv run scatter` (or just `scatter` if you `pip install`)
 
 For full development setup (uv, deps, git config, Claude Code skills): `bash tools/setup.sh`
 
+### Docker
+
+No Python required. Mount your repo and go:
+
+```bash
+docker build -t scatter .
+docker run -v /path/to/repo:/workspace scatter \
+  --target-project /workspace/MyApp/MyApp.csproj --search-scope /workspace
+```
+
+See [Docker usage](documentation/docs/usage/docker.md) for AI features, interactive sessions, and cache persistence.
+
 ---
 
 ## Quick tour
@@ -67,10 +88,17 @@ For full development setup (uv, deps, git config, Claude Code skills): `bash too
 ```bash
 $ scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
 
-Target: GalaxyWorks.Data (6 consumers)
-  → GalaxyWorks.Api            coupling=7.1   instability=1.00   in-cycle=no
-  → GalaxyWorks.BatchProcessor coupling=10.8   instability=1.00   in-cycle=no
-  → GalaxyWorks.WebPortal      coupling=12.7   instability=0.50   in-cycle=no
+============================================================
+  Consumer Analysis
+============================================================
+  Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+  Consumers: 6
+
+  Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
+  ---------------------------------------- ------- ------- ------- ------- -------------------------
+  GalaxyWorks.WebPortal                       12.7       1       1    0.50 GalaxyWorks.sln
+  GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
+  GalaxyWorks.Api                              7.1       0       2    1.00 GalaxyWorks.sln
   ...
 ```
 
@@ -81,11 +109,18 @@ Target: GalaxyWorks.Data (6 consumers)
 ```bash
 $ scatter --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .
 
-Target: GalaxyWorks.Data (6 consumers)
-    Type/Level: PortalDataService (via Sproc: dbo.sp_InsertPortalConfiguration)
-      → GalaxyWorks.Api
-      → GalaxyWorks.BatchProcessor
-      ...
+============================================================
+  Consumer Analysis
+============================================================
+  Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+  Consumers: 6
+  Triggering type: PortalDataService (via Sproc: dbo.sp_InsertPortalConfiguration)
+
+  Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
+  ---------------------------------------- ------- ------- ------- ------- -------------------------
+  GalaxyWorks.WebPortal                       12.7       1       1    0.50 GalaxyWorks.sln
+  GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
+  ...
 ```
 
 Stored procedure callers are invisible in project references — scatter finds them by scanning source.

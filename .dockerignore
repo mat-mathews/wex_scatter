@@ -1,0 +1,29 @@
+.git
+.venv
+.mypy_cache
+.pytest_cache
+.ruff_cache
+__pycache__
+*.pyc
+
+# Test and benchmark data
+temp_test_data/
+benchmark_results/
+tests/
+
+# Documentation source (site is not needed in the image)
+documentation/
+docs/
+
+# Development files
+tools/
+DEVLOG.md
+TESTING_GUIDE.md
+*.md
+!README.md
+
+# .NET sample projects (not needed for the scatter tool itself)
+GalaxyWorks.*/
+MyDotNetApp*/
+MyGalaxy*/
+*.sln

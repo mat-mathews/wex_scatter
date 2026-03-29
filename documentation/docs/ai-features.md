@@ -106,14 +106,25 @@ scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
 ### Sample Console Output
 
 ```
-Target: GalaxyWorks.Data (./GalaxyWorks.Data/GalaxyWorks.Data.csproj) (2 consumer(s))
-    Type/Level: class PortalDataService
-         -> Consumed by: MyGalaxyConsumerApp (./MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj)
-           Summaries:
-             File: Services/PortalSync.cs
-              This file implements the PortalSync service, which orchestrates
-              portal configuration synchronization by calling PortalDataService
-              to read and write portal settings to the database.
+============================================================
+  Consumer Analysis
+============================================================
+  Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+  Consumers: 2
+  Triggering type: PortalDataService
+
+  Consumer                                 Solutions
+  ---------------------------------------- -------------------------
+  MyGalaxyConsumerApp                      GalaxyWorks.sln
+  MyGalaxyConsumerApp2                     GalaxyWorks.sln
+
+    MyGalaxyConsumerApp
+      Services/PortalSync.cs
+        This file implements the PortalSync service, which orchestrates
+        portal configuration synchronization by calling PortalDataService
+        to read and write portal settings to the database.
+
+Analysis complete. 2 consumer(s) found across 1 target(s).
 ```
 
 ### Sample JSON Output
@@ -218,15 +229,18 @@ Use `--no-graph` to disable graph loading entirely if you want faster runs and d
 
 ### Sample Console Output
 
-```
-         -> Consumed by: MyGalaxyConsumerApp (./MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj)
-           Graph: coupling=4.60, fan-in=2, fan-out=1, instability=0.333, in-cycle=no
-```
-
-When a consumer project exists outside the graph's search scope:
+Graph metrics appear as table columns when a graph cache exists:
 
 ```
-           Graph: (not in graph)
+  Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
+  ---------------------------------------- ------- ------- ------- ------- -------------------------
+  MyGalaxyConsumerApp                          4.6       2       1    0.33 GalaxyWorks.sln
+```
+
+When a consumer project exists outside the graph's search scope, dashes appear in the metric columns:
+
+```
+  ExternalConsumer                              —       —       —       — ExternalSolution.sln
 ```
 
 > **How this works:** AI calls go through an `AIProvider` protocol with a task router that selects providers per task type. All calls are structured JSON in, structured JSON out. Graph metrics are computed from the dependency graph with no AI involvement. See [Architecture Overview](reference/architecture.md) for the provider system and graph engine.

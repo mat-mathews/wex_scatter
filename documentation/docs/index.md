@@ -10,21 +10,22 @@ scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-sco
 Search scope: /code/scatter (scanned 11 projects, 27 files)
 Filter: 11 → 7 project refs[graph] → 6 namespace
 
-Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (6 consumer(s))
-         -> Consumed by: GalaxyWorks.Api (GalaxyWorks.Api/GalaxyWorks.Api.csproj)
-           Graph: coupling=7.1, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
-         -> Consumed by: GalaxyWorks.BatchProcessor (GalaxyWorks.BatchProcessor/GalaxyWorks.BatchProcessor.csproj)
-           Graph: coupling=10.8, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
-         -> Consumed by: GalaxyWorks.WebPortal (GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj)
-           Graph: coupling=12.7, fan-in=1, fan-out=1, instability=0.500, in-cycle=no
-         -> Consumed by: MyGalaryConsumerApp (MyGalaxyConsumerApp/MyGalaryConsumerApp.csproj)
-           Graph: coupling=4.3, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
-         -> Consumed by: MyGalaryConsumerApp2 (MyGalaxyConsumerApp2/MyGalaryConsumerApp2.csproj)
-           Graph: coupling=1.8, fan-in=0, fan-out=1, instability=1.000, in-cycle=no
-         -> Consumed by: GalaxyWorks.Data.Tests (GalaxyWorks.Data.Tests/GalaxyWorks.Data.Tests.csproj)
-           Graph: coupling=3.5, fan-in=0, fan-out=2, instability=1.000, in-cycle=no
+============================================================
+  Consumer Analysis
+============================================================
+  Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+  Consumers: 6
 
---- Total Consuming Relationships Found: 6 ---
+  Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
+  ---------------------------------------- ------- ------- ------- ------- -------------------------
+  GalaxyWorks.WebPortal                       12.7       1       1    0.50 GalaxyWorks.sln
+  GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
+  GalaxyWorks.Api                              7.1       0       2    1.00 GalaxyWorks.sln
+  MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
+  GalaxyWorks.Data.Tests                       3.5       0       2    1.00 GalaxyWorks.sln
+  MyGalaryConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
+
+Analysis complete. 6 consumer(s) found across 1 target(s).
 ```
 
 Six consumers. Now you know who to warn before you merge.
@@ -69,13 +70,10 @@ You never pass a flag for this. You never configure it. It just happens.
 
 ## Built to last
 
-~878 tests across 33 files. Modular Python package. Actively developed by team Athena.
+Comprehensive test suite. Modular Python package. Actively developed by team Athena.
 
 ## Where to go from here
 
-- [Getting Started](getting-started.md) -- installation, first run, walkthrough
-- [Output Formats](output-formats.md) -- console, JSON, CSV, markdown, mermaid, pipelines
-- [CLI Reference](cli-reference.md) -- every flag, every option
-- [Workflows](workflows.md) -- real-world scenarios chaining modes together
-- [Configuration](configuration.md) -- YAML config, env vars, project-specific overrides
-- [Claude Code Skills](getting-started.md#using-with-claude-code) -- ask Claude about dependencies in natural language
+- **Try it** -- [Getting Started](getting-started.md) with Python/uv, or [Docker](usage/docker.md) if you don't have Python
+- **See what it can do** -- [Quick Tour](quick-tour.md) walks through all five modes with real output
+- **Run it in CI** -- [Docker](usage/docker.md) for containerized runs, [GitHub Action](reference/github-action.md) for PR comments

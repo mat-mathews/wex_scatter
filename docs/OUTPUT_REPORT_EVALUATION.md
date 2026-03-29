@@ -23,35 +23,37 @@ Each report is assessed on:
 **Current output:**
 
 ```
---- Combined Consumer Analysis Report ---
+============================================================
+  Consumer Analysis
+============================================================
+  Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+  Consumers: 4
 
---- Consuming Relationships Found ---
+  Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
+  ---------------------------------------- ------- ------- ------- ------- -------------------------
+  GalaxyWorks.WebPortal                       12.7       1       1    0.50 GalaxyWorks.sln
+  GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
+  MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
+  MyGalaryConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
 
-Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
-    Type/Level: N/A (Project Reference)
-         -> Consumed by: GalaxyWorks.BatchProcessor (GalaxyWorks.BatchProcessor/GalaxyWorks.BatchProcessor.csproj)
-         -> Consumed by: GalaxyWorks.WebPortal (GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj)
-         -> Consumed by: MyGalaryConsumerApp (MyGalaxyConsumerApp/MyGalaryConsumerApp.csproj)
-         -> Consumed by: MyGalaryConsumerApp2 (MyGalaxyConsumerApp2/MyGalaryConsumerApp2.csproj)
-
---- Total Consuming Relationships Found: 4 ---
+Analysis complete. 4 consumer(s) found across 1 target(s).
 ```
 
 **Strengths:**
-- Grouped by target — easy to scan when there's one target
-- Consumer count at the bottom is useful
-- Indentation hierarchy makes the relationship clear
+- Aligned columnar table — easy to scan and compare metrics
+- Sorted by coupling score (highest risk first)
+- Per-target consumer count shown inline
+- "N/A (Project Reference)" suppressed when no class filter is used
+- Clean `====` header block matching graph mode style
+- Summary footer with total count
 
-**Issues:**
-1. **"Type/Level: N/A (Project Reference)" is confusing.** When no class/method filter is used, this field adds noise. The string "N/A (Project Reference)" doesn't help the reader understand anything — it's an internal implementation detail (the analysis was at the project-reference level, not the type level). It should either be omitted when not applicable or use clearer language like "All types (no filter applied)".
-2. **No summary count by target.** When there are multiple targets (e.g., sproc analysis finding 2 targets), there's no per-target consumer count — only the grand total at the bottom.
-3. **The "done." at the end feels like debug output**, not a polished report. Users seeing this for the first time may wonder if something else was supposed to follow.
-4. **No visual separator between the report and the "done." line.**
+**Resolved issues (from prior evaluation):**
+1. ~~"Type/Level: N/A" noise~~ — suppressed when not applicable
+2. ~~No per-target count~~ — `Consumers: N` shown per target
+3. ~~"done." debug output~~ — replaced with `Analysis complete.` summary
+4. ~~No visual separator~~ — `====` block header
 5. **Pipeline and solution info only appear when populated.** This is good behavior (no noise), but there's no indication that these enrichments are *available* — a user who doesn't know about `--pipeline-csv` won't discover it from the output.
-6. **Paths are relative but inconsistently so.** Target paths show `GalaxyWorks.Data/GalaxyWorks.Data.csproj` (relative), which is good for readability. This is consistent.
-
-**Suggestions:**
-- Add a per-target consumer count: `Target: GalaxyWorks.Data (4 consumers)`
+6. **Paths are relative and consistent.** Target paths show `GalaxyWorks.Data/GalaxyWorks.Data.csproj` (relative), which is good for readability.
 - Drop or rephrase "Type/Level: N/A (Project Reference)" — when there's no class filter, omit the line entirely or say "Filter: none"
 - Remove the "done." line, or replace it with a clean footer like a horizontal rule
 - Add a hint when no pipeline mapping is provided: `(Tip: add --pipeline-csv to see CI/CD pipeline mappings)`

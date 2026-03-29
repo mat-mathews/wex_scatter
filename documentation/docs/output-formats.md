@@ -17,31 +17,27 @@ scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
 Search scope: /code/myrepo (scanned 142 projects, 3,891 files)
 Filter: 142 → 8 project refs[graph] → 5 namespace → 3 class match
 
---- Combined Consumer Analysis Report ---
+============================================================
+  Consumer Analysis
+============================================================
+  Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+  Consumers: 3
+  Triggering type: PortalDataService
 
---- Consuming Relationships Found ---
+  Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
+  ---------------------------------------- ------- ------- ------- ------- -------------------------
+  PortalBatchProcessor                         8.2       0       3    1.00 PortalServices.sln
+  MyGalaxyConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
+  MyGalaxyConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
 
-Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (3 consumer(s))
-    Type/Level: PortalDataService
-         -> Consumed by: MyGalaxyConsumerApp (MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj) [Pipeline: galaxy-consumer-ci]
-           Solutions: GalaxyWorks.sln
-         -> Consumed by: MyGalaxyConsumerApp2 (MyGalaxyConsumerApp2/MyGalaxyConsumerApp2.csproj) [Pipeline: galaxy-consumer2-ci]
-           Solutions: GalaxyWorks.sln
-         -> Consumed by: PortalBatchProcessor (PortalBatchProcessor/PortalBatchProcessor.csproj) [Pipeline: portal-batch-ci]
-           Solutions: PortalServices.sln
-           Batch Job Status: portal-nightly-sync in app-config
+    [portal-nightly-sync] PortalBatchProcessor
 
---- Total Consuming Relationships Found: 3 ---
+Analysis complete. 3 consumer(s) found across 1 target(s).
 ```
 
-When a graph cache exists, each consumer gets an extra line with metrics:
+Consumers are sorted by coupling score (highest risk first). When a graph cache exists, the table includes Score, Fan-In, Fan-Out, and Instability columns automatically.
 
-```
-         -> Consumed by: MyGalaxyConsumerApp (MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj)
-           Graph: coupling=4.30, fan-in=1, fan-out=3, instability=0.750, in-cycle=no
-```
-
-High coupling score + in-cycle=yes is a project you do not want to surprise with a breaking change on a Friday afternoon.
+High coupling score on a project you depend on is one you do not want to surprise with a breaking change on a Friday afternoon.
 
 ---
 
@@ -153,7 +149,7 @@ scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
 
 ## GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (3 consumer(s))
 
-Type/Level: PortalDataService
+Triggering type: PortalDataService
 
 | Consumer | Path | Pipeline | Solutions |
 | --- | --- | --- | --- |
