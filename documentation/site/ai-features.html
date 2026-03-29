@@ -1794,34 +1794,34 @@
 <h3 id="wex-ai-platform-primary-coming-soon">WEX AI Platform (Primary — Coming Soon)<a class="headerlink" href="#wex-ai-platform-primary-coming-soon" title="Permanent link">&para;</a></h3>
 <p>The <strong>WEX AI Platform</strong> is the company's centralized AI gateway. It handles rate limiting, security controls, model routing, and usage tracking for all internal AI consumers. This will be the default provider for Scatter once the API contract is finalized.</p>
 <p>The provider is stubbed in the codebase and ready for integration. Configuration is already wired:</p>
-<pre><code class="language-bash"># Environment variable
-export WEX_AI_API_KEY=&quot;your-wex-ai-key&quot;
+<div class="highlight"><pre><span></span><code><span class="c1"># Environment variable</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">WEX_AI_API_KEY</span><span class="o">=</span><span class="s2">&quot;your-wex-ai-key&quot;</span>
 
-# CLI flag
-scatter --sow &quot;...&quot; --search-scope . --wex-api-key &quot;your-key&quot;
-</code></pre>
-<pre><code class="language-yaml"># .scatter.yaml
-ai:
-  default_provider: wex
-  credentials:
-    wex:
-      api_key: &quot;your-wex-ai-key&quot;
-</code></pre>
+<span class="c1"># CLI flag</span>
+scatter<span class="w"> </span>--sow<span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--wex-api-key<span class="w"> </span><span class="s2">&quot;your-key&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="c1"># .scatter.yaml</span>
+<span class="nt">ai</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">default_provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wex</span>
+<span class="w">  </span><span class="nt">credentials</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">wex</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">api_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;your-wex-ai-key&quot;</span>
+</code></pre></div>
 <p>Setting <code>default_provider: wex</code> will route all AI tasks through the WEX AI Platform. Configuration is ready — flip the switch when your team gets access.</p>
 <h3 id="google-gemini-current-default">Google Gemini (Current Default)<a class="headerlink" href="#google-gemini-current-default" title="Permanent link">&para;</a></h3>
 <p>The <strong>Google Gemini</strong> provider is the current working AI backend. All AI features are fully functional with Gemini. Set up your API key and go:</p>
-<pre><code class="language-bash"># Environment variable (recommended)
-export GOOGLE_API_KEY=&quot;your-google-api-key&quot;
+<div class="highlight"><pre><span></span><code><span class="c1"># Environment variable (recommended)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">GOOGLE_API_KEY</span><span class="o">=</span><span class="s2">&quot;your-google-api-key&quot;</span>
 
-# CLI flag
-scatter --sow &quot;...&quot; --search-scope . --google-api-key &quot;your-key&quot;
+<span class="c1"># CLI flag</span>
+scatter<span class="w"> </span>--sow<span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--google-api-key<span class="w"> </span><span class="s2">&quot;your-key&quot;</span>
 
-# Config file (~/.scatter/config.yaml)
-# ai:
-#   credentials:
-#     gemini:
-#       api_key: &quot;your-key&quot;
-</code></pre>
+<span class="c1"># Config file (~/.scatter/config.yaml)</span>
+<span class="c1"># ai:</span>
+<span class="c1">#   credentials:</span>
+<span class="c1">#     gemini:</span>
+<span class="c1">#       api_key: &quot;your-key&quot;</span>
+</code></pre></div>
 <h3 id="future-providers">Future Providers<a class="headerlink" href="#future-providers" title="Permanent link">&para;</a></h3>
 <p>Additional providers are on the backlog. These will likely be routed through the WEX AI Platform rather than integrated directly, as the platform provides centralized rate limiting and security controls:</p>
 <ul>
@@ -1830,17 +1830,17 @@ scatter --sow &quot;...&quot; --search-scope . --google-api-key &quot;your-key&q
 </ul>
 <h3 id="provider-configuration">Provider Configuration<a class="headerlink" href="#provider-configuration" title="Permanent link">&para;</a></h3>
 <p>Use <code>SCATTER_DEFAULT_PROVIDER</code> or <code>ai.default_provider</code> in config to switch providers. Use <code>ai.task_overrides</code> to route specific AI tasks to specific providers:</p>
-<pre><code class="language-yaml">ai:
-  default_provider: gemini          # or &quot;wex&quot; when ready
-  task_overrides:
-    risk_assessment: wex            # route risk assessment to WEX AI Platform
-    summarization: gemini           # keep summarization on Gemini
-  credentials:
-    gemini:
-      api_key: &quot;&quot;
-    wex:
-      api_key: &quot;&quot;
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="nt">ai</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">default_provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gemini</span><span class="w">          </span><span class="c1"># or &quot;wex&quot; when ready</span>
+<span class="w">  </span><span class="nt">task_overrides</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">risk_assessment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wex</span><span class="w">            </span><span class="c1"># route risk assessment to WEX AI Platform</span>
+<span class="w">    </span><span class="nt">summarization</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gemini</span><span class="w">           </span><span class="c1"># keep summarization on Gemini</span>
+<span class="w">  </span><span class="nt">credentials</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">gemini</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">api_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+<span class="w">    </span><span class="nt">wex</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">api_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&quot;</span>
+</code></pre></div>
 <hr />
 <h2 id="consumer-summarization">Consumer Summarization<a class="headerlink" href="#consumer-summarization" title="Permanent link">&para;</a></h2>
 <p><strong>Flag:</strong> <code>--summarize-consumers</code></p>
@@ -1848,14 +1848,14 @@ scatter --sow &quot;...&quot; --search-scope . --google-api-key &quot;your-key&q
 <p>When you pass <code>--summarize-consumers</code>, Scatter identifies the specific <code>.cs</code> files in each consumer that caused the match -- the ones with the <code>using</code> statement, the type reference, the sproc call. It sends each file to the configured AI provider and gets back a 2-3 sentence summary of what that file does.</p>
 <p>This is most useful when you have dozens of consumers and need to triage which ones actually matter for your change, without opening every single file.</p>
 <h3 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-    --search-scope . \
-    --class-name PortalDataService \
-    --summarize-consumers \
-    --google-api-key $GOOGLE_API_KEY
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--class-name<span class="w"> </span>PortalDataService<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--summarize-consumers<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span>
+</code></pre></div>
 <h3 id="sample-console-output">Sample Console Output<a class="headerlink" href="#sample-console-output" title="Permanent link">&para;</a></h3>
-<pre><code>============================================================
+<div class="highlight"><pre><span></span><code>============================================================
   Consumer Analysis
 ============================================================
   Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
@@ -1874,17 +1874,17 @@ scatter --sow &quot;...&quot; --search-scope . --google-api-key &quot;your-key&q
         to read and write portal settings to the database.
 
 Analysis complete. 2 consumer(s) found across 1 target(s).
-</code></pre>
+</code></pre></div>
 <h3 id="sample-json-output">Sample JSON Output<a class="headerlink" href="#sample-json-output" title="Permanent link">&para;</a></h3>
 <p>The summaries land in the <code>ConsumerFileSummaries</code> field, keyed by relative file path:</p>
-<pre><code class="language-json">{
-  &quot;TargetProjectName&quot;: &quot;GalaxyWorks.Data&quot;,
-  &quot;ConsumerProjectName&quot;: &quot;MyGalaxyConsumerApp&quot;,
-  &quot;ConsumerFileSummaries&quot;: {
-    &quot;Services/PortalSync.cs&quot;: &quot;This file implements the PortalSync service, which orchestrates portal configuration synchronization by calling PortalDataService to read and write portal settings to the database.&quot;
-  }
-}
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;TargetProjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GalaxyWorks.Data&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ConsumerProjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MyGalaxyConsumerApp&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ConsumerFileSummaries&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;Services/PortalSync.cs&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;This file implements the PortalSync service, which orchestrates portal configuration synchronization by calling PortalDataService to read and write portal settings to the database.&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
 <hr />
 <h2 id="hybrid-git-type-extraction">Hybrid Git Type Extraction<a class="headerlink" href="#hybrid-git-type-extraction" title="Permanent link">&para;</a></h2>
 <p><strong>Flag:</strong> <code>--enable-hybrid-git</code>
@@ -1934,17 +1934,17 @@ Analysis complete. 2 consumer(s) found across 1 target(s).
 </tbody>
 </table>
 <h3 id="example_1">Example<a class="headerlink" href="#example_1" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash"># Default regex extraction
-scatter --branch-name feature/portal-fix --repo-path . --search-scope .
+<div class="highlight"><pre><span></span><code><span class="c1"># Default regex extraction</span>
+scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/portal-fix<span class="w"> </span>--repo-path<span class="w"> </span>.<span class="w"> </span>--search-scope<span class="w"> </span>.
 
-# Hybrid extraction -- compare the results
-scatter --branch-name feature/portal-fix --repo-path . --search-scope . \
-    --enable-hybrid-git --google-api-key $GOOGLE_API_KEY -v
-</code></pre>
+<span class="c1"># Hybrid extraction -- compare the results</span>
+scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/portal-fix<span class="w"> </span>--repo-path<span class="w"> </span>.<span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--enable-hybrid-git<span class="w"> </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span><span class="w"> </span>-v
+</code></pre></div>
 <p>With <code>-v</code>, you can see what the AI decided:</p>
-<pre><code>INFO: Hybrid analysis for GalaxyWorks.Data/PortalDataService.cs: 1 affected type(s)
-      identified by LLM: {'PortalDataService'}
-</code></pre>
+<div class="highlight"><pre><span></span><code>INFO: Hybrid analysis for GalaxyWorks.Data/PortalDataService.cs: 1 affected type(s)
+      identified by LLM: {&#39;PortalDataService&#39;}
+</code></pre></div>
 <hr />
 <h2 id="impact-analysis">Impact Analysis<a class="headerlink" href="#impact-analysis" title="Permanent link">&para;</a></h2>
 <p><strong>Flags:</strong> <code>--sow</code> (inline text) or <code>--sow-file</code> (path to file)</p>
@@ -1969,13 +1969,13 @@ scatter --branch-name feature/portal-fix --repo-path . --search-scope . \
 <p>Use <code>--no-graph</code> to disable graph loading entirely if you want faster runs and don't care about structural metrics.</p>
 <h3 id="sample-console-output_1">Sample Console Output<a class="headerlink" href="#sample-console-output_1" title="Permanent link">&para;</a></h3>
 <p>Graph metrics appear as table columns when a graph cache exists:</p>
-<pre><code>  Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
+<div class="highlight"><pre><span></span><code>  Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
   ---------------------------------------- ------- ------- ------- ------- -------------------------
   MyGalaxyConsumerApp                          4.6       2       1    0.33 GalaxyWorks.sln
-</code></pre>
+</code></pre></div>
 <p>When a consumer project exists outside the graph's search scope, dashes appear in the metric columns:</p>
-<pre><code>  ExternalConsumer                              —       —       —       — ExternalSolution.sln
-</code></pre>
+<div class="highlight"><pre><span></span><code>  ExternalConsumer                              —       —       —       — ExternalSolution.sln
+</code></pre></div>
 <blockquote>
 <p><strong>How this works:</strong> AI calls go through an <code>AIProvider</code> protocol with a task router that selects providers per task type. All calls are structured JSON in, structured JSON out. Graph metrics are computed from the dependency graph with no AI involvement. See <a href="reference/architecture.html">Architecture Overview</a> for the provider system and graph engine.</p>
 </blockquote>

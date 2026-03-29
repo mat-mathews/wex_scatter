@@ -1504,12 +1504,12 @@
 <p>Scatter analyzes a .NET codebase and tells you which projects are affected by a change. You point it at a project, and it traces every consumer through project references, namespace usage, and type matching. The output shows the blast radius — who depends on what you're changing, and how tightly coupled they are.</p>
 <h2 id="step-1-find-all-consumers">Step 1: Find all consumers<a class="headerlink" href="#step-1-find-all-consumers" title="Permanent link">&para;</a></h2>
 <p>After <a href="getting-started.html">installing</a>, run this from the scatter repo root:</p>
-<pre><code class="language-bash">uv run scatter \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope .
-</code></pre>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
 <p>This analyzes the sample <code>GalaxyWorks.Data</code> project and finds every project that consumes it:</p>
-<pre><code>Search scope: /code/scatter (scanned 11 projects, 27 files)
+<div class="highlight"><pre><span></span><code>Search scope: /code/scatter (scanned 11 projects, 27 files)
 Filter: 11 → 7 project refs[graph] → 6 namespace
 
 ============================================================
@@ -1528,7 +1528,7 @@ Filter: 11 → 7 project refs[graph] → 6 namespace
   MyGalaryConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
 
 Analysis complete. 6 consumer(s) found across 1 target(s).
-</code></pre>
+</code></pre></div>
 <p><strong>Filter line</strong> — the analysis funnel. Started with 11 projects, narrowed to 7 that have a project reference to GalaxyWorks.Data, then to 6 that actually use its namespace. Each stage cuts aggressively so you see real consumers, not false positives.</p>
 <p><strong>Consumer table</strong> — every project that depends on GalaxyWorks.Data, sorted by coupling score (highest risk first). If you change <code>PortalDataService</code>, these are the projects that might break.</p>
 <p><strong>Graph columns</strong> — automatically computed from the dependency graph:</p>
@@ -1538,20 +1538,22 @@ Analysis complete. 6 consumer(s) found across 1 target(s).
 <li><strong>Instab.</strong> — instability index: 0.00 (stable, many dependents) to 1.00 (unstable, depends on others)</li>
 </ul>
 <p>You didn't ask for graph metrics — Scatter builds the graph automatically on first run, caches it, and enriches every result.</p>
-<p>!!! note
-    Test projects (like <code>GalaxyWorks.Data.Tests</code>) appear as consumers because they reference the target. In production, exclude test directories via <a href="configuration.html"><code>.scatter.yaml</code> configuration</a>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Test projects (like <code>GalaxyWorks.Data.Tests</code>) appear as consumers because they reference the target. In production, exclude test directories via <a href="configuration.html"><code>.scatter.yaml</code> configuration</a>.</p>
+</div>
 <h2 id="step-2-narrow-by-class">Step 2: Narrow by class<a class="headerlink" href="#step-2-narrow-by-class" title="Permanent link">&para;</a></h2>
 <p>Maybe you only touched <code>PortalDataService</code>, not the whole project:</p>
-<pre><code class="language-bash">uv run scatter \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --class-name PortalDataService
-</code></pre>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--class-name<span class="w"> </span>PortalDataService
+</code></pre></div>
 <p>Now Scatter only reports projects that actually reference <code>PortalDataService</code> specifically. The consumer list gets shorter — only the projects that use that class show up.</p>
 <h2 id="step-3-see-the-full-dependency-graph">Step 3: See the full dependency graph<a class="headerlink" href="#step-3-see-the-full-dependency-graph" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">uv run scatter --graph --search-scope .
-</code></pre>
-<pre><code>============================================================
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>============================================================
   Dependency Graph Analysis
 ============================================================
   Projects: 11
@@ -1579,7 +1581,7 @@ Analysis complete. 6 consumer(s) found across 1 target(s).
     [warning] GalaxyWorks.Data: stable core (fan_in=7, instability=0.00) — change carefully
     [warning] GalaxyWorks.Data: high coupling score (22.6) — review dependencies
     [info] dbo.sp_InsertPortalConfiguration: shared by 3 projects — database coupling hotspot
-</code></pre>
+</code></pre></div>
 <p>This builds the complete dependency graph, computes coupling metrics, detects cycles, identifies domain clusters, and generates observations.</p>
 <h2 id="what-just-happened">What just happened<a class="headerlink" href="#what-just-happened" title="Permanent link">&para;</a></h2>
 <p>The filter pipeline works like a funnel:</p>
@@ -1592,18 +1594,18 @@ Analysis complete. 6 consumer(s) found across 1 target(s).
 <p>Each stage cuts aggressively. The numbers in the filter line show exactly where projects got filtered out and why.</p>
 <p>Meanwhile, Scatter quietly built a dependency graph and cached it to disk. On your next run, it loads from cache (under 1 second). After that, it detects changes via <code>git diff</code> and patches incrementally (~10ms).</p>
 <h2 id="get-a-shareable-report">Get a shareable report<a class="headerlink" href="#get-a-shareable-report" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">uv run scatter \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --output-format markdown
-</code></pre>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>markdown
+</code></pre></div>
 <p>This produces a markdown report you can paste into a PR description, Confluence page, or Slack message.</p>
 <h2 id="what-ai-adds">What AI adds<a class="headerlink" href="#what-ai-adds" title="Permanent link">&para;</a></h2>
 <p>With a Google API key (<code>export GOOGLE_API_KEY=your-key</code>), Scatter unlocks impact analysis mode. Instead of pointing at a specific project, you describe the change in plain English:</p>
-<pre><code class="language-bash">uv run scatter \
-  --sow &quot;Modify PortalDataService in GalaxyWorks.Data to add tenant isolation&quot; \
-  --search-scope .
-</code></pre>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sow<span class="w"> </span><span class="s2">&quot;Modify PortalDataService in GalaxyWorks.Data to add tenant isolation&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
 <p>The AI parses your work request into concrete targets, then Scatter traces the blast radius and enriches the report with:</p>
 <ul>
 <li><strong>Risk ratings</strong> — Low / Medium / High / Critical per target, with justification</li>
@@ -1614,11 +1616,11 @@ Analysis complete. 6 consumer(s) found across 1 target(s).
 </ul>
 <p>The core consumer tracing is pure code — it works without AI. The AI adds context and risk assessment on top.</p>
 <p>Here's what the AI-enriched markdown report looks like:</p>
-<pre><code class="language-markdown"># Impact Analysis
+<div class="highlight"><pre><span></span><code><span class="gh"># Impact Analysis</span>
 
-**Work Request:** Modify PortalDataService in GalaxyWorks.Data to add tenant isolation
+<span class="gs">**Work Request:**</span> Modify PortalDataService in GalaxyWorks.Data to add tenant isolation
 
-## Summary
+<span class="gu">## Summary</span>
 
 This change to PortalDataService affects 6 consuming projects across the
 GalaxyWorks ecosystem. The primary risk is breaking the API contract used
@@ -1631,15 +1633,15 @@ by downstream services.
 | Direct consumers | 6 |
 | Transitive consumers | 0 |
 
-## Targets
+<span class="gu">## Targets</span>
 
-### GalaxyWorks.Data
+<span class="gu">### GalaxyWorks.Data</span>
 
-**Confidence:** 0.95 (HIGH) — SOW explicitly names PortalDataService
+<span class="gs">**Confidence:**</span> 0.95 (HIGH) — SOW explicitly names PortalDataService
 
 Direct Consumers: 6 | Transitive: 0
 
-#### Blast Radius
+<span class="gu">#### Blast Radius</span>
 
 ├── GalaxyWorks.WebPortal  [HIGH]  direct
 │   Risk: Medium — &quot;6 direct consumers including API and batch processor&quot;
@@ -1649,11 +1651,11 @@ Direct Consumers: 6 | Transitive: 0
 │   Risk: Medium
 └── ...
 
-## Next Steps
+<span class="gu">## Next Steps</span>
 
-- Review the 6 direct consumers listed above for breaking changes
-- Blast radius suggests staged rollout may reduce risk
-</code></pre>
+<span class="k">-</span><span class="w"> </span>Review the 6 direct consumers listed above for breaking changes
+<span class="k">-</span><span class="w"> </span>Blast radius suggests staged rollout may reduce risk
+</code></pre></div>
 <p>Every section is computed from real dependency data. The AI interprets and explains — it doesn't invent dependencies.</p>
 <h2 id="all-five-modes">All five modes<a class="headerlink" href="#all-five-modes" title="Permanent link">&para;</a></h2>
 <table>
@@ -1694,8 +1696,8 @@ Direct Consumers: 6 | Transitive: 0
 </table>
 <h2 id="try-it-on-your-code">Try it on your code<a class="headerlink" href="#try-it-on-your-code" title="Permanent link">&para;</a></h2>
 <p>Point Scatter at your own .NET codebase:</p>
-<pre><code class="language-bash">uv run scatter --target-project ./path/to/Your.Project.csproj --search-scope /path/to/repo
-</code></pre>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scatter<span class="w"> </span>--target-project<span class="w"> </span>./path/to/Your.Project.csproj<span class="w"> </span>--search-scope<span class="w"> </span>/path/to/repo
+</code></pre></div>
 <p>See <a href="cli-reference.html">CLI Reference</a> for every flag, or dive into a specific mode:</p>
 <ul>
 <li><a href="usage/target-project.html">Target Project Analysis</a></li>

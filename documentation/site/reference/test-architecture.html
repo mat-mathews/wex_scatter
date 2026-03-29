@@ -1614,18 +1614,18 @@
 <p>For developers about to write or modify tests. This is the page Anya asked for.</p>
 <hr />
 <h2 id="running-tests">Running Tests<a class="headerlink" href="#running-tests" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash"># Full suite
-python -m pytest -v
+<div class="highlight"><pre><span></span><code><span class="c1"># Full suite</span>
+python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>-v
 
-# Specific file
-pytest test_graph.py
+<span class="c1"># Specific file</span>
+pytest<span class="w"> </span>test_graph.py
 
-# Specific test
-pytest test_impact_analysis.py::test_something_specific
+<span class="c1"># Specific test</span>
+pytest<span class="w"> </span>test_impact_analysis.py::test_something_specific
 
-# With coverage
-python -m pytest --cov=scatter
-</code></pre>
+<span class="c1"># With coverage</span>
+python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>--cov<span class="o">=</span>scatter
+</code></pre></div>
 <p>The full suite is 878 tests (1 xfail), and runs in roughly 25 seconds. No network calls, no database, no Docker. Just Python and your CPU.</p>
 <p>Coverage is configured in <code>pyproject.toml</code> with <code>fail_under=70%</code>. The coverage source is the <code>scatter/</code> package only -- test files themselves are excluded from the metric.</p>
 <hr />
@@ -1771,17 +1771,17 @@ python -m pytest --cov=scatter
 <h2 id="test-patterns">Test Patterns<a class="headerlink" href="#test-patterns" title="Permanent link">&para;</a></h2>
 <h3 id="ai-mocking-no-real-api-calls-ever">AI Mocking: No Real API Calls. Ever.<a class="headerlink" href="#ai-mocking-no-real-api-calls-ever" title="Permanent link">&para;</a></h3>
 <p>Every test that touches AI functionality uses <code>unittest.mock.MagicMock</code> as the provider. The pattern is consistent:</p>
-<pre><code class="language-python">from unittest.mock import MagicMock
-from scatter.ai.base import AITaskType, AnalysisResult
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">MagicMock</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scatter.ai.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">AITaskType</span><span class="p">,</span> <span class="n">AnalysisResult</span>
 
-mock_provider = MagicMock()
-mock_provider.name = &quot;mock-gemini&quot;
-mock_provider.supports.return_value = True
-mock_provider.analyze.return_value = AnalysisResult(
-    response='[&quot;MyClass&quot;, &quot;IMyInterface&quot;]',
-    confidence=1.0,
-)
-</code></pre>
+<span class="n">mock_provider</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">()</span>
+<span class="n">mock_provider</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;mock-gemini&quot;</span>
+<span class="n">mock_provider</span><span class="o">.</span><span class="n">supports</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">mock_provider</span><span class="o">.</span><span class="n">analyze</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">AnalysisResult</span><span class="p">(</span>
+    <span class="n">response</span><span class="o">=</span><span class="s1">&#39;[&quot;MyClass&quot;, &quot;IMyInterface&quot;]&#39;</span><span class="p">,</span>
+    <span class="n">confidence</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
 <p>Mock responses cover the full spectrum:
 - <strong>Valid JSON</strong>: <code>'["TypeA", "TypeB"]'</code> -- happy path
 - <strong>Empty result</strong>: <code>'[]'</code> -- comment-only or import-only changes
@@ -1791,9 +1791,9 @@ mock_provider.analyze.return_value = AnalysisResult(
 <p>If you write a test that makes a real API call, something has gone wrong. The CI has no API keys and never will.</p>
 <h3 id="conftestpy-shared-fixtures">conftest.py: Shared Fixtures<a class="headerlink" href="#conftestpy-shared-fixtures" title="Permanent link">&para;</a></h3>
 <p>The root <code>conftest.py</code> provides a <code>make_mode_context</code> factory fixture for building <code>ModeContext</code> objects with sensible defaults:</p>
-<pre><code class="language-python">def test_something(make_mode_context):
-    ctx = make_mode_context(class_name=&quot;Foo&quot;, no_graph=False)
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">test_something</span><span class="p">(</span><span class="n">make_mode_context</span><span class="p">):</span>
+    <span class="n">ctx</span> <span class="o">=</span> <span class="n">make_mode_context</span><span class="p">(</span><span class="n">class_name</span><span class="o">=</span><span class="s2">&quot;Foo&quot;</span><span class="p">,</span> <span class="n">no_graph</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
 <p>This saves you from constructing a 15-field dataclass in every test. Override what you care about; the factory fills in the rest with safe defaults (<code>search_scope=/tmp/scope</code>, <code>disable_multiprocessing=True</code>, etc.).</p>
 <h3 id="parallel-consistency">Parallel Consistency<a class="headerlink" href="#parallel-consistency" title="Permanent link">&para;</a></h3>
 <p>Any operation that supports <code>--disable-multiprocessing</code> is verified to produce identical results in both modes. The <code>test_multiprocessing_phase1.py</code> suite runs file discovery with N workers and with 0, then asserts the results match exactly. This pattern extends into the graph builder tests -- parallel graph construction must produce the same graph as sequential.</p>
@@ -1817,49 +1817,49 @@ mock_provider.analyze.return_value = AnalysisResult(
 <hr />
 <h2 id="how-to-add-a-new-test">How to Add a New Test<a class="headerlink" href="#how-to-add-a-new-test" title="Permanent link">&para;</a></h2>
 <h3 id="unit-test-for-a-scanner-or-analyzer">Unit Test for a Scanner or Analyzer<a class="headerlink" href="#unit-test-for-a-scanner-or-analyzer" title="Permanent link">&para;</a></h3>
-<pre><code class="language-python"># test_my_new_scanner.py
-from scatter.scanners.my_scanner import scan_something
+<div class="highlight"><pre><span></span><code><span class="c1"># test_my_new_scanner.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scatter.scanners.my_scanner</span><span class="w"> </span><span class="kn">import</span> <span class="n">scan_something</span>
 
-def test_scan_finds_expected_pattern(tmp_path):
-    &quot;&quot;&quot;Create fixture data in tmp_path, run scanner, assert results.&quot;&quot;&quot;
-    cs_file = tmp_path / &quot;MyProject&quot; / &quot;Service.cs&quot;
-    cs_file.parent.mkdir()
-    cs_file.write_text('public class FooService { /* ... */ }')
+<span class="k">def</span><span class="w"> </span><span class="nf">test_scan_finds_expected_pattern</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create fixture data in tmp_path, run scanner, assert results.&quot;&quot;&quot;</span>
+    <span class="n">cs_file</span> <span class="o">=</span> <span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&quot;MyProject&quot;</span> <span class="o">/</span> <span class="s2">&quot;Service.cs&quot;</span>
+    <span class="n">cs_file</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">()</span>
+    <span class="n">cs_file</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="s1">&#39;public class FooService { /* ... */ }&#39;</span><span class="p">)</span>
 
-    results = scan_something(tmp_path)
-    assert &quot;FooService&quot; in results
-</code></pre>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">scan_something</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="s2">&quot;FooService&quot;</span> <span class="ow">in</span> <span class="n">results</span>
+</code></pre></div>
 <p>Use <code>tmp_path</code> (pytest built-in) for any test that needs files on disk. It's auto-cleaned after each test.</p>
 <h3 id="test-against-sample-projects">Test Against Sample Projects<a class="headerlink" href="#test-against-sample-projects" title="Permanent link">&para;</a></h3>
 <p>The 11 <code>.csproj</code> files in the repo root are real .NET projects designed for integration testing. Use them when you need realistic project references, namespace structures, and type declarations:</p>
-<pre><code class="language-python">from pathlib import Path
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
-REPO_ROOT = Path(__file__).parent
+<span class="n">REPO_ROOT</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span>
 
-def test_against_sample_projects():
-    from scatter.analyzers.graph_builder import build_dependency_graph
-    graph = build_dependency_graph(REPO_ROOT, disable_multiprocessing=True)
-    assert graph.node_count == 11
-</code></pre>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_against_sample_projects</span><span class="p">():</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scatter.analyzers.graph_builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_dependency_graph</span>
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">build_dependency_graph</span><span class="p">(</span><span class="n">REPO_ROOT</span><span class="p">,</span> <span class="n">disable_multiprocessing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">graph</span><span class="o">.</span><span class="n">node_count</span> <span class="o">==</span> <span class="mi">11</span>
+</code></pre></div>
 <p>See <a href="sample-projects.html">Sample Projects</a> for the full dependency tree and expected values.</p>
 <h3 id="test-with-mocked-ai">Test with Mocked AI<a class="headerlink" href="#test-with-mocked-ai" title="Permanent link">&para;</a></h3>
-<pre><code class="language-python">from unittest.mock import MagicMock
-from scatter.ai.base import AITaskType, AnalysisResult
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">MagicMock</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scatter.ai.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">AITaskType</span><span class="p">,</span> <span class="n">AnalysisResult</span>
 
-def test_ai_summarization_with_mock():
-    provider = MagicMock()
-    provider.supports.return_value = True
-    provider.analyze.return_value = AnalysisResult(
-        response=&quot;This service handles portal data operations.&quot;,
-        confidence=0.95,
-    )
+<span class="k">def</span><span class="w"> </span><span class="nf">test_ai_summarization_with_mock</span><span class="p">():</span>
+    <span class="n">provider</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">()</span>
+    <span class="n">provider</span><span class="o">.</span><span class="n">supports</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">provider</span><span class="o">.</span><span class="n">analyze</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">AnalysisResult</span><span class="p">(</span>
+        <span class="n">response</span><span class="o">=</span><span class="s2">&quot;This service handles portal data operations.&quot;</span><span class="p">,</span>
+        <span class="n">confidence</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+    <span class="p">)</span>
 
-    # Pass provider to whatever function you're testing
-    result = summarize_file(provider, &quot;PortalDataService.cs&quot;, file_content)
+    <span class="c1"># Pass provider to whatever function you&#39;re testing</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">summarize_file</span><span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="s2">&quot;PortalDataService.cs&quot;</span><span class="p">,</span> <span class="n">file_content</span><span class="p">)</span>
 
-    provider.analyze.assert_called_once()
-    assert &quot;portal&quot; in result.lower()
-</code></pre>
+    <span class="n">provider</span><span class="o">.</span><span class="n">analyze</span><span class="o">.</span><span class="n">assert_called_once</span><span class="p">()</span>
+    <span class="k">assert</span> <span class="s2">&quot;portal&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+</code></pre></div>
 <p>Three rules:
 1. Always mock. Never call real APIs.
 2. Test the happy path AND the failure path (exception, bad JSON, empty response).
@@ -1867,30 +1867,30 @@ def test_ai_summarization_with_mock():
 <hr />
 <h2 id="test-organization">Test Organization<a class="headerlink" href="#test-organization" title="Permanent link">&para;</a></h2>
 <p>All test files live at the repo root, not in a <code>tests/</code> subdirectory. This is configured in <code>pyproject.toml</code>:</p>
-<pre><code class="language-toml">[tool.pytest.ini_options]
-testpaths = [&quot;.&quot;]
-python_files = &quot;test_*.py&quot;
-addopts = &quot;-q&quot;
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">[tool.pytest.ini_options]</span>
+<span class="n">testpaths</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;.&quot;</span><span class="p">]</span>
+<span class="n">python_files</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;test_*.py&quot;</span>
+<span class="n">addopts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;-q&quot;</span>
+</code></pre></div>
 <p>The <code>-q</code> (quiet) default keeps output manageable for 878 tests. Override with <code>-v</code> when debugging.</p>
 <hr />
 <h2 id="coverage">Coverage<a class="headerlink" href="#coverage" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash"># Run with coverage report
-python -m pytest --cov=scatter
+<div class="highlight"><pre><span></span><code><span class="c1"># Run with coverage report</span>
+python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>--cov<span class="o">=</span>scatter
 
-# HTML report (useful for finding uncovered branches)
-python -m pytest --cov=scatter --cov-report=html
-open htmlcov/index.html
-</code></pre>
+<span class="c1"># HTML report (useful for finding uncovered branches)</span>
+python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>--cov<span class="o">=</span>scatter<span class="w"> </span>--cov-report<span class="o">=</span>html
+open<span class="w"> </span>htmlcov/index.html
+</code></pre></div>
 <p>Configuration in <code>pyproject.toml</code>:</p>
-<pre><code class="language-toml">[tool.coverage.run]
-source = [&quot;scatter&quot;]
+<div class="highlight"><pre><span></span><code><span class="k">[tool.coverage.run]</span>
+<span class="n">source</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;scatter&quot;</span><span class="p">]</span>
 
-[tool.coverage.report]
-show_missing = true
-skip_empty = true
-fail_under = 70
-</code></pre>
+<span class="k">[tool.coverage.report]</span>
+<span class="n">show_missing</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">skip_empty</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">fail_under</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">70</span>
+</code></pre></div>
 <p>The <code>fail_under=70</code> threshold is a floor, not a target. Most modules are well above that. The threshold exists to catch regressions -- if you add a new module with zero tests, coverage will drop and CI will tell you about it.</p>
 
 

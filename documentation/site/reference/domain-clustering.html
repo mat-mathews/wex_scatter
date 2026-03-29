@@ -1737,24 +1737,24 @@
 <hr />
 <h2 id="two-level-clustering">Two-Level Clustering<a class="headerlink" href="#two-level-clustering" title="Permanent link">&para;</a></h2>
 <h3 id="find_clusters">find_clusters<a class="headerlink" href="#find_clusters" title="Permanent link">&para;</a></h3>
-<pre><code class="language-python">def find_clusters(
-    graph: DependencyGraph,
-    min_cluster_size: int = 2,
-    metrics: Optional[Dict] = None,
-    cycles: Optional[List] = None,
-) -&gt; List[Cluster]:
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">find_clusters</span><span class="p">(</span>
+    <span class="n">graph</span><span class="p">:</span> <span class="n">DependencyGraph</span><span class="p">,</span>
+    <span class="n">min_cluster_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">metrics</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cycles</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Cluster</span><span class="p">]:</span>
+</code></pre></div>
 <p>The algorithm uses two levels to handle both isolated project groups and large interconnected components.</p>
 <h3 id="level-1-connected-components">Level 1: Connected Components<a class="headerlink" href="#level-1-connected-components" title="Permanent link">&para;</a></h3>
 <p>First pass: treat all edges as undirected, find connected components via BFS. This is O(N + E), deterministic (nodes processed in sorted order), and handles the easy case -- projects that are completely disconnected from each other belong to different clusters.</p>
-<pre><code class="language-python">components = graph.connected_components
-# Returns List[List[str]], sorted by size descending
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">components</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">connected_components</span>
+<span class="c1"># Returns List[List[str]], sorted by size descending</span>
+</code></pre></div>
 <p>For a codebase with three independent product lines that share no dependencies, level 1 cleanly separates them into three clusters. Done.</p>
 <h3 id="level-2-label-propagation">Level 2: Label Propagation<a class="headerlink" href="#level-2-label-propagation" title="Permanent link">&para;</a></h3>
 <p>For connected components with more than 20 nodes (<code>LABEL_PROPAGATION_THRESHOLD</code>), level 1 is too coarse -- it would lump everything into one giant cluster. Level 2 sub-divides using weighted label propagation.</p>
-<pre><code class="language-python">def _label_propagation(graph, component_nodes) -&gt; List[List[str]]:
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_label_propagation</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">component_nodes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+</code></pre></div>
 <p>How it works:</p>
 <ol>
 <li>Each node starts with its own name as its label</li>
@@ -1766,32 +1766,32 @@
 - Nodes are iterated in sorted order
 - Ties are broken by lowest label alphabetically
 - No random initialization</p>
-<pre><code class="language-python"># Best label: highest vote, tie-break by lowest label alphabetically
-best_label = min(
-    label_votes, key=lambda lbl: (-label_votes[lbl], lbl)
-)
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="c1"># Best label: highest vote, tie-break by lowest label alphabetically</span>
+<span class="n">best_label</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
+    <span class="n">label_votes</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">lbl</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="n">label_votes</span><span class="p">[</span><span class="n">lbl</span><span class="p">],</span> <span class="n">lbl</span><span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
 <p>This means the same graph always produces the same clusters. No seed sensitivity, no run-to-run variation.</p>
 <hr />
 <h2 id="cluster-naming">Cluster Naming<a class="headerlink" href="#cluster-naming" title="Permanent link">&para;</a></h2>
 <p>Cluster names are derived from the longest common dot-separated prefix of member project names:</p>
-<pre><code class="language-python"># &quot;GalaxyWorks.Data&quot; + &quot;GalaxyWorks.WebPortal&quot; -&gt; &quot;GalaxyWorks&quot;
-# &quot;MyApp.Services.Auth&quot; + &quot;MyApp.Services.Billing&quot; -&gt; &quot;MyApp.Services&quot;
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="c1"># &quot;GalaxyWorks.Data&quot; + &quot;GalaxyWorks.WebPortal&quot; -&gt; &quot;GalaxyWorks&quot;</span>
+<span class="c1"># &quot;MyApp.Services.Auth&quot; + &quot;MyApp.Services.Billing&quot; -&gt; &quot;MyApp.Services&quot;</span>
+</code></pre></div>
 <p>If the common prefix is shorter than 3 characters (or empty), the cluster gets a positional fallback name: <code>cluster_0</code>, <code>cluster_1</code>, etc.</p>
 <p>After sorting clusters by size descending, fallback names are re-assigned so <code>cluster_0</code> is always the largest unnamed cluster.</p>
 <hr />
 <h2 id="extraction-feasibility-scoring">Extraction Feasibility Scoring<a class="headerlink" href="#extraction-feasibility-scoring" title="Permanent link">&para;</a></h2>
 <h3 id="score_extraction_feasibility">score_extraction_feasibility<a class="headerlink" href="#score_extraction_feasibility" title="Permanent link">&para;</a></h3>
 <p>Given a cluster, how hard would it be to extract it as a standalone service?</p>
-<pre><code class="language-python">def score_extraction_feasibility(
-    cluster: Cluster,
-    graph: DependencyGraph,
-    metrics: Optional[Dict] = None,
-    cycles: Optional[List] = None,
-) -&gt; Tuple[str, float, Dict[str, float]]:
-    # Returns (label, score, penalty_details)
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">score_extraction_feasibility</span><span class="p">(</span>
+    <span class="n">cluster</span><span class="p">:</span> <span class="n">Cluster</span><span class="p">,</span>
+    <span class="n">graph</span><span class="p">:</span> <span class="n">DependencyGraph</span><span class="p">,</span>
+    <span class="n">metrics</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cycles</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+    <span class="c1"># Returns (label, score, penalty_details)</span>
+</code></pre></div>
 <h3 id="the-four-penalty-factors">The Four Penalty Factors<a class="headerlink" href="#the-four-penalty-factors" title="Permanent link">&para;</a></h3>
 <p>The score starts at 1.0 and subtracts weighted penalties:</p>
 <table>
@@ -1830,17 +1830,17 @@ best_label = min(
 </tr>
 </tbody>
 </table>
-<pre><code class="language-python">FEASIBILITY_WEIGHTS = {
-    &quot;cross_boundary_penalty&quot;: 0.40,
-    &quot;shared_db_penalty&quot;: 0.25,
-    &quot;cycle_penalty&quot;: 0.20,
-    &quot;api_surface_penalty&quot;: 0.15,
-}
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">FEASIBILITY_WEIGHTS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;cross_boundary_penalty&quot;</span><span class="p">:</span> <span class="mf">0.40</span><span class="p">,</span>
+    <span class="s2">&quot;shared_db_penalty&quot;</span><span class="p">:</span> <span class="mf">0.25</span><span class="p">,</span>
+    <span class="s2">&quot;cycle_penalty&quot;</span><span class="p">:</span> <span class="mf">0.20</span><span class="p">,</span>
+    <span class="s2">&quot;api_surface_penalty&quot;</span><span class="p">:</span> <span class="mf">0.15</span><span class="p">,</span>
+<span class="p">}</span>
+</code></pre></div>
 <h3 id="score-calculation">Score Calculation<a class="headerlink" href="#score-calculation" title="Permanent link">&para;</a></h3>
-<pre><code class="language-python">total_penalty = sum(details.values())
-score = max(0.0, 1.0 - total_penalty)
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">total_penalty</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">details</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+<span class="n">score</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">total_penalty</span><span class="p">)</span>
+</code></pre></div>
 <h3 id="score-labels">Score Labels<a class="headerlink" href="#score-labels" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -1875,62 +1875,62 @@ score = max(0.0, 1.0 - total_penalty)
 </table>
 <h3 id="api-surface-measurement">API Surface Measurement<a class="headerlink" href="#api-surface-measurement" title="Permanent link">&para;</a></h3>
 <p>The API surface breadth penalty counts how many of the cluster's declared types are actually referenced by external projects via <code>type_usage</code> edges:</p>
-<pre><code class="language-python">def _compute_api_surface(cluster_projects, graph) -&gt; Tuple[int, int]:
-    # Returns (externally_used_type_count, total_type_count)
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_compute_api_surface</span><span class="p">(</span><span class="n">cluster_projects</span><span class="p">,</span> <span class="n">graph</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+    <span class="c1"># Returns (externally_used_type_count, total_type_count)</span>
+</code></pre></div>
 <p>Evidence strings from <code>type_usage</code> edges follow the format <code>path:TypeName</code>. The function parses these to identify which specific types cross the cluster boundary.</p>
 <hr />
 <h2 id="the-cluster-dataclass">The Cluster Dataclass<a class="headerlink" href="#the-cluster-dataclass" title="Permanent link">&para;</a></h2>
-<pre><code class="language-python">@dataclass
-class Cluster:
-    name: str                                   # Derived or fallback name
-    projects: List[str]                         # Sorted project names
-    internal_edges: int                         # Edges between cluster members
-    external_edges: int                         # Edges crossing the boundary
-    cohesion: float                             # internal_edges / max_possible_edges
-    coupling_to_outside: float                  # external_edges / total_edges
-    cross_boundary_dependencies: List[DependencyEdge]  # Capped at 20 entries
-    shared_db_objects: List[str]                # Sprocs used inside and outside
-    extraction_feasibility: str                 # &quot;easy&quot; | &quot;moderate&quot; | &quot;hard&quot; | &quot;very_hard&quot;
-    feasibility_score: float                    # 0.0 - 1.0
-    feasibility_details: Dict[str, float]       # Per-factor penalty breakdown
-    solution_alignment: float = 0.0         # Fraction sharing dominant solution
-    dominant_solution: Optional[str] = None  # Most common solution in cluster
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Cluster</span><span class="p">:</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>                                   <span class="c1"># Derived or fallback name</span>
+    <span class="n">projects</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>                         <span class="c1"># Sorted project names</span>
+    <span class="n">internal_edges</span><span class="p">:</span> <span class="nb">int</span>                         <span class="c1"># Edges between cluster members</span>
+    <span class="n">external_edges</span><span class="p">:</span> <span class="nb">int</span>                         <span class="c1"># Edges crossing the boundary</span>
+    <span class="n">cohesion</span><span class="p">:</span> <span class="nb">float</span>                             <span class="c1"># internal_edges / max_possible_edges</span>
+    <span class="n">coupling_to_outside</span><span class="p">:</span> <span class="nb">float</span>                  <span class="c1"># external_edges / total_edges</span>
+    <span class="n">cross_boundary_dependencies</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">DependencyEdge</span><span class="p">]</span>  <span class="c1"># Capped at 20 entries</span>
+    <span class="n">shared_db_objects</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>                <span class="c1"># Sprocs used inside and outside</span>
+    <span class="n">extraction_feasibility</span><span class="p">:</span> <span class="nb">str</span>                 <span class="c1"># &quot;easy&quot; | &quot;moderate&quot; | &quot;hard&quot; | &quot;very_hard&quot;</span>
+    <span class="n">feasibility_score</span><span class="p">:</span> <span class="nb">float</span>                    <span class="c1"># 0.0 - 1.0</span>
+    <span class="n">feasibility_details</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>       <span class="c1"># Per-factor penalty breakdown</span>
+    <span class="n">solution_alignment</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>         <span class="c1"># Fraction sharing dominant solution</span>
+    <span class="n">dominant_solution</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Most common solution in cluster</span>
+</code></pre></div>
 <p><code>cross_boundary_dependencies</code> is capped at <code>MAX_CROSS_BOUNDARY_EVIDENCE = 20</code> to keep output manageable. The full edge counts are in <code>internal_edges</code> and <code>external_edges</code>.</p>
 <p>Cohesion is <code>internal_edges / (n * (n - 1))</code> where n = number of projects. A cohesion of 1.0 means every project has a direct dependency on every other project in the cluster (complete graph). Typical values are much lower.</p>
 <hr />
 <h2 id="programmatic-usage">Programmatic Usage<a class="headerlink" href="#programmatic-usage" title="Permanent link">&para;</a></h2>
-<pre><code class="language-python">from scatter.core.graph import DependencyGraph
-from scatter.analyzers.coupling_analyzer import compute_all_metrics, detect_cycles
-from scatter.analyzers.domain_analyzer import find_clusters, score_extraction_feasibility
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">scatter.core.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">DependencyGraph</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scatter.analyzers.coupling_analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_all_metrics</span><span class="p">,</span> <span class="n">detect_cycles</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scatter.analyzers.domain_analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_clusters</span><span class="p">,</span> <span class="n">score_extraction_feasibility</span>
 
-graph: DependencyGraph = ...
+<span class="n">graph</span><span class="p">:</span> <span class="n">DependencyGraph</span> <span class="o">=</span> <span class="o">...</span>
 
-# Compute metrics and cycles first (optional but recommended)
-metrics = compute_all_metrics(graph)
-cycles = detect_cycles(graph)
+<span class="c1"># Compute metrics and cycles first (optional but recommended)</span>
+<span class="n">metrics</span> <span class="o">=</span> <span class="n">compute_all_metrics</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+<span class="n">cycles</span> <span class="o">=</span> <span class="n">detect_cycles</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
 
-# Find clusters
-clusters = find_clusters(graph, min_cluster_size=2, metrics=metrics, cycles=cycles)
+<span class="c1"># Find clusters</span>
+<span class="n">clusters</span> <span class="o">=</span> <span class="n">find_clusters</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">min_cluster_size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="n">metrics</span><span class="p">,</span> <span class="n">cycles</span><span class="o">=</span><span class="n">cycles</span><span class="p">)</span>
 
-for cluster in clusters:
-    print(f&quot;\n{cluster.name} ({len(cluster.projects)} projects)&quot;)
-    print(f&quot;  Cohesion: {cluster.cohesion:.2f}&quot;)
-    print(f&quot;  External coupling: {cluster.coupling_to_outside:.2f}&quot;)
-    print(f&quot;  Feasibility: {cluster.extraction_feasibility} ({cluster.feasibility_score:.2f})&quot;)
+<span class="k">for</span> <span class="n">cluster</span> <span class="ow">in</span> <span class="n">clusters</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="n">cluster</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">cluster</span><span class="o">.</span><span class="n">projects</span><span class="p">)</span><span class="si">}</span><span class="s2"> projects)&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Cohesion: </span><span class="si">{</span><span class="n">cluster</span><span class="o">.</span><span class="n">cohesion</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  External coupling: </span><span class="si">{</span><span class="n">cluster</span><span class="o">.</span><span class="n">coupling_to_outside</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Feasibility: </span><span class="si">{</span><span class="n">cluster</span><span class="o">.</span><span class="n">extraction_feasibility</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">cluster</span><span class="o">.</span><span class="n">feasibility_score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
 
-    # The details dict tells you exactly which factor is the problem
-    for factor, penalty in cluster.feasibility_details.items():
-        if penalty &gt; 0:
-            print(f&quot;    {factor}: -{penalty:.3f}&quot;)
+    <span class="c1"># The details dict tells you exactly which factor is the problem</span>
+    <span class="k">for</span> <span class="n">factor</span><span class="p">,</span> <span class="n">penalty</span> <span class="ow">in</span> <span class="n">cluster</span><span class="o">.</span><span class="n">feasibility_details</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">penalty</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">factor</span><span class="si">}</span><span class="s2">: -</span><span class="si">{</span><span class="n">penalty</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-    if cluster.shared_db_objects:
-        print(f&quot;  Shared DB objects: {', '.join(cluster.shared_db_objects)}&quot;)
+    <span class="k">if</span> <span class="n">cluster</span><span class="o">.</span><span class="n">shared_db_objects</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Shared DB objects: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cluster</span><span class="o">.</span><span class="n">shared_db_objects</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-# Re-score a cluster with different parameters (e.g., after breaking a cycle)
-label, score, details = score_extraction_feasibility(clusters[0], graph, metrics, cycles)
-</code></pre>
+<span class="c1"># Re-score a cluster with different parameters (e.g., after breaking a cycle)</span>
+<span class="n">label</span><span class="p">,</span> <span class="n">score</span><span class="p">,</span> <span class="n">details</span> <span class="o">=</span> <span class="n">score_extraction_feasibility</span><span class="p">(</span><span class="n">clusters</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">graph</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">cycles</span><span class="p">)</span>
+</code></pre></div>
 <hr />
 <h2 id="interpreting-results">Interpreting Results<a class="headerlink" href="#interpreting-results" title="Permanent link">&para;</a></h2>
 <p>A few patterns to watch for:</p>

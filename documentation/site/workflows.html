@@ -1855,26 +1855,26 @@
 <p><strong>Why:</strong> You changed three files in a shared library. You think you know who uses it. You are probably wrong. Scatter tells you who actually uses it, not who you assume does.</p>
 <h3 id="steps">Steps<a class="headerlink" href="#steps" title="Permanent link">&para;</a></h3>
 <p><strong>Quick scan -- what did this branch touch?</strong></p>
-<pre><code class="language-bash">scatter --branch-name feature/add-caching \
-  --repo-path /code/myrepo \
-  --search-scope /code/myrepo
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/add-caching<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo-path<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo
+</code></pre></div>
 <p>This compares your branch against <code>main</code>, extracts every type declaration from changed C# files, and finds every project that references those types. Takes seconds on a typical repo, but we are probably in the monolith, so could take a bit longer. Scatter will try to be a fast as possible.</p>
 <p><strong>Drill into the consumers with AI summaries:</strong></p>
-<pre><code class="language-bash">scatter --branch-name feature/add-caching \
-  --repo-path /code/myrepo \
-  --search-scope /code/myrepo \
-  --summarize-consumers
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/add-caching<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo-path<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--summarize-consumers
+</code></pre></div>
 <p>Now each consumer gets a 2-3 sentence summary of how it actually uses the types you changed. The difference between "ProjectX references this namespace" and "ProjectX calls <code>PortalDataService.GetConfig()</code> in its startup pipeline and caches the result for 30 minutes."</p>
 <p><strong>High-precision mode with hybrid analysis:</strong></p>
-<pre><code class="language-bash">scatter --branch-name feature/add-caching \
-  --repo-path /code/myrepo \
-  --search-scope /code/myrepo \
-  --enable-hybrid-git \
-  --summarize-consumers \
-  --output-format markdown | pbcopy
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/add-caching<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo-path<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--enable-hybrid-git<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--summarize-consumers<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>markdown<span class="w"> </span><span class="p">|</span><span class="w"> </span>pbcopy
+</code></pre></div>
 <p>The <code>--enable-hybrid-git</code> flag uses AI to identify precisely which types were affected in each changed file, rather than flagging every type declaration. More accurate, slower, costs API calls. Worth it for files with many types.</p>
 <p>Pipe to clipboard, paste into the PR description. Reviewer sees the blast radius before they read a single line of code.</p>
 <h3 id="what-to-look-for">What to Look For<a class="headerlink" href="#what-to-look-for" title="Permanent link">&para;</a></h3>
@@ -1895,17 +1895,17 @@
 <p><strong>The pipeline list is only as complete as your <code>pipeline_to_app_mapping.csv</code>.</strong> If a consumer project has no entry in the mapping file, it won't appear in the pipeline output. Keep the mapping current. Without <code>--pipeline-csv</code>, the <code>pipelines</code> output format produces empty output and consumer results won't include pipeline names.</p>
 <h3 id="steps_1">Steps<a class="headerlink" href="#steps_1" title="Permanent link">&para;</a></h3>
 <p><strong>From a branch -- what pipelines does my change affect?</strong></p>
-<pre><code class="language-bash">scatter --branch-name feature/portal-tenant-isolation \
-  --repo-path /code/myrepo \
-  --search-scope /code/myrepo \
-  --pipeline-csv pipeline_to_app_mapping.csv \
-  --output-format pipelines
-</code></pre>
-<pre><code>galaxyworks-api-ci
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/portal-tenant-isolation<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo-path<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>pipelines
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>galaxyworks-api-ci
 galaxyworks-batch-ci
 galaxyworks-webportal-ci
 portal-consumer-ci
-</code></pre>
+</code></pre></div>
 <p>Four lines, four pipelines. Copy-paste into the DevOps ticket. Done.</p>
 <p>Note: <code>--branch-name</code> requires the branch to still exist (not yet merged and deleted). Run this before merge, or use <code>--target-project</code> for changes that have already landed on <code>main</code>.</p>
 <p><strong>Same command, different entry points:</strong></p>
@@ -1943,30 +1943,30 @@ portal-consumer-ci
 </table>
 <p>Just swap the mode flag. The rest of the command is the same: add <code>--pipeline-csv pipeline_to_app_mapping.csv --output-format pipelines</code>.</p>
 <p><strong>Get the full consumer report with pipelines for the ticket attachment:</strong></p>
-<pre><code class="language-bash">scatter --branch-name feature/portal-tenant-isolation \
-  --repo-path /code/myrepo \
-  --search-scope /code/myrepo \
-  --pipeline-csv pipeline_to_app_mapping.csv \
-  --output-format csv --output-file release-pipelines.csv
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/portal-tenant-isolation<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo-path<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>csv<span class="w"> </span>--output-file<span class="w"> </span>release-pipelines.csv
+</code></pre></div>
 <p>The CSV includes one row per consumer with key columns: <code>ConsumerProjectName</code>, <code>PipelineName</code>, <code>TargetProjectName</code>, <code>TriggeringType</code>, and (when graph enrichment is available) <code>CouplingScore</code>, <code>FanIn</code>, <code>FanOut</code>, <code>Instability</code>, <code>InCycle</code>. Attach it to the DevOps ticket as backup evidence for the pipeline list.</p>
 <p><strong>Feed directly into a deployment script:</strong></p>
-<pre><code class="language-bash">scatter --branch-name feature/portal-tenant-isolation \
-  --repo-path /code/myrepo \
-  --search-scope /code/myrepo \
-  --pipeline-csv pipeline_to_app_mapping.csv \
-  --output-format pipelines | xargs -I {} ./trigger-pipeline.sh {}
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/portal-tenant-isolation<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo-path<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>pipelines<span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>-I<span class="w"> </span><span class="o">{}</span><span class="w"> </span>./trigger-pipeline.sh<span class="w"> </span><span class="o">{}</span>
+</code></pre></div>
 <p>The <code>pipelines</code> output format is designed for this -- one name per line, sorted alphabetically, deduplicated. The output is unordered by deployment priority — if your pipelines need to run in a specific sequence (e.g., data migration before API), that sequencing is still a human decision. Pipe the list into whatever your deployment tooling expects.</p>
 <p><strong>Combine pipeline lists from multiple branches for the team's monthly release:</strong></p>
-<pre><code class="language-bash">for branch in feature/portal-isolation feature/billing-fix feature/cache-update; do
-  scatter --branch-name $branch \
-    --repo-path /code/myrepo \
-    --search-scope /code/myrepo \
-    --pipeline-csv pipeline_to_app_mapping.csv \
-    --output-format pipelines
-done | sort -u &gt; release-pipelines.txt
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span>branch<span class="w"> </span><span class="k">in</span><span class="w"> </span>feature/portal-isolation<span class="w"> </span>feature/billing-fix<span class="w"> </span>feature/cache-update<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span>scatter<span class="w"> </span>--branch-name<span class="w"> </span><span class="nv">$branch</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--repo-path<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output-format<span class="w"> </span>pipelines
+<span class="k">done</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u<span class="w"> </span>&gt;<span class="w"> </span>release-pipelines.txt
+</code></pre></div>
 <h3 id="what-to-look-for_1">What to Look For<a class="headerlink" href="#what-to-look-for_1" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Pipeline count.</strong> If your "small change" surfaces 8+ pipelines, that's not a small deployment. Flag it to the release coordinator early.</li>
@@ -1985,28 +1985,28 @@ done | sort -u &gt; release-pipelines.txt
 <p><strong>Why:</strong> Sproc changes are invisible to Git branch analysis -- the SQL lives in a different repo (or no repo at all). Scatter traces from the sproc name through C# code to find every caller, then finds every consumer of those callers. The full chain.</p>
 <h3 id="steps_2">Steps<a class="headerlink" href="#steps_2" title="Permanent link">&para;</a></h3>
 <p><strong>Find every C# project that references the sproc:</strong></p>
-<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
-  --search-scope /code/myrepo
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo
+</code></pre></div>
 <p>Scatter scans every <code>.cs</code> file for references to the sproc name, identifies which class contains the call, then finds consumers of that class.</p>
 <p><strong>Export a CSV for the DBA team:</strong></p>
-<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
-  --search-scope /code/myrepo \
-  --output-format csv --output-file sproc_impact.csv
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>csv<span class="w"> </span>--output-file<span class="w"> </span>sproc_impact.csv
+</code></pre></div>
 <p>Some folks love spreadsheets. Give them a spreadsheet.</p>
 <p><strong>Add pipeline mappings for deployment planning:</strong></p>
-<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
-  --search-scope /code/myrepo \
-  --pipeline-csv pipeline_to_app_mapping.csv \
-  --output-format csv --output-file sproc_impact.csv
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>csv<span class="w"> </span>--output-file<span class="w"> </span>sproc_impact.csv
+</code></pre></div>
 <p>Now each row includes the CI/CD pipeline name. The deployment plan writes itself.</p>
 <p><strong>Narrow to a specific class if the sproc is used in multiple places:</strong></p>
-<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
-  --search-scope /code/myrepo \
-  --class-name PortalDataService
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--class-name<span class="w"> </span>PortalDataService
+</code></pre></div>
 <h3 id="what-to-look-for_2">What to Look For<a class="headerlink" href="#what-to-look-for_2" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>The containing class matters.</strong> The sproc might be called from <code>PortalDataService</code>, but the consumers are using <code>IPortalDataService</code> through dependency injection. Look at the <code>TriggeringType</code> column to see what's actually being traced.</li>
@@ -2023,28 +2023,28 @@ done | sort -u &gt; release-pipelines.txt
 <p><strong>Why:</strong> Impact analysis mode (<code>--sow</code>) reads a natural language work description, uses AI to identify which projects, classes, or sprocs are affected, then runs the full consumer analysis automatically. It answers "what breaks if you do this" before anyone writes code.</p>
 <h3 id="steps_3">Steps<a class="headerlink" href="#steps_3" title="Permanent link">&para;</a></h3>
 <p><strong>Quick inline description:</strong></p>
-<pre><code class="language-bash">scatter --sow &quot;Add Redis caching to PortalDataService.GetConfiguration method&quot; \
-  --search-scope /code/myrepo
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--sow<span class="w"> </span><span class="s2">&quot;Add Redis caching to PortalDataService.GetConfiguration method&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo
+</code></pre></div>
 <p>The AI parses the description, identifies <code>GalaxyWorks.Data</code> as the target project and <code>PortalDataService</code> as the class, then traces consumers through the dependency graph.</p>
 <p><strong>Longer work request from a file:</strong></p>
-<pre><code class="language-bash">scatter --sow-file /docs/work-requests/WR-2024-0342.txt \
-  --search-scope /code/myrepo \
-  --pipeline-csv pipeline_to_app_mapping.csv
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--sow-file<span class="w"> </span>/docs/work-requests/WR-2024-0342.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv
+</code></pre></div>
 <p>For multi-paragraph work requests, point to a file. The AI does a better job with more context.</p>
 <p><strong>Save structured output for the ticket:</strong></p>
-<pre><code class="language-bash">scatter --sow-file /docs/work-requests/WR-2024-0342.txt \
-  --search-scope /code/myrepo \
-  --pipeline-csv pipeline_to_app_mapping.csv \
-  --output-format json --output-file WR-0342-impact.json
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--sow-file<span class="w"> </span>/docs/work-requests/WR-2024-0342.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span>WR-0342-impact.json
+</code></pre></div>
 <p>The JSON includes everything: identified targets, consumer trees, risk ratings, complexity assessment, effort estimate. Attach it to the Jira ticket.</p>
 <p><strong>Paste-ready for a planning meeting:</strong></p>
-<pre><code class="language-bash">scatter --sow &quot;Add Redis caching to PortalDataService.GetConfiguration method&quot; \
-  --search-scope /code/myrepo \
-  --output-format markdown | pbcopy
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--sow<span class="w"> </span><span class="s2">&quot;Add Redis caching to PortalDataService.GetConfiguration method&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>markdown<span class="w"> </span><span class="p">|</span><span class="w"> </span>pbcopy
+</code></pre></div>
 <h3 id="what-to-look-for_3">What to Look For<a class="headerlink" href="#what-to-look-for_3" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Overall Risk and Complexity ratings.</strong> AI-assessed based on the number of consumers, their depth, and the nature of the change. "Low/Medium/High/Critical" with a justification. Not a magic number -- a starting point for discussion.</li>
@@ -2062,32 +2062,32 @@ done | sort -u &gt; release-pipelines.txt
 <p><strong>Why:</strong> Graph mode builds a full dependency graph from every <code>.csproj</code> in scope, computes coupling metrics, detects circular dependencies, identifies domain clusters, and tells you which extractions are feasible and which are fantasy.</p>
 <h3 id="steps_4">Steps<a class="headerlink" href="#steps_4" title="Permanent link">&para;</a></h3>
 <p><strong>Build the graph and see the summary:</strong></p>
-<pre><code class="language-bash">scatter --graph --search-scope /code/myrepo
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo
+</code></pre></div>
 <p>First run builds the graph from scratch and caches it. Subsequent runs load from cache in under a second.</p>
 <p><strong>Get the full report with domain clusters:</strong></p>
-<pre><code class="language-bash">scatter --graph --search-scope /code/myrepo \
-  --output-format markdown | pbcopy
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>markdown<span class="w"> </span><span class="p">|</span><span class="w"> </span>pbcopy
+</code></pre></div>
 <p>Paste into Confluence. The Mermaid diagram renders inline. The domain clusters table shows extraction feasibility scores.</p>
 <p><strong>Export JSON for deeper analysis:</strong></p>
-<pre><code class="language-bash">scatter --graph --search-scope /code/myrepo \
-  --output-format json --output-file graph-report.json \
-  --include-graph-topology
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span>graph-report.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--include-graph-topology
+</code></pre></div>
 <p>The <code>--include-graph-topology</code> flag adds the raw nodes and edges to the JSON. Omitted by default because it can get large, but you need it for custom analysis.</p>
 <p><strong>Include database dependencies:</strong></p>
-<pre><code class="language-bash">scatter --graph --search-scope /code/myrepo \
-  --include-db \
-  --output-format json --output-file graph-with-db.json
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--include-db<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span>graph-with-db.json
+</code></pre></div>
 <p>The <code>--include-db</code> flag scans for stored procedure references and direct SQL in C# files. This adds edges to the graph that represent shared database coupling -- the kind of coupling that <code>.csproj</code> references don't show you.</p>
 <p><strong>Export the Mermaid diagram separately:</strong></p>
-<pre><code class="language-bash">scatter --graph --search-scope . --output-format mermaid &gt; deps.mmd
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--output-format<span class="w"> </span>mermaid<span class="w"> </span>&gt;<span class="w"> </span>deps.mmd
+</code></pre></div>
 <p><strong>Force a rebuild if the cache is suspect:</strong></p>
-<pre><code class="language-bash">scatter --graph --search-scope /code/myrepo --rebuild-graph
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span>--rebuild-graph
+</code></pre></div>
 <h3 id="what-to-look-for_4">What to Look For<a class="headerlink" href="#what-to-look-for_4" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Circular dependencies.</strong> Listed explicitly with the projects involved and the cycle path. Every circular dependency must be broken before you can extract anything cleanly.</li>
@@ -2105,30 +2105,30 @@ done | sort -u &gt; release-pipelines.txt
 <p><strong>Why:</strong> Target project mode gives you a precise, progressively narrowable view of who consumes what. Start broad, filter down to the exact method, get AI explanations of each usage.</p>
 <h3 id="steps_5">Steps<a class="headerlink" href="#steps_5" title="Permanent link">&para;</a></h3>
 <p><strong>Broad scan -- who references this project at all?</strong></p>
-<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope /code/myrepo
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo
+</code></pre></div>
 <p>The filter chain in the output shows the funnel: total projects -&gt; those with a <code>&lt;ProjectReference&gt;</code> -&gt; those using the namespace -&gt; those referencing specific types.</p>
 <p><strong>Narrow to a specific class:</strong></p>
-<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope /code/myrepo \
-  --class-name PortalDataService
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--class-name<span class="w"> </span>PortalDataService
+</code></pre></div>
 <p>Now you see only consumers that actually reference <code>PortalDataService</code>, not just the namespace.</p>
 <p><strong>Narrow further to a specific method:</strong></p>
-<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope /code/myrepo \
-  --class-name PortalDataService \
-  --method-name GetConfiguration
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--class-name<span class="w"> </span>PortalDataService<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--method-name<span class="w"> </span>GetConfiguration
+</code></pre></div>
 <p>Down to the exact call sites. If you're deprecating <code>GetConfiguration()</code>, these are the projects that need updating.</p>
 <p><strong>Add AI summaries to understand the usage patterns:</strong></p>
-<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope /code/myrepo \
-  --class-name PortalDataService \
-  --summarize-consumers \
-  --output-format json --output-file audit.json
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--class-name<span class="w"> </span>PortalDataService<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--summarize-consumers<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span>audit.json
+</code></pre></div>
 <p>Each consumer now includes summaries of the relevant C# files, explaining not just that they reference the class but how they use it. "Calls <code>GetConfiguration()</code> during startup and caches the result" versus "Calls <code>GetConfiguration()</code> on every request in a hot loop" are very different migration stories.</p>
 <h3 id="what-to-look-for_5">What to Look For<a class="headerlink" href="#what-to-look-for_5" title="Permanent link">&para;</a></h3>
 <ul>
@@ -2147,44 +2147,44 @@ done | sort -u &gt; release-pipelines.txt
 <p><strong>Why:</strong> One graph report is a picture. A series of graph reports is a story. Coupling trending upward? New cycles appearing? Cluster feasibility eroding? These are the signals that architecture decisions get made from.</p>
 <h3 id="steps_6">Steps<a class="headerlink" href="#steps_6" title="Permanent link">&para;</a></h3>
 <p><strong>Generate a timestamped report:</strong></p>
-<pre><code class="language-bash">TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-scatter --graph --search-scope /code/myrepo \
-  --include-db \
-  --output-format json --output-file &quot;reports/graph_${TIMESTAMP}.json&quot; \
-  --include-graph-topology
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="nv">TIMESTAMP</span><span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+%Y%m%d_%H%M%S<span class="k">)</span>
+scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--include-db<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span><span class="s2">&quot;reports/graph_</span><span class="si">${</span><span class="nv">TIMESTAMP</span><span class="si">}</span><span class="s2">.json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--include-graph-topology
+</code></pre></div>
 <p>Run this on a schedule. Each report is a snapshot of the entire dependency graph with full metrics.</p>
 <p><strong>Compare key metrics between two reports:</strong></p>
-<pre><code class="language-python">import json
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 
-with open(&quot;reports/graph_20260310_090000.json&quot;) as f:
-    old = json.load(f)
-with open(&quot;reports/graph_20260317_090000.json&quot;) as f:
-    new = json.load(f)
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;reports/graph_20260310_090000.json&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">old</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;reports/graph_20260317_090000.json&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">new</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
 
-print(f&quot;Nodes: {old['summary']['node_count']} -&gt; {new['summary']['node_count']}&quot;)
-print(f&quot;Edges: {old['summary']['edge_count']} -&gt; {new['summary']['edge_count']}&quot;)
-print(f&quot;Cycles: {old['summary']['cycle_count']} -&gt; {new['summary']['cycle_count']}&quot;)
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Nodes: </span><span class="si">{</span><span class="n">old</span><span class="p">[</span><span class="s1">&#39;summary&#39;</span><span class="p">][</span><span class="s1">&#39;node_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new</span><span class="p">[</span><span class="s1">&#39;summary&#39;</span><span class="p">][</span><span class="s1">&#39;node_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Edges: </span><span class="si">{</span><span class="n">old</span><span class="p">[</span><span class="s1">&#39;summary&#39;</span><span class="p">][</span><span class="s1">&#39;edge_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new</span><span class="p">[</span><span class="s1">&#39;summary&#39;</span><span class="p">][</span><span class="s1">&#39;edge_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cycles: </span><span class="si">{</span><span class="n">old</span><span class="p">[</span><span class="s1">&#39;summary&#39;</span><span class="p">][</span><span class="s1">&#39;cycle_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new</span><span class="p">[</span><span class="s1">&#39;summary&#39;</span><span class="p">][</span><span class="s1">&#39;cycle_count&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-# Compare top coupled projects
-old_top = {p['project']: p['coupling_score'] for p in old['top_coupled']}
-new_top = {p['project']: p['coupling_score'] for p in new['top_coupled']}
-for project in new_top:
-    delta = new_top[project] - old_top.get(project, 0)
-    if abs(delta) &gt; 0.5:
-        print(f&quot;  {project}: coupling {old_top.get(project, 'NEW'):&gt;6} -&gt; {new_top[project]:&gt;6} ({'+' if delta &gt; 0 else ''}{delta:.1f})&quot;)
-</code></pre>
+<span class="c1"># Compare top coupled projects</span>
+<span class="n">old_top</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="p">[</span><span class="s1">&#39;project&#39;</span><span class="p">]:</span> <span class="n">p</span><span class="p">[</span><span class="s1">&#39;coupling_score&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">old</span><span class="p">[</span><span class="s1">&#39;top_coupled&#39;</span><span class="p">]}</span>
+<span class="n">new_top</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="p">[</span><span class="s1">&#39;project&#39;</span><span class="p">]:</span> <span class="n">p</span><span class="p">[</span><span class="s1">&#39;coupling_score&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">new</span><span class="p">[</span><span class="s1">&#39;top_coupled&#39;</span><span class="p">]}</span>
+<span class="k">for</span> <span class="n">project</span> <span class="ow">in</span> <span class="n">new_top</span><span class="p">:</span>
+    <span class="n">delta</span> <span class="o">=</span> <span class="n">new_top</span><span class="p">[</span><span class="n">project</span><span class="p">]</span> <span class="o">-</span> <span class="n">old_top</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">project</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">project</span><span class="si">}</span><span class="s2">: coupling </span><span class="si">{</span><span class="n">old_top</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">project</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;NEW&#39;</span><span class="p">)</span><span class="si">:</span><span class="s2">&gt;6</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">new_top</span><span class="p">[</span><span class="n">project</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;6</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="s1">&#39;+&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">delta</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}{</span><span class="n">delta</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+</code></pre></div>
 <p>This is a 15-line script that tells you more about architecture drift than a week of code review.</p>
 <p><strong>Force a full rebuild if the cache is suspect:</strong></p>
-<pre><code class="language-bash">scatter --graph --search-scope /code/myrepo \
-  --rebuild-graph \
-  --output-format json --output-file &quot;reports/graph_${TIMESTAMP}.json&quot;
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rebuild-graph<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span><span class="s2">&quot;reports/graph_</span><span class="si">${</span><span class="nv">TIMESTAMP</span><span class="si">}</span><span class="s2">.json&quot;</span>
+</code></pre></div>
 <p>Cache invalidation is automatic (Scatter checks file hashes and project sets), but if you've moved directories around or done major restructuring, a forced rebuild ensures clean data.</p>
 <p><strong>Generate a Markdown dashboard for the team:</strong></p>
-<pre><code class="language-bash">scatter --graph --search-scope /code/myrepo \
-  --output-format markdown --output-file &quot;reports/health-dashboard.md&quot;
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>markdown<span class="w"> </span>--output-file<span class="w"> </span><span class="s2">&quot;reports/health-dashboard.md&quot;</span>
+</code></pre></div>
 <p>Commit this to the repo wiki. The Mermaid diagram renders inline. Update weekly.</p>
 <h3 id="what-to-look-for_6">What to Look For<a class="headerlink" href="#what-to-look-for_6" title="Permanent link">&para;</a></h3>
 <ul>

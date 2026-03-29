@@ -1436,9 +1436,9 @@
 <p>You're about to merge a feature branch and want to know what you might break. Someone asks "what's the blast radius?" and you'd rather answer with data than a shrug.</p>
 <p>Give Scatter a branch name. It diffs against the base, extracts the type declarations from changed <code>.cs</code> files (classes, structs, interfaces, enums, records, delegates), and runs consumer detection for each one. The result: a list of every project affected by the types you touched.</p>
 <h2 id="basic-example">Basic Example<a class="headerlink" href="#basic-example" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">scatter --branch-name feature/new-widget --repo-path .
-</code></pre>
-<pre><code>============================================================
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/new-widget<span class="w"> </span>--repo-path<span class="w"> </span>.
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>============================================================
   Consumer Analysis
 ============================================================
   Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
@@ -1453,25 +1453,25 @@
   MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
 
 Analysis complete. 6 consumer(s) found across 2 target(s).
-</code></pre>
+</code></pre></div>
 <p>Each type gets its own consumer list. If <code>PortalDataService</code> has 4 consumers and <code>FakeDatabaseHelper</code> has 2, they show up separately so you can see which type drives the most impact.</p>
 <h2 id="different-base-branch">Different Base Branch<a class="headerlink" href="#different-base-branch" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">scatter \
-  --branch-name feature/hotfix \
-  --base-branch develop \
-  --repo-path /path/to/repo
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--branch-name<span class="w"> </span>feature/hotfix<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--base-branch<span class="w"> </span>develop<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo-path<span class="w"> </span>/path/to/repo
+</code></pre></div>
 <p>When your team branches off <code>develop</code> instead of <code>main</code>, override the base. Scatter finds the merge-base (the common ancestor), not just the tip of <code>develop</code>.</p>
 <h2 id="default-vs-hybrid-extraction">Default vs. Hybrid Extraction<a class="headerlink" href="#default-vs-hybrid-extraction" title="Permanent link">&para;</a></h2>
 <p>Scatter offers two ways to figure out which types changed. This is a practical choice, not a technical curiosity.</p>
 <p><strong>Default (regex)</strong> -- fast, no API key needed. Scatter extracts ALL types declared in changed files, even if you only touched a comment inside one of them. On a file with 5 classes where you changed one, it reports all 5.</p>
 <p><strong>Hybrid (<code>--enable-hybrid-git</code>)</strong> -- more precise. Sends each changed file plus its diff to Gemini, which identifies only the types whose body or signature actually changed. Falls back to regex automatically if the API call fails.</p>
-<pre><code class="language-bash">scatter \
-  --branch-name feature/refactor-data-layer \
-  --repo-path . \
-  --enable-hybrid-git \
-  --google-api-key $GOOGLE_API_KEY
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--branch-name<span class="w"> </span>feature/refactor-data-layer<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo-path<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--enable-hybrid-git<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span>
+</code></pre></div>
 <p>Use default for quick checks and CI pipelines where speed matters and false positives are acceptable. Use hybrid when precision matters -- a complex PR with many types per file, or when you need a clean report for a review meeting.</p>
 <p>The practical difference: on a branch that touches 15 files across 3 projects, regex might report 40 types. Hybrid might report 12. Both find the same consumers for the types they do report. The difference is in the starting set.</p>
 <table>
@@ -1511,21 +1511,21 @@ Analysis complete. 6 consumer(s) found across 2 target(s).
 </tbody>
 </table>
 <h2 id="filter-by-class">Filter by Class<a class="headerlink" href="#filter-by-class" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">scatter \
-  --branch-name feature/new-widget \
-  --repo-path . \
-  --class-name WidgetFactory
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--branch-name<span class="w"> </span>feature/new-widget<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo-path<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--class-name<span class="w"> </span>WidgetFactory
+</code></pre></div>
 <p>Even though the branch touched files declaring <code>WidgetFactory</code>, <code>WidgetConfig</code>, and <code>WidgetValidator</code>, this restricts analysis to only <code>WidgetFactory</code>. Useful when you know exactly which type you care about and want to skip the noise.</p>
 <h2 id="full-pipeline-integration">Full Pipeline Integration<a class="headerlink" href="#full-pipeline-integration" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">scatter \
-  --branch-name feature/data-migration \
-  --repo-path /path/to/repo \
-  --search-scope /path/to/services \
-  --pipeline-csv build/pipeline_map.csv \
-  --output-format json \
-  --output-file reports/analysis.json
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--branch-name<span class="w"> </span>feature/data-migration<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo-path<span class="w"> </span>/path/to/repo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/path/to/services<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pipeline-csv<span class="w"> </span>build/pipeline_map.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-file<span class="w"> </span>reports/analysis.json
+</code></pre></div>
 <p>This combines everything: git analysis, pipeline name resolution (maps consumer project names to their CI/CD pipeline names via CSV), and JSON output. The JSON report includes pipeline names alongside each consumer, so you know which builds to watch after merging.</p>
 <p>Output formats (json, csv, markdown) work the same as in target project mode. See <a href="../output-formats.html">Output Formats</a> for details.</p>
 <h2 id="git-specific-flags">Git-Specific Flags<a class="headerlink" href="#git-specific-flags" title="Permanent link">&para;</a></h2>
@@ -1557,8 +1557,10 @@ Analysis complete. 6 consumer(s) found across 2 target(s).
 </table>
 <p>When <code>--search-scope</code> is omitted, the repo path doubles as the search scope. Specify <code>--search-scope</code> separately when you want to analyze changes in one repo but search for consumers across a broader directory.</p>
 <hr />
-<p>!!! info "How this works"
-    Scatter diffs the branch against its base, extracts type declarations from changed <code>.cs</code> files, and runs consumer detection per type. The hybrid mode sends the diff to a Gemini LLM to identify which types were meaningfully changed. See <a href="../reference/type-extraction.html">Type Extraction</a> for the regex pattern and LLM prompt design.</p>
+<div class="admonition info">
+<p class="admonition-title">How this works</p>
+<p>Scatter diffs the branch against its base, extracts type declarations from changed <code>.cs</code> files, and runs consumer detection per type. The hybrid mode sends the diff to a Gemini LLM to identify which types were meaningfully changed. See <a href="../reference/type-extraction.html">Type Extraction</a> for the regex pattern and LLM prompt design.</p>
+</div>
 
 
 

@@ -1774,7 +1774,7 @@
 <p>The algorithm lives in <code>store/graph_patcher.py</code>.</p>
 <hr />
 <h2 id="the-patch-flow">The Patch Flow<a class="headerlink" href="#the-patch-flow" title="Permanent link">&para;</a></h2>
-<pre><code>get_changed_files()
+<div class="highlight"><pre><span></span><code>get_changed_files()
   --&gt; classify changes (.cs vs .csproj)
   --&gt; detect structural changes (new/deleted .csproj -&gt; full rebuild)
   --&gt; map changed .cs files to parent projects
@@ -1783,11 +1783,11 @@
   --&gt; declaration early cutoff (same types -&gt; cheap path)
   --&gt; edge rebuild scoped to affected projects
   --&gt; global type_usage rebuild only if declarations changed
-</code></pre>
+</code></pre></div>
 <h3 id="step-1-get-changed-files">Step 1: Get Changed Files<a class="headerlink" href="#step-1-get-changed-files" title="Permanent link">&para;</a></h3>
-<pre><code class="language-python">def get_changed_files(cached_git_head: str, search_scope: Path) -&gt; Optional[List[str]]:
-    # git diff --name-only &lt;cached_head&gt; HEAD -- *.csproj *.cs
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_changed_files</span><span class="p">(</span><span class="n">cached_git_head</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">search_scope</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+    <span class="c1"># git diff --name-only &lt;cached_head&gt; HEAD -- *.csproj *.cs</span>
+</code></pre></div>
 <p>Returns a list of relative paths. Returns <code>None</code> if git is unavailable or the cached commit is unreachable (e.g., after a force push), which signals the caller to fall back to a full rebuild.</p>
 <h3 id="step-2-classify-changes">Step 2: Classify Changes<a class="headerlink" href="#step-2-classify-changes" title="Permanent link">&para;</a></h3>
 <p>Changed files are split into two buckets:</p>
@@ -1830,19 +1830,19 @@
 <p>The project set hash is a SHA-256 of sorted project names, computed at save time and verified at patch time. If it does not match, something changed outside of git's view.</p>
 <h3 id="step-6-content-hash-early-cutoff">Step 6: Content Hash Early Cutoff<a class="headerlink" href="#step-6-content-hash-early-cutoff" title="Permanent link">&para;</a></h3>
 <p>Inspired by Bazel's content-addressable caching. Before re-extracting facts from a changed file, we compute its SHA-256 hash and compare it to the cached hash:</p>
-<pre><code class="language-python">old = file_facts.get(cs_rel)
-new_facts = extract_file_facts(cs_abs, project_name, search_scope)
+<div class="highlight"><pre><span></span><code><span class="n">old</span> <span class="o">=</span> <span class="n">file_facts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cs_rel</span><span class="p">)</span>
+<span class="n">new_facts</span> <span class="o">=</span> <span class="n">extract_file_facts</span><span class="p">(</span><span class="n">cs_abs</span><span class="p">,</span> <span class="n">project_name</span><span class="p">,</span> <span class="n">search_scope</span><span class="p">)</span>
 
-if old and old.content_hash and old.content_hash == new_facts.content_hash:
-    # Content unchanged despite git reporting a change (whitespace, permissions)
-    continue
-</code></pre>
+<span class="k">if</span> <span class="n">old</span> <span class="ow">and</span> <span class="n">old</span><span class="o">.</span><span class="n">content_hash</span> <span class="ow">and</span> <span class="n">old</span><span class="o">.</span><span class="n">content_hash</span> <span class="o">==</span> <span class="n">new_facts</span><span class="o">.</span><span class="n">content_hash</span><span class="p">:</span>
+    <span class="c1"># Content unchanged despite git reporting a change (whitespace, permissions)</span>
+    <span class="k">continue</span>
+</code></pre></div>
 <p>Git can report a file as "changed" for reasons that do not affect analysis (file mode changes, whitespace normalization). The content hash catches these false positives.</p>
 <h3 id="step-7-declaration-early-cutoff">Step 7: Declaration Early Cutoff<a class="headerlink" href="#step-7-declaration-early-cutoff" title="Permanent link">&para;</a></h3>
 <p>Inspired by Salsa's (Rust-analyzer) incremental computation model. If a file's type declarations are unchanged, the <code>type_to_projects</code> index does not need a global rebuild:</p>
-<pre><code class="language-python">if old is None or sorted(old.types_declared) != sorted(new_facts.types_declared):
-    declarations_changed = True
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="n">old</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">old</span><span class="o">.</span><span class="n">types_declared</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">new_facts</span><span class="o">.</span><span class="n">types_declared</span><span class="p">):</span>
+    <span class="n">declarations_changed</span> <span class="o">=</span> <span class="kc">True</span>
+</code></pre></div>
 <p>The <code>declarations_changed</code> flag controls whether we do a global type_usage edge rebuild (expensive) or a project-scoped edge rebuild (cheap). This is the single biggest performance lever in the patcher -- changing a method body triggers only project-scoped work, while adding a new class triggers a global pass.</p>
 <h3 id="step-8-edge-rebuild">Step 8: Edge Rebuild<a class="headerlink" href="#step-8-edge-rebuild" title="Permanent link">&para;</a></h3>
 <p>For each affected project, we:</p>
@@ -1851,44 +1851,44 @@ if old and old.content_hash and old.content_hash == new_facts.content_hash:
 <li>Rebuild those edges from current file facts</li>
 <li>If a <code>.csproj</code> changed, also remove and rebuild <code>project_reference</code> edges</li>
 </ol>
-<pre><code class="language-python">for project_name in affected_projects:
-    graph.remove_edges_from(project_name, {&quot;namespace_usage&quot;, &quot;type_usage&quot;, &quot;sproc_shared&quot;})
-    _rebuild_namespace_edges(graph, project_name, file_facts, namespace_to_project, ...)
-    _rebuild_type_usage_edges(graph, project_name, file_facts, type_to_projects, ...)
-    _rebuild_sproc_edges(graph, project_name, file_facts, ...)
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">for</span> <span class="n">project_name</span> <span class="ow">in</span> <span class="n">affected_projects</span><span class="p">:</span>
+    <span class="n">graph</span><span class="o">.</span><span class="n">remove_edges_from</span><span class="p">(</span><span class="n">project_name</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;namespace_usage&quot;</span><span class="p">,</span> <span class="s2">&quot;type_usage&quot;</span><span class="p">,</span> <span class="s2">&quot;sproc_shared&quot;</span><span class="p">})</span>
+    <span class="n">_rebuild_namespace_edges</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">project_name</span><span class="p">,</span> <span class="n">file_facts</span><span class="p">,</span> <span class="n">namespace_to_project</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+    <span class="n">_rebuild_type_usage_edges</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">project_name</span><span class="p">,</span> <span class="n">file_facts</span><span class="p">,</span> <span class="n">type_to_projects</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+    <span class="n">_rebuild_sproc_edges</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">project_name</span><span class="p">,</span> <span class="n">file_facts</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</code></pre></div>
 <h3 id="step-9-global-rebuild-conditional">Step 9: Global Rebuild (Conditional)<a class="headerlink" href="#step-9-global-rebuild-conditional" title="Permanent link">&para;</a></h3>
 <p>If <code>declarations_changed</code> is <code>True</code>, the <code>type_to_projects</code> index has changed and every project's type_usage edges could be stale. We rebuild type_usage edges for all projects not already handled in step 8:</p>
-<pre><code class="language-python">if declarations_changed:
-    type_to_projects = _build_type_to_projects(file_facts)
-    for node in graph.get_all_nodes():
-        if node.name not in affected_projects:
-            graph.remove_edges_from(node.name, {&quot;type_usage&quot;})
-            _rebuild_type_usage_edges(graph, node.name, file_facts, type_to_projects, ...)
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="n">declarations_changed</span><span class="p">:</span>
+    <span class="n">type_to_projects</span> <span class="o">=</span> <span class="n">_build_type_to_projects</span><span class="p">(</span><span class="n">file_facts</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">get_all_nodes</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">affected_projects</span><span class="p">:</span>
+            <span class="n">graph</span><span class="o">.</span><span class="n">remove_edges_from</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;type_usage&quot;</span><span class="p">})</span>
+            <span class="n">_rebuild_type_usage_edges</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">node</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">file_facts</span><span class="p">,</span> <span class="n">type_to_projects</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</code></pre></div>
 <p>Similarly, if a project's namespace changed, namespace_usage edges for all projects are rebuilt.</p>
 <hr />
 <h2 id="cache-format-v2">Cache Format v2<a class="headerlink" href="#cache-format-v2" title="Permanent link">&para;</a></h2>
 <p>The cache envelope includes two additional sections beyond the graph itself:</p>
 <h3 id="file_facts">file_facts<a class="headerlink" href="#file_facts" title="Permanent link">&para;</a></h3>
 <p>A <code>Dict[str, FileFacts]</code> keyed by relative path. Each entry captures what the patcher needs to know about a .cs file without re-reading it:</p>
-<pre><code class="language-python">@dataclass
-class FileFacts:
-    path: str                       # Relative to search_scope
-    project: str                    # Owning project name
-    types_declared: List[str]       # e.g., [&quot;PortalDataService&quot;, &quot;PortalConfig&quot;]
-    namespaces_used: List[str]      # e.g., [&quot;System.Data&quot;, &quot;GalaxyWorks.Data&quot;]
-    sprocs_referenced: List[str]    # e.g., [&quot;sp_InsertPortalConfiguration&quot;]
-    content_hash: str               # SHA-256 of file contents
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FileFacts</span><span class="p">:</span>
+    <span class="n">path</span><span class="p">:</span> <span class="nb">str</span>                       <span class="c1"># Relative to search_scope</span>
+    <span class="n">project</span><span class="p">:</span> <span class="nb">str</span>                    <span class="c1"># Owning project name</span>
+    <span class="n">types_declared</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>       <span class="c1"># e.g., [&quot;PortalDataService&quot;, &quot;PortalConfig&quot;]</span>
+    <span class="n">namespaces_used</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>      <span class="c1"># e.g., [&quot;System.Data&quot;, &quot;GalaxyWorks.Data&quot;]</span>
+    <span class="n">sprocs_referenced</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>    <span class="c1"># e.g., [&quot;sp_InsertPortalConfiguration&quot;]</span>
+    <span class="n">content_hash</span><span class="p">:</span> <span class="nb">str</span>               <span class="c1"># SHA-256 of file contents</span>
+</code></pre></div>
 <h3 id="project_facts">project_facts<a class="headerlink" href="#project_facts" title="Permanent link">&para;</a></h3>
 <p>A <code>Dict[str, ProjectFacts]</code> keyed by project name:</p>
-<pre><code class="language-python">@dataclass
-class ProjectFacts:
-    namespace: Optional[str]        # Derived namespace
-    project_references: List[str]   # Resolved project names (not include paths)
-    csproj_content_hash: str        # SHA-256 of .csproj contents
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProjectFacts</span><span class="p">:</span>
+    <span class="n">namespace</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>        <span class="c1"># Derived namespace</span>
+    <span class="n">project_references</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>   <span class="c1"># Resolved project names (not include paths)</span>
+    <span class="n">csproj_content_hash</span><span class="p">:</span> <span class="nb">str</span>        <span class="c1"># SHA-256 of .csproj contents</span>
+</code></pre></div>
 <h3 id="other-envelope-fields">Other Envelope Fields<a class="headerlink" href="#other-envelope-fields" title="Permanent link">&para;</a></h3>
 <ul>
 <li><code>project_set_hash</code>: SHA-256 of sorted project names. Detects structural changes.</li>
@@ -1900,15 +1900,15 @@ class ProjectFacts:
 <hr />
 <h2 id="atomic-writes">Atomic Writes<a class="headerlink" href="#atomic-writes" title="Permanent link">&para;</a></h2>
 <p>Cache writes use <code>tempfile.mkstemp</code> + <code>os.replace</code> to prevent corrupt cache files from partial writes or crashes:</p>
-<pre><code class="language-python">fd, tmp_path = tempfile.mkstemp(dir=str(cache_path.parent), suffix=&quot;.tmp&quot;)
-try:
-    with os.fdopen(fd, &quot;w&quot;, encoding=&quot;utf-8&quot;) as f:
-        json.dump(envelope, f, indent=2)
-    os.replace(tmp_path, str(cache_path))
-except BaseException:
-    os.unlink(tmp_path)
-    raise
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">fd</span><span class="p">,</span> <span class="n">tmp_path</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">(</span><span class="nb">dir</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">cache_path</span><span class="o">.</span><span class="n">parent</span><span class="p">),</span> <span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;.tmp&quot;</span><span class="p">)</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="k">with</span> <span class="n">os</span><span class="o">.</span><span class="n">fdopen</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">envelope</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">cache_path</span><span class="p">))</span>
+<span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">)</span>
+    <span class="k">raise</span>
+</code></pre></div>
 <p><code>os.replace</code> is atomic on POSIX systems. On Windows it is atomic if source and destination are on the same filesystem (which they are, since the temp file is created in the same directory).</p>
 <hr />
 <h2 id="performance">Performance<a class="headerlink" href="#performance" title="Permanent link">&para;</a></h2>
@@ -1964,17 +1964,17 @@ except BaseException:
 <hr />
 <h2 id="patchresult">PatchResult<a class="headerlink" href="#patchresult" title="Permanent link">&para;</a></h2>
 <p>The patcher returns a <code>PatchResult</code> dataclass that tells the caller what happened:</p>
-<pre><code class="language-python">@dataclass
-class PatchResult:
-    graph: DependencyGraph              # The patched (or unpatched) graph
-    file_facts: Dict[str, FileFacts]    # Updated facts
-    project_facts: Dict[str, ProjectFacts]
-    patch_applied: bool                 # True = patched, False = needs full rebuild
-    files_processed: int                # Files that were re-extracted
-    projects_affected: int              # Projects with edge rebuilds
-    declarations_changed: bool          # Whether type_to_projects was rebuilt
-    elapsed_ms: float                   # Wall clock time
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PatchResult</span><span class="p">:</span>
+    <span class="n">graph</span><span class="p">:</span> <span class="n">DependencyGraph</span>              <span class="c1"># The patched (or unpatched) graph</span>
+    <span class="n">file_facts</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">FileFacts</span><span class="p">]</span>    <span class="c1"># Updated facts</span>
+    <span class="n">project_facts</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ProjectFacts</span><span class="p">]</span>
+    <span class="n">patch_applied</span><span class="p">:</span> <span class="nb">bool</span>                 <span class="c1"># True = patched, False = needs full rebuild</span>
+    <span class="n">files_processed</span><span class="p">:</span> <span class="nb">int</span>                <span class="c1"># Files that were re-extracted</span>
+    <span class="n">projects_affected</span><span class="p">:</span> <span class="nb">int</span>              <span class="c1"># Projects with edge rebuilds</span>
+    <span class="n">declarations_changed</span><span class="p">:</span> <span class="nb">bool</span>          <span class="c1"># Whether type_to_projects was rebuilt</span>
+    <span class="n">elapsed_ms</span><span class="p">:</span> <span class="nb">float</span>                   <span class="c1"># Wall clock time</span>
+</code></pre></div>
 <p>When <code>patch_applied=False</code>, the caller should do a full rebuild and re-save. The graph in the result is still the original cached graph (not corrupted) -- the patcher shallow-copies input dicts and bails cleanly on threshold violations.</p>
 
 

@@ -1411,38 +1411,57 @@
 
 
 <h1 id="getting-started">Getting Started<a class="headerlink" href="#getting-started" title="Permanent link">&para;</a></h1>
-<p>Install Scatter and verify it works. Should take about two minutes.</p>
-<p><strong>Don't have Python?</strong> Use <a href="usage/docker.html">Docker</a> instead — no Python or uv required.</p>
+<p>Two ways to run scatter:</p>
+<ul>
+<li><strong>Native install</strong> (this page) — Python 3.10+, Git, and uv. Best for development and daily use.</li>
+<li><strong><a href="usage/docker.html">Docker</a></strong> — just Docker. No Python, no uv, nothing else to install.</li>
+</ul>
+<p>This page covers the native install. The repo includes 11 sample .NET projects, so you don't need a production codebase to start.</p>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Python 3.10+</strong> -- Scatter uses modern type hints and dataclass features</li>
+<li><strong>Python 3.10+</strong> -- Scatter uses type hints and dataclass features</li>
 <li><strong>Git</strong> -- needed for branch analysis mode and for incremental graph patching</li>
 </ul>
-<p>That's it. The repo ships with 11 sample .NET projects, so you don't need a production codebase to start.</p>
 <h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">git clone &lt;repo-url&gt;
-cd scatter
-
-# One-command dev setup (Windows: run from Git Bash)
-bash tools/setup.sh
-</code></pre>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>&lt;repo-url&gt;
+<span class="nb">cd</span><span class="w"> </span>scatter
+</code></pre></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Windows (PowerShell)</label><label for="__tabbed_1_2">macOS / Linux</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="n">pwsh</span> <span class="n">tools</span><span class="p">/</span><span class="n">setup</span><span class="p">.</span><span class="n">ps1</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>bash<span class="w"> </span>tools/setup.sh
+</code></pre></div>
+</div>
+</div>
+</div>
 <p>The setup script:</p>
 <ol>
 <li>Checks Python &gt;= 3.10 is available</li>
 <li>Checks <a href="https://docs.astral.sh/uv/">uv</a> is installed (prints install command if not)</li>
 <li>Runs <code>uv sync</code> to install all dependencies</li>
 <li>Configures git to use <code>.git-blame-ignore-revs</code></li>
-<li>Links Claude Code skills into <code>.claude/skills/</code></li>
+<li>Copies Claude Code skills into <code>.claude/skills/</code></li>
 </ol>
 <p>It's idempotent — safe to run again any time.</p>
-<p>!!! note "Manual setup"
-    If you prefer to set things up yourself:
-    <code>bash
-    curl -LsSf https://astral.sh/uv/install.sh | sh   # install uv
-    uv sync                                             # install deps</code></p>
+<div class="admonition note">
+<p class="admonition-title">Manual setup</p>
+<p>If you prefer to set things up yourself:</p>
+<p><strong>macOS / Linux:</strong>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-LsSf<span class="w"> </span>https://astral.sh/uv/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
+uv<span class="w"> </span>sync
+</code></pre></div></p>
+<p><strong>Windows (PowerShell):</strong>
+<div class="highlight"><pre><span></span><code><span class="n">powershell</span> <span class="n">-ExecutionPolicy</span> <span class="n">ByPass</span> <span class="n">-c</span> <span class="s2">&quot;irm https://astral.sh/uv/install.ps1 | iex&quot;</span>
+<span class="n">uv</span> <span class="n">sync</span>
+</code></pre></div></p>
+</div>
 <h2 id="verify-it-works">Verify it works<a class="headerlink" href="#verify-it-works" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">uv run scatter --help
-</code></pre>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scatter<span class="w"> </span>--help
+</code></pre></div>
 <p>You should see the five analysis modes (<code>--target-project</code>, <code>--branch-name</code>, <code>--stored-procedure</code>, <code>--sow</code>, <code>--graph</code>) and all the common options. If you see that, you're good.</p>
 <h2 id="next-see-it-in-action">Next: see it in action<a class="headerlink" href="#next-see-it-in-action" title="Permanent link">&para;</a></h2>
 <p>Head to the <a href="quick-tour.html">Quick Tour</a> to run your first analysis and see what the output looks like.</p>

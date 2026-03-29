@@ -1425,72 +1425,153 @@
 <h1 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h1>
 <p>Run scatter without installing Python or uv. Mount a .NET repo into the container and analyze it.</p>
 <h2 id="build-the-image">Build the image<a class="headerlink" href="#build-the-image" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">git clone https://github.com/mat-mathews/wex_scatter.git
-cd wex_scatter
-docker build -t scatter .
-</code></pre>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/mat-mathews/wex_scatter.git
+<span class="nb">cd</span><span class="w"> </span>wex_scatter
+docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>scatter<span class="w"> </span>.
+</code></pre></div>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
 <p>In the commands below, <code>scatter</code> at the end of <code>docker run ... scatter</code> is the Docker image name — scatter's CLI arguments follow after it.</p>
-<p>Verify the image works:</p>
-<pre><code class="language-bash">docker run scatter --help
-</code></pre>
+<p>Make sure Docker Desktop is running (whale icon in menu bar / system tray), then verify the image works:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>scatter<span class="w"> </span>--help
+</code></pre></div>
 <p>The examples below use scatter's own sample projects. Mount the repo at <code>/workspace</code> and run any command. The <code>-v scatter-cache:/workspace/.scatter</code> volume keeps the dependency graph cache across runs — without it, scatter rebuilds the graph from scratch every time (~40s for 800 projects).</p>
-<pre><code class="language-bash"># Find consumers of a project
-docker run \
-  -v $(pwd):/workspace \
-  -v scatter-cache:/workspace/.scatter \
-  scatter --target-project /workspace/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">macOS / Linux</label><label for="__tabbed_1_2">Windows (PowerShell)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="c1"># Find consumers of a project</span>
+docker<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/workspace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>scatter-cache:/workspace/.scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>scatter<span class="w"> </span>--target-project<span class="w"> </span>/workspace/GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span>--search-scope<span class="w"> </span>/workspace
 
-# Analyze a stored procedure
-docker run \
-  -v $(pwd):/workspace \
-  -v scatter-cache:/workspace/.scatter \
-  scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; --search-scope /workspace
+<span class="c1"># Analyze a stored procedure</span>
+docker<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/workspace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>scatter-cache:/workspace/.scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>scatter<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span>--search-scope<span class="w"> </span>/workspace
 
-# Dependency graph health
-docker run \
-  -v $(pwd):/workspace \
-  -v scatter-cache:/workspace/.scatter \
-  scatter --graph --search-scope /workspace
+<span class="c1"># Dependency graph health</span>
+docker<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/workspace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>scatter-cache:/workspace/.scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>/workspace
 
-# Git branch blast radius (run from any branch with .cs changes)
-docker run \
-  -v $(pwd):/workspace \
-  -v scatter-cache:/workspace/.scatter \
-  scatter --branch-name main --repo-path /workspace
-</code></pre>
+<span class="c1"># Git branch blast radius (run from any branch with .cs changes)</span>
+docker<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/workspace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>scatter-cache:/workspace/.scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>scatter<span class="w"> </span>--branch-name<span class="w"> </span>main<span class="w"> </span>--repo-path<span class="w"> </span>/workspace
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="c"># Find consumers of a project</span>
+<span class="n">docker</span> <span class="n">run</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="s2">&quot;${PWD}:/workspace&quot;</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="n">scatter-cache</span><span class="p">:/</span><span class="n">workspace</span><span class="p">/.</span><span class="n">scatter</span> <span class="p">`</span>
+  <span class="n">scatter</span> <span class="p">-</span><span class="n">-target-project</span> <span class="p">/</span><span class="n">workspace</span><span class="p">/</span><span class="n">GalaxyWorks</span><span class="p">.</span><span class="n">Data</span><span class="p">/</span><span class="n">GalaxyWorks</span><span class="p">.</span><span class="n">Data</span><span class="p">.</span><span class="n">csproj</span> <span class="p">-</span><span class="n">-search-scope</span> <span class="p">/</span><span class="n">workspace</span>
+
+<span class="c"># Analyze a stored procedure</span>
+<span class="n">docker</span> <span class="n">run</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="s2">&quot;${PWD}:/workspace&quot;</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="n">scatter-cache</span><span class="p">:/</span><span class="n">workspace</span><span class="p">/.</span><span class="n">scatter</span> <span class="p">`</span>
+  <span class="n">scatter</span> <span class="p">-</span><span class="n">-stored-procedure</span> <span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span> <span class="p">-</span><span class="n">-search-scope</span> <span class="p">/</span><span class="n">workspace</span>
+
+<span class="c"># Dependency graph health</span>
+<span class="n">docker</span> <span class="n">run</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="s2">&quot;${PWD}:/workspace&quot;</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="n">scatter-cache</span><span class="p">:/</span><span class="n">workspace</span><span class="p">/.</span><span class="n">scatter</span> <span class="p">`</span>
+  <span class="n">scatter</span> <span class="p">-</span><span class="n">-graph</span> <span class="p">-</span><span class="n">-search-scope</span> <span class="p">/</span><span class="n">workspace</span>
+
+<span class="c"># Git branch blast radius (run from any branch with .cs changes)</span>
+<span class="n">docker</span> <span class="n">run</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="s2">&quot;${PWD}:/workspace&quot;</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="n">scatter-cache</span><span class="p">:/</span><span class="n">workspace</span><span class="p">/.</span><span class="n">scatter</span> <span class="p">`</span>
+  <span class="n">scatter</span> <span class="p">-</span><span class="n">-branch-name</span> <span class="n">main</span> <span class="p">-</span><span class="n">-repo-path</span> <span class="p">/</span><span class="n">workspace</span>
+</code></pre></div>
+</div>
+</div>
+</div>
 <p>First run builds the graph and caches it. Subsequent runs with the cache volume patch incrementally (~10ms for typical edits).</p>
 <h3 id="ai-features">AI features<a class="headerlink" href="#ai-features" title="Permanent link">&para;</a></h3>
 <p>Pass your API key via environment variable:</p>
-<pre><code class="language-bash">docker run \
-  -e GOOGLE_API_KEY=$GOOGLE_API_KEY \
-  -v $(pwd):/workspace \
-  -v scatter-cache:/workspace/.scatter \
-  scatter --sow &quot;Add tenant isolation to portal config&quot; --search-scope /workspace
-</code></pre>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">macOS / Linux</label><label for="__tabbed_2_2">Windows (PowerShell)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">GOOGLE_API_KEY</span><span class="o">=</span><span class="nv">$GOOGLE_API_KEY</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/workspace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>scatter-cache:/workspace/.scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>scatter<span class="w"> </span>--sow<span class="w"> </span><span class="s2">&quot;Add tenant isolation to portal config&quot;</span><span class="w"> </span>--search-scope<span class="w"> </span>/workspace
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="n">docker</span> <span class="n">run</span> <span class="p">`</span>
+  <span class="n">-e</span> <span class="n">GOOGLE_API_KEY</span><span class="p">=</span><span class="nv">$env:GOOGLE_API_KEY</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="s2">&quot;${PWD}:/workspace&quot;</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="n">scatter-cache</span><span class="p">:/</span><span class="n">workspace</span><span class="p">/.</span><span class="n">scatter</span> <span class="p">`</span>
+  <span class="n">scatter</span> <span class="p">-</span><span class="n">-sow</span> <span class="s2">&quot;Add tenant isolation to portal config&quot;</span> <span class="p">-</span><span class="n">-search-scope</span> <span class="p">/</span><span class="n">workspace</span>
+</code></pre></div>
+</div>
+</div>
+</div>
 <h3 id="interactive-session">Interactive session<a class="headerlink" href="#interactive-session" title="Permanent link">&para;</a></h3>
 <p>Drop into a shell inside the container:</p>
-<pre><code class="language-bash"># With a local repo mounted
-docker run -it --entrypoint /bin/bash \
-  -v $(pwd):/workspace \
-  -v scatter-cache:/workspace/.scatter \
-  scatter
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">macOS / Linux</label><label for="__tabbed_3_2">Windows (PowerShell)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="c1"># With a local repo mounted</span>
+docker<span class="w"> </span>run<span class="w"> </span>-it<span class="w"> </span>--entrypoint<span class="w"> </span>/bin/bash<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/workspace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>scatter-cache:/workspace/.scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>scatter
 
-# Or clone inside the container
-docker run -it --entrypoint /bin/bash scatter
-# inside the container:
-git clone https://your-repo-url /workspace/repo
-scatter --target-project /workspace/repo/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace/repo
-</code></pre>
+<span class="c1"># Or clone inside the container</span>
+docker<span class="w"> </span>run<span class="w"> </span>-it<span class="w"> </span>--entrypoint<span class="w"> </span>/bin/bash<span class="w"> </span>scatter
+<span class="c1"># inside the container:</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://your-repo-url<span class="w"> </span>/workspace/repo
+scatter<span class="w"> </span>--target-project<span class="w"> </span>/workspace/repo/GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span>--search-scope<span class="w"> </span>/workspace/repo
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="c"># With a local repo mounted</span>
+<span class="n">docker</span> <span class="n">run</span> <span class="n">-it</span> <span class="p">-</span><span class="n">-entrypoint</span> <span class="p">/</span><span class="n">bin</span><span class="p">/</span><span class="n">bash</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="s2">&quot;${PWD}:/workspace&quot;</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="n">scatter-cache</span><span class="p">:/</span><span class="n">workspace</span><span class="p">/.</span><span class="n">scatter</span> <span class="p">`</span>
+  <span class="n">scatter</span>
+
+<span class="c"># Or clone inside the container</span>
+<span class="n">docker</span> <span class="n">run</span> <span class="n">-it</span> <span class="p">-</span><span class="n">-entrypoint</span> <span class="p">/</span><span class="n">bin</span><span class="p">/</span><span class="n">bash</span> <span class="n">scatter</span>
+<span class="c"># inside the container:</span>
+<span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">://</span><span class="n">your-repo-url</span> <span class="p">/</span><span class="n">workspace</span><span class="p">/</span><span class="n">repo</span>
+<span class="n">scatter</span> <span class="p">-</span><span class="n">-target-project</span> <span class="p">/</span><span class="n">workspace</span><span class="p">/</span><span class="n">repo</span><span class="p">/</span><span class="n">GalaxyWorks</span><span class="p">.</span><span class="n">Data</span><span class="p">/</span><span class="n">GalaxyWorks</span><span class="p">.</span><span class="n">Data</span><span class="p">.</span><span class="n">csproj</span> <span class="p">-</span><span class="n">-search-scope</span> <span class="p">/</span><span class="n">workspace</span><span class="p">/</span><span class="n">repo</span>
+</code></pre></div>
+</div>
+</div>
+</div>
 <h2 id="output-files">Output files<a class="headerlink" href="#output-files" title="Permanent link">&para;</a></h2>
 <p>To write JSON, CSV, or markdown reports to your host machine, mount an output directory:</p>
-<pre><code class="language-bash">docker run \
-  -v $(pwd):/workspace \
-  -v /tmp/scatter-out:/output \
-  scatter --target-project /workspace/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace \
-    --output-format json --output-file /output/report.json
-</code></pre>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">macOS / Linux</label><label for="__tabbed_4_2">Windows (PowerShell)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/workspace<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>/tmp/scatter-out:/output<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>scatter<span class="w"> </span>--target-project<span class="w"> </span>/workspace/GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span>--search-scope<span class="w"> </span>/workspace<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span>/output/report.json
+</code></pre></div>
 <p>The report is written to <code>/tmp/scatter-out/report.json</code> on your host.</p>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="n">docker</span> <span class="n">run</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="s2">&quot;${PWD}:/workspace&quot;</span> <span class="p">`</span>
+  <span class="n">-v</span> <span class="n">C</span><span class="p">:/</span><span class="n">scatter-out</span><span class="p">:/</span><span class="n">output</span> <span class="p">`</span>
+  <span class="n">scatter</span> <span class="p">-</span><span class="n">-target-project</span> <span class="p">/</span><span class="n">workspace</span><span class="p">/</span><span class="n">GalaxyWorks</span><span class="p">.</span><span class="n">Data</span><span class="p">/</span><span class="n">GalaxyWorks</span><span class="p">.</span><span class="n">Data</span><span class="p">.</span><span class="n">csproj</span> <span class="p">-</span><span class="n">-search-scope</span> <span class="p">/</span><span class="n">workspace</span> <span class="p">`</span>
+    <span class="p">-</span><span class="n">-output-format</span> <span class="n">json</span> <span class="p">-</span><span class="n">-output</span><span class="o">-file</span> <span class="p">/</span><span class="n">output</span><span class="p">/</span><span class="n">report</span><span class="p">.</span><span class="n">json</span>
+</code></pre></div>
+<p>The report is written to <code>C:\scatter-out\report.json</code> on your host.</p>
+</div>
+</div>
+</div>
 
 
 

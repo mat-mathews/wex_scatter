@@ -1805,22 +1805,22 @@
 <hr />
 <h2 id="package-manager-uv">Package Manager: uv<a class="headerlink" href="#package-manager-uv" title="Permanent link">&para;</a></h2>
 <p>Scatter uses <a href="https://docs.astral.sh/uv/">uv</a> for dependency management. All dependencies (runtime and dev) are declared in <code>pyproject.toml</code> and locked in <code>uv.lock</code>.</p>
-<pre><code class="language-bash"># Install all deps (creates .venv automatically)
-uv sync
+<div class="highlight"><pre><span></span><code><span class="c1"># Install all deps (creates .venv automatically)</span>
+uv<span class="w"> </span>sync
 
-# Run any tool through uv (uses the project's .venv)
-uv run pytest
-uv run ruff check scatter/
-uv run mypy scatter
-</code></pre>
+<span class="c1"># Run any tool through uv (uses the project&#39;s .venv)</span>
+uv<span class="w"> </span>run<span class="w"> </span>pytest
+uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>scatter/
+uv<span class="w"> </span>run<span class="w"> </span>mypy<span class="w"> </span>scatter
+</code></pre></div>
 <p>uv replaces <code>pip</code>, <code>pip-tools</code>, <code>venv</code>, and <code>requirements.txt</code>. There is no <code>requirements.txt</code> — <code>pyproject.toml</code> is the single source of truth.</p>
 <h3 id="adding-dependencies">Adding dependencies<a class="headerlink" href="#adding-dependencies" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash"># Runtime dependency
-uv add some-package
+<div class="highlight"><pre><span></span><code><span class="c1"># Runtime dependency</span>
+uv<span class="w"> </span>add<span class="w"> </span>some-package
 
-# Dev-only dependency
-uv add --group dev some-dev-tool
-</code></pre>
+<span class="c1"># Dev-only dependency</span>
+uv<span class="w"> </span>add<span class="w"> </span>--group<span class="w"> </span>dev<span class="w"> </span>some-dev-tool
+</code></pre></div>
 <hr />
 <h2 id="developer-scripts">Developer Scripts<a class="headerlink" href="#developer-scripts" title="Permanent link">&para;</a></h2>
 <p>All developer tooling lives in <code>tools/</code>. The scripts are bash — on Windows, run them from Git Bash (included with Git for Windows).</p>
@@ -1871,9 +1871,9 @@ uv add --group dev some-dev-tool
 </ol>
 <h3 id="checksh">check.sh<a class="headerlink" href="#checksh" title="Permanent link">&para;</a></h3>
 <p>Runs the exact same checks as GitHub Actions CI:</p>
-<pre><code class="language-bash">bash tools/check.sh          # full: ruff check + ruff format + mypy + pytest
-bash tools/check.sh --quick  # fast: ruff check + ruff format only
-</code></pre>
+<div class="highlight"><pre><span></span><code>bash<span class="w"> </span>tools/check.sh<span class="w">          </span><span class="c1"># full: ruff check + ruff format + mypy + pytest</span>
+bash<span class="w"> </span>tools/check.sh<span class="w"> </span>--quick<span class="w">  </span><span class="c1"># fast: ruff check + ruff format only</span>
+</code></pre></div>
 <p>If <code>check.sh</code> passes locally, CI will pass. No drift between local and CI.</p>
 <hr />
 <h2 id="linting-ruff">Linting: ruff<a class="headerlink" href="#linting-ruff" title="Permanent link">&para;</a></h2>
@@ -1938,11 +1938,11 @@ bash tools/check.sh --quick  # fast: ruff check + ruff format only
 </tbody>
 </table>
 <h3 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">uv run ruff check scatter/          # lint
-uv run ruff check scatter/ --fix    # auto-fix what's possible
-uv run ruff format scatter/         # format
-uv run ruff format --check scatter/ # check formatting without changing files
-</code></pre>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>scatter/<span class="w">          </span><span class="c1"># lint</span>
+uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>scatter/<span class="w"> </span>--fix<span class="w">    </span><span class="c1"># auto-fix what&#39;s possible</span>
+uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>format<span class="w"> </span>scatter/<span class="w">         </span><span class="c1"># format</span>
+uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>format<span class="w"> </span>--check<span class="w"> </span>scatter/<span class="w"> </span><span class="c1"># check formatting without changing files</span>
+</code></pre></div>
 <h3 id="format-settings">Format settings<a class="headerlink" href="#format-settings" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Line length</strong>: 100 (middle ground — fits laptops, less reformatting noise than 88)</li>
@@ -1952,8 +1952,8 @@ uv run ruff format --check scatter/ # check formatting without changing files
 <hr />
 <h2 id="type-checking-mypy">Type Checking: mypy<a class="headerlink" href="#type-checking-mypy" title="Permanent link">&para;</a></h2>
 <p><a href="https://mypy.readthedocs.io/">mypy</a> is configured in <code>pyproject.toml</code> under <code>[tool.mypy]</code>.</p>
-<pre><code class="language-bash">uv run mypy scatter --ignore-missing-imports
-</code></pre>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>mypy<span class="w"> </span>scatter<span class="w"> </span>--ignore-missing-imports
+</code></pre></div>
 <p>Current baseline: <strong>0 errors</strong>. CI enforces this — any new type error will fail the build.</p>
 <p>Settings: <code>python_version = "3.11"</code>, <code>warn_return_any = true</code>, <code>warn_unused_configs = true</code>, <code>ignore_missing_imports = true</code>.</p>
 <hr />
@@ -1971,12 +1971,12 @@ uv run ruff format --check scatter/ # check formatting without changing files
 <h3 id="git-blame-ignore-revs">.git-blame-ignore-revs<a class="headerlink" href="#git-blame-ignore-revs" title="Permanent link">&para;</a></h3>
 <p>Mass formatting commits destroy <code>git blame</code> history. The <code>.git-blame-ignore-revs</code> file tells git (and GitHub's web UI) to skip those commits when computing blame.</p>
 <p><code>tools/setup.sh</code> configures this automatically:</p>
-<pre><code class="language-bash">git config blame.ignoreRevsFile .git-blame-ignore-revs
-</code></pre>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>config<span class="w"> </span>blame.ignoreRevsFile<span class="w"> </span>.git-blame-ignore-revs
+</code></pre></div>
 <h3 id="optional-pre-push-hook">Optional: pre-push hook<a class="headerlink" href="#optional-pre-push-hook" title="Permanent link">&para;</a></h3>
 <p>To run checks automatically before every push:</p>
-<pre><code class="language-bash">echo 'bash tools/check.sh' &gt; .git/hooks/pre-push &amp;&amp; chmod +x .git/hooks/pre-push
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="nb">echo</span><span class="w"> </span><span class="s1">&#39;bash tools/check.sh&#39;</span><span class="w"> </span>&gt;<span class="w"> </span>.git/hooks/pre-push<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>chmod<span class="w"> </span>+x<span class="w"> </span>.git/hooks/pre-push
+</code></pre></div>
 <p>This is opt-in — <code>setup.sh</code> mentions it but doesn't install it.</p>
 <hr />
 <h2 id="tool-versions">Tool Versions<a class="headerlink" href="#tool-versions" title="Permanent link">&para;</a></h2>

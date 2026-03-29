@@ -1388,9 +1388,9 @@
 
 <h1 id="scatter">Scatter<a class="headerlink" href="#scatter" title="Permanent link">&para;</a></h1>
 <p>You changed a class. Which projects could break?</p>
-<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
-</code></pre>
-<pre><code>Search scope: /code/scatter (scanned 11 projects, 27 files)
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>Search scope: /code/scatter (scanned 11 projects, 27 files)
 Filter: 11 → 7 project refs[graph] → 6 namespace
 
 ============================================================
@@ -1409,12 +1409,12 @@ Filter: 11 → 7 project refs[graph] → 6 namespace
   MyGalaryConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
 
 Analysis complete. 6 consumer(s) found across 1 target(s).
-</code></pre>
+</code></pre></div>
 <p>Six consumers. Now you know who to warn before you merge.</p>
 <hr />
 <p>You wrote a work request. What's the blast radius?</p>
-<pre><code class="language-bash">scatter --sow &quot;Add tenant isolation to PortalDataService&quot; --search-scope .
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--sow<span class="w"> </span><span class="s2">&quot;Add tenant isolation to PortalDataService&quot;</span><span class="w"> </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
 <p>Scatter parses your intent, identifies the affected types, traces transitive consumers, and rates the risk — from a plain English sentence. No flags to learn, no types to look up manually.</p>
 <hr />
 <p><strong>Ready to try it?</strong> <a href="getting-started.html">Getting Started</a> gets you running in five minutes.</p>

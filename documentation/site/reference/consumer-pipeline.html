@@ -1765,52 +1765,52 @@
 <h3 id="stage-3-namespace-filter">Stage 3: Namespace Filter<a class="headerlink" href="#stage-3-namespace-filter" title="Permanent link">&para;</a></h3>
 <p>Keep only projects that have <code>using TargetNamespace;</code> (or a sub-namespace) in their .cs files.</p>
 <p>Always runs on the filesystem -- the graph does not cache file contents. For each surviving consumer, discover its .cs files, then search for the target namespace using a compiled regex:</p>
-<pre><code class="language-python">using_pattern = re.compile(
-    rf&quot;(?:^|;|\{{)\s*(?:global\s+)?using\s+{re.escape(target_namespace)}(?:\.[A-Za-z0-9_.]+)?\s*;&quot;,
-    re.MULTILINE
-)
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">using_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+    <span class="sa">rf</span><span class="s2">&quot;(?:^|;|\</span><span class="se">{{</span><span class="s2">)\s*(?:global\s+)?using\s+</span><span class="si">{</span><span class="n">re</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">target_namespace</span><span class="p">)</span><span class="si">}</span><span class="s2">(?:\.[A-Za-z0-9_.]+)?\s*;&quot;</span><span class="p">,</span>
+    <span class="n">re</span><span class="o">.</span><span class="n">MULTILINE</span>
+<span class="p">)</span>
+</code></pre></div>
 <p>This pattern handles standard <code>using</code>, <code>global using</code>, and sub-namespace imports (e.g., <code>using GalaxyWorks.Data.Models;</code> when the target namespace is <code>GalaxyWorks.Data</code>).</p>
 <p>Files that match are tracked as <code>relevant_files</code> on the consumer and carried forward to later stages.</p>
 <h3 id="stage-4-class-filter-optional">Stage 4: Class Filter (Optional)<a class="headerlink" href="#stage-4-class-filter-optional" title="Permanent link">&para;</a></h3>
 <p>Keep only projects that reference the specific class/type name. Only runs if <code>--class-name</code> is provided.</p>
 <p>Uses word-boundary regex on the <code>relevant_files</code> from stage 3:</p>
-<pre><code class="language-python">class_pattern = re.compile(rf&quot;\b{re.escape(class_name)}\b&quot;)
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">class_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">rf</span><span class="s2">&quot;\b</span><span class="si">{</span><span class="n">re</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">class_name</span><span class="p">)</span><span class="si">}</span><span class="s2">\b&quot;</span><span class="p">)</span>
+</code></pre></div>
 <h3 id="stage-5-method-filter-optional">Stage 5: Method Filter (Optional)<a class="headerlink" href="#stage-5-method-filter-optional" title="Permanent link">&para;</a></h3>
 <p>Keep only projects that call the specific method. Only runs if <code>--method-name</code> is provided (requires <code>--class-name</code>).</p>
 <p>Searches for the pattern <code>.MethodName(</code>:</p>
-<pre><code class="language-python">method_pattern = re.compile(rf&quot;\.\s*{re.escape(method_name)}\s*\(&quot;)
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">method_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">rf</span><span class="s2">&quot;\.\s*</span><span class="si">{</span><span class="n">re</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">method_name</span><span class="p">)</span><span class="si">}</span><span class="s2">\s*\(&quot;</span><span class="p">)</span>
+</code></pre></div>
 <hr />
 <h2 id="the-filterpipeline">The FilterPipeline<a class="headerlink" href="#the-filterpipeline" title="Permanent link">&para;</a></h2>
 <p>Every run produces a <code>FilterPipeline</code> dataclass that records what happened at each stage:</p>
-<pre><code class="language-python">@dataclass
-class FilterPipeline:
-    search_scope: str
-    total_projects_scanned: int
-    total_files_scanned: int
-    stages: List[FilterStage]
-    target_project: str
-    target_namespace: str
-    class_filter: Optional[str]
-    method_filter: Optional[str]
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FilterPipeline</span><span class="p">:</span>
+    <span class="n">search_scope</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">total_projects_scanned</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">total_files_scanned</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">stages</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FilterStage</span><span class="p">]</span>
+    <span class="n">target_project</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">target_namespace</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">class_filter</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">method_filter</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</code></pre></div>
 <p>Each stage is a <code>FilterStage</code>:</p>
-<pre><code class="language-python">@dataclass
-class FilterStage:
-    name: str           # &quot;discovery&quot;, &quot;project_reference&quot;, &quot;namespace&quot;, &quot;class&quot;, &quot;method&quot;
-    input_count: int    # Projects entering this stage
-    output_count: int   # Projects passing this stage
-    source: str         # &quot;filesystem&quot; or &quot;graph&quot;
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FilterStage</span><span class="p">:</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>           <span class="c1"># &quot;discovery&quot;, &quot;project_reference&quot;, &quot;namespace&quot;, &quot;class&quot;, &quot;method&quot;</span>
+    <span class="n">input_count</span><span class="p">:</span> <span class="nb">int</span>    <span class="c1"># Projects entering this stage</span>
+    <span class="n">output_count</span><span class="p">:</span> <span class="nb">int</span>   <span class="c1"># Projects passing this stage</span>
+    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span>         <span class="c1"># &quot;filesystem&quot; or &quot;graph&quot;</span>
+</code></pre></div>
 <h3 id="the-arrow-chain">The Arrow Chain<a class="headerlink" href="#the-arrow-chain" title="Permanent link">&para;</a></h3>
 <p>The pipeline produces a human-readable arrow chain for reports:</p>
-<pre><code>Filter: 250 → 12 project refs → 8 namespace → 4 class match → 2 method match
-</code></pre>
+<div class="highlight"><pre><span></span><code>Filter: 250 → 12 project refs → 8 namespace → 4 class match → 2 method match
+</code></pre></div>
 <p>With graph acceleration:</p>
-<pre><code>Filter: 250[graph] → 12 project refs[graph] → 8 namespace → 4 class match
-</code></pre>
+<div class="highlight"><pre><span></span><code>Filter: 250[graph] → 12 project refs[graph] → 8 namespace → 4 class match
+</code></pre></div>
 <p>The <code>[graph]</code> annotation tells you which stages used the cached graph instead of the filesystem.</p>
 <h3 id="diagnostic-hints">Diagnostic Hints<a class="headerlink" href="#diagnostic-hints" title="Permanent link">&para;</a></h3>
 <p>When a stage drops to zero, it is useful to know which filter caused the dead end. The pipeline tracks <code>STAGE_INPUT_LABELS</code> so reporters can tell you "0 of 12 project-reference-matching projects use the target namespace" rather than just "0 projects found."</p>
@@ -1819,23 +1819,23 @@ class FilterStage:
 <h2 id="graph-acceleration">Graph Acceleration<a class="headerlink" href="#graph-acceleration" title="Permanent link">&para;</a></h2>
 <h3 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h3>
 <p>When a graph cache exists and the target project is in the graph, stages 1-2 are replaced with a reverse-index lookup:</p>
-<pre><code class="language-python">def _lookup_consumers_from_graph(graph, target_csproj_path):
-    target_name = target_csproj_path.stem
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_lookup_consumers_from_graph</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">target_csproj_path</span><span class="p">):</span>
+    <span class="n">target_name</span> <span class="o">=</span> <span class="n">target_csproj_path</span><span class="o">.</span><span class="n">stem</span>
 
-    if graph.get_node(target_name) is None:
-        return None  # Fall back to filesystem
+    <span class="k">if</span> <span class="n">graph</span><span class="o">.</span><span class="n">get_node</span><span class="p">(</span><span class="n">target_name</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>  <span class="c1"># Fall back to filesystem</span>
 
-    direct_consumers = {}
-    for edge in graph.get_edges_to(target_name):
-        if edge.edge_type == &quot;project_reference&quot;:
-            node = graph.get_node(edge.source)
-            if node:
-                direct_consumers[node.path.resolve()] = {
-                    'consumer_name': edge.source,
-                    'relevant_files': []
-                }
-    return direct_consumers
-</code></pre>
+    <span class="n">direct_consumers</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">edge</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">get_edges_to</span><span class="p">(</span><span class="n">target_name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">edge</span><span class="o">.</span><span class="n">edge_type</span> <span class="o">==</span> <span class="s2">&quot;project_reference&quot;</span><span class="p">:</span>
+            <span class="n">node</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">get_node</span><span class="p">(</span><span class="n">edge</span><span class="o">.</span><span class="n">source</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">node</span><span class="p">:</span>
+                <span class="n">direct_consumers</span><span class="p">[</span><span class="n">node</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">resolve</span><span class="p">()]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s1">&#39;consumer_name&#39;</span><span class="p">:</span> <span class="n">edge</span><span class="o">.</span><span class="n">source</span><span class="p">,</span>
+                    <span class="s1">&#39;relevant_files&#39;</span><span class="p">:</span> <span class="p">[]</span>
+                <span class="p">}</span>
+    <span class="k">return</span> <span class="n">direct_consumers</span>
+</code></pre></div>
 <p>Only <code>project_reference</code> edges are used for stage 2. The graph has four edge types, but using <code>namespace_usage</code> or <code>type_usage</code> edges would widen the consumer set beyond what the filesystem path finds, causing correctness divergence. The graph acceleration must produce the same candidate set as the filesystem path.</p>
 <h3 id="fallback-behavior">Fallback Behavior<a class="headerlink" href="#fallback-behavior" title="Permanent link">&para;</a></h3>
 <p>If the target is not in the graph (stale cache, new project, scope mismatch), <code>_lookup_consumers_from_graph</code> returns <code>None</code> and the pipeline transparently falls back to filesystem scanning. No caller code changes needed.</p>
@@ -1931,28 +1931,28 @@ class FilterStage:
 </tbody>
 </table>
 <p>These can also be set via config:</p>
-<pre><code class="language-yaml">multiprocessing:
-  disabled: false
-  max_workers: 16
-  chunk_size: 100
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="nt">multiprocessing</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">disabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">max_workers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16</span>
+<span class="w">  </span><span class="nt">chunk_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+</code></pre></div>
 <h3 id="graceful-degradation">Graceful Degradation<a class="headerlink" href="#graceful-degradation" title="Permanent link">&para;</a></h3>
 <p>Every parallel operation has a try/except that falls back to sequential processing:</p>
-<pre><code class="language-python">try:
-    # ... parallel execution ...
-except Exception as e:
-    logging.warning(f&quot;Parallel analysis failed: {e}. Falling back to sequential.&quot;)
-    return analyze_cs_files_batch((cs_files, analysis_config))
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">try</span><span class="p">:</span>
+    <span class="c1"># ... parallel execution ...</span>
+<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Parallel analysis failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">. Falling back to sequential.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">analyze_cs_files_batch</span><span class="p">((</span><span class="n">cs_files</span><span class="p">,</span> <span class="n">analysis_config</span><span class="p">))</span>
+</code></pre></div>
 <p>This means Scatter never crashes due to multiprocessing issues -- it just gets slower. The <code>--disable-multiprocessing</code> flag forces sequential mode for debugging or environments where <code>fork()</code> is problematic (some macOS configurations, some CI containers).</p>
 <hr />
 <h2 id="putting-it-all-together">Putting It All Together<a class="headerlink" href="#putting-it-all-together" title="Permanent link">&para;</a></h2>
 <p>A complete target-project analysis with all stages:</p>
-<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-        --search-scope /path/to/monorepo \
-        --class-name PortalDataService \
-        --method-name GetPortalConfig
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--search-scope<span class="w"> </span>/path/to/monorepo<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--class-name<span class="w"> </span>PortalDataService<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--method-name<span class="w"> </span>GetPortalConfig
+</code></pre></div>
 <p>What happens:</p>
 <ol>
 <li><strong>Discovery:</strong> Find 247 .csproj files in <code>/path/to/monorepo</code></li>
@@ -1962,11 +1962,11 @@ except Exception as e:
 <li><strong>Method:</strong> 4 candidates -&gt; 2 call <code>.GetPortalConfig(</code></li>
 </ol>
 <p>Output:</p>
-<pre><code>Filter: 247 → 11 project refs → 8 namespace → 4 class match → 2 method match
-</code></pre>
+<div class="highlight"><pre><span></span><code>Filter: 247 → 11 project refs → 8 namespace → 4 class match → 2 method match
+</code></pre></div>
 <p>If the graph cache exists, stages 1-2 produce the same result in microseconds:</p>
-<pre><code>Filter: 247[graph] → 11 project refs[graph] → 8 namespace → 4 class match → 2 method match
-</code></pre>
+<div class="highlight"><pre><span></span><code>Filter: 247[graph] → 11 project refs[graph] → 8 namespace → 4 class match → 2 method match
+</code></pre></div>
 <p>The FilterPipeline is included in all output formats (console, JSON, CSV, markdown) so you always know how the funnel narrowed.</p>
 
 

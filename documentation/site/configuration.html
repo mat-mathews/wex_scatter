@@ -1688,33 +1688,33 @@
 <p>Most teams land on a two-file setup: one user-level config that holds your API key, one repo-level config that holds repo-specific defaults. CLI flags for one-off experiments.</p>
 <h3 id="user-level-config-scatterconfigyaml">User-level config (<code>~/.scatter/config.yaml</code>)<a class="headerlink" href="#user-level-config-scatterconfigyaml" title="Permanent link">&para;</a></h3>
 <p>Set your API key once. Every Scatter run in every repo picks it up.</p>
-<pre><code class="language-yaml">ai:
-  credentials:
-    gemini:
-      api_key: AIzaSy...your-key-here
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="nt">ai</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">credentials</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">gemini</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">api_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AIzaSy...your-key-here</span>
+</code></pre></div>
 <h3 id="repo-level-config-scatteryaml">Repo-level config (<code>.scatter.yaml</code>)<a class="headerlink" href="#repo-level-config-scatteryaml" title="Permanent link">&para;</a></h3>
 <p>Repo-specific defaults. Committed to source control so the whole team shares them.</p>
-<pre><code class="language-yaml">search:
-  max_depth: 3
-  exclude_patterns:
-    - &quot;*/bin/*&quot;
-    - &quot;*/obj/*&quot;
-    - &quot;*/test-fixtures/*&quot;
+<div class="highlight"><pre><span></span><code><span class="nt">search</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">max_depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">  </span><span class="nt">exclude_patterns</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*/bin/*&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*/obj/*&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*/test-fixtures/*&quot;</span>
 
-graph:
-  invalidation: git
+<span class="nt">graph</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">invalidation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">git</span>
 
-db:
-  sproc_prefixes:
-    - &quot;sp_&quot;
-    - &quot;usp_&quot;
-    - &quot;proc_&quot;
-</code></pre>
+<span class="nt">db</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">sproc_prefixes</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;sp_&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;usp_&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;proc_&quot;</span>
+</code></pre></div>
 <h3 id="cli-overrides">CLI overrides<a class="headerlink" href="#cli-overrides" title="Permanent link">&para;</a></h3>
 <p>For one-off runs, just pass flags. They override everything.</p>
-<pre><code class="language-bash">scatter --target-project ./MyLib/MyLib.csproj --search-scope . --max-depth 4
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./MyLib/MyLib.csproj<span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--max-depth<span class="w"> </span><span class="m">4</span>
+</code></pre></div>
 <h2 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1760,56 +1760,56 @@ db:
 </ol>
 <p>To switch providers: set <code>ai.default_provider: wex</code> in your config or <code>export SCATTER_DEFAULT_PROVIDER=wex</code>.</p>
 <h2 id="full-scatteryaml-schema">Full .scatter.yaml Schema<a class="headerlink" href="#full-scatteryaml-schema" title="Permanent link">&para;</a></h2>
-<pre><code class="language-yaml"># AI provider settings
-ai:
-  default_provider: gemini              # &quot;gemini&quot; (current) or &quot;wex&quot; (coming soon)
-  gemini_model: gemini-2.0-flash        # Gemini model name
-  wex_model: default                    # WEX AI Platform model name
-  task_overrides:                       # Route specific AI tasks to different providers
-    risk_assessment: gemini             # e.g., keep risk assessment on Gemini
-  credentials:
-    gemini:
-      api_key: your-key-here            # Or use env var / CLI flag instead
-    wex:
-      api_key: your-wex-key-here        # Or use WEX_AI_API_KEY env var
+<div class="highlight"><pre><span></span><code><span class="c1"># AI provider settings</span>
+<span class="nt">ai</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">default_provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gemini</span><span class="w">              </span><span class="c1"># &quot;gemini&quot; (current) or &quot;wex&quot; (coming soon)</span>
+<span class="w">  </span><span class="nt">gemini_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gemini-2.0-flash</span><span class="w">        </span><span class="c1"># Gemini model name</span>
+<span class="w">  </span><span class="nt">wex_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span><span class="w">                    </span><span class="c1"># WEX AI Platform model name</span>
+<span class="w">  </span><span class="nt">task_overrides</span><span class="p">:</span><span class="w">                       </span><span class="c1"># Route specific AI tasks to different providers</span>
+<span class="w">    </span><span class="nt">risk_assessment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gemini</span><span class="w">             </span><span class="c1"># e.g., keep risk assessment on Gemini</span>
+<span class="w">  </span><span class="nt">credentials</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">gemini</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">api_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your-key-here</span><span class="w">            </span><span class="c1"># Or use env var / CLI flag instead</span>
+<span class="w">    </span><span class="nt">wex</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">api_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your-wex-key-here</span><span class="w">        </span><span class="c1"># Or use WEX_AI_API_KEY env var</span>
 
-# Search behavior
-search:
-  max_depth: 2                          # Transitive tracing depth for impact analysis
-  exclude_patterns:                     # Glob patterns to skip during file discovery
-    - &quot;*/bin/*&quot;                         # NOTE: this REPLACES the defaults entirely.
-    - &quot;*/obj/*&quot;                         # If you add custom patterns, re-list bin/obj
-    - &quot;*/node_modules/*&quot;               # or they will no longer be excluded
+<span class="c1"># Search behavior</span>
+<span class="nt">search</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">max_depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">                          </span><span class="c1"># Transitive tracing depth for impact analysis</span>
+<span class="w">  </span><span class="nt">exclude_patterns</span><span class="p">:</span><span class="w">                     </span><span class="c1"># Glob patterns to skip during file discovery</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*/bin/*&quot;</span><span class="w">                         </span><span class="c1"># NOTE: this REPLACES the defaults entirely.</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*/obj/*&quot;</span><span class="w">                         </span><span class="c1"># If you add custom patterns, re-list bin/obj</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*/node_modules/*&quot;</span><span class="w">               </span><span class="c1"># or they will no longer be excluded</span>
 
-# Parallel processing
-multiprocessing:
-  disabled: false                       # Set true to force sequential execution
-  max_workers: 14                       # Upper bound on worker processes
-  chunk_size: 75                        # Directories per worker batch
+<span class="c1"># Parallel processing</span>
+<span class="nt">multiprocessing</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">disabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                       </span><span class="c1"># Set true to force sequential execution</span>
+<span class="w">  </span><span class="nt">max_workers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">14</span><span class="w">                       </span><span class="c1"># Upper bound on worker processes</span>
+<span class="w">  </span><span class="nt">chunk_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">75</span><span class="w">                        </span><span class="c1"># Directories per worker batch</span>
 
-# Dependency graph
-graph:
-  cache_dir: null                       # Override default .scatter/ cache location
-  rebuild: false                        # Force full rebuild (ignore cache)
-  invalidation: git                     # &quot;git&quot; (default) or &quot;mtime&quot; fallback
-  coupling_weights:                     # Override edge type weights for coupling score
-    project_reference: 1.0
-    namespace_usage: 0.5
-    type_usage: 0.3
-    sproc_shared: 0.8
+<span class="c1"># Dependency graph</span>
+<span class="nt">graph</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">cache_dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w">                       </span><span class="c1"># Override default .scatter/ cache location</span>
+<span class="w">  </span><span class="nt">rebuild</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                        </span><span class="c1"># Force full rebuild (ignore cache)</span>
+<span class="w">  </span><span class="nt">invalidation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">git</span><span class="w">                     </span><span class="c1"># &quot;git&quot; (default) or &quot;mtime&quot; fallback</span>
+<span class="w">  </span><span class="nt">coupling_weights</span><span class="p">:</span><span class="w">                     </span><span class="c1"># Override edge type weights for coupling score</span>
+<span class="w">    </span><span class="nt">project_reference</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+<span class="w">    </span><span class="nt">namespace_usage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+<span class="w">    </span><span class="nt">type_usage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
+<span class="w">    </span><span class="nt">sproc_shared</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span>
 
-# Database dependency scanning
-db:
-  sproc_prefixes:                       # Prefixes that identify stored procedures
-    - &quot;sp_&quot;
-    - &quot;usp_&quot;
-  include_db_edges: true                # Add sproc_shared edges to the graph
-</code></pre>
+<span class="c1"># Database dependency scanning</span>
+<span class="nt">db</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">sproc_prefixes</span><span class="p">:</span><span class="w">                       </span><span class="c1"># Prefixes that identify stored procedures</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;sp_&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;usp_&quot;</span>
+<span class="w">  </span><span class="nt">include_db_edges</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">                </span><span class="c1"># Add sproc_shared edges to the graph</span>
+</code></pre></div>
 <h2 id="pipeline-mapping">Pipeline Mapping<a class="headerlink" href="#pipeline-mapping" title="Permanent link">&para;</a></h2>
 <p>Map consumer projects to their CI/CD pipelines using <code>--pipeline-csv</code>:</p>
-<pre><code class="language-bash">scatter --target-project ./MyLib/MyLib.csproj --search-scope . \
-  --pipeline-csv build/pipeline_to_app_mapping.csv
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./MyLib/MyLib.csproj<span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pipeline-csv<span class="w"> </span>build/pipeline_to_app_mapping.csv
+</code></pre></div>
 <p>The CSV needs two columns: <code>Application Name</code> and <code>Pipeline Name</code>. Scatter matches discovered consumer project names against the Application Name column and includes pipeline information in the output.</p>
 <h2 id="multiprocessing-tuning">Multiprocessing Tuning<a class="headerlink" href="#multiprocessing-tuning" title="Permanent link">&para;</a></h2>
 <table>

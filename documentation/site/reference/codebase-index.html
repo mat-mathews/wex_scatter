@@ -1473,7 +1473,7 @@
 <p>When a user writes <code>--sow "Add tenant isolation to portal configuration"</code>, the LLM doesn't guess which projects might be relevant. It selects from the index, matching "portal configuration" to actual types like <code>PortalDataService</code> and <code>PortalConfiguration</code> in <code>GalaxyWorks.Data</code>.</p>
 <h2 id="format">Format<a class="headerlink" href="#format" title="Permanent link">&para;</a></h2>
 <p>The index uses a one-line-per-project format optimized for token efficiency:</p>
-<pre><code>=== Codebase Index (11 projects) ===
+<div class="highlight"><pre><span></span><code>=== Codebase Index (11 projects) ===
 P=Project NS=Namespace (omitted when same as project name) T=Types SP=StoredProcs
 P:GalaxyWorks.Api T:GalaxyWorksApiService,StartupExtensions
 P:GalaxyWorks.BatchProcessor T:BatchProcessorService
@@ -1486,7 +1486,7 @@ P:MyDotNetApp.Consumer T:ConsumerService
 
 === Shared Stored Procedures ===
   dbo.sp_InsertPortalConfiguration: GalaxyWorks.Data, GalaxyWorks.Api
-</code></pre>
+</code></pre></div>
 <p>Key design decisions:</p>
 <ul>
 <li><strong>Namespace suppression</strong> — <code>NS:</code> is only included when it differs from the project name, saving tokens in the common case</li>
@@ -1498,7 +1498,7 @@ P:MyDotNetApp.Consumer T:ConsumerService
 <p>The index always includes all types — there is no truncation. At WEX scale (250-800 projects), the full index is ~120K tokens, roughly 12% of a 1M context window. This is well within the budget for modern LLMs.</p>
 <p>If the index exceeds a model's context window, the API call will fail with an actionable error message suggesting you narrow <code>--search-scope</code> or use a model with a larger context window.</p>
 <h2 id="how-it-integrates">How it integrates<a class="headerlink" href="#how-it-integrates" title="Permanent link">&para;</a></h2>
-<pre><code>Dependency Graph
+<div class="highlight"><pre><span></span><code>Dependency Graph
       │
       ▼
 build_codebase_index()  ──→  CodebaseIndex.text
@@ -1513,7 +1513,7 @@ CodebaseIndex metrics
 (project_count, type_count,
  sproc_count, file_count,
  size_bytes)
-</code></pre>
+</code></pre></div>
 <p>The index is built lazily — only when an AI-powered mode is invoked. The dependency graph provides all the data; no additional file I/O is needed.</p>
 <h3 id="call-sites">Call sites<a class="headerlink" href="#call-sites" title="Permanent link">&para;</a></h3>
 <table>
@@ -1544,16 +1544,16 @@ CodebaseIndex metrics
 </table>
 <h2 id="inspecting-the-index">Inspecting the index<a class="headerlink" href="#inspecting-the-index" title="Permanent link">&para;</a></h2>
 <p>Use <code>--dump-index</code> to see exactly what the LLM sees:</p>
-<pre><code class="language-bash">$ scatter --dump-index --search-scope .
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>scatter<span class="w"> </span>--dump-index<span class="w"> </span>--search-scope<span class="w"> </span>.
 
-=== Codebase Index (11 projects) ===
-P=Project NS=Namespace (omitted when same as project name) T=Types SP=StoredProcs
-P:GalaxyWorks.Api T:GalaxyWorksApiService,StartupExtensions
-P:GalaxyWorks.Data T:PortalConfiguration,PortalDataService SP:dbo.sp_InsertPortalConfiguration
+<span class="o">===</span><span class="w"> </span>Codebase<span class="w"> </span>Index<span class="w"> </span><span class="o">(</span><span class="m">11</span><span class="w"> </span>projects<span class="o">)</span><span class="w"> </span><span class="o">===</span>
+<span class="nv">P</span><span class="o">=</span>Project<span class="w"> </span><span class="nv">NS</span><span class="o">=</span>Namespace<span class="w"> </span><span class="o">(</span>omitted<span class="w"> </span>when<span class="w"> </span>same<span class="w"> </span>as<span class="w"> </span>project<span class="w"> </span>name<span class="o">)</span><span class="w"> </span><span class="nv">T</span><span class="o">=</span>Types<span class="w"> </span><span class="nv">SP</span><span class="o">=</span>StoredProcs
+P:GalaxyWorks.Api<span class="w"> </span>T:GalaxyWorksApiService,StartupExtensions
+P:GalaxyWorks.Data<span class="w"> </span>T:PortalConfiguration,PortalDataService<span class="w"> </span>SP:dbo.sp_InsertPortalConfiguration
 ...
 
-# 11 projects, 18 types, 2 sprocs, 27 files, 1,245 bytes
-</code></pre>
+<span class="c1"># 11 projects, 18 types, 2 sprocs, 27 files, 1,245 bytes</span>
+</code></pre></div>
 <p>This is useful for:</p>
 <ul>
 <li><strong>Debugging AI results</strong> — if the LLM misidentified a target, check whether the type appears in the index</li>

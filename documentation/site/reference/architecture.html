@@ -1692,7 +1692,7 @@
 <p>This is the technical map of Scatter. If you want to know where something lives, how data flows through the system, or why a module exists, start here.</p>
 <hr />
 <h2 id="directory-structure">Directory Structure<a class="headerlink" href="#directory-structure" title="Permanent link">&para;</a></h2>
-<pre><code>scatter/
+<div class="highlight"><pre><span></span><code>scatter/
 ├── core/              # Data models, graph, parallel infrastructure
 │   ├── graph.py       # DependencyGraph, ProjectNode, DependencyEdge
 │   ├── models.py      # FilterPipeline, FilterStage, ImpactReport, constants
@@ -1713,7 +1713,7 @@
 │   ├── graph_builder.py      # Single-pass O(P+F) graph construction
 │   ├── graph_enrichment.py   # Graph context loading, result enrichment
 │   ├── impact_analyzer.py    # SOW-driven impact analysis
-│   ├── coupling_analyzer.py  # Metrics + Tarjan's cycle detection
+│   ├── coupling_analyzer.py  # Metrics + Tarjan&#39;s cycle detection
 │   ├── domain_analyzer.py    # Clustering + extraction feasibility
 │   └── health_analyzer.py    # Health dashboard computation
 │
@@ -1749,20 +1749,20 @@
 ├── cli.py             # Mode handlers, output dispatch (~766 lines)
 ├── cli_parser.py      # Argument parsing (~197 lines)
 └── __main__.py        # Entry point, mode dispatch (~506 lines)
-</code></pre>
+</code></pre></div>
 <hr />
 <h2 id="design-principles">Design Principles<a class="headerlink" href="#design-principles" title="Permanent link">&para;</a></h2>
 <p>Three rules govern every module in Scatter. Break one and you will hear about it in review.</p>
 <p><strong>1. The graph is data. Analysis is functions.</strong></p>
 <p><code>DependencyGraph</code> is a pure data structure -- mutation, query, traversal, serialization. That is its entire job. Every analysis algorithm (cycles, metrics, clustering, feasibility scoring) is a standalone free function in its respective analyzer module, not a method on the graph. This keeps the graph lean and the analyzers independently testable.</p>
-<pre><code class="language-python"># This is how it works:
-metrics = compute_all_metrics(graph)       # coupling_analyzer.py
-cycles = detect_cycles(graph)              # coupling_analyzer.py
-clusters = find_clusters(graph)            # domain_analyzer.py
+<div class="highlight"><pre><span></span><code><span class="c1"># This is how it works:</span>
+<span class="n">metrics</span> <span class="o">=</span> <span class="n">compute_all_metrics</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>       <span class="c1"># coupling_analyzer.py</span>
+<span class="n">cycles</span> <span class="o">=</span> <span class="n">detect_cycles</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>              <span class="c1"># coupling_analyzer.py</span>
+<span class="n">clusters</span> <span class="o">=</span> <span class="n">find_clusters</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>            <span class="c1"># domain_analyzer.py</span>
 
-# This is NOT how it works:
-graph.compute_metrics()   # No. The graph doesn't know about metrics.
-</code></pre>
+<span class="c1"># This is NOT how it works:</span>
+<span class="n">graph</span><span class="o">.</span><span class="n">compute_metrics</span><span class="p">()</span>   <span class="c1"># No. The graph doesn&#39;t know about metrics.</span>
+</code></pre></div>
 <p><strong>2. Free functions over god objects.</strong></p>
 <p>No class accumulates responsibilities across multiple concerns. <code>ModeContext</code> is a typed bag of resolved config -- it does not run analysis. <code>AIRouter</code> selects providers -- it does not call them. The mode handlers in <code>cli.py</code> are plain functions (<code>run_target_analysis</code>, <code>run_git_analysis</code>, <code>run_sproc_analysis</code>) that compose scanners, analyzers, and reporters. If you find yourself adding a method to a class and the class already does something unrelated, you are in the wrong place.</p>
 <p><strong>3. Reporters are pure transforms.</strong></p>
@@ -1770,10 +1770,10 @@ graph.compute_metrics()   # No. The graph doesn't know about metrics.
 <hr />
 <h2 id="data-flow">Data Flow<a class="headerlink" href="#data-flow" title="Permanent link">&para;</a></h2>
 <p>Every mode follows the same shape:</p>
-<pre><code>CLI args --&gt; config --&gt; mode handler --&gt; scanners --&gt; analyzers --&gt; reporters --&gt; output
-</code></pre>
+<div class="highlight"><pre><span></span><code>CLI args --&gt; config --&gt; mode handler --&gt; scanners --&gt; analyzers --&gt; reporters --&gt; output
+</code></pre></div>
 <h3 id="target-project-mode">Target Project Mode<a class="headerlink" href="#target-project-mode" title="Permanent link">&para;</a></h3>
-<pre><code>__main__.py: parse args, load config, build ModeContext
+<div class="highlight"><pre><span></span><code>__main__.py: parse args, load config, build ModeContext
   --&gt; cli.py: run_target_analysis()
     --&gt; project_scanner: derive_namespace(target.csproj)
     --&gt; consumer_analyzer: find_consumers()
@@ -1786,9 +1786,9 @@ graph.compute_metrics()   # No. The graph doesn't know about metrics.
     --&gt; v1_bridge: map to pipelines, solutions, batch jobs
   --&gt; dispatch_legacy_output()
     --&gt; console_reporter | json_reporter | csv_reporter | markdown_reporter
-</code></pre>
+</code></pre></div>
 <h3 id="git-branch-mode">Git Branch Mode<a class="headerlink" href="#git-branch-mode" title="Permanent link">&para;</a></h3>
-<pre><code>__main__.py: parse args, load config, build ModeContext
+<div class="highlight"><pre><span></span><code>__main__.py: parse args, load config, build ModeContext
   --&gt; cli.py: run_git_analysis()
     --&gt; git_analyzer: analyze_branch_changes(repo, branch, base)
     --&gt; type_scanner: extract_type_names_from_content() per changed file
@@ -1796,9 +1796,9 @@ graph.compute_metrics()   # No. The graph doesn't know about metrics.
     --&gt; consumer_analyzer: find_consumers() per changed project/type
     --&gt; graph_enrichment: enrich_legacy_results()
   --&gt; dispatch_legacy_output()
-</code></pre>
+</code></pre></div>
 <h3 id="impact-analysis-mode-sow-driven">Impact Analysis Mode (SOW-driven)<a class="headerlink" href="#impact-analysis-mode-sow-driven" title="Permanent link">&para;</a></h3>
-<pre><code>__main__.py: parse args, load config, resolve SOW text
+<div class="highlight"><pre><span></span><code>__main__.py: parse args, load config, resolve SOW text
   --&gt; impact_analyzer: run_impact_analysis()
     --&gt; ai: parse work request --&gt; extract AnalysisTargets
     --&gt; consumer_analyzer: find_consumers() per target
@@ -1807,9 +1807,9 @@ graph.compute_metrics()   # No. The graph doesn't know about metrics.
     --&gt; ai: impact narrative, complexity estimate for report
   --&gt; apply_impact_graph_enrichment()
   --&gt; console_reporter | json_reporter | csv_reporter | markdown_reporter
-</code></pre>
+</code></pre></div>
 <h3 id="graph-analysis-mode">Graph Analysis Mode<a class="headerlink" href="#graph-analysis-mode" title="Permanent link">&para;</a></h3>
-<pre><code>__main__.py: parse args, load config
+<div class="highlight"><pre><span></span><code>__main__.py: parse args, load config
   --&gt; graph_cache: load_and_validate() (try cache first)
   --&gt; graph_builder: build_dependency_graph() (if no cache)
   --&gt; graph_cache: save_graph()
@@ -1817,24 +1817,24 @@ graph.compute_metrics()   # No. The graph doesn't know about metrics.
   --&gt; domain_analyzer: find_clusters()
   --&gt; health_analyzer: compute_health_dashboard()
   --&gt; graph_reporter | json_reporter | markdown_reporter | mermaid
-</code></pre>
+</code></pre></div>
 <hr />
 <h2 id="the-ai-provider-system">The AI Provider System<a class="headerlink" href="#the-ai-provider-system" title="Permanent link">&para;</a></h2>
 <p>The AI layer follows a protocol-based design with three moving parts.</p>
 <h3 id="aiprovider-protocol">AIProvider Protocol<a class="headerlink" href="#aiprovider-protocol" title="Permanent link">&para;</a></h3>
 <p>Defined in <code>ai/base.py</code>. Any class that implements these five methods is a valid provider:</p>
-<pre><code class="language-python">@runtime_checkable
-class AIProvider(Protocol):
-    @property
-    def name(self) -&gt; str: ...
+<div class="highlight"><pre><span></span><code><span class="nd">@runtime_checkable</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AIProvider</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span> <span class="o">...</span>
 
-    @property
-    def max_context_size(self) -&gt; int: ...
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">max_context_size</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span> <span class="o">...</span>
 
-    def analyze(self, prompt: str, context: str, task_type: AITaskType) -&gt; AnalysisResult: ...
-    def supports(self, task_type: AITaskType) -&gt; bool: ...
-    def estimate_tokens(self, context: str) -&gt; int: ...
-</code></pre>
+    <span class="k">def</span><span class="w"> </span><span class="nf">analyze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">task_type</span><span class="p">:</span> <span class="n">AITaskType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AnalysisResult</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">supports</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_type</span><span class="p">:</span> <span class="n">AITaskType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">estimate_tokens</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span> <span class="o">...</span>
+</code></pre></div>
 <p>Eight task types are defined in <code>AITaskType</code>:</p>
 <table>
 <thead>
@@ -1885,10 +1885,10 @@ class AIProvider(Protocol):
 <li><code>default_provider</code> from config (defaults to <code>"gemini"</code>)</li>
 </ol>
 <p>Providers are lazily created on first use and cached in a dict. If creation fails (missing credentials, import error), the router returns <code>None</code> and the caller gracefully degrades.</p>
-<pre><code class="language-python">router = AIRouter(config)
-provider = router.get_provider(AITaskType.SUMMARIZATION)
-# Returns GeminiProvider or None
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">router</span> <span class="o">=</span> <span class="n">AIRouter</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+<span class="n">provider</span> <span class="o">=</span> <span class="n">router</span><span class="o">.</span><span class="n">get_provider</span><span class="p">(</span><span class="n">AITaskType</span><span class="o">.</span><span class="n">SUMMARIZATION</span><span class="p">)</span>
+<span class="c1"># Returns GeminiProvider or None</span>
+</code></pre></div>
 <h3 id="task-modules">Task Modules<a class="headerlink" href="#task-modules" title="Permanent link">&para;</a></h3>
 <p>Each <code>ai/tasks/</code> module contains prompt templates and response parsing for a specific task type. The task module builds the prompt, the provider executes it, the task module parses the response. Clean separation.</p>
 <h3 id="providers">Providers<a class="headerlink" href="#providers" title="Permanent link">&para;</a></h3>
@@ -1898,17 +1898,17 @@ provider = router.get_provider(AITaskType.SUMMARIZATION)
 <h2 id="configuration-system">Configuration System<a class="headerlink" href="#configuration-system" title="Permanent link">&para;</a></h2>
 <p>Defined in <code>config.py</code>. Four dataclasses, five precedence layers.</p>
 <h3 id="dataclasses">Dataclasses<a class="headerlink" href="#dataclasses" title="Permanent link">&para;</a></h3>
-<pre><code class="language-python">@dataclass
-class ScatterConfig:
-    ai: AIConfig           # Provider, model, credentials, task overrides
-    graph: GraphConfig     # Cache dir, rebuild flag, invalidation strategy, coupling weights
-    db: DbConfig           # Sproc prefixes, include_db_edges flag
-    max_depth: int = 2
-    disable_multiprocessing: bool = False
-    max_workers: Optional[int] = None
-    chunk_size: Optional[int] = None
-    exclude_patterns: List[str] = [&quot;*/bin/*&quot;, &quot;*/obj/*&quot;]
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ScatterConfig</span><span class="p">:</span>
+    <span class="n">ai</span><span class="p">:</span> <span class="n">AIConfig</span>           <span class="c1"># Provider, model, credentials, task overrides</span>
+    <span class="n">graph</span><span class="p">:</span> <span class="n">GraphConfig</span>     <span class="c1"># Cache dir, rebuild flag, invalidation strategy, coupling weights</span>
+    <span class="n">db</span><span class="p">:</span> <span class="n">DbConfig</span>           <span class="c1"># Sproc prefixes, include_db_edges flag</span>
+    <span class="n">max_depth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">disable_multiprocessing</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">max_workers</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">chunk_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">exclude_patterns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;*/bin/*&quot;</span><span class="p">,</span> <span class="s2">&quot;*/obj/*&quot;</span><span class="p">]</span>
+</code></pre></div>
 <h3 id="layered-precedence">Layered Precedence<a class="headerlink" href="#layered-precedence" title="Permanent link">&para;</a></h3>
 <p>Highest wins. Each layer can override any field set by a lower layer.</p>
 <table>
@@ -1949,36 +1949,36 @@ class ScatterConfig:
 </table>
 <p>The loading sequence in <code>load_config()</code> applies layers bottom-up: start with defaults, apply env vars, apply user config, apply repo config, apply CLI overrides. Later layers overwrite earlier ones.</p>
 <h3 id="example-scatteryaml">Example <code>.scatter.yaml</code><a class="headerlink" href="#example-scatteryaml" title="Permanent link">&para;</a></h3>
-<pre><code class="language-yaml">ai:
-  default_provider: gemini
-  gemini_model: gemini-1.5-pro
-  task_overrides:
-    risk_assessment: gemini
+<div class="highlight"><pre><span></span><code><span class="nt">ai</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">default_provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gemini</span>
+<span class="w">  </span><span class="nt">gemini_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gemini-1.5-pro</span>
+<span class="w">  </span><span class="nt">task_overrides</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">risk_assessment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gemini</span>
 
-graph:
-  invalidation: git
-  coupling_weights:
-    project_reference: 1.0
-    sproc_shared: 0.8
-    namespace_usage: 0.5
-    type_usage: 0.3
+<span class="nt">graph</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">invalidation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">git</span>
+<span class="w">  </span><span class="nt">coupling_weights</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">project_reference</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+<span class="w">    </span><span class="nt">sproc_shared</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span>
+<span class="w">    </span><span class="nt">namespace_usage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+<span class="w">    </span><span class="nt">type_usage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
 
-db:
-  sproc_prefixes: [&quot;sp_&quot;, &quot;usp_&quot;, &quot;proc_&quot;]
-  include_db_edges: true
+<span class="nt">db</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">sproc_prefixes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;sp_&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;usp_&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;proc_&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">include_db_edges</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 
-search:
-  max_depth: 3
-  exclude_patterns:
-    - &quot;*/bin/*&quot;
-    - &quot;*/obj/*&quot;
-    - &quot;*/test/*&quot;
+<span class="nt">search</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">max_depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">  </span><span class="nt">exclude_patterns</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*/bin/*&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*/obj/*&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;*/test/*&quot;</span>
 
-multiprocessing:
-  disabled: false
-  max_workers: 16
-  chunk_size: 100
-</code></pre>
+<span class="nt">multiprocessing</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">disabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">  </span><span class="nt">max_workers</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">16</span>
+<span class="w">  </span><span class="nt">chunk_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+</code></pre></div>
 <p>Note that <code>exclude_patterns</code> in config <strong>replaces</strong> the default list entirely -- if you override it, you must re-include <code>*/bin/*</code> and <code>*/obj/*</code> if you still want them excluded. This follows the convention that list-valued config is explicit, not additive.</p>
 
 

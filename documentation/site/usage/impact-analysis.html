@@ -1481,12 +1481,12 @@
 <p>Describe the change in plain English. Get back a risk-rated blast radius report with a tree view of affected consumers, confidence labels by depth, and an AI-generated narrative you can paste straight into a ticket.</p>
 <p>The <code>--sow</code> mode requires a configured AI provider (currently Google Gemini via <code>--google-api-key</code> or <code>$GOOGLE_API_KEY</code>; WEX AI Platform coming soon). Other modes (<code>--target-project</code>, <code>--branch-name</code>, <code>--graph</code>) work without AI. The core consumer tracing, graph building, and blast radius tree are pure code -- AI adds risk ratings, coupling narratives, complexity estimates, and executive summaries on top.</p>
 <h2 id="basic-example">Basic Example<a class="headerlink" href="#basic-example" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">scatter \
-  --sow &quot;Modify PortalDataService in GalaxyWorks.Data to add a new parameter to sp_InsertPortalConfiguration&quot; \
-  --search-scope . \
-  --google-api-key $GOOGLE_API_KEY
-</code></pre>
-<pre><code>=== Impact Analysis Report ===
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sow<span class="w"> </span><span class="s2">&quot;Modify PortalDataService in GalaxyWorks.Data to add a new parameter to sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>=== Impact Analysis Report ===
 Work Request: Modify PortalDataService in GalaxyWorks.Data to add a new parameter...
 Overall Risk: High | Complexity: Medium (3-5 developer-days)
 
@@ -1522,7 +1522,7 @@ GalaxyWorks.Api, which both directly invoke the affected method. Recommend
 coordinated deployment with WebPortal and API teams.
 
 Analysis complete. 6 consumer(s) found across 1 target(s).
-</code></pre>
+</code></pre></div>
 <p>That's a lot of information from a one-line description. Let's break down what you're looking at.</p>
 <h2 id="reading-the-report">Reading the Report<a class="headerlink" href="#reading-the-report" title="Permanent link">&para;</a></h2>
 <p><strong>Overall Risk and Complexity</strong> appear at the top. Risk is the worst-case across all consumers (if any consumer is Critical, the whole report is Critical). Complexity is an AI estimate of effort.</p>
@@ -1535,24 +1535,24 @@ Analysis complete. 6 consumer(s) found across 1 target(s).
 <p><strong>Coupling vectors</strong> tell you how a consumer is connected: <code>method_invocation</code>, <code>constructor_injection</code>, <code>type_reference</code>, etc. These help you estimate how hard the consumer update will be.</p>
 <p><strong>The impact summary</strong> at the bottom is AI-generated prose, suitable for pasting into a Jira ticket or a Slack message to your manager. It covers the scope, highest-risk consumers, and a deployment recommendation.</p>
 <h2 id="from-a-file">From a File<a class="headerlink" href="#from-a-file" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">scatter \
-  --sow-file docs/sample_sow.txt \
-  --search-scope . \
-  --google-api-key $GOOGLE_API_KEY
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sow-file<span class="w"> </span>docs/sample_sow.txt<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span>
+</code></pre></div>
 <p>For longer work requests -- feature specs, change proposals, migration plans -- write the description in a text file and pass it via <code>--sow-file</code>. The file is read as UTF-8.</p>
 <h2 id="codebase-index">Codebase Index<a class="headerlink" href="#codebase-index" title="Permanent link">&para;</a></h2>
 <p>When a dependency graph is available (which it usually is -- Scatter builds and caches one automatically), impact analysis sends a compact <strong>codebase index</strong> alongside the SOW to the LLM. This index lists every project, its types, and its stored procedures, so the LLM can match domain language to real code artifacts instead of guessing.</p>
 <p>The index is what makes vague SOWs work. A request like "update the portal configuration workflow to support multi-tenant isolation" maps to <code>GalaxyWorks.Data</code>, <code>PortalDataService</code>, and <code>dbo.sp_InsertPortalConfiguration</code> because those names are in the index.</p>
 <p>You can inspect the index directly:</p>
-<pre><code class="language-bash">scatter --dump-index --search-scope .
-</code></pre>
-<pre><code>=== Codebase Index (11 projects) ===
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--dump-index<span class="w"> </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>=== Codebase Index (11 projects) ===
 P=Project NS=Namespace (omitted when same as project name) T=Types SP=StoredProcs
 P:GalaxyWorks.Data T:PortalDataService,PortalConfiguration,IDataAccessor SP:dbo.sp_InsertPortalConfiguration,...
 P:GalaxyWorks.WebPortal T:PortalController,PortalCacheService SP:dbo.sp_GetPortalConfigurationDetails,...
 ...
-</code></pre>
+</code></pre></div>
 <p>When the LLM returns a target name not found in the index, its confidence is automatically halved. This prevents hallucinated project names from driving analysis.</p>
 <h2 id="target-quality">Target Quality<a class="headerlink" href="#target-quality" title="Permanent link">&para;</a></h2>
 <p>After parsing, Scatter classifies the target set:</p>
@@ -1562,57 +1562,59 @@ P:GalaxyWorks.WebPortal T:PortalController,PortalCacheService SP:dbo.sp_GetPorta
 <li><strong>vague</strong> -- more than 10 targets, or average confidence below 0.4. The SOW is broad.</li>
 </ul>
 <p>This appears in the report header:</p>
-<pre><code>Target Quality: moderate (7 targets, avg confidence 0.62)
-</code></pre>
+<div class="highlight"><pre><span></span><code>Target Quality: moderate (7 targets, avg confidence 0.62)
+</code></pre></div>
 <p>Each target also shows <strong>match evidence</strong> -- a one-sentence explanation of why the LLM identified it:</p>
-<pre><code>--- Target: GalaxyWorks.Data ---
+<div class="highlight"><pre><span></span><code>--- Target: GalaxyWorks.Data ---
 Evidence: Project contains PortalDataService which handles portal configuration persistence
-</code></pre>
+</code></pre></div>
 <h2 id="confidence-filtering">Confidence Filtering<a class="headerlink" href="#confidence-filtering" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">scatter \
-  --sow-file docs/sample_sow.md \
-  --search-scope . \
-  --google-api-key $GOOGLE_API_KEY \
-  --sow-min-confidence 0.5
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sow-file<span class="w"> </span>docs/sample_sow.md<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sow-min-confidence<span class="w"> </span><span class="m">0</span>.5
+</code></pre></div>
 <p>The <code>--sow-min-confidence</code> flag (default: 0.3) excludes targets below the threshold. Excluded targets are logged:</p>
-<pre><code>Excluded target 'Billing.Data' (confidence 0.30, threshold 0.50)
-</code></pre>
+<div class="highlight"><pre><span></span><code>Excluded target &#39;Billing.Data&#39; (confidence 0.30, threshold 0.50)
+</code></pre></div>
 <p>Use a higher threshold when you want fewer, higher-confidence results. Use the default when you want broader coverage and are willing to triage.</p>
 <h2 id="deeper-tracing">Deeper Tracing<a class="headerlink" href="#deeper-tracing" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">scatter \
-  --sow &quot;Refactor GalaxyWorks.Data to split PortalDataService into separate read/write classes&quot; \
-  --search-scope . \
-  --google-api-key $GOOGLE_API_KEY \
-  --max-depth 3
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sow<span class="w"> </span><span class="s2">&quot;Refactor GalaxyWorks.Data to split PortalDataService into separate read/write classes&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--max-depth<span class="w"> </span><span class="m">3</span>
+</code></pre></div>
 <p>Default transitive depth is 2. Increase <code>--max-depth</code> when you need to trace further through the dependency chain. Be aware that each depth level multiplies the consumer detection calls, and each hop reduces confidence. Depth 3 is usually sufficient. Beyond that, you're mapping theoretical risk rather than practical impact.</p>
 <h2 id="output-formats">Output Formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h2>
 <p><strong>JSON</strong> -- includes everything: targets, consumers with depth and confidence, risk ratings, coupling vectors, complexity estimates, and narrative summaries. This is the format for feeding impact data into other tools.</p>
-<pre><code class="language-bash">scatter \
-  --sow &quot;Add caching to GalaxyWorks.Data&quot; \
-  --search-scope . \
-  --google-api-key $GOOGLE_API_KEY \
-  --output-format json --output-file impact_report.json
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sow<span class="w"> </span><span class="s2">&quot;Add caching to GalaxyWorks.Data&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span>impact_report.json
+</code></pre></div>
 <p><strong>CSV</strong> -- flattens the tree into rows (one per consumer) with columns for depth, confidence, risk rating, and pipeline name. Good for spreadsheet triage.</p>
-<pre><code class="language-bash">scatter \
-  --sow &quot;Modify stored procedure sp_InsertPortalConfiguration&quot; \
-  --search-scope . \
-  --google-api-key $GOOGLE_API_KEY \
-  --output-format csv --output-file impact_report.csv
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sow<span class="w"> </span><span class="s2">&quot;Modify stored procedure sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>csv<span class="w"> </span>--output-file<span class="w"> </span>impact_report.csv
+</code></pre></div>
 <p><strong>Markdown</strong> -- prints to stdout without <code>--output-file</code>. Pipe it into a PR description, paste it into Confluence, or redirect to a file.</p>
-<pre><code class="language-bash">scatter \
-  --sow &quot;Deprecate FakeDatabaseHelper&quot; \
-  --search-scope . \
-  --google-api-key $GOOGLE_API_KEY \
-  --output-format markdown
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sow<span class="w"> </span><span class="s2">&quot;Deprecate FakeDatabaseHelper&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>markdown
+</code></pre></div>
 <p>See <a href="../output-formats.html">Output Formats</a> for detailed structure of each format.</p>
 <hr />
-<p>!!! info "How this works"
-    When a dependency graph is available, Scatter builds a compact codebase index (project names, types, sprocs) and sends it alongside the SOW to the LLM. The AI parses the work request into structured targets grounded in actual code artifacts, Scatter runs consumer detection per target, then BFS traces transitive consumers up to <code>--max-depth</code>. Five AI enrichment tasks (parsing, risk, coupling, complexity, narrative) add context to the raw dependency data. Target names not in the index get their confidence halved automatically. See <a href="../reference/architecture.html">Architecture Overview</a> for the full pipeline.</p>
+<div class="admonition info">
+<p class="admonition-title">How this works</p>
+<p>When a dependency graph is available, Scatter builds a compact codebase index (project names, types, sprocs) and sends it alongside the SOW to the LLM. The AI parses the work request into structured targets grounded in actual code artifacts, Scatter runs consumer detection per target, then BFS traces transitive consumers up to <code>--max-depth</code>. Five AI enrichment tasks (parsing, risk, coupling, complexity, narrative) add context to the raw dependency data. Target names not in the index get their confidence halved automatically. See <a href="../reference/architecture.html">Architecture Overview</a> for the full pipeline.</p>
+</div>
 
 
 

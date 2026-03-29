@@ -79,7 +79,9 @@ def print_console_report(
 
         print()
         if graph_metrics_requested:
-            print(f"  {'Consumer':<{col_w}} {'Score':>7} {'Fan-In':>7} {'Fan-Out':>7} {'Instab.':>7} Solutions")
+            print(
+                f"  {'Consumer':<{col_w}} {'Score':>7} {'Fan-In':>7} {'Fan-Out':>7} {'Instab.':>7} Solutions"
+            )
             print(f"  {'-' * col_w} {'-' * 7} {'-' * 7} {'-' * 7} {'-' * 7} {'-' * 25}")
             for r in consumers:
                 solutions = ", ".join(r.consuming_solutions) if r.consuming_solutions else ""
@@ -87,9 +89,13 @@ def print_console_report(
                     fi = r.fan_in or 0
                     fo = r.fan_out or 0
                     inst = r.instability or 0.0
-                    print(f"  {r.consumer_project_name:<{col_w}} {r.coupling_score:>7.1f} {fi:>7} {fo:>7} {inst:>7.2f} {solutions}")
+                    print(
+                        f"  {r.consumer_project_name:<{col_w}} {r.coupling_score:>7.1f} {fi:>7} {fo:>7} {inst:>7.2f} {solutions}"
+                    )
                 else:
-                    print(f"  {r.consumer_project_name:<{col_w}} {'—':>7} {'—':>7} {'—':>7} {'—':>7} {solutions}")
+                    print(
+                        f"  {r.consumer_project_name:<{col_w}} {'—':>7} {'—':>7} {'—':>7} {'—':>7} {solutions}"
+                    )
         else:
             print(f"  {'Consumer':<{col_w}} Solutions")
             print(f"  {'-' * col_w} {'-' * 25}")
@@ -112,12 +118,16 @@ def print_console_report(
                 print(f"    {r.consumer_project_name}")
                 for file_rel_path, summary in r.consumer_file_summaries.items():
                     print(f"      {file_rel_path}")
-                    wrapped = textwrap.fill(summary, width=76, initial_indent="        ", subsequent_indent="        ")
+                    wrapped = textwrap.fill(
+                        summary, width=76, initial_indent="        ", subsequent_indent="        "
+                    )
                     print(wrapped)
 
         print()
 
-    print(f"Analysis complete. {len(all_results)} consumer(s) found across {len(groups)} target(s).")
+    print(
+        f"Analysis complete. {len(all_results)} consumer(s) found across {len(groups)} target(s)."
+    )
 
 
 def render_tree(consumers: List[EnrichedConsumer]) -> List[str]:

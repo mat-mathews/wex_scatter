@@ -1467,8 +1467,8 @@
 <h1 id="claude-code-skills">Claude Code Skills<a class="headerlink" href="#claude-code-skills" title="Permanent link">&para;</a></h1>
 <p>Scatter ships with five Claude Code skills that let engineers interact with the analysis engine through natural language instead of CLI flags.</p>
 <h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">bash tools/setup-claude-skills.sh
-</code></pre>
+<div class="highlight"><pre><span></span><code>bash<span class="w"> </span>tools/setup-claude-skills.sh
+</code></pre></div>
 <p>This symlinks the skills from <code>tools/claude-skills/</code> into <code>.claude/skills/</code> where Claude Code auto-discovers them.</p>
 <h2 id="available-skills">Available Skills<a class="headerlink" href="#available-skills" title="Permanent link">&para;</a></h2>
 <h3 id="auto-invoked">Auto-invoked<a class="headerlink" href="#auto-invoked" title="Permanent link">&para;</a></h3>
@@ -1529,8 +1529,8 @@
 <p>Claude runs the scatter command, reads the structured output, and responds with a narrative summary tailored to your question.</p>
 <h2 id="smoke-testing">Smoke Testing<a class="headerlink" href="#smoke-testing" title="Permanent link">&para;</a></h2>
 <p>Verify the skill commands work:</p>
-<pre><code class="language-bash">bash tools/smoke-test-claude-skills.sh
-</code></pre>
+<div class="highlight"><pre><span></span><code>bash<span class="w"> </span>tools/smoke-test-claude-skills.sh
+</code></pre></div>
 <p>This runs each scatter command (without Claude) against the sample projects. Set <code>GOOGLE_API_KEY</code> to include the impact analysis test.</p>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <ul>

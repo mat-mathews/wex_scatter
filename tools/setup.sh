@@ -84,8 +84,8 @@ fi
 # --- Summary ---
 echo -e "\n${BOLD}Ready!${RESET}\n"
 echo "  Run tests:          uv run pytest"
-echo "  Run full check:     bash tools/check.sh"
-echo "  Run quick check:    bash tools/check.sh --quick"
+echo "  Run full check:     bash tools/check.sh       (or pwsh tools/check.ps1)"
+echo "  Run quick check:    bash tools/check.sh --quick (or pwsh tools/check.ps1 -Quick)"
 echo ""
 echo -e "  ${YELLOW}Optional:${RESET} add a pre-push hook to run checks automatically:"
 echo "    echo 'bash tools/check.sh' > .git/hooks/pre-push && chmod +x .git/hooks/pre-push"

@@ -1539,19 +1539,19 @@ scatter's branch analysis and posts the blast radius as a PR comment.</p>
 <p>No marketplace action to install. No org approvals. One YAML file.</p>
 <h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
 <p>Copy the workflow template into your .NET repo:</p>
-<pre><code class="language-bash"># From the scatter repo
-cp tools/github-action/scatter-impact.yml \
-   /path/to/your-dotnet-repo/.github/workflows/
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="c1"># From the scatter repo</span>
+cp<span class="w"> </span>tools/github-action/scatter-impact.yml<span class="w"> </span><span class="se">\</span>
+<span class="w">   </span>/path/to/your-dotnet-repo/.github/workflows/
+</code></pre></div>
 <p>Push, open a PR, and scatter will comment with the impact report.</p>
 <h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
-<pre><code>PR opened/updated
+<div class="highlight"><pre><span></span><code>PR opened/updated
   → GitHub Actions triggers on .cs/.csproj/.sln changes
   → Clones scatter, installs via uv (~30s)
   → Runs: scatter --branch-name &lt;pr-branch&gt; --output-format markdown
   → Posts markdown report as PR comment
   → On subsequent pushes, updates the same comment
-</code></pre>
+</code></pre></div>
 <p>The workflow uses <code>--branch-name</code> mode, which:</p>
 <ol>
 <li>Diffs the PR branch against the base branch</li>
@@ -1586,12 +1586,12 @@ with a branch name, tag, or commit SHA. Defaults to <code>main</code>.</p>
 for all options.</p>
 <h3 id="graph-caching">Graph Caching<a class="headerlink" href="#graph-caching" title="Permanent link">&para;</a></h3>
 <p>For large repos, cache the dependency graph between runs:</p>
-<pre><code class="language-yaml">- name: Cache scatter graph
-  uses: actions/cache@v4
-  with:
-    path: .scatter/
-    key: scatter-graph-${{ hashFiles('**/*.csproj') }}
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Cache scatter graph</span>
+<span class="w">  </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/cache@v4</span>
+<span class="w">  </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.scatter/</span>
+<span class="w">    </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scatter-graph-${{ hashFiles(&#39;**/*.csproj&#39;) }}</span>
+</code></pre></div>
 <h2 id="permissions">Permissions<a class="headerlink" href="#permissions" title="Permanent link">&para;</a></h2>
 <p>Only built-in GitHub permissions:</p>
 <table>

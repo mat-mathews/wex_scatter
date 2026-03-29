@@ -1716,11 +1716,11 @@
 <h2 id="coupling-metrics">Coupling Metrics<a class="headerlink" href="#coupling-metrics" title="Permanent link">&para;</a></h2>
 <h3 id="compute_all_metrics">compute_all_metrics<a class="headerlink" href="#compute_all_metrics" title="Permanent link">&para;</a></h3>
 <p>Computes structural metrics for every node in the graph in one build: O(N + E).</p>
-<pre><code class="language-python">def compute_all_metrics(
-    graph: DependencyGraph,
-    coupling_weights: Optional[Dict[str, float]] = None,
-) -&gt; Dict[str, ProjectMetrics]:
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_all_metrics</span><span class="p">(</span>
+    <span class="n">graph</span><span class="p">:</span> <span class="n">DependencyGraph</span><span class="p">,</span>
+    <span class="n">coupling_weights</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ProjectMetrics</span><span class="p">]:</span>
+</code></pre></div>
 <p>Returns a <code>Dict[str, ProjectMetrics]</code> keyed by project name.</p>
 <h3 id="the-metrics">The Metrics<a class="headerlink" href="#the-metrics" title="Permanent link">&para;</a></h3>
 <table>
@@ -1781,32 +1781,32 @@
 </table>
 <h3 id="coupling-score-calculation">Coupling Score Calculation<a class="headerlink" href="#coupling-score-calculation" title="Permanent link">&para;</a></h3>
 <p>The coupling score uses configurable weights per edge type:</p>
-<pre><code class="language-python">DEFAULT_COUPLING_WEIGHTS = {
-    &quot;project_reference&quot;: 1.0,
-    &quot;namespace_usage&quot;: 0.5,
-    &quot;type_usage&quot;: 0.3,
-    &quot;sproc_shared&quot;: 0.8,
-}
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">DEFAULT_COUPLING_WEIGHTS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;project_reference&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="s2">&quot;namespace_usage&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+    <span class="s2">&quot;type_usage&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+    <span class="s2">&quot;sproc_shared&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>
+<span class="p">}</span>
+</code></pre></div>
 <p>For each node, the score is:</p>
-<pre><code>coupling_score = sum(weight[e.edge_type] * e.weight for e in outgoing_edges)
+<div class="highlight"><pre><span></span><code>coupling_score = sum(weight[e.edge_type] * e.weight for e in outgoing_edges)
                + sum(weight[e.edge_type] * e.weight for e in incoming_edges)
-</code></pre>
+</code></pre></div>
 <p>Where <code>e.weight</code> is the edge's own weight (e.g., the number of files evidencing a namespace_usage edge). So a <code>namespace_usage</code> edge with evidence in 5 files contributes <code>0.5 * 5 = 2.5</code> to the coupling score.</p>
 <p>Override these weights via <code>.scatter.yaml</code>:</p>
-<pre><code class="language-yaml">graph:
-  coupling_weights:
-    project_reference: 1.0
-    sproc_shared: 0.8
-    namespace_usage: 0.5
-    type_usage: 0.3
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="nt">graph</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">coupling_weights</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">project_reference</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+<span class="w">    </span><span class="nt">sproc_shared</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span>
+<span class="w">    </span><span class="nt">namespace_usage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+<span class="w">    </span><span class="nt">type_usage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
+</code></pre></div>
 <h3 id="rank_by_coupling">rank_by_coupling<a class="headerlink" href="#rank_by_coupling" title="Permanent link">&para;</a></h3>
 <p>Sorts projects by coupling_score descending and returns the top N:</p>
-<pre><code class="language-python">def rank_by_coupling(
-    metrics: Dict[str, ProjectMetrics], top_n: int = 10
-) -&gt; List[Tuple[str, ProjectMetrics]]:
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">rank_by_coupling</span><span class="p">(</span>
+    <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ProjectMetrics</span><span class="p">],</span> <span class="n">top_n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ProjectMetrics</span><span class="p">]]:</span>
+</code></pre></div>
 <h3 id="interpreting-metrics-an-example">Interpreting Metrics: An Example<a class="headerlink" href="#interpreting-metrics-an-example" title="Permanent link">&para;</a></h3>
 <p>Consider a codebase with these projects:</p>
 <table>
@@ -1856,74 +1856,74 @@
 <h2 id="cycle-detection">Cycle Detection<a class="headerlink" href="#cycle-detection" title="Permanent link">&para;</a></h2>
 <h3 id="detect_cycles">detect_cycles<a class="headerlink" href="#detect_cycles" title="Permanent link">&para;</a></h3>
 <p>Finds all circular dependency groups using Tarjan's strongly connected components algorithm.</p>
-<pre><code class="language-python">def detect_cycles(
-    graph: DependencyGraph,
-    edge_types: Optional[Set[str]] = None,
-) -&gt; List[CycleGroup]:
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">detect_cycles</span><span class="p">(</span>
+    <span class="n">graph</span><span class="p">:</span> <span class="n">DependencyGraph</span><span class="p">,</span>
+    <span class="n">edge_types</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">CycleGroup</span><span class="p">]:</span>
+</code></pre></div>
 <p><strong>Default behavior:</strong> Only considers <code>project_reference</code> edges. Namespace and type usage cycles are common and benign -- they indicate shared conventions, not build-order violations. Pass <code>edge_types</code> explicitly to include other edge types.</p>
 <p><strong>Returns:</strong> <code>List[CycleGroup]</code> sorted by size ascending. Smallest cycles first because they are typically the easiest to break.</p>
 <h3 id="the-algorithm-iterative-tarjans-scc">The Algorithm: Iterative Tarjan's SCC<a class="headerlink" href="#the-algorithm-iterative-tarjans-scc" title="Permanent link">&para;</a></h3>
 <p>Standard Tarjan's SCC is recursive, which hits Python's recursion limit (~1000) on large graphs. The implementation uses an explicit call stack:</p>
-<pre><code class="language-python"># Explicit call stack: (node, neighbor_list, neighbor_index)
-call_stack: List[Tuple[str, list, int]] = []
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="c1"># Explicit call stack: (node, neighbor_list, neighbor_index)</span>
+<span class="n">call_stack</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+</code></pre></div>
 <p>Each frame stores the node being processed and an index into its sorted neighbor list. When all neighbors are processed, the frame is popped and lowlink values propagate upward. This is functionally identical to the recursive version but handles graphs of any size.</p>
 <p><strong>Complexity:</strong> O(N + E) time, O(N) space.</p>
 <p><strong>Determinism:</strong> Nodes and neighbors are processed in sorted order, so the same graph always produces the same SCCs in the same order.</p>
 <h3 id="cyclegroup">CycleGroup<a class="headerlink" href="#cyclegroup" title="Permanent link">&para;</a></h3>
-<pre><code class="language-python">@dataclass
-class CycleGroup:
-    projects: List[str]        # Project names in the SCC, sorted alphabetically
-    shortest_cycle: List[str]  # One representative shortest cycle within the SCC
-    edge_count: int            # Number of edges within the SCC
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CycleGroup</span><span class="p">:</span>
+    <span class="n">projects</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>        <span class="c1"># Project names in the SCC, sorted alphabetically</span>
+    <span class="n">shortest_cycle</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>  <span class="c1"># One representative shortest cycle within the SCC</span>
+    <span class="n">edge_count</span><span class="p">:</span> <span class="nb">int</span>            <span class="c1"># Number of edges within the SCC</span>
 
-    @property
-    def size(self) -&gt; int:
-        return len(self.projects)
-</code></pre>
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">size</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">projects</span><span class="p">)</span>
+</code></pre></div>
 <p>The <code>shortest_cycle</code> is found via BFS from each node in the SCC (or just the first node for SCCs larger than 50 projects). It uses predecessor-based path reconstruction rather than storing full paths per node, keeping memory at O(N) instead of O(N^2):</p>
-<pre><code class="language-python"># BFS to find shortest path back to start
-predecessor: Dict[str, str] = {}
-queue: deque[str] = deque()
+<div class="highlight"><pre><span></span><code><span class="c1"># BFS to find shortest path back to start</span>
+<span class="n">predecessor</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">queue</span><span class="p">:</span> <span class="n">deque</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
 
-for neighbor in sorted(adjacency.get(start, set())):
-    if neighbor == start:
-        return [start]  # Self-loop
-    predecessor[neighbor] = start
-    queue.append(neighbor)
+<span class="k">for</span> <span class="n">neighbor</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">adjacency</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="nb">set</span><span class="p">())):</span>
+    <span class="k">if</span> <span class="n">neighbor</span> <span class="o">==</span> <span class="n">start</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">start</span><span class="p">]</span>  <span class="c1"># Self-loop</span>
+    <span class="n">predecessor</span><span class="p">[</span><span class="n">neighbor</span><span class="p">]</span> <span class="o">=</span> <span class="n">start</span>
+    <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">neighbor</span><span class="p">)</span>
 
-# ... standard BFS, reconstruct path from predecessor chain on hit
-</code></pre>
+<span class="c1"># ... standard BFS, reconstruct path from predecessor chain on hit</span>
+</code></pre></div>
 <h3 id="programmatic-usage">Programmatic Usage<a class="headerlink" href="#programmatic-usage" title="Permanent link">&para;</a></h3>
-<pre><code class="language-python">from scatter.core.graph import DependencyGraph
-from scatter.analyzers.coupling_analyzer import (
-    compute_all_metrics,
-    rank_by_coupling,
-    detect_cycles,
-)
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">scatter.core.graph</span><span class="w"> </span><span class="kn">import</span> <span class="n">DependencyGraph</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scatter.analyzers.coupling_analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">compute_all_metrics</span><span class="p">,</span>
+    <span class="n">rank_by_coupling</span><span class="p">,</span>
+    <span class="n">detect_cycles</span><span class="p">,</span>
+<span class="p">)</span>
 
-# Load or build your graph
-graph: DependencyGraph = ...
+<span class="c1"># Load or build your graph</span>
+<span class="n">graph</span><span class="p">:</span> <span class="n">DependencyGraph</span> <span class="o">=</span> <span class="o">...</span>
 
-# Compute metrics for all nodes
-metrics = compute_all_metrics(graph)
+<span class="c1"># Compute metrics for all nodes</span>
+<span class="n">metrics</span> <span class="o">=</span> <span class="n">compute_all_metrics</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
 
-# Get the 5 most coupled projects
-top_5 = rank_by_coupling(metrics, top_n=5)
-for name, m in top_5:
-    print(f&quot;{name}: score={m.coupling_score:.1f}, instability={m.instability:.2f}&quot;)
+<span class="c1"># Get the 5 most coupled projects</span>
+<span class="n">top_5</span> <span class="o">=</span> <span class="n">rank_by_coupling</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">top_n</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">top_5</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: score=</span><span class="si">{</span><span class="n">m</span><span class="o">.</span><span class="n">coupling_score</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">, instability=</span><span class="si">{</span><span class="n">m</span><span class="o">.</span><span class="n">instability</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-# Detect cycles (project_reference edges only, the default)
-cycles = detect_cycles(graph)
-for cg in cycles:
-    print(f&quot;Cycle ({cg.size} projects): {' -&gt; '.join(cg.shortest_cycle)}&quot;)
-    print(f&quot;  Projects: {', '.join(cg.projects)}&quot;)
-    print(f&quot;  Internal edges: {cg.edge_count}&quot;)
+<span class="c1"># Detect cycles (project_reference edges only, the default)</span>
+<span class="n">cycles</span> <span class="o">=</span> <span class="n">detect_cycles</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">cg</span> <span class="ow">in</span> <span class="n">cycles</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cycle (</span><span class="si">{</span><span class="n">cg</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2"> projects): </span><span class="si">{</span><span class="s1">&#39; -&gt; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cg</span><span class="o">.</span><span class="n">shortest_cycle</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Projects: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cg</span><span class="o">.</span><span class="n">projects</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Internal edges: </span><span class="si">{</span><span class="n">cg</span><span class="o">.</span><span class="n">edge_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-# Detect cycles including namespace_usage edges
-all_cycles = detect_cycles(graph, edge_types={&quot;project_reference&quot;, &quot;namespace_usage&quot;})
-</code></pre>
+<span class="c1"># Detect cycles including namespace_usage edges</span>
+<span class="n">all_cycles</span> <span class="o">=</span> <span class="n">detect_cycles</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">edge_types</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;project_reference&quot;</span><span class="p">,</span> <span class="s2">&quot;namespace_usage&quot;</span><span class="p">})</span>
+</code></pre></div>
 <h3 id="why-smallest-first-sorting">Why Smallest-First Sorting<a class="headerlink" href="#why-smallest-first-sorting" title="Permanent link">&para;</a></h3>
 <p>Cycles are sorted by size ascending because smaller cycles are:</p>
 <ol>
@@ -1936,23 +1936,23 @@ all_cycles = detect_cycles(graph, edge_types={&quot;project_reference&quot;, &qu
 <h2 id="solution-level-metrics">Solution-Level Metrics<a class="headerlink" href="#solution-level-metrics" title="Permanent link">&para;</a></h2>
 <p>When <code>.sln</code> files are present, Scatter computes coupling metrics at the solution level.</p>
 <h3 id="compute_solution_metrics">compute_solution_metrics<a class="headerlink" href="#compute_solution_metrics" title="Permanent link">&para;</a></h3>
-<pre><code class="language-python">def compute_solution_metrics(
-    graph: DependencyGraph,
-) -&gt; Tuple[Dict[str, SolutionMetrics], List[str]]:
-    # Returns (metrics_by_solution, bridge_projects)
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_solution_metrics</span><span class="p">(</span>
+    <span class="n">graph</span><span class="p">:</span> <span class="n">DependencyGraph</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">SolutionMetrics</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+    <span class="c1"># Returns (metrics_by_solution, bridge_projects)</span>
+</code></pre></div>
 <p>Uses a single-pass O(E) algorithm. For each edge, looks up which solutions the source and target belong to via <code>node.solutions</code>. Classifies the edge as internal or external for each relevant solution.</p>
 <h3 id="solutionmetrics">SolutionMetrics<a class="headerlink" href="#solutionmetrics" title="Permanent link">&para;</a></h3>
-<pre><code class="language-python">@dataclass
-class SolutionMetrics:
-    name: str
-    project_count: int
-    internal_edges: int          # Both endpoints in this solution
-    external_edges: int          # One endpoint outside this solution
-    cross_solution_ratio: float  # external / (internal + external)
-    incoming_solutions: List[str]
-    outgoing_solutions: List[str]
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SolutionMetrics</span><span class="p">:</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">project_count</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">internal_edges</span><span class="p">:</span> <span class="nb">int</span>          <span class="c1"># Both endpoints in this solution</span>
+    <span class="n">external_edges</span><span class="p">:</span> <span class="nb">int</span>          <span class="c1"># One endpoint outside this solution</span>
+    <span class="n">cross_solution_ratio</span><span class="p">:</span> <span class="nb">float</span>  <span class="c1"># external / (internal + external)</span>
+    <span class="n">incoming_solutions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">outgoing_solutions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+</code></pre></div>
 <h3 id="bridge-projects">Bridge Projects<a class="headerlink" href="#bridge-projects" title="Permanent link">&para;</a></h3>
 <p>Projects appearing in 3+ solutions. These are coupling bottlenecks across solution boundaries. Returned as a separate list alongside the metrics dict.</p>
 <h3 id="multi-solution-edge-classification">Multi-Solution Edge Classification<a class="headerlink" href="#multi-solution-edge-classification" title="Permanent link">&para;</a></h3>

@@ -1683,16 +1683,16 @@
 <p>Scatter's workhorse. Two compiled patterns in <code>scatter/core/models.py</code> handle the heavy lifting.</p>
 <h3 id="type_declaration_pattern">TYPE_DECLARATION_PATTERN<a class="headerlink" href="#type_declaration_pattern" title="Permanent link">&para;</a></h3>
 <p>The primary pattern that matches <code>class</code>, <code>struct</code>, <code>interface</code>, <code>enum</code>, and <code>record</code> declarations:</p>
-<pre><code class="language-python">TYPE_DECLARATION_PATTERN = re.compile(
-    r&quot;^\s*(?:public|internal|private|protected)?\s*&quot;       # Optional access modifier
-    r&quot;(?:static\s+|abstract\s+|sealed\s+|partial\s+|&quot;
-    r&quot;record\s+|readonly\s+|ref\s+)*&quot;                      # Optional keywords (any combination)
-    r&quot;(?:class|struct|interface|enum|record)\s+&quot;            # The type keyword itself
-    r&quot;([A-Za-z_][A-Za-z0-9_&lt;&gt;,\s]*?)&quot;                     # Capture group 1: type name (non-greedy)
-    r&quot;\s*(?::|{|where|&lt;|\(|;)&quot;,                            # Terminator: inheritance, brace, constraint, etc.
-    re.MULTILINE
-)
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">TYPE_DECLARATION_PATTERN</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+    <span class="sa">r</span><span class="s2">&quot;^\s*(?:public|internal|private|protected)?\s*&quot;</span>       <span class="c1"># Optional access modifier</span>
+    <span class="sa">r</span><span class="s2">&quot;(?:static\s+|abstract\s+|sealed\s+|partial\s+|&quot;</span>
+    <span class="sa">r</span><span class="s2">&quot;record\s+|readonly\s+|ref\s+)*&quot;</span>                      <span class="c1"># Optional keywords (any combination)</span>
+    <span class="sa">r</span><span class="s2">&quot;(?:class|struct|interface|enum|record)\s+&quot;</span>            <span class="c1"># The type keyword itself</span>
+    <span class="sa">r</span><span class="s2">&quot;([A-Za-z_][A-Za-z0-9_&lt;&gt;,\s]*?)&quot;</span>                     <span class="c1"># Capture group 1: type name (non-greedy)</span>
+    <span class="sa">r</span><span class="s2">&quot;\s*(?::|{|where|&lt;|\(|;)&quot;</span><span class="p">,</span>                            <span class="c1"># Terminator: inheritance, brace, constraint, etc.</span>
+    <span class="n">re</span><span class="o">.</span><span class="n">MULTILINE</span>
+<span class="p">)</span>
+</code></pre></div>
 <p>Breaking that down group by group:</p>
 <table>
 <thead>
@@ -1739,15 +1739,15 @@
 <p>So <code>Repository&lt;T, K&gt;</code> becomes <code>Repository</code>. This is intentional -- consumers reference the type by its base name, not its generic arity.</p>
 <h3 id="delegate_declaration_pattern">DELEGATE_DECLARATION_PATTERN<a class="headerlink" href="#delegate_declaration_pattern" title="Permanent link">&para;</a></h3>
 <p>Handles the oddball syntax of delegate declarations:</p>
-<pre><code class="language-python">DELEGATE_DECLARATION_PATTERN = re.compile(
-    r&quot;^\s*(?:public|internal|private|protected)?\s*&quot;
-    r&quot;delegate\s+&quot;
-    r&quot;[A-Za-z_][A-Za-z0-9_&lt;&gt;,\s\[\]\.]*?\s+&quot;   # Return type
-    r&quot;([A-Za-z_][A-Za-z0-9_]*)&quot;                  # Delegate name (captured)
-    r&quot;\s*[&lt;(]&quot;,                                   # Generic params or parameter list
-    re.MULTILINE
-)
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">DELEGATE_DECLARATION_PATTERN</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+    <span class="sa">r</span><span class="s2">&quot;^\s*(?:public|internal|private|protected)?\s*&quot;</span>
+    <span class="sa">r</span><span class="s2">&quot;delegate\s+&quot;</span>
+    <span class="sa">r</span><span class="s2">&quot;[A-Za-z_][A-Za-z0-9_&lt;&gt;,\s\[\]\.]*?\s+&quot;</span>   <span class="c1"># Return type</span>
+    <span class="sa">r</span><span class="s2">&quot;([A-Za-z_][A-Za-z0-9_]*)&quot;</span>                  <span class="c1"># Delegate name (captured)</span>
+    <span class="sa">r</span><span class="s2">&quot;\s*[&lt;(]&quot;</span><span class="p">,</span>                                   <span class="c1"># Generic params or parameter list</span>
+    <span class="n">re</span><span class="o">.</span><span class="n">MULTILINE</span>
+<span class="p">)</span>
+</code></pre></div>
 <p>Delegates are types too -- and they show up as project dependencies when other projects reference them.</p>
 <h3 id="key-behavior-all-types-all-the-time">Key Behavior: All Types, All the Time<a class="headerlink" href="#key-behavior-all-types-all-the-time" title="Permanent link">&para;</a></h3>
 <p>Here's the thing that catches people off guard. When Scatter operates in regex mode, it extracts <strong>every type declared in a changed file</strong> -- not just the ones the diff touched. If you change a comment inside <code>MyService</code> in a file that also declares <code>MyHelper</code> and <code>IMyRepository</code>, Scatter reports all three as potentially affected.</p>
@@ -1771,7 +1771,7 @@
 </ol>
 <p>The prompt asks the model to identify which top-level type declarations had their body, signature, or members "meaningfully changed" in the diff.</p>
 <h3 id="the-prompt">The Prompt<a class="headerlink" href="#the-prompt" title="Permanent link">&para;</a></h3>
-<pre><code>Analyze the following C# file and its git diff. Identify which top-level
+<div class="highlight"><pre><span></span><code>Analyze the following C# file and its git diff. Identify which top-level
 type declarations (class, struct, interface, enum) had their body, signature,
 or members meaningfully changed in the diff.
 
@@ -1780,7 +1780,7 @@ Rules:
 - Do NOT include types that merely appear in the same file but were not changed
 - For comment-only or using/import-only changes, return an empty array
 - Return ONLY a JSON array of type name strings, nothing else
-</code></pre>
+</code></pre></div>
 <h3 id="response-parsing">Response Parsing<a class="headerlink" href="#response-parsing" title="Permanent link">&para;</a></h3>
 <p>The response goes through a hardening pipeline:</p>
 <ol>
@@ -1856,8 +1856,8 @@ Rules:
 <hr />
 <h2 id="find_enclosing_type_name"><code>find_enclosing_type_name()</code><a class="headerlink" href="#find_enclosing_type_name" title="Permanent link">&para;</a></h2>
 <p>A supporting utility in <code>scatter/scanners/type_scanner.py</code>. Given a character position in a <code>.cs</code> file, it walks backward through the content to find the nearest enclosing type declaration.</p>
-<pre><code class="language-python">def find_enclosing_type_name(content: str, match_start_index: int) -&gt; Optional[str]:
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">find_enclosing_type_name</span><span class="p">(</span><span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">match_start_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</code></pre></div>
 <p>The algorithm:</p>
 <ol>
 <li>Compile a multiline regex for type declarations (similar to <code>TYPE_DECLARATION_PATTERN</code> but with <code>re.MULTILINE</code>)</li>

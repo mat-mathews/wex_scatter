@@ -1692,16 +1692,16 @@
 <p>The page Anya asked for. How to add features, tests, and scanners to Scatter without breaking what already works.</p>
 <hr />
 <h2 id="development-setup">Development Setup<a class="headerlink" href="#development-setup" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">git clone &lt;repo-url&gt;
-cd scatter
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>&lt;repo-url&gt;
+<span class="nb">cd</span><span class="w"> </span>scatter
 
-# One-command setup
-bash tools/setup.sh
-</code></pre>
+<span class="c1"># One-command setup</span>
+bash<span class="w"> </span>tools/setup.sh
+</code></pre></div>
 <p>This checks Python &gt;= 3.10, installs dependencies via <a href="https://docs.astral.sh/uv/">uv</a>, configures git, and links Claude Code skills. It's idempotent — run it again any time.</p>
 <p>Verify everything works:</p>
-<pre><code class="language-bash">bash tools/check.sh
-</code></pre>
+<div class="highlight"><pre><span></span><code>bash<span class="w"> </span>tools/check.sh
+</code></pre></div>
 <p>You should see all four checks pass (ruff check, ruff format, mypy, pytest). If anything fails, fix your environment before writing code.</p>
 <hr />
 <h2 id="code-organization">Code Organization<a class="headerlink" href="#code-organization" title="Permanent link">&para;</a></h2>
@@ -1710,7 +1710,7 @@ bash tools/setup.sh
 <p><strong>Analyzers transform.</strong> They take scanner output and build structured data -- graphs, metrics, clusters.</p>
 <p><strong>Reporters output.</strong> They take analyzer results and produce human/machine-readable formats.</p>
 <p>All three layers are implemented as <strong>free functions</strong>, not methods on god objects. A scanner is a function that takes a path and returns data. An analyzer is a function that takes scanner output and returns richer data. A reporter is a function that takes analysis results and returns a string or writes a file.</p>
-<pre><code>scatter/
+<div class="highlight"><pre><span></span><code>scatter/
   scanners/        # file_scanner, project_scanner, type_scanner, sproc_scanner, db_scanner
   analyzers/       # graph_builder, consumer_analyzer, coupling_analyzer, domain_analyzer,
                    #   health_analyzer, impact_analyzer, git_analyzer, graph_enrichment
@@ -1722,7 +1722,7 @@ bash tools/setup.sh
   cli.py           # Mode handlers and dispatch
   cli_parser.py    # Argument parser definition
   config.py        # Config loading and layering
-</code></pre>
+</code></pre></div>
 <hr />
 <h2 id="adding-a-new-scanner">Adding a New Scanner<a class="headerlink" href="#adding-a-new-scanner" title="Permanent link">&para;</a></h2>
 <p>Scanners live in <code>scatter/scanners/</code>. They're the simplest things to add.</p>
@@ -1730,33 +1730,33 @@ bash tools/setup.sh
 <ol>
 <li><strong>Create <code>scatter/scanners/your_scanner.py</code></strong></li>
 </ol>
-<pre><code class="language-python">&quot;&quot;&quot;Scan for &lt;whatever&gt; patterns in .cs files.&quot;&quot;&quot;
-from pathlib import Path
-from typing import List, Dict
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Scan for &lt;whatever&gt; patterns in .cs files.&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span>
 
-def scan_your_thing(
-    search_scope: Path,
-    project_cs_map: Dict[str, List[Path]] | None = None,
-) -&gt; List[dict]:
-    &quot;&quot;&quot;Scan .cs files for &lt;your pattern&gt;.
+<span class="k">def</span><span class="w"> </span><span class="nf">scan_your_thing</span><span class="p">(</span>
+    <span class="n">search_scope</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">project_cs_map</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Path</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Scan .cs files for &lt;your pattern&gt;.</span>
 
-    Args:
-        search_scope: Root directory to scan.
-        project_cs_map: Optional pre-computed project -&gt; cs files mapping.
-            If provided, avoids redundant file discovery.
+<span class="sd">    Args:</span>
+<span class="sd">        search_scope: Root directory to scan.</span>
+<span class="sd">        project_cs_map: Optional pre-computed project -&gt; cs files mapping.</span>
+<span class="sd">            If provided, avoids redundant file discovery.</span>
 
-    Returns:
-        List of findings with project, file, and match details.
-    &quot;&quot;&quot;
-    results = []
-    # Your scanning logic here
-    return results
-</code></pre>
+<span class="sd">    Returns:</span>
+<span class="sd">        List of findings with project, file, and match details.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># Your scanning logic here</span>
+    <span class="k">return</span> <span class="n">results</span>
+</code></pre></div>
 <ol>
 <li><strong>Export from <code>scatter/scanners/__init__.py</code></strong> if other modules need it:</li>
 </ol>
-<pre><code class="language-python">from scatter.scanners.your_scanner import scan_your_thing
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">scatter.scanners.your_scanner</span><span class="w"> </span><span class="kn">import</span> <span class="n">scan_your_thing</span>
+</code></pre></div>
 <ol>
 <li>
 <p><strong>Wire into <code>graph_builder.py</code></strong> if your scanner produces edges. Add a stage after the existing extraction stages -- follow the pattern in <code>_build_type_usage_edges()</code> or the DB scanning stage.</p>
@@ -1781,52 +1781,52 @@ def scan_your_thing(
 <ol>
 <li><strong>Create <code>scatter/reports/your_reporter.py</code></strong></li>
 </ol>
-<pre><code class="language-python">&quot;&quot;&quot;Your output format reporter.&quot;&quot;&quot;
-from pathlib import Path
-from typing import List, Optional
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;Your output format reporter.&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
 
-def build_your_report(
-    consumers: List[dict],
-    filter_pipeline,
-    target_name: str,
-    # ... whatever data your format needs
-) -&gt; str:
-    &quot;&quot;&quot;Build the report content as a string.
+<span class="k">def</span><span class="w"> </span><span class="nf">build_your_report</span><span class="p">(</span>
+    <span class="n">consumers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span>
+    <span class="n">filter_pipeline</span><span class="p">,</span>
+    <span class="n">target_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="c1"># ... whatever data your format needs</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the report content as a string.</span>
 
-    Returns the formatted string -- does NOT write to disk.
-    &quot;&quot;&quot;
-    lines = []
-    # Build your output
-    return &quot;\n&quot;.join(lines)
+<span class="sd">    Returns the formatted string -- does NOT write to disk.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># Build your output</span>
+    <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
 
 
-def write_your_report(
-    content: str,
-    output_file: Optional[Path] = None,
-) -&gt; None:
-    &quot;&quot;&quot;Write report to file or stdout.&quot;&quot;&quot;
-    if output_file:
-        output_file.write_text(content, encoding=&quot;utf-8&quot;)
-    else:
-        print(content)
-</code></pre>
+<span class="k">def</span><span class="w"> </span><span class="nf">write_your_report</span><span class="p">(</span>
+    <span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write report to file or stdout.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">output_file</span><span class="p">:</span>
+        <span class="n">output_file</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+</code></pre></div>
 <p>The split between <code>build_*()</code> and <code>write_*()</code> is intentional. <code>build_*()</code> is testable without touching the filesystem. <code>write_*()</code> handles I/O.</p>
 <ol>
 <li><strong>Add to <code>--output-format</code> choices in <code>cli_parser.py</code></strong>:</li>
 </ol>
-<pre><code class="language-python">parser.add_argument(
-    &quot;--output-format&quot;,
-    choices=[&quot;console&quot;, &quot;csv&quot;, &quot;json&quot;, &quot;markdown&quot;, &quot;your_format&quot;],
-    default=&quot;console&quot;,
-)
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+    <span class="s2">&quot;--output-format&quot;</span><span class="p">,</span>
+    <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;console&quot;</span><span class="p">,</span> <span class="s2">&quot;csv&quot;</span><span class="p">,</span> <span class="s2">&quot;json&quot;</span><span class="p">,</span> <span class="s2">&quot;markdown&quot;</span><span class="p">,</span> <span class="s2">&quot;your_format&quot;</span><span class="p">],</span>
+    <span class="n">default</span><span class="o">=</span><span class="s2">&quot;console&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
 <ol>
 <li><strong>Wire dispatch in <code>cli.py</code></strong>. Find the output dispatch section in the mode handler and add your format:</li>
 </ol>
-<pre><code class="language-python">if output_format == &quot;your_format&quot;:
-    content = build_your_report(consumers, filter_pipeline, target_name)
-    write_your_report(content, output_file)
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="n">output_format</span> <span class="o">==</span> <span class="s2">&quot;your_format&quot;</span><span class="p">:</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">build_your_report</span><span class="p">(</span><span class="n">consumers</span><span class="p">,</span> <span class="n">filter_pipeline</span><span class="p">,</span> <span class="n">target_name</span><span class="p">)</span>
+    <span class="n">write_your_report</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">output_file</span><span class="p">)</span>
+</code></pre></div>
 <ol>
 <li><strong>Add tests.</strong> Test <code>build_your_report()</code> directly -- pass it known inputs and assert the output string contains what you expect.</li>
 </ol>
@@ -1837,48 +1837,48 @@ def write_your_report(
 <ol>
 <li><strong>Create <code>scatter/ai/tasks/your_task.py</code></strong></li>
 </ol>
-<pre><code class="language-python">&quot;&quot;&quot;AI task: &lt;describe what it analyzes&gt;.&quot;&quot;&quot;
-import json
-import logging
-from typing import Optional
+<div class="highlight"><pre><span></span><code><span class="sd">&quot;&quot;&quot;AI task: &lt;describe what it analyzes&gt;.&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
 
-from scatter.ai.base import AIProvider, AITaskType, AnalysisResult
+<span class="kn">from</span><span class="w"> </span><span class="nn">scatter.ai.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">AIProvider</span><span class="p">,</span> <span class="n">AITaskType</span><span class="p">,</span> <span class="n">AnalysisResult</span>
 
 
-def run_your_task(
-    provider: AIProvider,
-    context: str,
-    # ... task-specific parameters
-) -&gt; Optional[dict]:
-    &quot;&quot;&quot;Run &lt;your task&gt; analysis.
+<span class="k">def</span><span class="w"> </span><span class="nf">run_your_task</span><span class="p">(</span>
+    <span class="n">provider</span><span class="p">:</span> <span class="n">AIProvider</span><span class="p">,</span>
+    <span class="n">context</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="c1"># ... task-specific parameters</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run &lt;your task&gt; analysis.</span>
 
-    Returns parsed result dict, or None on failure.
-    &quot;&quot;&quot;
-    if not provider.supports(AITaskType.YOUR_TASK_TYPE):
-        return None
+<span class="sd">    Returns parsed result dict, or None on failure.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">provider</span><span class="o">.</span><span class="n">supports</span><span class="p">(</span><span class="n">AITaskType</span><span class="o">.</span><span class="n">YOUR_TASK_TYPE</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
 
-    prompt = f&quot;Your prompt here with {context}&quot;
+    <span class="n">prompt</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Your prompt here with </span><span class="si">{</span><span class="n">context</span><span class="si">}</span><span class="s2">&quot;</span>
 
-    try:
-        result: AnalysisResult = provider.analyze(
-            prompt=prompt,
-            context=context,
-            task_type=AITaskType.YOUR_TASK_TYPE,
-        )
-        return json.loads(result.response)
-    except (json.JSONDecodeError, Exception) as e:
-        logging.warning(f&quot;AI task failed: {e}&quot;)
-        return None
-</code></pre>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span><span class="p">:</span> <span class="n">AnalysisResult</span> <span class="o">=</span> <span class="n">provider</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span>
+            <span class="n">prompt</span><span class="o">=</span><span class="n">prompt</span><span class="p">,</span>
+            <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span>
+            <span class="n">task_type</span><span class="o">=</span><span class="n">AITaskType</span><span class="o">.</span><span class="n">YOUR_TASK_TYPE</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">response</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;AI task failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+</code></pre></div>
 <ol>
 <li><strong>Add task type to <code>AITaskType</code> enum in <code>scatter/ai/base.py</code></strong>:</li>
 </ol>
-<pre><code class="language-python">class AITaskType(Enum):
-    SUMMARIZATION = &quot;summarization&quot;
-    SYMBOL_EXTRACTION = &quot;symbol_extraction&quot;
-    # ... existing types ...
-    YOUR_TASK_TYPE = &quot;your_task_type&quot;
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AITaskType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">SUMMARIZATION</span> <span class="o">=</span> <span class="s2">&quot;summarization&quot;</span>
+    <span class="n">SYMBOL_EXTRACTION</span> <span class="o">=</span> <span class="s2">&quot;symbol_extraction&quot;</span>
+    <span class="c1"># ... existing types ...</span>
+    <span class="n">YOUR_TASK_TYPE</span> <span class="o">=</span> <span class="s2">&quot;your_task_type&quot;</span>
+</code></pre></div>
 <ol>
 <li>
 <p><strong>Implement <code>supports()</code> in the provider(s).</strong> In <code>scatter/ai/providers/gemini_provider.py</code> (and <code>wex_provider.py</code> when implemented), add your task type to the supported set.</p>
@@ -1890,67 +1890,67 @@ def run_your_task(
 <p><strong>Mock the provider in tests. Never make real API calls.</strong> Note: <code>WexProvider(api_key="test")</code> can be instantiated for config validation tests, but all its analysis methods raise <code>NotImplementedError</code> until the API contract is implemented.</p>
 </li>
 </ol>
-<pre><code class="language-python">from unittest.mock import MagicMock
-from scatter.ai.base import AITaskType, AnalysisResult
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">MagicMock</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scatter.ai.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">AITaskType</span><span class="p">,</span> <span class="n">AnalysisResult</span>
 
-def test_your_task_happy_path():
-    provider = MagicMock()
-    provider.supports.return_value = True
-    provider.analyze.return_value = AnalysisResult(
-        response='{&quot;key&quot;: &quot;value&quot;}',
-        confidence=0.9,
-    )
+<span class="k">def</span><span class="w"> </span><span class="nf">test_your_task_happy_path</span><span class="p">():</span>
+    <span class="n">provider</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">()</span>
+    <span class="n">provider</span><span class="o">.</span><span class="n">supports</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">provider</span><span class="o">.</span><span class="n">analyze</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">AnalysisResult</span><span class="p">(</span>
+        <span class="n">response</span><span class="o">=</span><span class="s1">&#39;{&quot;key&quot;: &quot;value&quot;}&#39;</span><span class="p">,</span>
+        <span class="n">confidence</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
+    <span class="p">)</span>
 
-    result = run_your_task(provider, context=&quot;test input&quot;)
-    assert result == {&quot;key&quot;: &quot;value&quot;}
+    <span class="n">result</span> <span class="o">=</span> <span class="n">run_your_task</span><span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="s2">&quot;test input&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">result</span> <span class="o">==</span> <span class="p">{</span><span class="s2">&quot;key&quot;</span><span class="p">:</span> <span class="s2">&quot;value&quot;</span><span class="p">}</span>
 
-def test_your_task_api_failure():
-    provider = MagicMock()
-    provider.supports.return_value = True
-    provider.analyze.side_effect = Exception(&quot;API timeout&quot;)
+<span class="k">def</span><span class="w"> </span><span class="nf">test_your_task_api_failure</span><span class="p">():</span>
+    <span class="n">provider</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">()</span>
+    <span class="n">provider</span><span class="o">.</span><span class="n">supports</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">provider</span><span class="o">.</span><span class="n">analyze</span><span class="o">.</span><span class="n">side_effect</span> <span class="o">=</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;API timeout&quot;</span><span class="p">)</span>
 
-    result = run_your_task(provider, context=&quot;test input&quot;)
-    assert result is None
-</code></pre>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">run_your_task</span><span class="p">(</span><span class="n">provider</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="s2">&quot;test input&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span>
+</code></pre></div>
 <hr />
 <h2 id="running-tests">Running Tests<a class="headerlink" href="#running-tests" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash"># Full local CI check (lint + format + mypy + pytest) — run before pushing
-bash tools/check.sh
+<div class="highlight"><pre><span></span><code><span class="c1"># Full local CI check (lint + format + mypy + pytest) — run before pushing</span>
+bash<span class="w"> </span>tools/check.sh
 
-# Quick lint-only (~2 seconds)
-bash tools/check.sh --quick
+<span class="c1"># Quick lint-only (~2 seconds)</span>
+bash<span class="w"> </span>tools/check.sh<span class="w"> </span>--quick
 
-# Just the test suite
-uv run pytest
+<span class="c1"># Just the test suite</span>
+uv<span class="w"> </span>run<span class="w"> </span>pytest
 
-# Specific file
-uv run pytest test_graph.py
+<span class="c1"># Specific file</span>
+uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>test_graph.py
 
-# Specific test by name
-uv run pytest test_impact_analysis.py -k &quot;test_bfs_depth&quot;
+<span class="c1"># Specific test by name</span>
+uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>test_impact_analysis.py<span class="w"> </span>-k<span class="w"> </span><span class="s2">&quot;test_bfs_depth&quot;</span>
 
-# With coverage
-uv run pytest --cov=scatter --cov-report=term-missing
+<span class="c1"># With coverage</span>
+uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>--cov<span class="o">=</span>scatter<span class="w"> </span>--cov-report<span class="o">=</span>term-missing
 
-# Stop on first failure
-uv run pytest -x
-</code></pre>
+<span class="c1"># Stop on first failure</span>
+uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-x
+</code></pre></div>
 <p>All AI tests use mocks. If your test needs an AI provider, mock it. The CI environment has no API keys and no network access to AI services.</p>
 <hr />
 <h2 id="linting-formatting">Linting &amp; Formatting<a class="headerlink" href="#linting-formatting" title="Permanent link">&para;</a></h2>
 <p>Scatter uses <a href="https://docs.astral.sh/ruff/">ruff</a> for linting and formatting, configured in <code>pyproject.toml</code>.</p>
-<pre><code class="language-bash"># Check for lint errors
-uv run ruff check scatter/
+<div class="highlight"><pre><span></span><code><span class="c1"># Check for lint errors</span>
+uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>scatter/
 
-# Auto-fix what ruff can
-uv run ruff check scatter/ --fix
+<span class="c1"># Auto-fix what ruff can</span>
+uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>scatter/<span class="w"> </span>--fix
 
-# Format code
-uv run ruff format scatter/
+<span class="c1"># Format code</span>
+uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>format<span class="w"> </span>scatter/
 
-# Check formatting without changing files
-uv run ruff format --check scatter/
-</code></pre>
+<span class="c1"># Check formatting without changing files</span>
+uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>format<span class="w"> </span>--check<span class="w"> </span>scatter/
+</code></pre></div>
 <p>Configuration highlights (see <code>[tool.ruff]</code> in <code>pyproject.toml</code>):</p>
 <ul>
 <li><strong>Line length 100</strong> — middle ground between 88 and 120</li>
@@ -1961,8 +1961,8 @@ uv run ruff format --check scatter/
 </ul>
 <h2 id="type-checking">Type Checking<a class="headerlink" href="#type-checking" title="Permanent link">&para;</a></h2>
 <p><a href="https://mypy.readthedocs.io/">mypy</a> is configured in <code>pyproject.toml</code> and runs in CI.</p>
-<pre><code class="language-bash">uv run mypy scatter --ignore-missing-imports
-</code></pre>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>mypy<span class="w"> </span>scatter<span class="w"> </span>--ignore-missing-imports
+</code></pre></div>
 <p>Current baseline: 0 errors. Keep it that way.</p>
 <h2 id="style-guide">Style Guide<a class="headerlink" href="#style-guide" title="Permanent link">&para;</a></h2>
 <p>Follow the patterns in the existing code:</p>

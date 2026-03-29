@@ -1459,10 +1459,10 @@
 <hr />
 <h2 id="1-console-default">1. Console (default)<a class="headerlink" href="#1-console-default" title="Permanent link">&para;</a></h2>
 <p>When you just want to see what's going on. No flags, no files, no ceremony.</p>
-<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . --pipeline-csv pipeline_to_app_mapping.csv
-</code></pre>
-<pre><code>Search scope: /code/myrepo (scanned 142 projects, 3,891 files)
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>Search scope: /code/myrepo (scanned 142 projects, 3,891 files)
 Filter: 142 → 8 project refs[graph] → 5 namespace → 3 class match
 
 ============================================================
@@ -1481,56 +1481,56 @@ Filter: 142 → 8 project refs[graph] → 5 namespace → 3 class match
     [portal-nightly-sync] PortalBatchProcessor
 
 Analysis complete. 3 consumer(s) found across 1 target(s).
-</code></pre>
+</code></pre></div>
 <p>Consumers are sorted by coupling score (highest risk first). When a graph cache exists, the table includes Score, Fan-In, Fan-Out, and Instability columns automatically.</p>
 <p>High coupling score on a project you depend on is one you do not want to surprise with a breaking change on a Friday afternoon.</p>
 <hr />
 <h2 id="2-json">2. JSON<a class="headerlink" href="#2-json" title="Permanent link">&para;</a></h2>
 <p>Structured data for programmatic consumption -- ticket automation, dashboards, diffing between runs.</p>
-<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . --output-format json --output-file report.json
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--output-format<span class="w"> </span>json<span class="w"> </span>--output-file<span class="w"> </span>report.json
+</code></pre></div>
 <p>Requires <code>--output-file</code>. Scatter won't dump JSON to stdout -- that path leads to accidental pipe disasters with multi-megabyte payloads.</p>
-<pre><code class="language-json">{
-    &quot;metadata&quot;: {
-        &quot;scatter_version&quot;: &quot;0.12.0&quot;,
-        &quot;timestamp&quot;: &quot;2026-03-17T14:32:01.123456+00:00&quot;,
-        &quot;cli_args&quot;: { &quot;...&quot; : &quot;...&quot; },
-        &quot;search_scope&quot;: &quot;/code/myrepo&quot;,
-        &quot;duration_seconds&quot;: 2.41,
-        &quot;graph_enriched&quot;: true
-    },
-    &quot;filter_pipeline&quot;: {
-        &quot;search_scope&quot;: &quot;/code/myrepo&quot;,
-        &quot;total_projects_scanned&quot;: 142,
-        &quot;total_files_scanned&quot;: 3891,
-        &quot;stages&quot;: [ &quot;...&quot; ]
-    },
-    &quot;pipeline_summary&quot;: [
-        &quot;galaxy-consumer-ci&quot;,
-        &quot;galaxy-consumer2-ci&quot;,
-        &quot;portal-batch-ci&quot;
-    ],
-    &quot;all_results&quot;: [
-        {
-            &quot;TargetProjectName&quot;: &quot;GalaxyWorks.Data&quot;,
-            &quot;TargetProjectPath&quot;: &quot;GalaxyWorks.Data/GalaxyWorks.Data.csproj&quot;,
-            &quot;TriggeringType&quot;: &quot;PortalDataService&quot;,
-            &quot;ConsumerProjectName&quot;: &quot;MyGalaxyConsumerApp&quot;,
-            &quot;ConsumerProjectPath&quot;: &quot;MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj&quot;,
-            &quot;ConsumingSolutions&quot;: [&quot;GalaxyWorks.sln&quot;],
-            &quot;ConsumerFileSummaries&quot;: {},
-            &quot;PipelineName&quot;: &quot;galaxy-consumer-ci&quot;,
-            &quot;BatchJobVerification&quot;: null,
-            &quot;CouplingScore&quot;: 4.3,
-            &quot;FanIn&quot;: 1,
-            &quot;FanOut&quot;: 3,
-            &quot;Instability&quot;: 0.75,
-            &quot;InCycle&quot;: false
-        }
-    ]
-}
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;scatter_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0.12.0&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-03-17T14:32:01.123456+00:00&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;cli_args&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;...&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">&quot;search_scope&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/code/myrepo&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;duration_seconds&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.41</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;graph_enriched&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;filter_pipeline&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;search_scope&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/code/myrepo&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;total_projects_scanned&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">142</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;total_files_scanned&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3891</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;stages&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="w"> </span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;pipeline_summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">&quot;galaxy-consumer-ci&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;galaxy-consumer2-ci&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;portal-batch-ci&quot;</span>
+<span class="w">    </span><span class="p">],</span>
+<span class="w">    </span><span class="nt">&quot;all_results&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">&quot;TargetProjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GalaxyWorks.Data&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;TargetProjectPath&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;GalaxyWorks.Data/GalaxyWorks.Data.csproj&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;TriggeringType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PortalDataService&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;ConsumerProjectName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MyGalaxyConsumerApp&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;ConsumerProjectPath&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;ConsumingSolutions&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;GalaxyWorks.sln&quot;</span><span class="p">],</span>
+<span class="w">            </span><span class="nt">&quot;ConsumerFileSummaries&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{},</span>
+<span class="w">            </span><span class="nt">&quot;PipelineName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;galaxy-consumer-ci&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;BatchJobVerification&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;CouplingScore&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">4.3</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;FanIn&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;FanOut&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;Instability&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.75</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">&quot;InCycle&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
 <p>A few things worth knowing:</p>
 <ul>
 <li><strong><code>pipeline_summary</code></strong> is sorted and deduplicated. Quick "what needs to deploy" check without iterating <code>all_results</code>.</li>
@@ -1542,15 +1542,15 @@ Analysis complete. 3 consumer(s) found across 1 target(s).
 <hr />
 <h2 id="3-csv">3. CSV<a class="headerlink" href="#3-csv" title="Permanent link">&para;</a></h2>
 <p>One row per consumer. For Excel, pivot tables, and people who think in spreadsheets.</p>
-<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . --output-format csv --output-file report.csv
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--output-format<span class="w"> </span>csv<span class="w"> </span>--output-file<span class="w"> </span>report.csv
+</code></pre></div>
 <p>Requires <code>--output-file</code>.</p>
-<pre><code># Search scope: /code/myrepo (142 projects, 3,891 files)
+<div class="highlight"><pre><span></span><code># Search scope: /code/myrepo (142 projects, 3,891 files)
 # Filter: 142 → 8 project refs[graph] → 5 namespace → 3 class match
 TargetProjectName,TargetProjectPath,TriggeringType,ConsumerProjectName,ConsumerProjectPath,ConsumingSolutions,PipelineName,BatchJobVerification
 GalaxyWorks.Data,GalaxyWorks.Data/GalaxyWorks.Data.csproj,PortalDataService,MyGalaxyConsumerApp,MyGalaxyConsumerApp/MyGalaxyConsumerApp.csproj,GalaxyWorks.sln,galaxy-consumer-ci,
-</code></pre>
+</code></pre></div>
 <p>The <code>#</code>-prefixed lines at the top are comment headers showing the search scope and filter chain. Most CSV parsers skip them automatically. If yours doesn't, strip lines starting with <code>#</code> before parsing.</p>
 <p>When graph enrichment is active, five additional columns appear: <code>CouplingScore</code>, <code>FanIn</code>, <code>FanOut</code>, <code>Instability</code>, <code>InCycle</code>.</p>
 <p><code>ConsumingSolutions</code> uses semicolons as the delimiter when a consumer belongs to multiple solutions (e.g., <code>GalaxyWorks.sln; PortalServices.sln</code>).</p>
@@ -1558,15 +1558,15 @@ GalaxyWorks.Data,GalaxyWorks.Data/GalaxyWorks.Data.csproj,PortalDataService,MyGa
 <h2 id="4-markdown">4. Markdown<a class="headerlink" href="#4-markdown" title="Permanent link">&para;</a></h2>
 <p>Paste-ready for PRs, Jira tickets, Confluence pages, ADO work items. Designed for humans reading rendered text, not raw data.</p>
 <p>Unlike CSV and JSON, Markdown does <strong>not</strong> require <code>--output-file</code>. Without it, Scatter prints to stdout. This is intentional -- pipe it straight to clipboard:</p>
-<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . --output-format markdown | pbcopy
-</code></pre>
-<pre><code class="language-markdown"># Consumer Analysis Report
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--output-format<span class="w"> </span>markdown<span class="w"> </span><span class="p">|</span><span class="w"> </span>pbcopy
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="gh"># Consumer Analysis Report</span>
 
-&gt; **Search scope:** /code/myrepo (scanned 142 projects, 3,891 files)
-&gt; **Filter:** 142 → 8 project refs[graph] → 5 namespace → 3 class match
+<span class="k">&gt; </span><span class="ge">**Search scope:** /code/myrepo (scanned 142 projects, 3,891 files)</span>
+<span class="k">&gt; </span><span class="ge">**Filter:** 142 → 8 project refs[graph] → 5 namespace → 3 class match</span>
 
-## GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (3 consumer(s))
+<span class="gu">## GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj) (3 consumer(s))</span>
 
 Triggering type: PortalDataService
 
@@ -1577,24 +1577,24 @@ Triggering type: PortalDataService
 | PortalBatchProcessor | PortalBatchProcessor/PortalBatchProcessor.csproj | portal-batch-ci | PortalServices.sln |
 
 ---
-**Total:** 3 consuming relationship(s) across 1 target(s).
-</code></pre>
+<span class="gs">**Total:**</span> 3 consuming relationship(s) across 1 target(s).
+</code></pre></div>
 <p>Impact mode includes a blast radius tree rendered as a code block (so it survives Markdown rendering without losing structure):</p>
-<pre><code class="language-text">+-- MyGalaxyConsumerApp  [HIGH]  direct
+<div class="highlight"><pre><span></span><code>+-- MyGalaxyConsumerApp  [HIGH]  direct
 |   Pipeline: galaxy-consumer-ci
 |   +-- GalaxyPortalUI  [MEDIUM]  via MyGalaxyConsumerApp
 +-- MyGalaxyConsumerApp2  [HIGH]  direct
 |   Pipeline: galaxy-consumer2-ci
 +-- PortalBatchProcessor  [HIGH]  direct
     Pipeline: portal-batch-ci
-</code></pre>
+</code></pre></div>
 <p>When <code>--graph-metrics</code> is active, the table gains five extra columns: Coupling, Fan-In, Fan-Out, Instability, In Cycle.</p>
 <hr />
 <h2 id="5-mermaid">5. Mermaid<a class="headerlink" href="#5-mermaid" title="Permanent link">&para;</a></h2>
 <p>Graph mode only. Raw Mermaid diagram syntax -- no wrapping markdown, no summary tables.</p>
-<pre><code class="language-bash">scatter --graph --search-scope . --output-format mermaid
-</code></pre>
-<pre><code>graph TD
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--output-format<span class="w"> </span>mermaid
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>graph TD
   GalaxyWorks_Data[&quot;GalaxyWorks.Data&quot;]
   MyDotNetApp[&quot;MyDotNetApp&quot;]
   MyDotNetApp_Consumer[&quot;MyDotNetApp.Consumer&quot;]
@@ -1603,31 +1603,31 @@ Triggering type: PortalDataService
   MyDotNetApp_Consumer --&gt; MyDotNetApp
   MyGalaxyConsumerApp --&gt; GalaxyWorks_Data
   MyGalaxyConsumerApp2 --&gt; GalaxyWorks_Data
-</code></pre>
+</code></pre></div>
 <p>If domain clusters were detected, nodes are grouped into Mermaid subgraphs. Renders natively in GitHub PRs, Azure DevOps wikis, and Confluence.</p>
 <p>Using <code>--output-format mermaid</code> outside of <code>--graph</code> mode is an error -- Scatter will tell you so and exit.</p>
-<pre><code class="language-bash"># Save to file
-scatter --graph --search-scope . --output-format mermaid --output-file deps.mmd
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="c1"># Save to file</span>
+scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--output-format<span class="w"> </span>mermaid<span class="w"> </span>--output-file<span class="w"> </span>deps.mmd
+</code></pre></div>
 <hr />
 <h2 id="6-pipelines">6. Pipelines<a class="headerlink" href="#6-pipelines" title="Permanent link">&para;</a></h2>
 <p>One pipeline name per line, sorted alphabetically. Built for deployment scripts and shell pipelines (the other kind).</p>
-<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . --pipeline-csv pipeline_to_app_mapping.csv \
-  --output-format pipelines
-</code></pre>
-<pre><code>galaxy-consumer-ci
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>pipelines
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>galaxy-consumer-ci
 galaxy-consumer2-ci
 portal-batch-ci
-</code></pre>
+</code></pre></div>
 <p>Three lines, three pipelines that need to deploy. That's the entire output.</p>
 <p>Requires <code>--pipeline-csv</code> to map consumer projects to pipeline names. Without it, the output will be empty. Scatter warns you about this, but won't stop you.</p>
 <p>Not supported in <code>--graph</code> mode. Graph analysis is about architecture, not deployments.</p>
-<pre><code class="language-bash"># Feed directly into a deployment script
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . --pipeline-csv pipeline_to_app_mapping.csv \
-  --output-format pipelines | xargs -I {} ./trigger-pipeline.sh {}
-</code></pre>
+<div class="highlight"><pre><span></span><code><span class="c1"># Feed directly into a deployment script</span>
+scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>pipelines<span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>-I<span class="w"> </span><span class="o">{}</span><span class="w"> </span>./trigger-pipeline.sh<span class="w"> </span><span class="o">{}</span>
+</code></pre></div>
 <hr />
 <h2 id="quick-reference">Quick Reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
 <table>

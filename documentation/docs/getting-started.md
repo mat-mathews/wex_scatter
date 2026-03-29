@@ -1,25 +1,35 @@
 # Getting Started
 
-Install Scatter and verify it works. Should take about two minutes.
+Two ways to run scatter:
 
-**Don't have Python?** Use [Docker](usage/docker.md) instead — no Python or uv required.
+- **Native install** (this page) — Python 3.10+, Git, and uv. Best for development and daily use.
+- **[Docker](usage/docker.md)** — just Docker. No Python, no uv, nothing else to install.
+
+This page covers the native install. The repo includes 11 sample .NET projects, so you don't need a production codebase to start.
 
 ## Prerequisites
 
-- **Python 3.10+** -- Scatter uses modern type hints and dataclass features
+- **Python 3.10+** -- Scatter uses type hints and dataclass features
 - **Git** -- needed for branch analysis mode and for incremental graph patching
-
-That's it. The repo ships with 11 sample .NET projects, so you don't need a production codebase to start.
 
 ## Installation
 
 ```bash
 git clone <repo-url>
 cd scatter
-
-# One-command dev setup (Windows: run from Git Bash)
-bash tools/setup.sh
 ```
+
+=== "Windows (PowerShell)"
+
+    ```powershell
+    pwsh tools/setup.ps1
+    ```
+
+=== "macOS / Linux"
+
+    ```bash
+    bash tools/setup.sh
+    ```
 
 The setup script:
 
@@ -27,15 +37,23 @@ The setup script:
 2. Checks [uv](https://docs.astral.sh/uv/) is installed (prints install command if not)
 3. Runs `uv sync` to install all dependencies
 4. Configures git to use `.git-blame-ignore-revs`
-5. Links Claude Code skills into `.claude/skills/`
+5. Copies Claude Code skills into `.claude/skills/`
 
 It's idempotent — safe to run again any time.
 
 !!! note "Manual setup"
     If you prefer to set things up yourself:
+
+    **macOS / Linux:**
     ```bash
-    curl -LsSf https://astral.sh/uv/install.sh | sh   # install uv
-    uv sync                                             # install deps
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    uv sync
+    ```
+
+    **Windows (PowerShell):**
+    ```powershell
+    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+    uv sync
     ```
 
 ## Verify it works

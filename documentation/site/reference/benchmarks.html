@@ -1929,19 +1929,19 @@
 </tbody>
 </table>
 <h3 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash"># Use a preset
-python tools/generate_synthetic_codebase.py --preset large --output /tmp/synthetic_monolith
+<div class="highlight"><pre><span></span><code><span class="c1"># Use a preset</span>
+python<span class="w"> </span>tools/generate_synthetic_codebase.py<span class="w"> </span>--preset<span class="w"> </span>large<span class="w"> </span>--output<span class="w"> </span>/tmp/synthetic_monolith
 
-# Full control
-python tools/generate_synthetic_codebase.py \
-    --projects 300 \
-    --files-per-project 25 \
-    --coupling-pct 0.04 \
-    --sproc-pct 0.10 \
-    --avg-file-kb 12 \
-    --seed 42 \
-    --output /tmp/custom_monolith
-</code></pre>
+<span class="c1"># Full control</span>
+python<span class="w"> </span>tools/generate_synthetic_codebase.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--projects<span class="w"> </span><span class="m">300</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--files-per-project<span class="w"> </span><span class="m">25</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--coupling-pct<span class="w"> </span><span class="m">0</span>.04<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--sproc-pct<span class="w"> </span><span class="m">0</span>.10<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--avg-file-kb<span class="w"> </span><span class="m">12</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--seed<span class="w"> </span><span class="m">42</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output<span class="w"> </span>/tmp/custom_monolith
+</code></pre></div>
 <h3 id="topology">Topology<a class="headerlink" href="#topology" title="Permanent link">&para;</a></h3>
 <p>The first 10% of projects are "hub" projects — core libraries that everything references. This mimics real monoliths where <code>Common</code>, <code>Data</code>, and <code>Shared</code> projects have enormous fan-in. The remaining projects reference 1-3 hubs plus a coupling-percentage of non-hub projects. Deterministic via <code>--seed</code> (default: 42).</p>
 <hr />
@@ -1951,25 +1951,25 @@ python tools/generate_synthetic_codebase.py \
 <p><strong><code>--mode full</code></strong> (recommended for performance measurement): Calls <code>build_dependency_graph()</code> as a black box. Uses ThreadPoolExecutor internally. tracemalloc off by default. This measures real production performance.</p>
 <p><strong><code>--mode stages</code></strong>: Re-implements graph building step-by-step with per-stage timing. Sequential, tracemalloc on by default. Useful for identifying which stage is slow, but numbers are inflated by instrumentation overhead. <strong>Do not compare stages numbers to full numbers — they measure different things.</strong></p>
 <h3 id="usage_1">Usage<a class="headerlink" href="#usage_1" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash"># Generate a codebase first
-python tools/generate_synthetic_codebase.py --preset medium --output /tmp/medium
+<div class="highlight"><pre><span></span><code><span class="c1"># Generate a codebase first</span>
+python<span class="w"> </span>tools/generate_synthetic_codebase.py<span class="w"> </span>--preset<span class="w"> </span>medium<span class="w"> </span>--output<span class="w"> </span>/tmp/medium
 
-# Production-like benchmark (threaded, no tracemalloc)
-python tools/benchmark_graph_build.py /tmp/medium --mode full --runs 3 --warmup
+<span class="c1"># Production-like benchmark (threaded, no tracemalloc)</span>
+python<span class="w"> </span>tools/benchmark_graph_build.py<span class="w"> </span>/tmp/medium<span class="w"> </span>--mode<span class="w"> </span>full<span class="w"> </span>--runs<span class="w"> </span><span class="m">3</span><span class="w"> </span>--warmup
 
-# Per-stage profiling (sequential, with tracemalloc)
-python tools/benchmark_graph_build.py /tmp/medium --mode stages --runs 3 --warmup
+<span class="c1"># Per-stage profiling (sequential, with tracemalloc)</span>
+python<span class="w"> </span>tools/benchmark_graph_build.py<span class="w"> </span>/tmp/medium<span class="w"> </span>--mode<span class="w"> </span>stages<span class="w"> </span>--runs<span class="w"> </span><span class="m">3</span><span class="w"> </span>--warmup
 
-# Force tracemalloc on/off regardless of mode
-python tools/benchmark_graph_build.py /tmp/medium --mode full --tracemalloc
-python tools/benchmark_graph_build.py /tmp/medium --mode stages --no-tracemalloc
+<span class="c1"># Force tracemalloc on/off regardless of mode</span>
+python<span class="w"> </span>tools/benchmark_graph_build.py<span class="w"> </span>/tmp/medium<span class="w"> </span>--mode<span class="w"> </span>full<span class="w"> </span>--tracemalloc
+python<span class="w"> </span>tools/benchmark_graph_build.py<span class="w"> </span>/tmp/medium<span class="w"> </span>--mode<span class="w"> </span>stages<span class="w"> </span>--no-tracemalloc
 
-# Include DB dependency scanning
-python tools/benchmark_graph_build.py /tmp/medium --include-db
+<span class="c1"># Include DB dependency scanning</span>
+python<span class="w"> </span>tools/benchmark_graph_build.py<span class="w"> </span>/tmp/medium<span class="w"> </span>--include-db
 
-# JSON output
-python tools/benchmark_graph_build.py /tmp/medium --json -o results.json
-</code></pre>
+<span class="c1"># JSON output</span>
+python<span class="w"> </span>tools/benchmark_graph_build.py<span class="w"> </span>/tmp/medium<span class="w"> </span>--json<span class="w"> </span>-o<span class="w"> </span>results.json
+</code></pre></div>
 <h3 id="stage-level-breakdown-mode-stages">Stage-level breakdown (--mode stages)<a class="headerlink" href="#stage-level-breakdown-mode-stages" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2036,18 +2036,18 @@ python tools/benchmark_graph_build.py /tmp/medium --json -o results.json
 <h2 id="incremental-updates-benchmark">Incremental Updates Benchmark<a class="headerlink" href="#incremental-updates-benchmark" title="Permanent link">&para;</a></h2>
 <p><strong>Script</strong>: <code>tools/benchmark_incremental.py</code></p>
 <h3 id="usage_2">Usage<a class="headerlink" href="#usage_2" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash"># Default: small + medium presets
-python tools/benchmark_incremental.py
+<div class="highlight"><pre><span></span><code><span class="c1"># Default: small + medium presets</span>
+python<span class="w"> </span>tools/benchmark_incremental.py
 
-# Specific presets
-python tools/benchmark_incremental.py --preset small medium large
+<span class="c1"># Specific presets</span>
+python<span class="w"> </span>tools/benchmark_incremental.py<span class="w"> </span>--preset<span class="w"> </span>small<span class="w"> </span>medium<span class="w"> </span>large
 
-# Multiple runs for stable medians
-python tools/benchmark_incremental.py --runs 3
+<span class="c1"># Multiple runs for stable medians</span>
+python<span class="w"> </span>tools/benchmark_incremental.py<span class="w"> </span>--runs<span class="w"> </span><span class="m">3</span>
 
-# JSON output
-python tools/benchmark_incremental.py --json -o results.json
-</code></pre>
+<span class="c1"># JSON output</span>
+python<span class="w"> </span>tools/benchmark_incremental.py<span class="w"> </span>--json<span class="w"> </span>-o<span class="w"> </span>results.json
+</code></pre></div>
 <h3 id="9-mutation-scenarios">9 Mutation Scenarios<a class="headerlink" href="#9-mutation-scenarios" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2167,33 +2167,33 @@ python tools/benchmark_incremental.py --json -o results.json
 <hr />
 <h2 id="running-your-own-benchmarks">Running Your Own Benchmarks<a class="headerlink" href="#running-your-own-benchmarks" title="Permanent link">&para;</a></h2>
 <h3 id="quick-comparison">Quick comparison<a class="headerlink" href="#quick-comparison" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash"># Generate a test codebase
-python tools/generate_synthetic_codebase.py --preset medium --output /tmp/bench
+<div class="highlight"><pre><span></span><code><span class="c1"># Generate a test codebase</span>
+python<span class="w"> </span>tools/generate_synthetic_codebase.py<span class="w"> </span>--preset<span class="w"> </span>medium<span class="w"> </span>--output<span class="w"> </span>/tmp/bench
 
-# Real performance (what users experience)
-python tools/benchmark_graph_build.py /tmp/bench --mode full --runs 3 --warmup
+<span class="c1"># Real performance (what users experience)</span>
+python<span class="w"> </span>tools/benchmark_graph_build.py<span class="w"> </span>/tmp/bench<span class="w"> </span>--mode<span class="w"> </span>full<span class="w"> </span>--runs<span class="w"> </span><span class="m">3</span><span class="w"> </span>--warmup
 
-# Per-stage profiling (for optimization work)
-python tools/benchmark_graph_build.py /tmp/bench --mode stages --runs 3 --warmup
-</code></pre>
+<span class="c1"># Per-stage profiling (for optimization work)</span>
+python<span class="w"> </span>tools/benchmark_graph_build.py<span class="w"> </span>/tmp/bench<span class="w"> </span>--mode<span class="w"> </span>stages<span class="w"> </span>--runs<span class="w"> </span><span class="m">3</span><span class="w"> </span>--warmup
+</code></pre></div>
 <h3 id="parallel-vs-sequential">Parallel vs Sequential<a class="headerlink" href="#parallel-vs-sequential" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash"># Sequential
-time scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-    --search-scope . --disable-multiprocessing
+<div class="highlight"><pre><span></span><code><span class="c1"># Sequential</span>
+<span class="nb">time</span><span class="w"> </span>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--disable-multiprocessing
 
-# Parallel (default)
-time scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-    --search-scope .
-</code></pre>
+<span class="c1"># Parallel (default)</span>
+<span class="nb">time</span><span class="w"> </span>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
 <p>For small codebases (&lt; 50 projects), sequential is often faster — multiprocessing has a fixed startup cost of ~200ms. The crossover point is typically around 80-100 projects.</p>
 <h3 id="using-stagetimer-in-your-own-code">Using StageTimer in your own code<a class="headerlink" href="#using-stagetimer-in-your-own-code" title="Permanent link">&para;</a></h3>
-<pre><code class="language-python">from tools.benchmark_graph_build import StageTimer
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">tools.benchmark_graph_build</span><span class="w"> </span><span class="kn">import</span> <span class="n">StageTimer</span>
 
-with StageTimer(&quot;my_custom_stage&quot;) as t:
-    # your code here
-    pass
-print(f&quot;{t.name}: {t.elapsed:.2f}s, heap delta: {t.heap_delta_mb:+.1f} MB&quot;)
-</code></pre>
+<span class="k">with</span> <span class="n">StageTimer</span><span class="p">(</span><span class="s2">&quot;my_custom_stage&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">t</span><span class="p">:</span>
+    <span class="c1"># your code here</span>
+    <span class="k">pass</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">t</span><span class="o">.</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s, heap delta: </span><span class="si">{</span><span class="n">t</span><span class="o">.</span><span class="n">heap_delta_mb</span><span class="si">:</span><span class="s2">+.1f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+</code></pre></div>
 <p>Note: heap metrics require <code>tracemalloc.start()</code> before use. Without it, heap values are 0 (this is by design).</p>
 <hr />
 <h2 id="remaining-bottlenecks">Remaining Bottlenecks<a class="headerlink" href="#remaining-bottlenecks" title="Permanent link">&para;</a></h2>

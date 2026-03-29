@@ -1459,9 +1459,9 @@
 <p>This is the question nobody can answer quickly, because sproc callers are invisible in the project reference graph. No <code>&lt;ProjectReference&gt;</code> points at a stored procedure. The coupling lives inside <code>.cs</code> files as string literals -- <code>"dbo.sp_InsertPortalConfiguration"</code> buried in a data access layer somewhere. Your DBA changes a parameter list and has no idea which services just broke.</p>
 <p>Scatter makes that invisible coupling visible. Give it a sproc name, and it traces the full chain: sproc to containing class to consumer projects.</p>
 <h2 id="basic-example">Basic Example<a class="headerlink" href="#basic-example" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; --search-scope .
-</code></pre>
-<pre><code>Search scope: /code/scatter (scanned 11 projects, 38 files)
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>Search scope: /code/scatter (scanned 11 projects, 38 files)
 Filter: 11 → 7 project refs[graph] → 6 namespace → 6 class match
 
 ============================================================
@@ -1489,38 +1489,40 @@ Filter: 11 → 7 project refs[graph] → 6 namespace → 6 class match
   GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
 
 Analysis complete. 7 consumer(s) found across 2 target(s).
-</code></pre>
+</code></pre></div>
 <p>Notice the multi-hop chain: the sproc is referenced by <code>PortalDataService</code> in GalaxyWorks.Data (6 consumers) and <code>PortalCacheService</code> in GalaxyWorks.WebPortal (1 consumer). The <code>(via Sproc: dbo.sp_InsertPortalConfiguration)</code> annotation preserves the provenance so readers understand why these consumers were flagged.</p>
 <h2 id="different-stored-procedure">Different Stored Procedure<a class="headerlink" href="#different-stored-procedure" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_GetPortalConfigurationDetails&quot; --search-scope .
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_GetPortalConfigurationDetails&quot;</span><span class="w"> </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
 <p>Same flow, different sproc. If multiple classes in multiple projects reference this sproc, Scatter reports all of them and traces their consumers independently.</p>
 <h2 id="filter-by-class">Filter by Class<a class="headerlink" href="#filter-by-class" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
-  --search-scope . --class-name PortalDataService
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--class-name<span class="w"> </span>PortalDataService
+</code></pre></div>
 <p>When the sproc is referenced from multiple classes (maybe a test helper also calls it), filter to only the class you care about. The <code>--class-name</code> filter is applied before consumer analysis, so it narrows the search early.</p>
 <h2 id="custom-regex-pattern">Custom Regex Pattern<a class="headerlink" href="#custom-regex-pattern" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
-  --search-scope . --sproc-regex-pattern &quot;EXECUTE\s+{sproc_name_placeholder}&quot;
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--sproc-regex-pattern<span class="w"> </span><span class="s2">&quot;EXECUTE\s+{sproc_name_placeholder}&quot;</span>
+</code></pre></div>
 <p>The default regex matches quoted sproc names -- the common ADO.NET and Dapper pattern. If your codebase uses raw SQL strings with <code>EXECUTE</code> or a custom invocation pattern, provide a custom regex. The <code>{sproc_name_placeholder}</code> token gets replaced with the escaped sproc name.</p>
 <h2 id="export-for-the-dba-team">Export for the DBA Team<a class="headerlink" href="#export-for-the-dba-team" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
-  --search-scope . --output-format csv --output-file sproc_impact.csv
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--output-format<span class="w"> </span>csv<span class="w"> </span>--output-file<span class="w"> </span>sproc_impact.csv
+</code></pre></div>
 <p>CSV is the lingua franca of cross-team communication. Hand this to your DBA and they can see exactly which applications need coordination before modifying the sproc.</p>
 <h2 id="with-pipeline-mapping">With Pipeline Mapping<a class="headerlink" href="#with-pipeline-mapping" title="Permanent link">&para;</a></h2>
-<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; \
-  --search-scope . --pipeline-csv build/pipeline_map.csv \
-  --output-format csv --output-file sproc_impact.csv
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>build/pipeline_map.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>csv<span class="w"> </span>--output-file<span class="w"> </span>sproc_impact.csv
+</code></pre></div>
 <p>When combined with <code>--pipeline-csv</code>, each consumer row includes the CI/CD pipeline name. This answers the deployment question: "if we change this sproc, which pipelines need to be redeployed, and in what order?"</p>
 <h2 id="output-formats">Output Formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h2>
 <p>JSON, CSV, and Markdown all work the same as in other modes. The JSON output includes the triggering info formatted as <code>PortalDataService (via Sproc: dbo.sp_InsertPortalConfiguration)</code> so you can trace the full chain programmatically. See <a href="../output-formats.html">Output Formats</a> for detailed structure.</p>
 <hr />
-<p>!!! info "How this works"
-    Scatter scans <code>.cs</code> files for the sproc name in string literals, maps each match to its parent <code>.csproj</code> and enclosing class, then runs the standard consumer detection pipeline for each class. See <a href="../reference/consumer-pipeline.html">Consumer Detection Pipeline</a> for details.</p>
+<div class="admonition info">
+<p class="admonition-title">How this works</p>
+<p>Scatter scans <code>.cs</code> files for the sproc name in string literals, maps each match to its parent <code>.csproj</code> and enclosing class, then runs the standard consumer detection pipeline for each class. See <a href="../reference/consumer-pipeline.html">Consumer Detection Pipeline</a> for details.</p>
+</div>
 
 
 

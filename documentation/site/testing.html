@@ -1614,17 +1614,17 @@
 <p>Is this thing well-tested? Yes. Can you verify that yourself in under a minute? Also yes.</p>
 <h2 id="running-the-tests">Running the tests<a class="headerlink" href="#running-the-tests" title="Permanent link">&para;</a></h2>
 <p>The fastest way to check everything before pushing:</p>
-<pre><code class="language-bash">bash tools/check.sh
-</code></pre>
+<div class="highlight"><pre><span></span><code>bash<span class="w"> </span>tools/check.sh
+</code></pre></div>
 <p>This mirrors CI exactly — ruff lint, ruff format, mypy, then pytest. If <code>check.sh</code> passes locally, CI will pass.</p>
 <p>For a lint-only check (~2 seconds):</p>
-<pre><code class="language-bash">bash tools/check.sh --quick
-</code></pre>
+<div class="highlight"><pre><span></span><code>bash<span class="w"> </span>tools/check.sh<span class="w"> </span>--quick
+</code></pre></div>
 <p>Or run just the test suite:</p>
-<pre><code class="language-bash">uv run pytest
-</code></pre>
-<pre><code>~878 passed, 1 xfailed (run `uv run pytest --co -q` for the current count)
-</code></pre>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>pytest
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>~878 passed, 1 xfailed (run `uv run pytest --co -q` for the current count)
+</code></pre></div>
 <p>~878 tests across 33 files. The single xfail is an intentional marker for a tracked edge case, not a failing test someone gave up on.</p>
 <h2 id="what-the-tests-cover">What the tests cover<a class="headerlink" href="#what-the-tests-cover" title="Permanent link">&para;</a></h2>
 <p>The short version, without the file-by-file inventory:</p>
@@ -1642,39 +1642,39 @@
 <h2 id="smoke-testing-against-sample-projects">Smoke-testing against sample projects<a class="headerlink" href="#smoke-testing-against-sample-projects" title="Permanent link">&para;</a></h2>
 <p>The repo ships with 11 sample .NET projects. Use them to verify Scatter works end-to-end on your machine.</p>
 <h3 id="galaxyworksdata-should-have-6-consumers">GalaxyWorks.Data should have 6 consumers<a class="headerlink" href="#galaxyworksdata-should-have-6-consumers" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
 <p>Look for: <code>6 consumer(s)</code> in the output.</p>
 <h3 id="mydotnetapp-should-have-1-consumer">MyDotNetApp should have 1 consumer<a class="headerlink" href="#mydotnetapp-should-have-1-consumer" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">scatter --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./MyDotNetApp/MyDotNetApp.csproj<span class="w"> </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
 <p>Look for: <code>1 consumer(s)</code>.</p>
 <h3 id="mydotnetapp2exclude-should-have-0-consumers">MyDotNetApp2.Exclude should have 0 consumers<a class="headerlink" href="#mydotnetapp2exclude-should-have-0-consumers" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">scatter --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj<span class="w"> </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
 <p>Look for: <code>0 consumer(s)</code>. This one is intentionally isolated -- it validates that Scatter doesn't report false positives.</p>
 <h3 id="stored-procedure-tracing-works">Stored procedure tracing works<a class="headerlink" href="#stored-procedure-tracing-works" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">scatter --stored-procedure &quot;dbo.sp_InsertPortalConfiguration&quot; --search-scope .
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
 <p>Should find the sproc in <code>PortalDataService</code> and <code>PortalCacheService</code>, tracing 7 consumers across 2 targets.</p>
 <h3 id="graph-mode-works">Graph mode works<a class="headerlink" href="#graph-mode-works" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">scatter --graph --search-scope .
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
 <p>Should produce a health dashboard with project counts, edge counts, coupling metrics, and domain clusters. No errors, no warnings.</p>
 <h2 id="testing-ai-features">Testing AI features<a class="headerlink" href="#testing-ai-features" title="Permanent link">&para;</a></h2>
 <p>These require a <code>$GOOGLE_API_KEY</code> environment variable. If you don't have one, the smoke tests above cover everything that matters for day-to-day use.</p>
 <h3 id="summarization">Summarization<a class="headerlink" href="#summarization" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
-  --summarize-consumers --google-api-key $GOOGLE_API_KEY
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--summarize-consumers<span class="w"> </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span>
+</code></pre></div>
 <h3 id="hybrid-git-analysis">Hybrid git analysis<a class="headerlink" href="#hybrid-git-analysis" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">scatter --branch-name feature/your-branch --repo-path . --search-scope . \
-  --enable-hybrid-git --google-api-key $GOOGLE_API_KEY -v
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/your-branch<span class="w"> </span>--repo-path<span class="w"> </span>.<span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--enable-hybrid-git<span class="w"> </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span><span class="w"> </span>-v
+</code></pre></div>
 <h3 id="impact-analysis">Impact analysis<a class="headerlink" href="#impact-analysis" title="Permanent link">&para;</a></h3>
-<pre><code class="language-bash">scatter --sow &quot;Modify PortalDataService in GalaxyWorks.Data to add a new parameter&quot; \
-  --search-scope . --google-api-key $GOOGLE_API_KEY
-</code></pre>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--sow<span class="w"> </span><span class="s2">&quot;Modify PortalDataService in GalaxyWorks.Data to add a new parameter&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--google-api-key<span class="w"> </span><span class="nv">$GOOGLE_API_KEY</span>
+</code></pre></div>
 <h2 id="want-to-go-deeper">Want to go deeper?<a class="headerlink" href="#want-to-go-deeper" title="Permanent link">&para;</a></h2>
 <p>See <a href="reference/test-architecture.html">Test Architecture</a> for the full 33-file test inventory, fixture design, mock patterns, and how to add new tests.</p>
 
