@@ -28,6 +28,7 @@ These work with any mode (unless noted).
 | `--output-file PATH` | None | Path to write output file. Required for `csv` and `json`. `markdown` and `pipelines` print to stdout if omitted. `mermaid` is only valid in `--graph` mode. |
 | `--class-name NAME` | None | Filter: only include consumers that use this specific type |
 | `--method-name NAME` | None | Filter: only include consumers that call this method. Requires `--class-name`. |
+| `--parser-mode MODE` | `regex` | Parser mode: `regex` (default) or `hybrid`. Hybrid uses tree-sitter AST to filter false positives in comments and string literals during class/method filtering (stages 4-5). Requires `tree-sitter` and `tree-sitter-c-sharp` (`uv sync --extra ast`). Falls back to regex if not installed. |
 | `--max-depth N` | 2 | Maximum transitive tracing depth for impact analysis |
 | `--sow-min-confidence N` | 0.3 | Minimum confidence threshold for SOW-extracted targets. Targets below this are excluded with a log message. |
 | `--dump-index` | false | Build the dependency graph, print the codebase index to stdout, and exit. Requires `--search-scope`. Useful for inspecting what the LLM sees during `--sow` mode. |

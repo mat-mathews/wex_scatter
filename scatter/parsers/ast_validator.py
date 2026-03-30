@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 _parser: Optional[object] = None
 _ts_language: Optional[object] = None
 
+# Cache compiled Query objects (compilation is the repeated cost;
+# QueryCursor is stateful and must be fresh per call).
+_query_cache: Dict[str, object] = {}
+
 
 def is_hybrid_available() -> bool:
     """Check whether tree-sitter and the C# grammar are importable."""
@@ -32,12 +36,18 @@ def _get_parser():
     if _parser is not None:
         return _parser
 
-    import tree_sitter
-    import tree_sitter_c_sharp
+    try:
+        import tree_sitter
+        import tree_sitter_c_sharp
 
-    _ts_language = tree_sitter.Language(tree_sitter_c_sharp.language())
-    _parser = tree_sitter.Parser(_ts_language)
-    return _parser
+        _ts_language = tree_sitter.Language(tree_sitter_c_sharp.language())
+        _parser = tree_sitter.Parser(_ts_language)
+        return _parser
+    except Exception:
+        # Reset both globals so next call retries instead of returning stale state
+        _parser = None
+        _ts_language = None
+        raise
 
 
 def parse_csharp(content: str):
@@ -48,9 +58,14 @@ def parse_csharp(content: str):
 
 def _run_query(query_string: str, root_node, capture_name: str):
     """Run a tree-sitter query and yield captured nodes."""
+    if _ts_language is None:
+        _get_parser()  # ensure language initialized
     import tree_sitter
 
-    query = tree_sitter.Query(_ts_language, query_string)
+    query = _query_cache.get(query_string)
+    if query is None:
+        query = tree_sitter.Query(_ts_language, query_string)
+        _query_cache[query_string] = query
     cursor = tree_sitter.QueryCursor(query)
     for _, captures in cursor.matches(root_node):
         for node in captures.get(capture_name, []):
@@ -140,7 +155,8 @@ def validate_type_declarations(content: str, regex_types: Set[str]) -> Set[str]:
 def validate_type_usage(content: str, type_name: str) -> bool:
     """Confirm at least one occurrence of type_name is in a code position.
 
-    Reserved for Phase 2 consumer analyzer wiring.
+    Used by the consumer analyzer (stages 4-5) to filter regex matches
+    that only appear in comments or string literals.
 
     Args:
         content: Full C# file content.

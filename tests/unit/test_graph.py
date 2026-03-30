@@ -429,9 +429,10 @@ class TestGraphBuilder:
         assert graph.edge_count > 0
 
     def test_node_count(self, graph: DependencyGraph):
-        # 11 real .csproj files in repo (excluding temp_test_data)
+        # 13 real .csproj files in repo (excluding temp_test_data)
         # Original 8 + GalaxyWorks.Common, GalaxyWorks.Api, GalaxyWorks.Data.Tests
-        assert graph.node_count == 11
+        # + GalaxyWorks.DevTools, GalaxyWorks.Notifications
+        assert graph.node_count == 13
 
     def test_expected_projects_present(self, graph: DependencyGraph):
         expected = {
@@ -441,6 +442,8 @@ class TestGraphBuilder:
             "GalaxyWorks.Common",
             "GalaxyWorks.Api",
             "GalaxyWorks.Data.Tests",
+            "GalaxyWorks.DevTools",
+            "GalaxyWorks.Notifications",
             "MyDotNetApp",
             "MyDotNetApp.Consumer",
             "MyDotNetApp2.Exclude",
@@ -451,9 +454,9 @@ class TestGraphBuilder:
         assert actual == expected
 
     def test_project_reference_edges(self, graph: DependencyGraph):
-        """There should be 12 project_reference edges."""
+        """There should be 14 project_reference edges."""
         ref_edges = [e for e in graph.all_edges if e.edge_type == "project_reference"]
-        assert len(ref_edges) == 12
+        assert len(ref_edges) == 14
 
         edge_pairs = {(e.source, e.target) for e in ref_edges}
         # Original 6 edges
@@ -470,6 +473,9 @@ class TestGraphBuilder:
         assert ("GalaxyWorks.Data.Tests", "GalaxyWorks.Data") in edge_pairs
         assert ("GalaxyWorks.Data.Tests", "GalaxyWorks.Common") in edge_pairs
         assert ("MyGalaryConsumerApp", "GalaxyWorks.Common") in edge_pairs
+        # Hybrid AST false-positive test projects
+        assert ("GalaxyWorks.DevTools", "GalaxyWorks.Data") in edge_pairs
+        assert ("GalaxyWorks.Notifications", "GalaxyWorks.Data") in edge_pairs
 
     def test_galaxyworks_data_consumers(self, graph: DependencyGraph):
         consumers = graph.get_consumers("GalaxyWorks.Data")
@@ -536,9 +542,9 @@ class TestGraphBuilder:
         components = graph.connected_components
         # Should have at least 1 component; exact count depends on namespace/type edges
         assert len(components) >= 1
-        # All 11 nodes should be accounted for
+        # All 13 nodes should be accounted for
         total_nodes = sum(len(c) for c in components)
-        assert total_nodes == 11
+        assert total_nodes == 13
 
     def test_serialization_roundtrip(self, graph: DependencyGraph):
         data = graph.to_dict()

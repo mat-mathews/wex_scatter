@@ -185,3 +185,49 @@ class TestThreadSafety:
 
         for r in results:
             assert r == {"Foo", "Bar"}
+
+    def test_concurrent_varied_content(self):
+        """Different C# snippets per thread — exercises query cache concurrency."""
+        snippets = [
+            ("class Alpha { }", {"Alpha"}),
+            ("struct Beta { }\nenum Gamma { A }", {"Beta", "Gamma"}),
+            ("interface IDelta { }", {"IDelta"}),
+            ("class Epsilon { }\nclass Zeta { }", {"Epsilon", "Zeta"}),
+        ]
+
+        def validate(idx):
+            content, expected = snippets[idx % len(snippets)]
+            return validate_type_declarations(content, expected)
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            results = list(executor.map(validate, range(8)))
+
+        for i, r in enumerate(results):
+            _, expected = snippets[i % len(snippets)]
+            assert r == expected
+
+
+# ---------------------------------------------------------------------------
+# TestNonASCIIContent
+# ---------------------------------------------------------------------------
+
+
+class TestNonASCIIContent:
+    """Validate correct handling of non-ASCII (multi-byte) content."""
+
+    def test_type_usage_after_unicode(self):
+        """Type name after multi-byte chars is correctly found in code."""
+        content = "// \u00e9\u00e8\u00ea comment\nvar x = new Foo();"
+        assert validate_type_usage(content, "Foo") is True
+
+    def test_type_usage_in_unicode_string_rejected(self):
+        """Type name inside a unicode string is correctly rejected."""
+        content = 'var x = "\u00fc\u00f6 Foo";\nclass Bar { }'
+        assert validate_type_usage(content, "Foo") is False
+
+    def test_identifiers_with_unicode_prefix(self):
+        """Identifiers after unicode are correctly byte-offset mapped."""
+        content = "// \u00c3\u00a9 unicode\nclass Foo { }\nvar x = new Foo();"
+        candidates = {"Foo": _byte_positions(content, "Foo")}
+        result = identifiers_in_code(content, candidates)
+        assert "Foo" in result

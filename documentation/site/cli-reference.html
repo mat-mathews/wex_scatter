@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -1535,6 +1535,11 @@
 <td><code>--method-name NAME</code></td>
 <td>None</td>
 <td>Filter: only include consumers that call this method. Requires <code>--class-name</code>.</td>
+</tr>
+<tr>
+<td><code>--parser-mode MODE</code></td>
+<td><code>regex</code></td>
+<td>Parser mode: <code>regex</code> (default) or <code>hybrid</code>. Hybrid uses tree-sitter AST to filter false positives in comments and string literals during class/method filtering (stages 4-5). Requires <code>tree-sitter</code> and <code>tree-sitter-c-sharp</code> (<code>uv sync --extra ast</code>). Falls back to regex if not installed.</td>
 </tr>
 <tr>
 <td><code>--max-depth N</code></td>

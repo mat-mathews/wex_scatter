@@ -60,10 +60,21 @@ def _extract_file_data(cs_path: Path, use_ast: bool = False) -> Optional[_FileEx
     if use_ast:
         from scatter.parsers.ast_validator import identifiers_in_code, validate_type_declarations
 
-        # Capture byte positions for each identifier match
+        # Capture byte positions for each identifier match.
+        # For ASCII files (99%+ of C#), char offset == byte offset.
+        # Only build the lookup array for non-ASCII files.
+        is_ascii = content.isascii()
+        if not is_ascii:
+            byte_offsets: List[int] = []
+            byte_pos = 0
+            for ch in content:
+                byte_offsets.append(byte_pos)
+                byte_pos += len(ch.encode("utf-8"))
+
         ident_positions: Dict[str, List[int]] = {}
         for m in _IDENT_PATTERN.finditer(content):
-            ident_positions.setdefault(m.group(), []).append(m.start())
+            pos = m.start() if is_ascii else byte_offsets[m.start()]
+            ident_positions.setdefault(m.group(), []).append(pos)
         identifiers = identifiers_in_code(content, ident_positions)
         types = validate_type_declarations(content, extract_type_names_from_content(content))
     else:

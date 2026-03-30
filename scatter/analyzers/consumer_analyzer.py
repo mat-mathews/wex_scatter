@@ -24,6 +24,7 @@ from scatter.core.parallel import (
 )
 
 if TYPE_CHECKING:
+    from scatter.config import AnalysisConfig
     from scatter.core.graph import DependencyGraph
 
 
@@ -120,6 +121,7 @@ def find_consumers(
     cs_analysis_chunk_size: int = 50,
     csproj_analysis_chunk_size: int = 25,
     graph: Optional["DependencyGraph"] = None,
+    analysis_config: Optional["AnalysisConfig"] = None,
 ) -> Tuple[List[RawConsumerDict], FilterPipeline]:
     """
     Finds consuming projects based on ProjectReference, namespace usage,
@@ -138,6 +140,14 @@ def find_consumers(
         logging.info(f"     Filtering for type/class: {class_name}")
     if method_name:
         logging.info(f"     Filtering for method: {method_name}")
+
+    # Resolve AST mode for class/method stages
+    use_ast = False
+    if analysis_config and analysis_config.parser_mode == "hybrid":
+        from scatter.parsers.ast_validator import is_hybrid_available
+
+        if is_hybrid_available():
+            use_ast = True
 
     pipeline = FilterPipeline(
         search_scope=str(search_scope_path),
@@ -265,7 +275,7 @@ def find_consumers(
         pipeline.total_files_scanned += len(all_cs_files_for_analysis)
 
         if all_cs_files_for_analysis:
-            analysis_config = {
+            stage_config = {
                 "analysis_type": "namespace",
                 "target_namespace": target_namespace,
                 "using_pattern": using_pattern,
@@ -273,7 +283,7 @@ def find_consumers(
 
             analysis_results = analyze_cs_files_parallel(
                 all_cs_files_for_analysis,
-                analysis_config,
+                stage_config,
                 max_workers=max_workers,
                 cs_analysis_chunk_size=cs_analysis_chunk_size,
                 disable_multiprocessing=disable_multiprocessing,
@@ -358,15 +368,16 @@ def find_consumers(
     pipeline.total_files_scanned += len(all_relevant_files)
 
     if all_relevant_files:
-        analysis_config = {
+        stage_config = {
             "analysis_type": "class",
             "class_name": class_name,
             "class_pattern": class_pattern,
+            "use_ast": use_ast,
         }
 
         analysis_results = analyze_cs_files_parallel(
             all_relevant_files,
-            analysis_config,
+            stage_config,
             max_workers=max_workers,
             cs_analysis_chunk_size=cs_analysis_chunk_size,
             disable_multiprocessing=disable_multiprocessing,
@@ -432,11 +443,16 @@ def find_consumers(
 
     pipeline.total_files_scanned += len(all_method_files)
 
-    method_analysis_config = {"analysis_type": "method", "method_pattern": method_pattern}
+    method_stage_config = {
+        "analysis_type": "method",
+        "method_pattern": method_pattern,
+        "method_name": method_name,
+        "use_ast": use_ast,
+    }
 
     method_results = analyze_cs_files_parallel(
         all_method_files,
-        method_analysis_config,
+        method_stage_config,
         max_workers=max_workers,
         cs_analysis_chunk_size=cs_analysis_chunk_size,
         disable_multiprocessing=disable_multiprocessing,

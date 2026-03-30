@@ -131,6 +131,12 @@ graph:
     type_usage: 0.3
     sproc_shared: 0.8
 
+# Analysis behavior
+analysis:
+  parser_mode: regex                    # "regex" (default) or "hybrid"
+                                        # hybrid uses tree-sitter AST to filter
+                                        # false positives in comments/strings
+
 # Database dependency scanning
 db:
   sproc_prefixes:                       # Prefixes that identify stored procedures

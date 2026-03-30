@@ -51,6 +51,8 @@ Uses word-boundary regex on the `relevant_files` from stage 3:
 class_pattern = re.compile(rf"\b{re.escape(class_name)}\b")
 ```
 
+When `--parser-mode hybrid` is active, regex matches are confirmed by AST validation: `validate_type_usage(content, class_name)` checks that at least one occurrence is in real code (not a comment or string literal). If all occurrences are in non-code positions, the match is filtered out. This eliminates false positives like `// PortalDataService is referenced here` or `var x = "PortalDataService"`.
+
 ### Stage 5: Method Filter (Optional)
 
 Keep only projects that call the specific method. Only runs if `--method-name` is provided (requires `--class-name`).
@@ -60,6 +62,8 @@ Searches for the pattern `.MethodName(`:
 ```python
 method_pattern = re.compile(rf"\.\s*{re.escape(method_name)}\s*\(")
 ```
+
+When `--parser-mode hybrid` is active, regex matches are confirmed by AST validation using `validate_type_usage(content, f".{method_name}")`. The dot anchors to member access; the paren is omitted to handle whitespace variants like `.Save (data)`. Same comment/string filtering as stage 4.
 
 ---
 

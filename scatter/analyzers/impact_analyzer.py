@@ -2,7 +2,10 @@
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from scatter.config import AnalysisConfig
 
 from scatter.core.models import (
     AnalysisTarget,
@@ -58,6 +61,7 @@ def run_impact_analysis(
     graph=None,
     min_confidence: float = 0.3,
     solution_index=None,
+    analysis_config: Optional["AnalysisConfig"] = None,
 ) -> ImpactReport:
     """Orchestrate the full impact analysis pipeline.
 
@@ -159,6 +163,7 @@ def run_impact_analysis(
             csproj_analysis_chunk_size=csproj_analysis_chunk_size,
             graph=graph,
             solution_index=solution_index,
+            analysis_config=analysis_config,
         )
         report.targets.append(target_impact)
 
@@ -232,6 +237,7 @@ def _analyze_single_target(
     csproj_analysis_chunk_size: int,
     graph=None,
     solution_index=None,
+    analysis_config: Optional["AnalysisConfig"] = None,
 ) -> TargetImpact:
     """Analyze a single target: find direct consumers, trace transitively."""
     impact = TargetImpact(target=target)
@@ -259,6 +265,7 @@ def _analyze_single_target(
         cs_analysis_chunk_size=cs_analysis_chunk_size,
         csproj_analysis_chunk_size=csproj_analysis_chunk_size,
         graph=graph,
+        analysis_config=analysis_config,
     )
 
     if not direct_consumers_data:
@@ -281,6 +288,7 @@ def _analyze_single_target(
         csproj_analysis_chunk_size=csproj_analysis_chunk_size,
         graph=graph,
         solution_index=solution_index,
+        analysis_config=analysis_config,
     )
 
     impact.consumers = all_consumers
@@ -304,6 +312,7 @@ def trace_transitive_impact(
     csproj_analysis_chunk_size: int = 25,
     graph=None,
     solution_index=None,
+    analysis_config: Optional["AnalysisConfig"] = None,
 ) -> List[EnrichedConsumer]:
     """BFS transitive tracing with confidence decay and cycle detection.
 
@@ -378,6 +387,7 @@ def trace_transitive_impact(
                         cs_analysis_chunk_size=cs_analysis_chunk_size,
                         csproj_analysis_chunk_size=csproj_analysis_chunk_size,
                         graph=graph,
+                        analysis_config=analysis_config,
                     )
                     for td in transitive_data:
                         td_path = td["consumer_path"]
