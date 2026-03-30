@@ -212,6 +212,20 @@ The full details on using impact analysis mode, interpreting the output, and tun
 
 ---
 
+## AST Validation (Not AI)
+
+**Flag:** `--parser-mode hybrid`
+
+Often confused with the LLM hybrid (`--enable-hybrid-git`), but this is a completely different feature. AST validation uses **tree-sitter** — a local C parser — to filter false positives in the consumer pipeline. No API key, no network calls, no cost.
+
+When you search for consumers of a class with `--class-name`, regex matches the type name everywhere — including comments, string literals, and documentation templates. `--parser-mode hybrid` adds an AST confirmation pass that checks whether each match is in actual code. If all matches in a file are in comments or strings, the file is filtered out.
+
+This runs in consumer stages 4 (class filter) and 5 (method filter) only. Graph construction always uses regex.
+
+Requires `uv sync --extra ast` to install tree-sitter. Without it, the flag silently falls back to regex. See [Type Extraction](reference/type-extraction.md) for the full comparison table.
+
+---
+
 ## Graph Metrics (Not AI)
 
 **No flag needed** -- this is automatic.

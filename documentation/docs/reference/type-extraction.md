@@ -173,9 +173,59 @@ The walk-backward approach is O(N) where N is the content length up to the match
 
 ---
 
+## AST Validation (`--parser-mode hybrid`)
+
+A different kind of "hybrid" from the LLM approach above. This one uses **tree-sitter** (a local parser, no AI, no API calls) to filter false positives in the consumer pipeline's class and method filtering stages.
+
+### What It Does
+
+When you search for consumers of `PortalDataService` with `--class-name`, Scatter's regex (`\bPortalDataService\b`) matches every occurrence in every `.cs` file — including comments, string literals, and documentation templates. These are false positives: the project mentions the type but doesn't actually use it in code.
+
+With `--parser-mode hybrid`, after the regex finds a match, Scatter parses the file with tree-sitter, builds a map of non-code ranges (comments and strings), and checks whether the match falls inside one. If every occurrence is in a non-code position, the file is filtered out.
+
+### Where It Runs
+
+AST validation runs only in the **consumer pipeline** (stages 4 and 5), not during graph construction. The graph builder uses pure regex — AST overhead there adds ~40% build time for zero measured edge delta.
+
+| Stage | What happens |
+|-------|-------------|
+| Stage 4 (class filter) | `validate_type_usage(content, class_name)` |
+| Stage 5 (method filter) | `validate_type_usage(content, f".{method_name}")` — dot anchors to member access, no paren to handle `.Save (data)` |
+
+Regex runs first. AST only fires if regex found a match. Non-matching files pay zero additional cost.
+
+### How It Differs from LLM Hybrid
+
+| | `--parser-mode hybrid` (AST) | `--enable-hybrid-git` (LLM) |
+|---|---|---|
+| **Technology** | tree-sitter (local C parser) | Gemini API (remote LLM) |
+| **API key** | No | Yes |
+| **Speed** | ~1ms per file | ~1-2s per file |
+| **What it filters** | False positives in consumer detection (comments/strings) | Over-reported types in git branch extraction |
+| **Where it runs** | Consumer pipeline stages 4-5 | Git mode type extraction (step 2) |
+| **Failure mode** | Returns regex result (conservative) | Falls back to regex |
+| **Install** | `uv sync --extra ast` | Included by default |
+
+They solve different problems and can be used together.
+
+### Setup
+
+```bash
+# Install tree-sitter dependencies
+uv sync --extra ast
+
+# Use hybrid mode
+scatter --target-project ./MyLib/MyLib.csproj --search-scope . \
+  --class-name MyService --parser-mode hybrid
+```
+
+If tree-sitter is not installed, `--parser-mode hybrid` silently falls back to regex.
+
+---
+
 ## Adding a New Extraction Strategy
 
-If you want to add a new extraction approach (say, Roslyn-based or tree-sitter):
+If you want to add a new extraction approach (say, Roslyn-based):
 
 1. Create a function with signature `(content: str) -> Set[str]` in `scatter/scanners/type_scanner.py`
 2. Wire it into `graph_builder.py` where `extract_type_names_from_content()` is called

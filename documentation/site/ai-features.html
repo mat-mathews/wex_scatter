@@ -882,6 +882,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#ast-validation-not-ai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AST Validation (Not AI)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#graph-metrics-not-ai" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1712,6 +1723,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#ast-validation-not-ai" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AST Validation (Not AI)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#graph-metrics-not-ai" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1955,6 +1977,13 @@ scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/port
 <p>After the LLM responds, any target names not found in the index have their confidence automatically halved.</p>
 <p>Use <code>--dump-index --search-scope .</code> to inspect the index the LLM sees. Use <code>--sow-min-confidence</code> to filter low-confidence targets from the analysis.</p>
 <p>The full details on using impact analysis mode, interpreting the output, and tuning the depth/scope are in the <a href="usage/impact-analysis.html">Impact Analysis usage page</a>.</p>
+<hr />
+<h2 id="ast-validation-not-ai">AST Validation (Not AI)<a class="headerlink" href="#ast-validation-not-ai" title="Permanent link">&para;</a></h2>
+<p><strong>Flag:</strong> <code>--parser-mode hybrid</code></p>
+<p>Often confused with the LLM hybrid (<code>--enable-hybrid-git</code>), but this is a completely different feature. AST validation uses <strong>tree-sitter</strong> — a local C parser — to filter false positives in the consumer pipeline. No API key, no network calls, no cost.</p>
+<p>When you search for consumers of a class with <code>--class-name</code>, regex matches the type name everywhere — including comments, string literals, and documentation templates. <code>--parser-mode hybrid</code> adds an AST confirmation pass that checks whether each match is in actual code. If all matches in a file are in comments or strings, the file is filtered out.</p>
+<p>This runs in consumer stages 4 (class filter) and 5 (method filter) only. Graph construction always uses regex.</p>
+<p>Requires <code>uv sync --extra ast</code> to install tree-sitter. Without it, the flag silently falls back to regex. See <a href="reference/type-extraction.html">Type Extraction</a> for the full comparison table.</p>
 <hr />
 <h2 id="graph-metrics-not-ai">Graph Metrics (Not AI)<a class="headerlink" href="#graph-metrics-not-ai" title="Permanent link">&para;</a></h2>
 <p><strong>No flag needed</strong> -- this is automatic.</p>

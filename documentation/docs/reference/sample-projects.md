@@ -1,6 +1,6 @@
 # Sample Projects
 
-The 11 included .NET projects serve as a validation reference and integration test fixture. Moved here from the User Guide per Sam's feedback -- this is reference material, not a getting-started topic.
+The 13 included .NET projects serve as a validation reference and integration test fixture. Moved here from the User Guide per Sam's feedback -- this is reference material, not a getting-started topic.
 
 ---
 
@@ -33,7 +33,17 @@ GalaxyWorks.Data (SDK, net8.0, Library, no deps)
  |         Types: Project, GlobalUsings, OrderConsumer
  |
  +-- MyGalaxyConsumerApp2 (SDK, net8.0, Exe, refs Data)
-      Types: Project
+ |    Types: Project
+ |
+ +-- GalaxyWorks.DevTools (SDK, net8.0, Exe, refs Data)
+ |    Types: DocGenerator, SchemaExporter, DependencyChecker
+ |    NOTE: False-positive test project — mentions PortalDataService
+ |          only in comments, strings, and doc templates. Not a real consumer.
+ |
+ +-- GalaxyWorks.Notifications (SDK, net8.0, Exe, refs Data)
+      Types: ConfigChangeNotifier, EmailTemplates, SlackTemplates
+      NOTE: Mixed consumer — ConfigChangeNotifier has real PortalDataService
+            usage; EmailTemplates and SlackTemplates mention it only in strings.
 
 MyDotNetApp (SDK, net8.0, Exe, independent)
  |  Types: Person, DataService, IDataService, Program
@@ -47,12 +57,14 @@ MyDotNetApp2.Exclude (SDK, net8.0, Exe, standalone, no refs)
 
 ### Notes on the Tree
 
-- **GalaxyWorks.Data** is the hub. Everything in the GalaxyWorks cluster depends on it.
+- **GalaxyWorks.Data** is the hub. Nearly everything in the GalaxyWorks cluster depends on it (9 incoming project references).
 - **GalaxyWorks.BatchProcessor** has the highest instability (1.0) -- it depends on two projects and nothing depends on it.
 - **GalaxyWorks.WebPortal** uses legacy framework-style `.csproj` (with `<ToolsVersion>` and `<ProjectGuid>`). BatchProcessor does too. This validates that Scatter handles both SDK and legacy formats.
 - **GalaxyWorks.Common** multi-targets `net48` and `net8.0`. Scatter extracts the first framework.
 - **MyDotNetApp** is completely independent from the GalaxyWorks cluster. They form separate connected components in the graph.
 - **MyDotNetApp2.Exclude** is an island -- no incoming or outgoing project references. It exists specifically to test that Scatter correctly reports 0 consumers.
+- **GalaxyWorks.DevTools** is a false-positive test fixture. It references GalaxyWorks.Data and uses its namespace, but `PortalDataService` only appears in comments, strings, and doc templates. In regex mode, Scatter incorrectly reports it as a consumer of PortalDataService. In hybrid mode (`--parser-mode hybrid`), the tree-sitter AST correctly filters it out.
+- **GalaxyWorks.Notifications** is a mixed-usage test fixture. `ConfigChangeNotifier.cs` has real PortalDataService usage; `EmailTemplates.cs` and `SlackTemplates.cs` mention it only in string literals. Hybrid mode keeps it as a consumer but filters the false-positive files from `relevant_files`.
 
 ---
 
@@ -63,12 +75,12 @@ These are the ground-truth results you should see when running Scatter against t
 | Scenario | Command | Expected |
 |----------|---------|----------|
 | GalaxyWorks.Data consumers | `--target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .` | 6 consumers: WebPortal, BatchProcessor, Common, Api, Data.Tests, MyGalaxyConsumerApp, MyGalaxyConsumerApp2 (7 with transitive) |
-| GalaxyWorks.Data + class filter | `--target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . --class-name PortalDataService` | Consumers filtered to those referencing `PortalDataService` |
+| GalaxyWorks.Data + class filter | `--target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . --class-name PortalDataService` | 8 consumers (regex) or 6 consumers (hybrid — DevTools and Api filtered as false positives) |
 | GalaxyWorks.WebPortal consumers | `--target-project ./GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj --search-scope .` | 1 consumer: BatchProcessor |
 | MyDotNetApp consumers | `--target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .` | 1 consumer: MyDotNetApp.Consumer |
 | MyDotNetApp2.Exclude consumers | `--target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .` | 0 consumers |
 | Sproc analysis | `--stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .` | Finds PortalDataService in GalaxyWorks.Data, then its consumers |
-| Graph mode | `--graph --search-scope .` | 11 projects, multiple connected components, 0 cycles |
+| Graph mode | `--graph --search-scope .` | 13 projects, multiple connected components, 0 cycles |
 
 ---
 
@@ -78,7 +90,7 @@ When you run `--graph --search-scope .`, Scatter computes coupling metrics for e
 
 ### GalaxyWorks.Data
 
-- **fan_in**: 7 (everything in the cluster references it)
+- **fan_in**: 9 (nearly everything in the cluster references it)
 - **fan_out**: 0 (depends on nothing)
 - **instability**: 0.0 (perfectly stable -- the foundation)
 - **coupling_score**: ~8.6 (high, due to fan_in)
@@ -100,7 +112,7 @@ The MyDotNetApp and MyDotNetApp.Consumer form a small independent cluster. Feasi
 ### Connected Components
 
 The graph has at least 3 connected components:
-1. The GalaxyWorks cluster (Data, WebPortal, BatchProcessor, Common, Api, Data.Tests, MyGalaxyConsumerApp, MyGalaxyConsumerApp2)
+1. The GalaxyWorks cluster (Data, WebPortal, BatchProcessor, Common, Api, Data.Tests, DevTools, Notifications, MyGalaxyConsumerApp, MyGalaxyConsumerApp2)
 2. The MyDotNetApp cluster (MyDotNetApp, MyDotNetApp.Consumer)
 3. MyDotNetApp2.Exclude (island)
 
@@ -116,7 +128,7 @@ The sample projects deliberately mix .NET project styles to validate Scatter's p
 
 | Style | Projects | Characteristics |
 |-------|----------|----------------|
-| SDK-style | GalaxyWorks.Data, Common, Api, Data.Tests, MyGalaxyConsumerApp, MyGalaxyConsumerApp2, MyDotNetApp, MyDotNetApp.Consumer, MyDotNetApp2.Exclude | `<Project Sdk="...">`, compact XML, `<TargetFramework>` |
+| SDK-style | GalaxyWorks.Data, Common, Api, Data.Tests, DevTools, Notifications, MyGalaxyConsumerApp, MyGalaxyConsumerApp2, MyDotNetApp, MyDotNetApp.Consumer, MyDotNetApp2.Exclude | `<Project Sdk="...">`, compact XML, `<TargetFramework>` |
 | Framework-style | GalaxyWorks.WebPortal, GalaxyWorks.BatchProcessor | `<ToolsVersion>`, `<ProjectGuid>`, `<TargetFrameworkVersion>`, explicit `<Compile Include>`, verbose XML |
 
 This matters because the `.csproj` parser in `scatter/scanners/project_scanner.py` handles both formats. SDK-style uses `<TargetFramework>`, framework-style uses `<TargetFrameworkVersion>` with a `v` prefix. The parser normalizes both.
@@ -137,12 +149,12 @@ def test_graph_against_samples():
         disable_multiprocessing=True,
         exclude_patterns=["*/bin/*", "*/obj/*", "*/temp_test_data/*"],
     )
-    # 11 projects
-    assert graph.node_count == 11
+    # 13 projects
+    assert graph.node_count == 13
 
     # GalaxyWorks.Data has the most dependents
     data_edges = graph.get_edges_to("GalaxyWorks.Data")
-    assert len(data_edges) >= 6
+    assert len(data_edges) >= 9
 ```
 
 The `exclude_patterns` parameter filters out `bin/`, `obj/`, and `temp_test_data/` directories. Always include it when running against the repo root -- otherwise you'll pick up build artifacts.

@@ -80,6 +80,32 @@ The examples below use scatter's own sample projects. Mount the repo at `/worksp
 
 First run builds the graph and caches it. Subsequent runs with the cache volume patch incrementally (~10ms for typical edits).
 
+### Hybrid AST mode
+
+The Docker image includes tree-sitter, so `--parser-mode hybrid` works out of the box. Add it to any consumer analysis command to filter false positives from comments and string literals:
+
+=== "Windows (PowerShell)"
+
+    ```powershell
+    docker run `
+      -v "${PWD}:/workspace" `
+      -v scatter-cache:/workspace/.scatter `
+      scatter --target-project /workspace/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace `
+        --class-name PortalDataService --parser-mode hybrid
+    ```
+
+=== "macOS / Linux"
+
+    ```bash
+    docker run \
+      -v $(pwd):/workspace \
+      -v scatter-cache:/workspace/.scatter \
+      scatter --target-project /workspace/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace \
+        --class-name PortalDataService --parser-mode hybrid
+    ```
+
+No API key needed — this uses tree-sitter (a local C parser), not an LLM.
+
 ### AI features
 
 Pass your API key via environment variable:

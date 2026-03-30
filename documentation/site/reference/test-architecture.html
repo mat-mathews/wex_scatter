@@ -1626,11 +1626,11 @@ pytest<span class="w"> </span>test_impact_analysis.py::test_something_specific
 <span class="c1"># With coverage</span>
 python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>--cov<span class="o">=</span>scatter
 </code></pre></div>
-<p>The full suite is 878 tests (1 xfail), and runs in roughly 25 seconds. No network calls, no database, no Docker. Just Python and your CPU.</p>
+<p>The full suite is 940 tests (1 xfail), and runs in roughly 45 seconds. No network calls, no database, no Docker. Just Python and your CPU.</p>
 <p>Coverage is configured in <code>pyproject.toml</code> with <code>fail_under=70%</code>. The coverage source is the <code>scatter/</code> package only -- test files themselves are excluded from the metric.</p>
 <hr />
 <h2 id="full-test-inventory">Full Test Inventory<a class="headerlink" href="#full-test-inventory" title="Permanent link">&para;</a></h2>
-<p>33 test files. Here's every one of them, what it covers, and how many tests it contains.</p>
+<p>35 test files. Here's every one of them, what it covers, and how many tests it contains.</p>
 <table>
 <thead>
 <tr>
@@ -1713,7 +1713,17 @@ python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> <
 <tr>
 <td><code>test_hybrid_git.py</code></td>
 <td style="text-align: right;">7</td>
-<td>LLM-based symbol extraction: valid JSON, empty, invalid, markdown fences, exceptions</td>
+<td>LLM-based symbol extraction (<code>--enable-hybrid-git</code>): valid JSON, empty, invalid, markdown fences, exceptions</td>
+</tr>
+<tr>
+<td><code>test_ast_validator.py</code></td>
+<td style="text-align: right;">25</td>
+<td>Tree-sitter AST validation (<code>--parser-mode hybrid</code>): identifiers in code, type declarations, type usage, non-ASCII byte offsets, thread safety, graceful fallback</td>
+</tr>
+<tr>
+<td><code>test_consumer_ast_hybrid.py</code></td>
+<td style="text-align: right;">12</td>
+<td>Consumer pipeline AST confirmation: class/method filtering with <code>use_ast</code>, false positive elimination, error fallback, non-ASCII</td>
 </tr>
 <tr>
 <td><code>test_impact_analysis.py</code></td>
@@ -1831,7 +1841,7 @@ python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> <
 </code></pre></div>
 <p>Use <code>tmp_path</code> (pytest built-in) for any test that needs files on disk. It's auto-cleaned after each test.</p>
 <h3 id="test-against-sample-projects">Test Against Sample Projects<a class="headerlink" href="#test-against-sample-projects" title="Permanent link">&para;</a></h3>
-<p>The 11 <code>.csproj</code> files in the repo root are real .NET projects designed for integration testing. Use them when you need realistic project references, namespace structures, and type declarations:</p>
+<p>The 13 <code>.csproj</code> files in the repo root are real .NET projects designed for integration testing. Use them when you need realistic project references, namespace structures, and type declarations:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
 <span class="n">REPO_ROOT</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span>
@@ -1839,7 +1849,7 @@ python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> <
 <span class="k">def</span><span class="w"> </span><span class="nf">test_against_sample_projects</span><span class="p">():</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">scatter.analyzers.graph_builder</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_dependency_graph</span>
     <span class="n">graph</span> <span class="o">=</span> <span class="n">build_dependency_graph</span><span class="p">(</span><span class="n">REPO_ROOT</span><span class="p">,</span> <span class="n">disable_multiprocessing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="n">graph</span><span class="o">.</span><span class="n">node_count</span> <span class="o">==</span> <span class="mi">11</span>
+    <span class="k">assert</span> <span class="n">graph</span><span class="o">.</span><span class="n">node_count</span> <span class="o">==</span> <span class="mi">13</span>
 </code></pre></div>
 <p>See <a href="sample-projects.html">Sample Projects</a> for the full dependency tree and expected values.</p>
 <h3 id="test-with-mocked-ai">Test with Mocked AI<a class="headerlink" href="#test-with-mocked-ai" title="Permanent link">&para;</a></h3>
@@ -1873,6 +1883,28 @@ python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> <
 <span class="n">addopts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;-q&quot;</span>
 </code></pre></div>
 <p>The <code>-q</code> (quiet) default keeps output manageable for 878 tests. Override with <code>-v</code> when debugging.</p>
+<p>Integration tests for hybrid AST live in <code>tests/integration/</code>:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th style="text-align: right;">Tests</th>
+<th>What it covers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test_hybrid_regression.py</code></td>
+<td style="text-align: right;">4</td>
+<td>Graph identity: parser_mode does not affect graph output (full edge-triple comparison)</td>
+</tr>
+<tr>
+<td><code>test_hybrid_consumer_regression.py</code></td>
+<td style="text-align: right;">2</td>
+<td>Consumer subset: hybrid consumers are a subset of regex consumers on sample projects</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="coverage">Coverage<a class="headerlink" href="#coverage" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Run with coverage report</span>
