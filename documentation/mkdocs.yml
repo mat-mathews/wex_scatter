@@ -20,6 +20,11 @@ markdown_extensions:
   - toc:
       permalink: true
   - tables
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
 
 nav:
   - User Guide:

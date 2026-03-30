@@ -63,9 +63,9 @@ cd wex_scatter
 uv sync        # or: pip install .
 ```
 
-After install, run via `uv run scatter` (or just `scatter` if you `pip install`). The repo ships with 11 sample .NET projects — every command below works out of the box.
+After install, run via `uv run scatter` (or just `scatter` if you `pip install`). The repo ships with 13 sample .NET projects — every command below works out of the box.
 
-For full development setup (uv, deps, git config, Claude Code skills): `bash tools/setup.sh`
+For full development setup (uv, deps, git config, Claude Code skills): `bash tools/setup.sh` (or `pwsh tools/setup.ps1` on Windows)
 
 ### Docker
 
