@@ -31,6 +31,8 @@ def _build_cli_overrides(args) -> Dict[str, Any]:
         overrides["search.max_depth"] = args.max_depth
     if getattr(args, "max_ai_calls", None) is not None:
         overrides["ai.max_ai_calls"] = args.max_ai_calls
+    if getattr(args, "parser_mode", None) is not None:
+        overrides["analysis.parser_mode"] = args.parser_mode
     if hasattr(args, "rebuild_graph") and args.rebuild_graph:
         overrides["graph.rebuild"] = True
     if hasattr(args, "include_db") and args.include_db:
@@ -113,6 +115,12 @@ def build_parser() -> argparse.ArgumentParser:
     common_group.add_argument(
         "--search-scope",
         help="Root directory to search for consuming projects (defaults to --repo-path if Git mode is used and this is omitted, otherwise REQUIRED).",
+    )
+    common_group.add_argument(
+        "--parser-mode",
+        choices=["regex", "hybrid"],
+        default=None,
+        help="Parser mode: 'regex' (default) uses regex only; 'hybrid' adds tree-sitter AST validation to reduce false positives.",
     )
     common_group.add_argument(
         "--graph-metrics",

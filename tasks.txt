@@ -1899,3 +1899,63 @@ PHASE 5: Follow-Up Consistency
 ----------------------------------------------------------------------
 - [ ] Align print_impact_report() header style with ==== block convention
       Currently uses === Title === (3 equals); should match the new ==== block style.
+
+============================================================================
+INITIATIVE: HYBRID AST SPIKE — Phase 2 & Follow-Ups
+Spike shipped on feature/hybrid-ast-spike (2026-03-29)
+Phase 1 (spike): Config + CLI + parsers module + graph_builder wiring. DONE.
+============================================================================
+
+PHASE 2: Consumer Analyzer Wiring (PRIMARY GOAL)
+----------------------------------------------------------------------
+- [ ] Wire validate_type_usage() into consumer_analyzer.py stages 4-5 via parallel.py
+- [ ] Thread analysis_config through find_consumers() and its call sites
+      Call sites: cli.py, impact_analyzer.py
+- [ ] Extend validate_type_usage() to distinguish type references from other identifier
+      positions using AST node types (object_creation, variable_declaration, base_list, etc.)
+
+PHASE 2: Performance (Devon, Priya)
+----------------------------------------------------------------------
+- [ ] Cache compiled tree_sitter.Query objects at module level in ast_validator.py
+      _run_query() creates a new Query + QueryCursor per call — 2 compilations per file.
+      At 5,000 files that's 10,000 query compilations. Cache the Query, keep fresh cursors.
+- [ ] Profile ident_positions dict overhead vs. the old set-based path
+      Hybrid path builds Dict[str, List[int]] instead of Set[str]; more allocations.
+      Optimization: skip position capture for identifiers not in type_name_set (requires
+      knowing type_name_set at extraction time — pipeline restructure).
+- [ ] Wire --parser-mode into tools/benchmark_graph_build.py
+      Run both modes, report wall-clock delta. Currently the tool doesn't accept --parser-mode.
+
+PHASE 2: Correctness (Sam)
+----------------------------------------------------------------------
+- [ ] Fix string-index vs UTF-8-byte-offset mismatch in ident_positions
+      graph_builder.py:64-66 uses m.start() (Python string index) but tree-sitter
+      byte offsets are UTF-8 encoded. Diverges on non-ASCII content (emoji in comments,
+      CJK in strings). Academic for C# but becomes real with Phase 2 consumer wiring.
+      Fix: len(content[:m.start()].encode('utf-8')) or work on encoded bytes.
+
+PHASE 2: Resilience (Fatima)
+----------------------------------------------------------------------
+- [ ] Consider removing validate_type_usage from __init__.py barrel export until Phase 2
+      Exporting unused public API invites accidental coupling. Re-export when wired.
+- [ ] Add _parser = None reset in except blocks of public functions
+      If tree-sitter parser gets into corrupt state, subsequent calls reuse it.
+      Reset on error so next call recreates. Low probability but cheap insurance.
+
+PHASE 2: Testing (Anya)
+----------------------------------------------------------------------
+- [ ] Extract _byte_positions helper to shared location (scatter/parsers/ or test utils)
+      Test helper reimplements the same byte-position logic as graph_builder.
+      If those diverge, unit tests pass but integration fails.
+- [ ] Add concurrency test variant with different content per thread
+      Current test_concurrent_parse uses identical content for all 4 threads.
+      Real concurrency bugs surface with different tree sizes and range counts.
+- [ ] Add sample projects with identifiers in comments/strings to exercise hybrid delta
+      Current sample projects are clean — delta is 0. Need a test fixture that
+      produces a nonzero delta to prove the feature works end-to-end.
+
+PHASE 2: Tooling (Kai)
+----------------------------------------------------------------------
+- [ ] Guard _ts_language against uninitialized access in _run_query
+      If someone calls _run_query before parse_csharp, _ts_language is None and
+      Query(None, ...) gives a confusing TypeError. Add _get_parser() call or assert.

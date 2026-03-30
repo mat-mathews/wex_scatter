@@ -82,6 +82,7 @@ def save_graph(
     search_scope: Path,
     file_facts: Optional[Dict[str, "FileFacts"]] = None,
     project_facts: Optional[Dict[str, "ProjectFacts"]] = None,
+    parser_mode: str = "regex",
 ) -> None:
     """Serialize graph to JSON file with metadata.
 
@@ -99,6 +100,7 @@ def save_graph(
         "created_at": datetime.now(timezone.utc).isoformat(),
         "search_scope": str(search_scope.resolve()),
         "git_head": git_head,
+        "parser_mode": parser_mode,
         "node_count": graph.node_count,
         "edge_count": graph.edge_count,
         "graph": graph.to_dict(),
@@ -158,6 +160,7 @@ def load_and_validate(
     cache_path: Path,
     search_scope: Path,
     invalidation: str = "git",
+    parser_mode: str = "regex",
 ) -> Optional[
     Tuple[
         DependencyGraph,
@@ -187,6 +190,14 @@ def load_and_validate(
     if cached_scope and cached_scope != resolved_scope:
         logging.info(
             f"Cache scope mismatch: cached '{cached_scope}' vs current '{resolved_scope}'. Rebuilding."
+        )
+        return None
+
+    # Validate parser_mode matches (default to "regex" for older caches)
+    cached_parser_mode = envelope.get("parser_mode", "regex")
+    if cached_parser_mode != parser_mode:
+        logging.info(
+            f"Cache parser_mode mismatch: cached '{cached_parser_mode}' vs current '{parser_mode}'. Rebuilding."
         )
         return None
 

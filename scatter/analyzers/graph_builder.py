@@ -11,8 +11,12 @@ Single-pass O(P+F) construction:
 
 import logging
 from collections import defaultdict
+from functools import partial
 from pathlib import Path
-from typing import Any, Dict, List, NamedTuple, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, Set, Tuple
+
+if TYPE_CHECKING:
+    from scatter.config import AnalysisConfig
 
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.core.models import DEFAULT_CHUNK_SIZE, DEFAULT_MAX_WORKERS
@@ -39,16 +43,37 @@ class _FileExtraction(NamedTuple):
     content_hash: str
 
 
-def _extract_file_data(cs_path: Path) -> Optional[_FileExtraction]:
-    """Read a .cs file and extract all relevant data. Pure function, safe for threads."""
+def _extract_file_data(cs_path: Path, use_ast: bool = False) -> Optional[_FileExtraction]:
+    """Read a .cs file and extract all relevant data. Pure function, safe for threads.
+
+    When use_ast=True, applies tree-sitter validation to filter identifiers
+    in comments/strings and confirm type declarations against the AST.
+    """
     try:
         content = cs_path.read_text(encoding="utf-8", errors="ignore")
     except OSError:
         return None
+
+    identifiers: Set[str]
+    types: Set[str]
+
+    if use_ast:
+        from scatter.parsers.ast_validator import identifiers_in_code, validate_type_declarations
+
+        # Capture byte positions for each identifier match
+        ident_positions: Dict[str, List[int]] = {}
+        for m in _IDENT_PATTERN.finditer(content):
+            ident_positions.setdefault(m.group(), []).append(m.start())
+        identifiers = identifiers_in_code(content, ident_positions)
+        types = validate_type_declarations(content, extract_type_names_from_content(content))
+    else:
+        identifiers = {m.group() for m in _IDENT_PATTERN.finditer(content)}
+        types = extract_type_names_from_content(content)
+
     return _FileExtraction(
         cs_path=cs_path,
-        identifiers={m.group() for m in _IDENT_PATTERN.finditer(content)},
-        types=extract_type_names_from_content(content),
+        identifiers=identifiers,
+        types=types,
         sprocs={m.group().strip("\"'") for m in _SPROC_PATTERN.finditer(content)},
         namespaces={m.group(1) for m in _USING_PATTERN.finditer(content)},
         content_hash=compute_content_hash(content),
@@ -65,14 +90,34 @@ def build_dependency_graph(
     sproc_prefixes: Optional[List[str]] = None,
     capture_facts: bool = False,
     full_type_scan: bool = False,
+    analysis_config: Optional["AnalysisConfig"] = None,
 ):
     """Build a complete dependency graph from a codebase directory.
 
     If capture_facts=True, returns (graph, file_facts, project_facts) tuple
     for v2 cache persistence. Otherwise returns just the graph.
+
+    Args:
+        analysis_config: Optional AnalysisConfig. When parser_mode="hybrid",
+            enables tree-sitter AST validation to filter regex false positives.
     """
     if exclude_patterns is None:
         exclude_patterns = ["*/bin/*", "*/obj/*", "*/temp_test_data/*"]
+
+    # Resolve AST mode
+    use_ast = False
+    requested_mode = analysis_config.parser_mode if analysis_config else "regex"
+    if requested_mode == "hybrid":
+        from scatter.parsers.ast_validator import is_hybrid_available
+
+        if is_hybrid_available():
+            use_ast = True
+            logging.info("Hybrid parser mode: tree-sitter AST validation enabled")
+        else:
+            logging.warning(
+                "Hybrid parser mode requested but tree-sitter is not installed. "
+                "Install with: uv sync --extra ast. Falling back to regex-only."
+            )
 
     graph = DependencyGraph()
 
@@ -146,11 +191,13 @@ def build_dependency_graph(
         (pname, cspath) for pname, cs_paths in project_cs_files.items() for cspath in cs_paths
     ]
 
+    extract_fn = partial(_extract_file_data, use_ast=use_ast)
+
     if disable_multiprocessing or len(all_file_tasks) < 100:
         file_extractions = [
             (pname, result)
             for pname, cspath in all_file_tasks
-            if (result := _extract_file_data(cspath)) is not None
+            if (result := extract_fn(cspath)) is not None
         ]
     else:
         from concurrent.futures import ThreadPoolExecutor
@@ -158,7 +205,7 @@ def build_dependency_graph(
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             results = list(
                 executor.map(
-                    _extract_file_data,
+                    extract_fn,
                     [cspath for _, cspath in all_file_tasks],
                 )
             )

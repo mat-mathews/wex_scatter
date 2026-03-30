@@ -37,7 +37,12 @@ def run_dump_index_mode(args) -> None:
 
     # Try cached graph first, build if needed
     graph = None
-    cache_result = load_and_validate(cache_path, search_scope_abs, config.graph.invalidation)
+    cache_result = load_and_validate(
+        cache_path,
+        search_scope_abs,
+        config.graph.invalidation,
+        parser_mode=config.analysis.parser_mode,
+    )
     if cache_result is not None:
         graph = cache_result[0]
         logging.info("Using cached dependency graph.")
@@ -49,11 +54,12 @@ def run_dump_index_mode(args) -> None:
             disable_multiprocessing=args.disable_multiprocessing,
             exclude_patterns=config.exclude_patterns,
             full_type_scan=getattr(args, "full_type_scan", False),
+            analysis_config=config.analysis,
         )
         dump_solutions = scan_solutions(search_scope_abs)
         dump_sol_index = build_project_to_solutions(dump_solutions)
         populate_graph_solutions(graph, dump_sol_index)
-        save_graph(graph, cache_path, search_scope_abs)
+        save_graph(graph, cache_path, search_scope_abs, parser_mode=config.analysis.parser_mode)
 
     index = build_codebase_index(graph, search_scope_abs)
     print(index.text)

@@ -65,7 +65,12 @@ def build_graph_context(
         needs_full_rebuild = True
 
         if not config.graph.rebuild:
-            cache_result = load_and_validate(cache_path, search_scope, config.graph.invalidation)
+            cache_result = load_and_validate(
+                cache_path,
+                search_scope,
+                config.graph.invalidation,
+                parser_mode=config.analysis.parser_mode,
+            )
             if cache_result is not None:
                 graph, file_facts, project_facts, git_head, proj_set_hash = cache_result
 
@@ -88,6 +93,7 @@ def build_graph_context(
                                 search_scope,
                                 result.file_facts,
                                 result.project_facts,
+                                parser_mode=config.analysis.parser_mode,
                             )
                             graph = result.graph
                             file_facts = result.file_facts
@@ -133,6 +139,7 @@ def build_graph_context(
                 sproc_prefixes=config.db.sproc_prefixes,
                 capture_facts=True,
                 full_type_scan=getattr(args, "full_type_scan", False),
+                analysis_config=config.analysis,
             )
             graph, file_facts, project_facts = build_result
             # Post-process: populate solution membership
@@ -140,7 +147,14 @@ def build_graph_context(
                 for node in graph.get_all_nodes():
                     matches = solution_index.get(node.name, [])
                     node.solutions = sorted(set(si.name for si in matches))
-            save_graph(graph, cache_path, search_scope, file_facts, project_facts)
+            save_graph(
+                graph,
+                cache_path,
+                search_scope,
+                file_facts,
+                project_facts,
+                parser_mode=config.analysis.parser_mode,
+            )
 
         logging.info(
             f"Graph built from search scope {search_scope} "

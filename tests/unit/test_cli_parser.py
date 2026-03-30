@@ -1,4 +1,5 @@
 """Smoke tests for scatter.cli_parser."""
+
 import pytest
 
 from scatter.cli_parser import build_parser, _build_cli_overrides, _REDACTED_CLI_KEYS
@@ -9,31 +10,44 @@ class TestBuildParser:
 
     def test_target_mode_args(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "--target-project", "./Foo/Foo.csproj",
-            "--search-scope", "/tmp",
-        ])
+        args = parser.parse_args(
+            [
+                "--target-project",
+                "./Foo/Foo.csproj",
+                "--search-scope",
+                "/tmp",
+            ]
+        )
         assert args.target_project == "./Foo/Foo.csproj"
         assert args.search_scope == "/tmp"
         assert args.branch_name is None
 
     def test_git_mode_args(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "--branch-name", "feature/x",
-            "--repo-path", "/repo",
-            "--base-branch", "develop",
-        ])
+        args = parser.parse_args(
+            [
+                "--branch-name",
+                "feature/x",
+                "--repo-path",
+                "/repo",
+                "--base-branch",
+                "develop",
+            ]
+        )
         assert args.branch_name == "feature/x"
         assert args.repo_path == "/repo"
         assert args.base_branch == "develop"
 
     def test_sproc_mode_args(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "--stored-procedure", "dbo.sp_Test",
-            "--search-scope", "/tmp",
-        ])
+        args = parser.parse_args(
+            [
+                "--stored-procedure",
+                "dbo.sp_Test",
+                "--search-scope",
+                "/tmp",
+            ]
+        )
         assert args.stored_procedure == "dbo.sp_Test"
 
     def test_graph_mode(self):
@@ -62,20 +76,30 @@ class TestBuildParser:
     def test_output_format_choices(self):
         parser = build_parser()
         for fmt in ("console", "csv", "json", "markdown", "mermaid", "pipelines"):
-            args = parser.parse_args([
-                "--graph", "--search-scope", "/tmp",
-                "--output-format", fmt,
-            ])
+            args = parser.parse_args(
+                [
+                    "--graph",
+                    "--search-scope",
+                    "/tmp",
+                    "--output-format",
+                    fmt,
+                ]
+            )
             assert args.output_format == fmt
 
     def test_modes_are_mutually_exclusive(self):
         parser = build_parser()
         with pytest.raises(SystemExit):
-            parser.parse_args([
-                "--target-project", "foo.csproj",
-                "--branch-name", "main",
-                "--search-scope", "/tmp",
-            ])
+            parser.parse_args(
+                [
+                    "--target-project",
+                    "foo.csproj",
+                    "--branch-name",
+                    "main",
+                    "--search-scope",
+                    "/tmp",
+                ]
+            )
 
     def test_no_mode_parses_without_error(self):
         """Mode group is optional at parser level (validated in __main__.py for --dump-index support)."""
@@ -86,7 +110,6 @@ class TestBuildParser:
 
 
 class TestBuildCliOverrides:
-
     def _make_args(self, **kwargs):
         parser = build_parser()
         base = ["--graph", "--search-scope", "/tmp"]
@@ -101,33 +124,103 @@ class TestBuildCliOverrides:
 
     def test_google_api_key_override(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "--graph", "--search-scope", "/tmp",
-            "--google-api-key", "test-key",
-        ])
+        args = parser.parse_args(
+            [
+                "--graph",
+                "--search-scope",
+                "/tmp",
+                "--google-api-key",
+                "test-key",
+            ]
+        )
         overrides = _build_cli_overrides(args)
         assert overrides["ai.credentials.gemini.api_key"] == "test-key"
 
     def test_rebuild_graph_override(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "--graph", "--search-scope", "/tmp",
-            "--rebuild-graph",
-        ])
+        args = parser.parse_args(
+            [
+                "--graph",
+                "--search-scope",
+                "/tmp",
+                "--rebuild-graph",
+            ]
+        )
         overrides = _build_cli_overrides(args)
         assert overrides["graph.rebuild"] is True
 
     def test_disable_multiprocessing_override(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "--graph", "--search-scope", "/tmp",
-            "--disable-multiprocessing",
-        ])
+        args = parser.parse_args(
+            [
+                "--graph",
+                "--search-scope",
+                "/tmp",
+                "--disable-multiprocessing",
+            ]
+        )
         overrides = _build_cli_overrides(args)
         assert overrides["multiprocessing.disabled"] is True
 
 
-class TestRedactedCliKeys:
+class TestParserModeFlag:
+    def test_parser_mode_hybrid(self):
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "--graph",
+                "--search-scope",
+                "/tmp",
+                "--parser-mode",
+                "hybrid",
+            ]
+        )
+        assert args.parser_mode == "hybrid"
 
+    def test_parser_mode_regex(self):
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "--graph",
+                "--search-scope",
+                "/tmp",
+                "--parser-mode",
+                "regex",
+            ]
+        )
+        assert args.parser_mode == "regex"
+
+    def test_parser_mode_default_is_none(self):
+        parser = build_parser()
+        args = parser.parse_args(["--graph", "--search-scope", "/tmp"])
+        assert args.parser_mode is None
+
+    def test_parser_mode_invalid_rejected(self):
+        parser = build_parser()
+        with pytest.raises(SystemExit):
+            parser.parse_args(["--graph", "--search-scope", "/tmp", "--parser-mode", "ast"])
+
+    def test_parser_mode_override(self):
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "--graph",
+                "--search-scope",
+                "/tmp",
+                "--parser-mode",
+                "hybrid",
+            ]
+        )
+        overrides = _build_cli_overrides(args)
+        assert overrides["analysis.parser_mode"] == "hybrid"
+
+    def test_parser_mode_not_in_overrides_when_omitted(self):
+        parser = build_parser()
+        args = parser.parse_args(["--graph", "--search-scope", "/tmp"])
+        overrides = _build_cli_overrides(args)
+        assert "analysis.parser_mode" not in overrides
+
+
+class TestRedactedCliKeys:
     def test_google_api_key_is_redacted(self):
-        assert 'google_api_key' in _REDACTED_CLI_KEYS
+        assert "google_api_key" in _REDACTED_CLI_KEYS
