@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -1777,11 +1777,13 @@
 <p>Uses word-boundary regex on the <code>relevant_files</code> from stage 3:</p>
 <div class="highlight"><pre><span></span><code><span class="n">class_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">rf</span><span class="s2">&quot;\b</span><span class="si">{</span><span class="n">re</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">class_name</span><span class="p">)</span><span class="si">}</span><span class="s2">\b&quot;</span><span class="p">)</span>
 </code></pre></div>
+<p>When <code>--parser-mode hybrid</code> is active, regex matches are confirmed by AST validation: <code>validate_type_usage(content, class_name)</code> checks that at least one occurrence is in real code (not a comment or string literal). If all occurrences are in non-code positions, the match is filtered out. This eliminates false positives like <code>// PortalDataService is referenced here</code> or <code>var x = "PortalDataService"</code>.</p>
 <h3 id="stage-5-method-filter-optional">Stage 5: Method Filter (Optional)<a class="headerlink" href="#stage-5-method-filter-optional" title="Permanent link">&para;</a></h3>
 <p>Keep only projects that call the specific method. Only runs if <code>--method-name</code> is provided (requires <code>--class-name</code>).</p>
 <p>Searches for the pattern <code>.MethodName(</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="n">method_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">rf</span><span class="s2">&quot;\.\s*</span><span class="si">{</span><span class="n">re</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">method_name</span><span class="p">)</span><span class="si">}</span><span class="s2">\s*\(&quot;</span><span class="p">)</span>
 </code></pre></div>
+<p>When <code>--parser-mode hybrid</code> is active, regex matches are confirmed by AST validation using <code>validate_type_usage(content, f".{method_name}")</code>. The dot anchors to member access; the paren is omitted to handle whitespace variants like <code>.Save (data)</code>. Same comment/string filtering as stage 4.</p>
 <hr />
 <h2 id="the-filterpipeline">The FilterPipeline<a class="headerlink" href="#the-filterpipeline" title="Permanent link">&para;</a></h2>
 <p>Every run produces a <code>FilterPipeline</code> dataclass that records what happened at each stage:</p>

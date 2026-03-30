@@ -189,6 +189,26 @@ class TestScatterConfig:
         assert config.ai.task_overrides["work_request_parsing"] == "anthropic"
         assert config.ai.task_overrides["risk_assessment"] == "openai"
 
+    def test_default_parser_mode(self):
+        """Default parser_mode is regex."""
+        config = ScatterConfig()
+        assert config.analysis.parser_mode == "regex"
+
+    def test_analysis_parser_mode_from_yaml(self, tmp_path):
+        """analysis.parser_mode loaded from YAML."""
+        (tmp_path / ".scatter.yaml").write_text("analysis:\n  parser_mode: hybrid\n")
+        config = load_config(repo_root=tmp_path)
+        assert config.analysis.parser_mode == "hybrid"
+
+    def test_analysis_parser_mode_cli_override(self, tmp_path):
+        """CLI override wins over YAML for parser_mode."""
+        (tmp_path / ".scatter.yaml").write_text("analysis:\n  parser_mode: regex\n")
+        config = load_config(
+            repo_root=tmp_path,
+            cli_overrides={"analysis.parser_mode": "hybrid"},
+        )
+        assert config.analysis.parser_mode == "hybrid"
+
     def test_multiprocessing_config(self, tmp_path):
         """Multiprocessing settings loaded from YAML."""
         yaml_content = (

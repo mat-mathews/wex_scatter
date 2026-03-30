@@ -1192,7 +1192,7 @@ LOW IMPACT (nice-to-have, unlikely to block eval):
 - [ ] Demo script in CI as smoke test (Initiative 11 Phase 3, line ~1147)
 
 ============================================================================
-PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-28)
+PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-30)
 ============================================================================
 
 CODEBASE STATE (updated 2026-03-28, post console reporter redesign + truncation removal):
@@ -1219,7 +1219,7 @@ CODEBASE STATE (updated 2026-03-28, post console reporter redesign + truncation 
   - tools/generate_synthetic_codebase.py: synthetic .NET codebase generator (100-800 project presets)
   - tools/benchmark_graph_build.py: graph builder benchmark harness with per-stage timing
   - docs/ADR_GRAPH_PERFORMANCE.md: architecture decision record for graph builder 100x optimization
-  - 888 tests across 33 test files (888 pass, 1 xfail, 5 subtests)
+  - 940 tests across 35 test files (939 pass, 1 xfail)
   - 30 e2e CLI tests (tests/integration/test_cli_e2e.py) covering all 6 modes × all output formats
   - 22 AI budget tests (tests/unit/test_ai_budget.py) — budget tracking, proxy, retries, CLI, config
   - CI: ruff check + ruff format + mypy (0 errors) + pytest + smoke tests in GitHub Actions
@@ -1899,3 +1899,270 @@ PHASE 5: Follow-Up Consistency
 ----------------------------------------------------------------------
 - [ ] Align print_impact_report() header style with ==== block convention
       Currently uses === Title === (3 equals); should match the new ==== block style.
+
+============================================================================
+INITIATIVE: HYBRID AST SPIKE ✅ COMPLETE (2026-03-30)
+Spike shipped on feature/hybrid-ast-spike (2026-03-29–30)
+Phase 1 (spike): Config + CLI + parsers module + graph_builder wiring. DONE.
+Phase 2 (consumer wiring): Consumer pipeline AST confirmation. DONE.
+Phase 2b (graph simplification): Removed tree-sitter from graph build. DONE.
+Benchmark tool: --mode consumer compares regex vs hybrid. DONE.
+Sample projects: GalaxyWorks.DevTools (pure FP), GalaxyWorks.Notifications (mixed). DONE.
+Result: --parser-mode hybrid eliminates 2 false positives (8→6 consumers) at zero
+        graph build cost. AST runs only at consumer query time on regex-matched files.
+============================================================================
+
+PHASE 2: Consumer Analyzer Wiring ✅ COMPLETED (2026-03-30)
+----------------------------------------------------------------------
+- [x] Wire validate_type_usage() into consumer_analyzer.py stages 4-5 via parallel.py
+      AST confirmation in analyze_cs_files_batch(): regex runs first, AST only fires
+      if regex found a match. Zero added cost for non-matching files.
+      Class stage: validate_type_usage(content, class_name)
+      Method stage: validate_type_usage(content, f".{method_name}") — dot anchors to
+      member access, no paren to handle whitespace variant `.Save (`.
+- [x] Thread analysis_config through find_consumers() and all call sites
+      Call sites updated: cli.py (target, git, sproc), modes/impact.py,
+      impact_analyzer.py (run_impact_analysis, _analyze_single_target, trace_transitive_impact).
+      Resolved use_ast once at top of find_consumers(), injected into stage_config dicts.
+- [~] Extend validate_type_usage() to distinguish type references from other identifier
+      positions using AST node types (object_creation, variable_declaration, base_list, etc.)
+      DEFERRED — current byte-level substring + non-code range check is sufficient.
+      Would improve precision but adds complexity. Revisit if false positive rate on
+      real monolith warrants it.
+- [x] Renamed local `analysis_config` dicts to `stage_config` in consumer_analyzer.py
+      Avoids name collision with the new analysis_config: AnalysisConfig parameter (Priya).
+
+PHASE 2: Performance ✅ COMPLETED (Devon, Priya)
+----------------------------------------------------------------------
+- [x] Cache compiled tree_sitter.Query objects at module level in ast_validator.py
+      _query_cache: Dict[str, object] = {} — keyed by query string. QueryCursor stays
+      fresh per call (it's stateful). Only 2 distinct queries, so cache stays tiny.
+- [x] Profile ident_positions dict overhead vs. the old set-based path
+      CLOSED — moot after Phase 2b removed the AST path from graph build entirely.
+      The Dict[str, List[int]] path no longer exists in production code.
+- [x] Wire --parser-mode into tools/benchmark_graph_build.py
+      DONE — --mode consumer compares regex vs hybrid automatically.
+      --parser-mode prints a note when used with graph build modes.
+
+PHASE 2: Correctness ✅ COMPLETED (Sam)
+----------------------------------------------------------------------
+- [x] Fix string-index vs UTF-8-byte-offset mismatch in ident_positions
+      graph_builder.py: guarded with content.isascii() so 99%+ ASCII files pay zero cost.
+      Only builds char→byte offset array for non-ASCII files. Per-character encode("utf-8")
+      is O(n) construction, O(1) lookup per match. Tests added for non-ASCII content.
+
+PHASE 2: Resilience ✅ COMPLETED (Fatima)
+----------------------------------------------------------------------
+- [x] validate_type_usage now wired and in use — barrel export is appropriate.
+- [x] Add _parser = None reset in _get_parser() except block
+      try/except in _get_parser() resets both _parser and _ts_language on failure
+      so next call retries instead of returning stale state.
+
+PHASE 2: Testing ✅ COMPLETED (Anya)
+----------------------------------------------------------------------
+- [~] Extract _byte_positions helper to shared location (scatter/parsers/ or test utils)
+      DEFERRED — low priority housekeeping. The byte-position logic in graph_builder
+      was removed in Phase 2b; the test helper is only used in test_ast_validator.py.
+- [x] Add concurrency test variant with different content per thread
+      test_concurrent_varied_content: 4 different C# snippets across 8 threads,
+      exercises query cache under contention.
+- [x] Add sample projects with identifiers in comments/strings to exercise hybrid delta
+      tests/fixtures/false_positive_usage.cs: PortalDataService in comment + string only.
+      12 unit tests in test_consumer_ast_hybrid.py (class/method filtering, fallback,
+      non-ASCII byte offsets). 2 integration tests in test_hybrid_consumer_regression.py
+      (hybrid consumers ⊆ regex consumers on sample projects).
+- [x] Add test for missing method_name with use_ast=True (leadership review follow-up)
+      test_method_name_missing_skips_ast: verifies AST gate is skipped when method_name absent.
+- [x] 3 non-ASCII tests added to test_ast_validator.py (unicode comment, unicode string, identifiers)
+
+PHASE 2: Tooling ✅ COMPLETED (Kai)
+----------------------------------------------------------------------
+- [x] Guard _ts_language against uninitialized access in _run_query
+      Added `if _ts_language is None: _get_parser()` at top of _run_query().
+
+PHASE 2: Documentation ✅ COMPLETED (Marcus — leadership review follow-up)
+----------------------------------------------------------------------
+- [x] Updated validate_type_usage docstring — removed "Reserved for Phase 2",
+      replaced with description of its actual role in consumer analyzer stages 4-5.
+
+PHASE 2b: Remove tree-sitter from graph build ✅ COMPLETED (2026-03-30)
+----------------------------------------------------------------------
+Team analysis (Priya, Marcus, Devon, Tomás) concluded tree-sitter adds cost
+at graph build time (40% overhead, 0.15s→0.21s) for zero measured edge delta.
+AST validation belongs at consumer query time, not graph construction time.
+The graph is a structural over-approximation; precision matters at query time.
+
+- [x] Remove use_ast parameter and AST branch from _extract_file_data()
+- [x] Remove use_ast resolution block from build_dependency_graph()
+- [x] Remove functools.partial — pass _extract_file_data directly (Tomás)
+- [x] Update build_dependency_graph() docstring — parser_mode is inert (Priya)
+- [x] Repurpose test_hybrid_regression.py → TestParserModeDoesNotAffectGraph
+      Assert full edge triple identity, not just subset (Devon)
+- [x] Add --parser-mode note in benchmark tool for non-consumer modes (Marcus)
+- [x] Benchmark: graph build 0.15s regex / 0.15s hybrid (was 0.21s hybrid)
+      Consumer pipeline unchanged: 8→6 consumers, 2 false positives eliminated
+
+FUTURE: validate_type_declarations() as always-on scanner refinement
+----------------------------------------------------------------------
+validate_type_declarations() has independent value for type extraction accuracy
+(filters false positives like `var record = new Save()` being detected as a
+type named "record"). Should be evaluated as an always-on refinement in
+extract_type_names_from_content() rather than gated behind parser_mode.
+Priya's position: it's a scanner correctness fix, not an analysis mode toggle.
+Separate PR, not blocking.
+- [ ] Evaluate moving validate_type_declarations() into extract_type_names_from_content()
+      as an always-on filter (requires tree-sitter as a non-optional dependency)
+- [ ] Alternative: make it opt-in via a separate config flag (e.g. analysis.validate_types)
+      to keep tree-sitter optional
+
+
+============================================================================
+============================================================================
+RISK ENGINE & PR RISK & SOW SCOPING ROADMAP
+Source: docs/RISK_ENGINE_PLAN.md, docs/PR_RISK_SCORING_PLAN.md, docs/SOW_SCOPING_PLAN.md
+Team review completed 2026-03-30. Feedback incorporated into plans.
+============================================================================
+============================================================================
+
+============================================================================
+INITIATIVE: UNIFIED RISK ENGINE
+Goal: Single risk model (7 dimensions, weighted-max composite) consumed by
+      PR risk, SOW scoping, and local dev. Three-function public API.
+Ref: docs/RISK_ENGINE_PLAN.md
+============================================================================
+
+PHASE 1: Core Engine (2 weeks)
+----------------------------------------------------------------------
+- [ ] Add RiskProfile, RiskDimension, AggregateRisk, RiskContext, RiskLevel to models.py
+- [ ] Create risk_engine.py with compute_risk_profile(), aggregate_risk(), format_risk_factors()
+- [ ] Create risk_dimensions.py with 6 graph-derived dimension assessors
+      (structural, instability, cycle, database, blast_radius, domain_boundary)
+      NOTE: change_surface is PR-only — lives in pr_risk_analyzer, not the engine
+- [ ] Implement weighted-max composite scoring with configurable dimension weights
+      Document ceiling behavior: weight caps max contribution per dimension
+- [ ] Add intermediate instability bracket at 0.6-0.8 (currently jumps 0.3→0.9)
+- [ ] Add config validation for weights (sum, range) and thresholds (ordering)
+- [ ] Add structured logging/observability from day one (dimension scores, timing, data quality)
+- [ ] Handle partial/degraded data visibly (missing metrics → dimension scores 0, log warning)
+- [ ] Unit tests for all 6 dimensions + aggregation + composite scoring
+- [ ] Property tests: composite bounded [0,1], aggregate never lower than max target
+
+PHASE 2: Wire into Existing Modes (1 week)
+----------------------------------------------------------------------
+- [ ] Replace risk_assess.py AI-only risk with graph-derived + AI-enriched
+- [ ] EnrichedConsumer.risk_rating populated from RiskProfile.risk_level
+- [ ] Existing --sow output gains dimension data (backward compatible)
+- [ ] Add --risk-context pr|sow|local flag, --risk-details for dimension breakdown
+
+[D] DEFERRED — after calibration data exists:
+- [ ] Dimension correlation analysis (detect redundant dimensions)
+- [ ] Coupling vector scoring (weight structural dimension by vector type)
+- [ ] Custom risk contexts via .scatter.yaml (teams define own weight profiles)
+- [ ] Consider dict-based dimension storage instead of named fields (extensibility)
+
+============================================================================
+INITIATIVE: PR RISK SCORING
+Goal: GitHub Action posts risk comment on every PR. Same output locally via
+      scatter --pr-risk. Zero-config for consuming teams.
+Ref: docs/PR_RISK_SCORING_PLAN.md
+Dependencies: Risk Engine Phase 1-2
+============================================================================
+
+PHASE 1: Core PR Risk Mode (2 weeks)
+----------------------------------------------------------------------
+- [ ] Add PRRiskReport, ChangedType dataclasses to models.py
+- [ ] Create pr_risk_analyzer.py (~150 lines, lean — all risk logic in engine)
+      Three steps: extract changed types, invoke engine, assemble report
+- [ ] Implement change_surface dimension in pr_risk_analyzer (PR-only, diff-based)
+- [ ] Add PRRiskConfig to config.py with threshold defaults + .scatter.yaml overrides
+- [ ] Add --pr-risk mode handler to cli.py (--branch-name, --base-branch, --risk-only)
+- [ ] Create pr_comment_reporter.py (markdown template with <details> collapsibles)
+- [ ] Extend json_reporter.py and console_reporter.py for PRRiskReport
+- [ ] Unit tests: risk level computation, threshold edges, deleted-type detection
+- [ ] Golden-file snapshot tests for PR comment markdown output
+- [ ] Empty result sanity check (no changed types → "no C# type changes, no risk analysis")
+- [ ] Performance regression test (PR analysis completes in <10s for sample projects)
+
+PHASE 2: GitHub Actions Integration (1-2 weeks)
+----------------------------------------------------------------------
+- [ ] Create .github/workflows/scatter-pr-risk.yml
+- [ ] Graph cache strategy: content-keyed (csproj hash), not branch-keyed
+- [ ] Failure modes: continue-on-error, fallback comment on crash, exit 0 always
+- [ ] Backward compat regression test for --sow (PR mode doesn't break existing modes)
+
+PHASE 3: Prediction Logging (1 week)
+----------------------------------------------------------------------
+- [ ] Add RiskPrediction dataclass
+- [ ] Implement append-only JSONL prediction log
+- [ ] Log every PR risk comment as a prediction record
+
+[D] PHASE 4: Calibration (2+ weeks) — DEFERRED until prediction data exists
+----------------------------------------------------------------------
+- [ ] Outcome tracking: manual annotation of prediction log (quarterly review)
+- [ ] Accuracy dashboard: true/false positive/negative rates
+- [ ] Threshold tuning based on false positive/negative rates
+- [ ] Automated webhook for build failure correlation (own scope, not bundled)
+
+[D] DEFERRED — future enhancements:
+- [ ] NuGet PackageReference support for cross-repo consumer detection
+- [ ] Slack notification escalation for RED risk PRs
+- [ ] Merge blocking mode (required check) — only after trust is established
+
+============================================================================
+INITIATIVE: SOW SCOPING
+Goal: scatter --sow "..." --scope-estimate produces defensible effort
+      estimates with risk-driven multipliers, team consultation, calibration.
+Ref: docs/SOW_SCOPING_PLAN.md
+Dependencies: Risk Engine Phase 1-3
+============================================================================
+
+PHASE 1: Structured Effort Estimation (2 weeks)
+----------------------------------------------------------------------
+- [ ] Add ScopingReport, EffortBreakdown, ConfidenceBand, DatabaseImpact to models.py
+- [ ] Create effort_estimator.py: graph-derived base costs + risk-driven multipliers
+      NOTE: Multipliers start at 1.0 (no effect) until calibration data exists
+- [ ] Create db_impact_analyzer.py: sproc grouping, migration complexity levels
+- [ ] Create effort_adjustment.py AI task (optional overlay, clearly labeled)
+- [ ] Compute confidence bands from risk engine composite score
+- [ ] Add --scope-estimate flag to --sow mode
+- [ ] Scoping reporters: console table, JSON, markdown, CSV (for finance)
+- [ ] Risk categories for planning: use reporter formatting, not a SOWRiskCategories dataclass
+      Planning implications: AI-generated from dimension data, not hardcoded templates
+- [ ] Unit tests: heuristic calculations, multiplier edge cases, DB impact
+- [ ] SOW performance budget: measure and enforce wall-clock targets
+
+PHASE 2: Team Mapping + Risk-Driven Multipliers (1-2 weeks)
+----------------------------------------------------------------------
+- [ ] Add TeamConfig to config.py (.scatter.yaml teams: section, glob patterns)
+- [ ] Create team_resolver.py: consumer → team mapping, per-team risk level
+- [ ] CODEOWNERS fallback parsing
+- [ ] Wire teams_to_consult into ScopingReport + all reporters
+      Missing config → "team ownership not configured" (visible absence)
+
+PHASE 3: Calibration Store (2-3 weeks)
+----------------------------------------------------------------------
+- [ ] Create calibration_store.py: append-only JSONL, save/load predictions
+- [ ] CLI: --record-actual --sow-id SOW-XXX --actual-days N
+- [ ] CLI: --calibration-report (accuracy dashboard)
+- [ ] Activate risk-driven effort multipliers (replace 1.0 defaults with measured values)
+
+[D] PHASE 4: Auto-Tuning — DEFERRED until 20+ SOWs with recorded actuals
+----------------------------------------------------------------------
+- [ ] Multiplier tuner: detect systematic bias, suggest adjustments
+- [ ] CLI: --calibration-tune (shows suggestions, human approves)
+- [ ] Apply accepted adjustments to .scatter.yaml
+
+[D] DEFERRED — future enhancements:
+- [ ] Comparable SOW retrieval (topological cosine similarity on history)
+- [ ] Multi-repo SOW analysis (per-repo + manual aggregation)
+- [ ] Automated actuals collection from Jira/sprint data
+- [ ] Per-category actuals tracking (investigation, implementation, testing)
+
+============================================================================
+CROSS-CUTTING TASKS
+============================================================================
+
+- [ ] AI prompt security review for all new risk/effort prompts
+- [ ] JSON output versioning (schema version header for risk data)
+- [ ] Update docs site with risk engine, PR risk, and SOW scoping pages
+- [ ] Update PRODUCT_DEFINITION.md with risk roadmap summary

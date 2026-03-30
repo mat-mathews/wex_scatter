@@ -383,6 +383,7 @@ def run_target_analysis(ctx: ModeContext, target_csproj: Path) -> ModeResult:
         cs_analysis_chunk_size=ctx.cs_analysis_chunk_size,
         csproj_analysis_chunk_size=ctx.csproj_analysis_chunk_size,
         graph=ctx.graph_ctx.graph if ctx.graph_ctx else None,
+        analysis_config=ctx.config.analysis,
     )
 
     all_results: List[ConsumerResult] = []
@@ -615,6 +616,7 @@ def run_git_analysis(
                         cs_analysis_chunk_size=ctx.cs_analysis_chunk_size,
                         csproj_analysis_chunk_size=ctx.csproj_analysis_chunk_size,
                         graph=ctx.graph_ctx.graph if ctx.graph_ctx else None,
+                        analysis_config=ctx.config.analysis,
                     )
 
                     # Keep the first pipeline that produced results; fall back to last
@@ -765,6 +767,7 @@ def run_sproc_analysis(
                 cs_analysis_chunk_size=ctx.cs_analysis_chunk_size,
                 csproj_analysis_chunk_size=ctx.csproj_analysis_chunk_size,
                 graph=ctx.graph_ctx.graph if ctx.graph_ctx else None,
+                analysis_config=ctx.config.analysis,
             )
 
             # Keep the first pipeline that produced results; fall back to last

@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -1700,6 +1700,10 @@
 │   ├── patterns.py    # Compiled regex (IDENT, SPROC, USING patterns)
 │   └── tree.py        # Tree rendering utilities
 │
+├── parsers/           # tree-sitter AST validation (hybrid mode)
+│   ├── ast_validator.py   # identifiers_in_code, validate_type_usage, query cache
+│   └── ts_queries.py      # tree-sitter query strings (non-code ranges, type declarations)
+│
 ├── scanners/          # File, project, type, sproc, DB scanning
 │   ├── file_scanner.py
 │   ├── project_scanner.py   # .csproj parsing, namespace derivation
@@ -1780,8 +1784,8 @@
         Stage 1: discover .csproj files (filesystem or graph)
         Stage 2: filter by ProjectReference
         Stage 3: filter by namespace usage
-        Stage 4: filter by class name (optional)
-        Stage 5: filter by method name (optional)
+        Stage 4: filter by class name (optional, AST-confirmed in hybrid mode)
+        Stage 5: filter by method name (optional, AST-confirmed in hybrid mode)
     --&gt; graph_enrichment: enrich_legacy_results() (if graph available)
     --&gt; v1_bridge: map to pipelines, solutions, batch jobs
   --&gt; dispatch_legacy_output()
@@ -1901,6 +1905,7 @@
 <div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ScatterConfig</span><span class="p">:</span>
     <span class="n">ai</span><span class="p">:</span> <span class="n">AIConfig</span>           <span class="c1"># Provider, model, credentials, task overrides</span>
+    <span class="n">analysis</span><span class="p">:</span> <span class="n">AnalysisConfig</span>  <span class="c1"># Parser mode (regex or hybrid)</span>
     <span class="n">graph</span><span class="p">:</span> <span class="n">GraphConfig</span>     <span class="c1"># Cache dir, rebuild flag, invalidation strategy, coupling weights</span>
     <span class="n">db</span><span class="p">:</span> <span class="n">DbConfig</span>           <span class="c1"># Sproc prefixes, include_db_edges flag</span>
     <span class="n">max_depth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>

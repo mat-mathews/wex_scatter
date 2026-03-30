@@ -388,6 +388,14 @@ def analyze_cs_files_batch(args: Tuple[List[Path], Dict[str, Any]]) -> Dict[Path
                     matches = list(class_pattern.finditer(content))
                     file_result["matches"] = [match.group() for match in matches]
                     file_result["has_match"] = len(matches) > 0
+                    # AST confirmation: filter false positives in comments/strings
+                    if file_result["has_match"] and analysis_config.get("use_ast"):
+                        from scatter.parsers.ast_validator import validate_type_usage
+
+                        class_name = analysis_config.get("class_name", "")
+                        if not validate_type_usage(content, class_name):
+                            file_result["has_match"] = False
+                            file_result["matches"] = []
 
             elif analysis_type == "sproc":
                 sproc_pattern = analysis_config.get("sproc_pattern")
@@ -402,6 +410,14 @@ def analyze_cs_files_batch(args: Tuple[List[Path], Dict[str, Any]]) -> Dict[Path
                     matches = list(method_pattern.finditer(content))
                     file_result["matches"] = [match.group() for match in matches]
                     file_result["has_match"] = len(matches) > 0
+                    # AST confirmation: filter false positives in comments/strings
+                    if file_result["has_match"] and analysis_config.get("use_ast"):
+                        from scatter.parsers.ast_validator import validate_type_usage
+
+                        method_name = analysis_config.get("method_name", "")
+                        if method_name and not validate_type_usage(content, f".{method_name}"):
+                            file_result["has_match"] = False
+                            file_result["matches"] = []
 
             else:
                 file_result["error"] = f"Unknown analysis type: {analysis_type}"

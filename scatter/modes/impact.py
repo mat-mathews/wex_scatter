@@ -53,6 +53,7 @@ def run_impact_mode(args, ctx: ModeContext, start_time: float) -> None:
         graph=ctx.graph_ctx.graph if ctx.graph_ctx else None,
         min_confidence=args.sow_min_confidence,
         solution_index=ctx.solution_index,
+        analysis_config=ctx.config.analysis,
     )
 
     # Enrich consumers with graph metrics if available

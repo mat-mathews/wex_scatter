@@ -8,6 +8,8 @@ Usage:
     python tools/benchmark_graph_build.py /tmp/synthetic_monolith
     python tools/benchmark_graph_build.py /tmp/synthetic_monolith --include-db
     python tools/benchmark_graph_build.py /tmp/synthetic_monolith --runs 3
+    python tools/benchmark_graph_build.py . --parser-mode hybrid
+    python tools/benchmark_graph_build.py . --mode consumer --class-name PortalDataService
 
 Note on --mode stages vs --mode full:
     'stages' re-implements graph building step-by-step with per-stage timing.
@@ -16,7 +18,12 @@ Note on --mode stages vs --mode full:
     ThreadPoolExecutor internally for type extraction. This means stages-mode
     numbers will be higher than full-mode for I/O-bound stages. Compare
     stages-mode runs to other stages-mode runs, and full-mode to full-mode.
+
+Note on --mode consumer:
+    Runs find_consumers() in both regex and hybrid modes, compares results.
+    Requires --target-project (defaults to GalaxyWorks.Data).
 """
+
 import argparse
 import gc
 import json
@@ -75,7 +82,11 @@ class StageTimer:
         return self.heap_peak / 1024 / 1024
 
 
-def run_benchmark(search_scope: Path, include_db: bool = False, full_type_scan: bool = False) -> dict:
+def run_benchmark(
+    search_scope: Path,
+    include_db: bool = False,
+    full_type_scan: bool = False,
+) -> dict:
     """Run scatter's actual graph builder with stage-level instrumentation."""
 
     from scatter.analyzers.graph_builder import build_dependency_graph
@@ -179,7 +190,11 @@ def run_benchmark(search_scope: Path, include_db: bool = False, full_type_scan: 
     }
 
 
-def run_instrumented_build(search_scope: Path, include_db: bool = False, full_type_scan: bool = False) -> dict:
+def run_instrumented_build(
+    search_scope: Path,
+    include_db: bool = False,
+    full_type_scan: bool = False,
+) -> dict:
     """Run graph builder with internal stage instrumentation.
 
     Monkeypatches the graph_builder to measure each internal stage
@@ -188,7 +203,6 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False, full_ty
     """
     import scatter.analyzers.graph_builder as gb
     from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
-    from scatter.core.models import DEFAULT_CHUNK_SIZE, DEFAULT_MAX_WORKERS
     from scatter.core.parallel import find_files_with_pattern_parallel
     from scatter.scanners.project_scanner import derive_namespace, parse_csproj_all_references
     from scatter.scanners.type_scanner import extract_type_names_from_content
@@ -196,7 +210,6 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False, full_ty
     from scatter.analyzers.domain_analyzer import find_clusters
     from scatter.analyzers.health_analyzer import compute_health_dashboard
     from collections import defaultdict
-    import re
 
     stages = {}
     exclude_patterns = ["*/bin/*", "*/obj/*", "*/temp_test_data/*"]
@@ -278,7 +291,9 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False, full_ty
                     files_read += 1
                 except OSError:
                     continue
-                file_identifier_cache[cs_path] = {m.group() for m in gb._IDENT_PATTERN.finditer(content)}
+                file_identifier_cache[cs_path] = {
+                    m.group() for m in gb._IDENT_PATTERN.finditer(content)
+                }
                 types = extract_type_names_from_content(content)
                 project_types[project_name].update(types)
                 for match in gb._SPROC_PATTERN.finditer(content):
@@ -303,9 +318,12 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False, full_ty
         graph = DependencyGraph()
         for name, meta in project_metadata.items():
             node = ProjectNode(
-                path=meta["path"], name=name,
-                namespace=meta["namespace"], framework=meta["framework"],
-                project_style=meta["project_style"], output_type=meta["output_type"],
+                path=meta["path"],
+                name=name,
+                namespace=meta["namespace"],
+                framework=meta["framework"],
+                project_style=meta["project_style"],
+                output_type=meta["output_type"],
                 file_count=len(project_cs_files.get(name, [])),
                 type_declarations=sorted(project_types.get(name, set())),
                 sproc_references=sorted(project_sprocs.get(name, set())),
@@ -313,7 +331,8 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False, full_ty
             graph.add_node(node)
         gb._build_project_reference_edges(graph, project_refs, csproj_files, project_metadata)
     ref_edges = sum(
-        1 for n in graph.get_all_nodes()
+        1
+        for n in graph.get_all_nodes()
         for e in graph.get_edges_from(n.name)
         if e.edge_type == "project_reference"
     )
@@ -342,11 +361,15 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False, full_ty
                 target = ns_to_project.get(ns)
                 if target and target != source and target in graph._nodes:
                     evidence = project_ns_evidence[source].get(ns, [])
-                    graph.add_edge(DependencyEdge(
-                        source=source, target=target,
-                        edge_type="namespace_usage",
-                        weight=len(evidence), evidence=evidence,
-                    ))
+                    graph.add_edge(
+                        DependencyEdge(
+                            source=source,
+                            target=target,
+                            edge_type="namespace_usage",
+                            weight=len(evidence),
+                            evidence=evidence,
+                        )
+                    )
                     ns_edge_count += 1
     stages["namespace_edges"] = {
         "elapsed": t.elapsed,
@@ -392,16 +415,23 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False, full_ty
                         if (
                             owner != source_project
                             and owner in graph._nodes
-                            and (full_type_scan or owner in reachable_targets.get(source_project, _empty))
+                            and (
+                                full_type_scan
+                                or owner in reachable_targets.get(source_project, _empty)
+                            )
                         ):
                             type_usage_evidence[owner].append(f"{cs_path}:{type_name}")
 
             for target, evidence in type_usage_evidence.items():
-                graph.add_edge(DependencyEdge(
-                    source=source_project, target=target,
-                    edge_type="type_usage",
-                    weight=len(evidence), evidence=evidence,
-                ))
+                graph.add_edge(
+                    DependencyEdge(
+                        source=source_project,
+                        target=target,
+                        edge_type="type_usage",
+                        weight=len(evidence),
+                        evidence=evidence,
+                    )
+                )
                 type_edge_count += 1
 
         del file_identifier_cache
@@ -419,6 +449,7 @@ def run_instrumented_build(search_scope: Path, include_db: bool = False, full_ty
     if include_db:
         with StageTimer("db_scanning") as t:
             from scatter.scanners.db_scanner import scan_db_dependencies, add_db_edges_to_graph
+
             db_deps = scan_db_dependencies(
                 search_scope,
                 project_cs_map=dict(project_cs_files),
@@ -530,14 +561,18 @@ def print_report(results: dict, run_number: int = 0, total_runs: int = 1):
     print(f"Peak RSS:     {results['peak_rss_mb']:.1f} MB")
     print(f"Total time:   {results['total_time']:.2f}s")
 
-    print(f"\n{'Stage':<25} {'Time':>8} {'% Total':>8} {'Heap +/-':>10} {'Heap Peak':>10} {'Detail'}")
+    print(
+        f"\n{'Stage':<25} {'Time':>8} {'% Total':>8} {'Heap +/-':>10} {'Heap Peak':>10} {'Detail'}"
+    )
     print("-" * 90)
 
     for name, stage in results["stages"].items():
         pct = (stage["elapsed"] / results["total_time"] * 100) if results["total_time"] > 0 else 0
         heap_delta = f"{stage['heap_delta_mb']:+.1f} MB"
         heap_peak = f"{stage['heap_peak_mb']:.1f} MB"
-        print(f"  {name:<23} {stage['elapsed']:>7.2f}s {pct:>7.1f}% {heap_delta:>10} {heap_peak:>10}  {stage['detail']}")
+        print(
+            f"  {name:<23} {stage['elapsed']:>7.2f}s {pct:>7.1f}% {heap_delta:>10} {heap_peak:>10}  {stage['detail']}"
+        )
 
     print("-" * 90)
     print(f"  {'TOTAL':<23} {results['total_time']:>7.2f}s {'100.0%':>8}")
@@ -560,7 +595,9 @@ def print_summary(all_results: list[dict]):
     print("=" * 90)
 
     times = [r["total_time"] for r in all_results]
-    print(f"\n  Total time:  min={min(times):.2f}s  max={max(times):.2f}s  median={sorted(times)[len(times)//2]:.2f}s")
+    print(
+        f"\n  Total time:  min={min(times):.2f}s  max={max(times):.2f}s  median={sorted(times)[len(times) // 2]:.2f}s"
+    )
     print(f"  Peak RSS:    {max(r['peak_rss_mb'] for r in all_results):.1f} MB")
 
     # Per-stage comparison
@@ -569,11 +606,154 @@ def print_summary(all_results: list[dict]):
     print("  " + "-" * 55)
 
     for stage_name in stage_names:
-        stage_times = [r["stages"][stage_name]["elapsed"] for r in all_results if stage_name in r["stages"]]
+        stage_times = [
+            r["stages"][stage_name]["elapsed"] for r in all_results if stage_name in r["stages"]
+        ]
         if stage_times:
             stage_times.sort()
             median = stage_times[len(stage_times) // 2]
-            print(f"  {stage_name:<25} {min(stage_times):>7.2f}s {max(stage_times):>7.2f}s {median:>7.2f}s")
+            print(
+                f"  {stage_name:<25} {min(stage_times):>7.2f}s {max(stage_times):>7.2f}s {median:>7.2f}s"
+            )
+
+    print()
+
+
+def run_consumer_benchmark(
+    search_scope: Path,
+    target_project: str = "GalaxyWorks.Data",
+    class_name: str | None = None,
+    method_name: str | None = None,
+) -> dict:
+    """Run find_consumers() in regex and hybrid modes, compare results and timing."""
+    from scatter.analyzers.consumer_analyzer import find_consumers
+    from scatter.scanners.project_scanner import derive_namespace
+    from scatter.config import AnalysisConfig
+
+    # Find the target .csproj
+    target_csproj = None
+    for p in search_scope.rglob("*.csproj"):
+        if p.stem == target_project:
+            target_csproj = p.resolve()
+            break
+
+    if target_csproj is None:
+        print(f"Error: could not find {target_project}.csproj in {search_scope}", file=sys.stderr)
+        sys.exit(1)
+
+    namespace = derive_namespace(target_csproj) or target_project
+
+    modes = {}
+    for mode in ("regex", "hybrid"):
+        config = AnalysisConfig(parser_mode=mode)
+
+        with StageTimer(f"find_consumers_{mode}") as t:
+            consumers, pipeline = find_consumers(
+                target_csproj_path=target_csproj,
+                search_scope_path=search_scope,
+                target_namespace=namespace,
+                class_name=class_name,
+                method_name=method_name,
+                disable_multiprocessing=True,
+                analysis_config=config,
+            )
+
+        consumer_names = sorted(c["consumer_name"] for c in consumers)
+        file_counts = {}
+        for c in consumers:
+            name = str(c["consumer_name"])
+            files = c.get("relevant_files", [])
+            file_counts[name] = len(files)
+
+        modes[mode] = {
+            "elapsed": t.elapsed,
+            "consumer_count": len(consumers),
+            "consumer_names": consumer_names,
+            "consumer_file_counts": file_counts,
+            "pipeline_stages": [
+                {"name": s.name, "input": s.input_count, "output": s.output_count}
+                for s in pipeline.stages
+            ],
+        }
+
+    # Compute delta
+    regex_names = set(modes["regex"]["consumer_names"])
+    hybrid_names = set(modes["hybrid"]["consumer_names"])
+    eliminated = sorted(regex_names - hybrid_names)
+    speedup = (
+        modes["regex"]["elapsed"] / modes["hybrid"]["elapsed"]
+        if modes["hybrid"]["elapsed"] > 0
+        else 0
+    )
+
+    return {
+        "search_scope": str(search_scope),
+        "target_project": target_project,
+        "class_name": class_name,
+        "method_name": method_name,
+        "namespace": namespace,
+        "modes": modes,
+        "delta": {
+            "eliminated_consumers": eliminated,
+            "eliminated_count": len(eliminated),
+            "regex_count": len(regex_names),
+            "hybrid_count": len(hybrid_names),
+            "time_ratio": round(speedup, 2),
+        },
+    }
+
+
+def print_consumer_report(results: dict):
+    """Print formatted consumer benchmark comparison."""
+    print("\n" + "=" * 90)
+    print("CONSUMER ANALYSIS BENCHMARK — regex vs hybrid")
+    print("=" * 90)
+
+    print(f"\n  Target:     {results['target_project']}")
+    print(f"  Namespace:  {results['namespace']}")
+    if results["class_name"]:
+        print(f"  Class:      {results['class_name']}")
+    if results["method_name"]:
+        print(f"  Method:     {results['method_name']}")
+    print(f"  Scope:      {results['search_scope']}")
+
+    print(f"\n  {'Mode':<10} {'Time':>10} {'Consumers':>12} {'Pipeline'}")
+    print("  " + "-" * 75)
+
+    for mode_name in ("regex", "hybrid"):
+        m = results["modes"][mode_name]
+        arrow = " → ".join(f"{s['output']}" for s in m["pipeline_stages"])
+        print(f"  {mode_name:<10} {m['elapsed']:>9.3f}s {m['consumer_count']:>12}    {arrow}")
+
+    delta = results["delta"]
+    print("\n  Delta:")
+    print(
+        f"    Consumers:  {delta['regex_count']} → {delta['hybrid_count']} ({delta['eliminated_count']} false positive(s) eliminated)"
+    )
+    print(f"    Time ratio: {delta['time_ratio']}x (hybrid / regex)")
+
+    if delta["eliminated_consumers"]:
+        print("\n  Eliminated (false positives):")
+        for name in delta["eliminated_consumers"]:
+            print(f"    - {name}")
+
+    # Per-consumer file counts comparison
+    regex_files = results["modes"]["regex"]["consumer_file_counts"]
+    hybrid_files = results["modes"]["hybrid"]["consumer_file_counts"]
+    all_names = sorted(set(regex_files) | set(hybrid_files))
+
+    if all_names:
+        print(f"\n  {'Consumer':<35} {'Regex Files':>12} {'Hybrid Files':>13} {'Note'}")
+        print("  " + "-" * 75)
+        for name in all_names:
+            rf = regex_files.get(name, 0)
+            hf = hybrid_files.get(name, 0)
+            note = ""
+            if name in delta["eliminated_consumers"]:
+                note = "← ELIMINATED"
+            elif hf < rf:
+                note = f"← {rf - hf} file(s) filtered"
+            print(f"  {name:<35} {rf:>12} {hf:>13}  {note}")
 
     print()
 
@@ -581,25 +761,55 @@ def print_summary(all_results: list[dict]):
 def main():
     parser = argparse.ArgumentParser(description="Benchmark scatter graph building.")
     parser.add_argument("search_scope", type=str, help="Directory to analyze")
-    parser.add_argument("--include-db", action="store_true",
-                        help="Include DB dependency scanning stage")
-    parser.add_argument("--runs", type=int, default=1,
-                        help="Number of benchmark runs (default: 1)")
-    parser.add_argument("--warmup", action="store_true",
-                        help="Run one untimed warmup pass first (populates OS file cache)")
-    parser.add_argument("--mode", choices=["full", "stages"], default="stages",
-                        help="'full' calls build_dependency_graph() as a black box (with threading); "
-                             "'stages' instruments each internal stage sequentially (default). "
-                             "Numbers are not directly comparable between modes.")
-    parser.add_argument("--full-type-scan", action="store_true",
-                        help="Compute type_usage edges between all project pairs (disables reachable-set scoping)")
-    parser.add_argument("--tracemalloc", action=argparse.BooleanOptionalAction,
-                        default=None,
-                        help="Enable tracemalloc heap tracking (default: on for stages, off for full)")
-    parser.add_argument("--json", action="store_true",
-                        help="Output results as JSON")
-    parser.add_argument("--output-file", "-o", type=str,
-                        help="Write JSON results to file")
+    parser.add_argument(
+        "--include-db", action="store_true", help="Include DB dependency scanning stage"
+    )
+    parser.add_argument("--runs", type=int, default=1, help="Number of benchmark runs (default: 1)")
+    parser.add_argument(
+        "--warmup",
+        action="store_true",
+        help="Run one untimed warmup pass first (populates OS file cache)",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["full", "stages", "consumer"],
+        default="stages",
+        help="'full' calls build_dependency_graph() as a black box (with threading); "
+        "'stages' instruments each internal stage sequentially (default); "
+        "'consumer' runs find_consumers() in regex vs hybrid and compares. "
+        "Numbers are not directly comparable between modes.",
+    )
+    parser.add_argument(
+        "--parser-mode",
+        choices=["regex", "hybrid"],
+        default="regex",
+        help="Parser mode for graph building: regex (default) or hybrid (tree-sitter AST)",
+    )
+    parser.add_argument(
+        "--full-type-scan",
+        action="store_true",
+        help="Compute type_usage edges between all project pairs (disables reachable-set scoping)",
+    )
+    parser.add_argument(
+        "--target-project",
+        type=str,
+        default="GalaxyWorks.Data",
+        help="Target project for consumer mode (default: GalaxyWorks.Data)",
+    )
+    parser.add_argument(
+        "--class-name", type=str, default=None, help="Class name filter for consumer mode"
+    )
+    parser.add_argument(
+        "--method-name", type=str, default=None, help="Method name filter for consumer mode"
+    )
+    parser.add_argument(
+        "--tracemalloc",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable tracemalloc heap tracking (default: on for stages, off for full)",
+    )
+    parser.add_argument("--json", action="store_true", help="Output results as JSON")
+    parser.add_argument("--output-file", "-o", type=str, help="Write JSON results to file")
 
     args = parser.parse_args()
 
@@ -615,6 +825,34 @@ def main():
     if use_tracemalloc:
         tracemalloc.start()
 
+    # Consumer mode has its own flow
+    if args.mode == "consumer":
+        results = run_consumer_benchmark(
+            search_scope,
+            target_project=args.target_project,
+            class_name=args.class_name,
+            method_name=args.method_name,
+        )
+        if args.json or args.output_file:
+            output = json.dumps(results, indent=2, default=str)
+            if args.output_file:
+                Path(args.output_file).write_text(output)
+                print(f"Results written to {args.output_file}")
+            else:
+                print(output)
+        else:
+            print_consumer_report(results)
+
+        if tracemalloc.is_tracing():
+            tracemalloc.stop()
+        return
+
+    if args.parser_mode != "regex" and args.mode != "consumer":
+        print(
+            f"Note: --parser-mode {args.parser_mode} has no effect on graph build. "
+            "Use --mode consumer to compare regex vs hybrid."
+        )
+
     run_fn = run_instrumented_build if args.mode == "stages" else run_benchmark
 
     # Optional warmup (populates OS file cache, not timed)
@@ -626,7 +864,9 @@ def main():
     # Benchmark runs
     all_results = []
     for i in range(args.runs):
-        results = run_fn(search_scope, include_db=args.include_db, full_type_scan=args.full_type_scan)
+        results = run_fn(
+            search_scope, include_db=args.include_db, full_type_scan=args.full_type_scan
+        )
         all_results.append(results)
 
         if args.json or args.output_file:

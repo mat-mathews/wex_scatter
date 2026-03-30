@@ -12,7 +12,10 @@ Single-pass O(P+F) construction:
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, NamedTuple, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, Set, Tuple
+
+if TYPE_CHECKING:
+    from scatter.config import AnalysisConfig
 
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.core.models import DEFAULT_CHUNK_SIZE, DEFAULT_MAX_WORKERS
@@ -45,10 +48,14 @@ def _extract_file_data(cs_path: Path) -> Optional[_FileExtraction]:
         content = cs_path.read_text(encoding="utf-8", errors="ignore")
     except OSError:
         return None
+
+    identifiers = {m.group() for m in _IDENT_PATTERN.finditer(content)}
+    types = extract_type_names_from_content(content)
+
     return _FileExtraction(
         cs_path=cs_path,
-        identifiers={m.group() for m in _IDENT_PATTERN.finditer(content)},
-        types=extract_type_names_from_content(content),
+        identifiers=identifiers,
+        types=types,
         sprocs={m.group().strip("\"'") for m in _SPROC_PATTERN.finditer(content)},
         namespaces={m.group(1) for m in _USING_PATTERN.finditer(content)},
         content_hash=compute_content_hash(content),
@@ -65,11 +72,17 @@ def build_dependency_graph(
     sproc_prefixes: Optional[List[str]] = None,
     capture_facts: bool = False,
     full_type_scan: bool = False,
+    analysis_config: Optional["AnalysisConfig"] = None,
 ):
     """Build a complete dependency graph from a codebase directory.
 
     If capture_facts=True, returns (graph, file_facts, project_facts) tuple
     for v2 cache persistence. Otherwise returns just the graph.
+
+    Args:
+        analysis_config: Optional AnalysisConfig. Reserved for future analysis
+            configuration. parser_mode is not used during graph construction —
+            AST validation runs at query time in the consumer pipeline.
     """
     if exclude_patterns is None:
         exclude_patterns = ["*/bin/*", "*/obj/*", "*/temp_test_data/*"]

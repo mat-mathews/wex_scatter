@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -1797,6 +1797,12 @@
 <span class="w">    </span><span class="nt">namespace_usage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
 <span class="w">    </span><span class="nt">type_usage</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.3</span>
 <span class="w">    </span><span class="nt">sproc_shared</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span>
+
+<span class="c1"># Analysis behavior</span>
+<span class="nt">analysis</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">parser_mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">regex</span><span class="w">                    </span><span class="c1"># &quot;regex&quot; (default) or &quot;hybrid&quot;</span>
+<span class="w">                                        </span><span class="c1"># hybrid uses tree-sitter AST to filter</span>
+<span class="w">                                        </span><span class="c1"># false positives in comments/strings</span>
 
 <span class="c1"># Database dependency scanning</span>
 <span class="nt">db</span><span class="p">:</span>

@@ -15,6 +15,10 @@ scatter/
 │   ├── patterns.py    # Compiled regex (IDENT, SPROC, USING patterns)
 │   └── tree.py        # Tree rendering utilities
 │
+├── parsers/           # tree-sitter AST validation (hybrid mode)
+│   ├── ast_validator.py   # identifiers_in_code, validate_type_usage, query cache
+│   └── ts_queries.py      # tree-sitter query strings (non-code ranges, type declarations)
+│
 ├── scanners/          # File, project, type, sproc, DB scanning
 │   ├── file_scanner.py
 │   ├── project_scanner.py   # .csproj parsing, namespace derivation
@@ -114,8 +118,8 @@ __main__.py: parse args, load config, build ModeContext
         Stage 1: discover .csproj files (filesystem or graph)
         Stage 2: filter by ProjectReference
         Stage 3: filter by namespace usage
-        Stage 4: filter by class name (optional)
-        Stage 5: filter by method name (optional)
+        Stage 4: filter by class name (optional, AST-confirmed in hybrid mode)
+        Stage 5: filter by method name (optional, AST-confirmed in hybrid mode)
     --> graph_enrichment: enrich_legacy_results() (if graph available)
     --> v1_bridge: map to pipelines, solutions, batch jobs
   --> dispatch_legacy_output()
@@ -236,6 +240,7 @@ Defined in `config.py`. Four dataclasses, five precedence layers.
 @dataclass
 class ScatterConfig:
     ai: AIConfig           # Provider, model, credentials, task overrides
+    analysis: AnalysisConfig  # Parser mode (regex or hybrid)
     graph: GraphConfig     # Cache dir, rebuild flag, invalidation strategy, coupling weights
     db: DbConfig           # Sproc prefixes, include_db_edges flag
     max_depth: int = 2

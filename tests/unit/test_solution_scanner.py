@@ -193,8 +193,8 @@ class TestScanSolutions:
         assert "GalaxyWorks" in names
 
         gw = next(s for s in solutions if s.name == "GalaxyWorks")
-        # 10 C# projects, excluding "Solution Items" folder
-        assert len(gw.project_entries) == 10
+        # 12 C# projects, excluding "Solution Items" folder
+        assert len(gw.project_entries) == 12
         assert "GalaxyWorks.Data" in gw.project_entries
         assert "GalaxyWorks.WebPortal" in gw.project_entries
 

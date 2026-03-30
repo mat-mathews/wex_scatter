@@ -34,6 +34,11 @@ class DbConfig:
 
 
 @dataclass
+class AnalysisConfig:
+    parser_mode: str = "regex"  # "regex" | "hybrid"
+
+
+@dataclass
 class GraphConfig:
     cache_dir: Optional[str] = None  # override default cache location
     rebuild: bool = False  # force rebuild (ignore cache)
@@ -44,6 +49,7 @@ class GraphConfig:
 @dataclass
 class ScatterConfig:
     ai: AIConfig = field(default_factory=AIConfig)
+    analysis: AnalysisConfig = field(default_factory=AnalysisConfig)
     graph: GraphConfig = field(default_factory=GraphConfig)
     db: DbConfig = field(default_factory=DbConfig)
     max_depth: int = 2
@@ -100,6 +106,11 @@ def _apply_yaml(config: ScatterConfig, data: Dict[str, Any]) -> None:
             # want to keep (e.g. */bin/*, */obj/*).  This matches the
             # convention for list-valued config: explicit > implicit.
             config.exclude_patterns = search["exclude_patterns"]
+
+    analysis = data.get("analysis", {})
+    if isinstance(analysis, dict):
+        if "parser_mode" in analysis:
+            config.analysis.parser_mode = str(analysis["parser_mode"])
 
     graph = data.get("graph", {})
     if isinstance(graph, dict):
@@ -179,6 +190,8 @@ def _apply_cli_overrides(config: ScatterConfig, overrides: Dict[str, Any]) -> No
             config.max_depth = int(value)
         elif key == "search.exclude_patterns":
             config.exclude_patterns = list(value)
+        elif key == "analysis.parser_mode":
+            config.analysis.parser_mode = str(value)
         elif key == "graph.rebuild":
             config.graph.rebuild = bool(value)
         elif key == "graph.cache_dir":

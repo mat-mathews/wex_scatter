@@ -39,7 +39,12 @@ def run_graph_mode(args, ctx: ModeContext, start_time: float) -> None:
     # Check cache
     graph = None
     if not config.graph.rebuild:
-        cache_result = load_and_validate(cache_path, search_scope_abs, config.graph.invalidation)
+        cache_result = load_and_validate(
+            cache_path,
+            search_scope_abs,
+            config.graph.invalidation,
+            parser_mode=config.analysis.parser_mode,
+        )
         if cache_result is not None:
             graph = cache_result[0]
             logging.info("Using cached dependency graph.")
@@ -54,9 +59,10 @@ def run_graph_mode(args, ctx: ModeContext, start_time: float) -> None:
             include_db_dependencies=config.db.include_db_edges,
             sproc_prefixes=config.db.sproc_prefixes,
             full_type_scan=getattr(args, "full_type_scan", False),
+            analysis_config=config.analysis,
         )
         populate_graph_solutions(graph, ctx.solution_index)
-        save_graph(graph, cache_path, search_scope_abs)
+        save_graph(graph, cache_path, search_scope_abs, parser_mode=config.analysis.parser_mode)
 
     # Compute metrics
     coupling_weights = config.graph.coupling_weights
