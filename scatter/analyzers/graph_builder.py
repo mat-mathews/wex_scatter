@@ -11,7 +11,6 @@ Single-pass O(P+F) construction:
 
 import logging
 from collections import defaultdict
-from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, Set, Tuple
 
@@ -43,43 +42,15 @@ class _FileExtraction(NamedTuple):
     content_hash: str
 
 
-def _extract_file_data(cs_path: Path, use_ast: bool = False) -> Optional[_FileExtraction]:
-    """Read a .cs file and extract all relevant data. Pure function, safe for threads.
-
-    When use_ast=True, applies tree-sitter validation to filter identifiers
-    in comments/strings and confirm type declarations against the AST.
-    """
+def _extract_file_data(cs_path: Path) -> Optional[_FileExtraction]:
+    """Read a .cs file and extract all relevant data. Pure function, safe for threads."""
     try:
         content = cs_path.read_text(encoding="utf-8", errors="ignore")
     except OSError:
         return None
 
-    identifiers: Set[str]
-    types: Set[str]
-
-    if use_ast:
-        from scatter.parsers.ast_validator import identifiers_in_code, validate_type_declarations
-
-        # Capture byte positions for each identifier match.
-        # For ASCII files (99%+ of C#), char offset == byte offset.
-        # Only build the lookup array for non-ASCII files.
-        is_ascii = content.isascii()
-        if not is_ascii:
-            byte_offsets: List[int] = []
-            byte_pos = 0
-            for ch in content:
-                byte_offsets.append(byte_pos)
-                byte_pos += len(ch.encode("utf-8"))
-
-        ident_positions: Dict[str, List[int]] = {}
-        for m in _IDENT_PATTERN.finditer(content):
-            pos = m.start() if is_ascii else byte_offsets[m.start()]
-            ident_positions.setdefault(m.group(), []).append(pos)
-        identifiers = identifiers_in_code(content, ident_positions)
-        types = validate_type_declarations(content, extract_type_names_from_content(content))
-    else:
-        identifiers = {m.group() for m in _IDENT_PATTERN.finditer(content)}
-        types = extract_type_names_from_content(content)
+    identifiers = {m.group() for m in _IDENT_PATTERN.finditer(content)}
+    types = extract_type_names_from_content(content)
 
     return _FileExtraction(
         cs_path=cs_path,
@@ -109,26 +80,12 @@ def build_dependency_graph(
     for v2 cache persistence. Otherwise returns just the graph.
 
     Args:
-        analysis_config: Optional AnalysisConfig. When parser_mode="hybrid",
-            enables tree-sitter AST validation to filter regex false positives.
+        analysis_config: Optional AnalysisConfig. Reserved for future analysis
+            configuration. parser_mode is not used during graph construction —
+            AST validation runs at query time in the consumer pipeline.
     """
     if exclude_patterns is None:
         exclude_patterns = ["*/bin/*", "*/obj/*", "*/temp_test_data/*"]
-
-    # Resolve AST mode
-    use_ast = False
-    requested_mode = analysis_config.parser_mode if analysis_config else "regex"
-    if requested_mode == "hybrid":
-        from scatter.parsers.ast_validator import is_hybrid_available
-
-        if is_hybrid_available():
-            use_ast = True
-            logging.info("Hybrid parser mode: tree-sitter AST validation enabled")
-        else:
-            logging.warning(
-                "Hybrid parser mode requested but tree-sitter is not installed. "
-                "Install with: uv sync --extra ast. Falling back to regex-only."
-            )
 
     graph = DependencyGraph()
 
@@ -202,13 +159,11 @@ def build_dependency_graph(
         (pname, cspath) for pname, cs_paths in project_cs_files.items() for cspath in cs_paths
     ]
 
-    extract_fn = partial(_extract_file_data, use_ast=use_ast)
-
     if disable_multiprocessing or len(all_file_tasks) < 100:
         file_extractions = [
             (pname, result)
             for pname, cspath in all_file_tasks
-            if (result := extract_fn(cspath)) is not None
+            if (result := _extract_file_data(cspath)) is not None
         ]
     else:
         from concurrent.futures import ThreadPoolExecutor
@@ -216,7 +171,7 @@ def build_dependency_graph(
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             results = list(
                 executor.map(
-                    extract_fn,
+                    _extract_file_data,
                     [cspath for _, cspath in all_file_tasks],
                 )
             )

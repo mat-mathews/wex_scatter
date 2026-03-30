@@ -1904,6 +1904,8 @@ PHASE 5: Follow-Up Consistency
 INITIATIVE: HYBRID AST SPIKE — Phase 2 & Follow-Ups
 Spike shipped on feature/hybrid-ast-spike (2026-03-29)
 Phase 1 (spike): Config + CLI + parsers module + graph_builder wiring. DONE.
+Phase 2 (consumer wiring): Consumer pipeline AST confirmation. DONE.
+Phase 2b (graph simplification): Removed tree-sitter from graph build. DONE.
 ============================================================================
 
 PHASE 2: Consumer Analyzer Wiring ✅ COMPLETED (2026-03-30)
@@ -1976,6 +1978,36 @@ PHASE 2: Documentation (Marcus — leadership review follow-up)
 ----------------------------------------------------------------------
 - [x] Updated validate_type_usage docstring — removed "Reserved for Phase 2",
       replaced with description of its actual role in consumer analyzer stages 4-5.
+
+PHASE 2b: Remove tree-sitter from graph build ✅ COMPLETED (2026-03-30)
+----------------------------------------------------------------------
+Team analysis (Priya, Marcus, Devon, Tomás) concluded tree-sitter adds cost
+at graph build time (40% overhead, 0.15s→0.21s) for zero measured edge delta.
+AST validation belongs at consumer query time, not graph construction time.
+The graph is a structural over-approximation; precision matters at query time.
+
+- [x] Remove use_ast parameter and AST branch from _extract_file_data()
+- [x] Remove use_ast resolution block from build_dependency_graph()
+- [x] Remove functools.partial — pass _extract_file_data directly (Tomás)
+- [x] Update build_dependency_graph() docstring — parser_mode is inert (Priya)
+- [x] Repurpose test_hybrid_regression.py → TestParserModeDoesNotAffectGraph
+      Assert full edge triple identity, not just subset (Devon)
+- [x] Add --parser-mode note in benchmark tool for non-consumer modes (Marcus)
+- [x] Benchmark: graph build 0.15s regex / 0.15s hybrid (was 0.21s hybrid)
+      Consumer pipeline unchanged: 8→6 consumers, 2 false positives eliminated
+
+FUTURE: validate_type_declarations() as always-on scanner refinement
+----------------------------------------------------------------------
+validate_type_declarations() has independent value for type extraction accuracy
+(filters false positives like `var record = new Save()` being detected as a
+type named "record"). Should be evaluated as an always-on refinement in
+extract_type_names_from_content() rather than gated behind parser_mode.
+Priya's position: it's a scanner correctness fix, not an analysis mode toggle.
+Separate PR, not blocking.
+- [ ] Evaluate moving validate_type_declarations() into extract_type_names_from_content()
+      as an always-on filter (requires tree-sitter as a non-optional dependency)
+- [ ] Alternative: make it opt-in via a separate config flag (e.g. analysis.validate_types)
+      to keep tree-sitter optional
 
 
 ============================================================================
