@@ -68,7 +68,23 @@ uv run scatter \
 
 Now Scatter only reports projects that actually reference `PortalDataService` specifically. The consumer list gets shorter — only the projects that use that class show up.
 
-## Step 3: See the full dependency graph
+## Step 3: Filter out false positives with hybrid mode
+
+The regex match in step 2 catches mentions of `PortalDataService` in comments and string literals too. Add `--parser-mode hybrid` to use tree-sitter AST validation and keep only real code references:
+
+```bash
+uv run scatter \
+  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . \
+  --class-name PortalDataService \
+  --parser-mode hybrid
+```
+
+On the sample projects, this drops the consumer count from 8 to 6 — two projects that only mentioned `PortalDataService` in comments or template strings are correctly filtered out.
+
+No API key needed. `--parser-mode hybrid` uses tree-sitter (a local parser), not an LLM. Requires `uv sync --extra ast` (included in Docker).
+
+## Step 4: See the full dependency graph
 
 ```bash
 uv run scatter --graph --search-scope .

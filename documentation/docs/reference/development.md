@@ -20,6 +20,23 @@ uv run mypy scatter
 
 uv replaces `pip`, `pip-tools`, `venv`, and `requirements.txt`. There is no `requirements.txt` — `pyproject.toml` is the single source of truth.
 
+### Optional extras
+
+Scatter has optional dependency groups for features that not everyone needs:
+
+```bash
+# AST validation (tree-sitter for --parser-mode hybrid)
+uv sync --extra ast
+
+# Pipeline artifact parsing (pandas for parse_pipeline_artifacts.py)
+uv sync --extra pipeline-tools
+
+# Both
+uv sync --extra ast --extra pipeline-tools
+```
+
+The `ast` extra installs `tree-sitter` and `tree-sitter-c-sharp`. Without it, `--parser-mode hybrid` silently falls back to regex. If you're working on anything in `scatter/parsers/`, install this.
+
 ### Adding dependencies
 
 ```bash

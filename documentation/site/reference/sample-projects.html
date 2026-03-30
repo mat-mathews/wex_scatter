@@ -1567,7 +1567,7 @@
 
 
 <h1 id="sample-projects">Sample Projects<a class="headerlink" href="#sample-projects" title="Permanent link">&para;</a></h1>
-<p>The 11 included .NET projects serve as a validation reference and integration test fixture. Moved here from the User Guide per Sam's feedback -- this is reference material, not a getting-started topic.</p>
+<p>The 13 included .NET projects serve as a validation reference and integration test fixture. Moved here from the User Guide per Sam's feedback -- this is reference material, not a getting-started topic.</p>
 <hr />
 <h2 id="dependency-tree">Dependency Tree<a class="headerlink" href="#dependency-tree" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>GalaxyWorks.Data (SDK, net8.0, Library, no deps)
@@ -1596,7 +1596,17 @@
  |         Types: Project, GlobalUsings, OrderConsumer
  |
  +-- MyGalaxyConsumerApp2 (SDK, net8.0, Exe, refs Data)
-      Types: Project
+ |    Types: Project
+ |
+ +-- GalaxyWorks.DevTools (SDK, net8.0, Exe, refs Data)
+ |    Types: DocGenerator, SchemaExporter, DependencyChecker
+ |    NOTE: False-positive test project — mentions PortalDataService
+ |          only in comments, strings, and doc templates. Not a real consumer.
+ |
+ +-- GalaxyWorks.Notifications (SDK, net8.0, Exe, refs Data)
+      Types: ConfigChangeNotifier, EmailTemplates, SlackTemplates
+      NOTE: Mixed consumer — ConfigChangeNotifier has real PortalDataService
+            usage; EmailTemplates and SlackTemplates mention it only in strings.
 
 MyDotNetApp (SDK, net8.0, Exe, independent)
  |  Types: Person, DataService, IDataService, Program
@@ -1609,12 +1619,14 @@ MyDotNetApp2.Exclude (SDK, net8.0, Exe, standalone, no refs)
 </code></pre></div>
 <h3 id="notes-on-the-tree">Notes on the Tree<a class="headerlink" href="#notes-on-the-tree" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>GalaxyWorks.Data</strong> is the hub. Everything in the GalaxyWorks cluster depends on it.</li>
+<li><strong>GalaxyWorks.Data</strong> is the hub. Nearly everything in the GalaxyWorks cluster depends on it (9 incoming project references).</li>
 <li><strong>GalaxyWorks.BatchProcessor</strong> has the highest instability (1.0) -- it depends on two projects and nothing depends on it.</li>
 <li><strong>GalaxyWorks.WebPortal</strong> uses legacy framework-style <code>.csproj</code> (with <code>&lt;ToolsVersion&gt;</code> and <code>&lt;ProjectGuid&gt;</code>). BatchProcessor does too. This validates that Scatter handles both SDK and legacy formats.</li>
 <li><strong>GalaxyWorks.Common</strong> multi-targets <code>net48</code> and <code>net8.0</code>. Scatter extracts the first framework.</li>
 <li><strong>MyDotNetApp</strong> is completely independent from the GalaxyWorks cluster. They form separate connected components in the graph.</li>
 <li><strong>MyDotNetApp2.Exclude</strong> is an island -- no incoming or outgoing project references. It exists specifically to test that Scatter correctly reports 0 consumers.</li>
+<li><strong>GalaxyWorks.DevTools</strong> is a false-positive test fixture. It references GalaxyWorks.Data and uses its namespace, but <code>PortalDataService</code> only appears in comments, strings, and doc templates. In regex mode, Scatter incorrectly reports it as a consumer of PortalDataService. In hybrid mode (<code>--parser-mode hybrid</code>), the tree-sitter AST correctly filters it out.</li>
+<li><strong>GalaxyWorks.Notifications</strong> is a mixed-usage test fixture. <code>ConfigChangeNotifier.cs</code> has real PortalDataService usage; <code>EmailTemplates.cs</code> and <code>SlackTemplates.cs</code> mention it only in string literals. Hybrid mode keeps it as a consumer but filters the false-positive files from <code>relevant_files</code>.</li>
 </ul>
 <hr />
 <h2 id="expected-values-table">Expected Values Table<a class="headerlink" href="#expected-values-table" title="Permanent link">&para;</a></h2>
@@ -1636,7 +1648,7 @@ MyDotNetApp2.Exclude (SDK, net8.0, Exe, standalone, no refs)
 <tr>
 <td>GalaxyWorks.Data + class filter</td>
 <td><code>--target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . --class-name PortalDataService</code></td>
-<td>Consumers filtered to those referencing <code>PortalDataService</code></td>
+<td>8 consumers (regex) or 6 consumers (hybrid — DevTools and Api filtered as false positives)</td>
 </tr>
 <tr>
 <td>GalaxyWorks.WebPortal consumers</td>
@@ -1661,7 +1673,7 @@ MyDotNetApp2.Exclude (SDK, net8.0, Exe, standalone, no refs)
 <tr>
 <td>Graph mode</td>
 <td><code>--graph --search-scope .</code></td>
-<td>11 projects, multiple connected components, 0 cycles</td>
+<td>13 projects, multiple connected components, 0 cycles</td>
 </tr>
 </tbody>
 </table>
@@ -1670,7 +1682,7 @@ MyDotNetApp2.Exclude (SDK, net8.0, Exe, standalone, no refs)
 <p>When you run <code>--graph --search-scope .</code>, Scatter computes coupling metrics for every project. Here are the notable values:</p>
 <h3 id="galaxyworksdata">GalaxyWorks.Data<a class="headerlink" href="#galaxyworksdata" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>fan_in</strong>: 7 (everything in the cluster references it)</li>
+<li><strong>fan_in</strong>: 9 (nearly everything in the cluster references it)</li>
 <li><strong>fan_out</strong>: 0 (depends on nothing)</li>
 <li><strong>instability</strong>: 0.0 (perfectly stable -- the foundation)</li>
 <li><strong>coupling_score</strong>: ~8.6 (high, due to fan_in)</li>
@@ -1687,7 +1699,7 @@ MyDotNetApp2.Exclude (SDK, net8.0, Exe, standalone, no refs)
 <p>The MyDotNetApp and MyDotNetApp.Consumer form a small independent cluster. Feasibility scoring rates this as "easy" (1.000) for extraction -- it's already isolated from the GalaxyWorks ecosystem.</p>
 <h3 id="connected-components">Connected Components<a class="headerlink" href="#connected-components" title="Permanent link">&para;</a></h3>
 <p>The graph has at least 3 connected components:
-1. The GalaxyWorks cluster (Data, WebPortal, BatchProcessor, Common, Api, Data.Tests, MyGalaxyConsumerApp, MyGalaxyConsumerApp2)
+1. The GalaxyWorks cluster (Data, WebPortal, BatchProcessor, Common, Api, Data.Tests, DevTools, Notifications, MyGalaxyConsumerApp, MyGalaxyConsumerApp2)
 2. The MyDotNetApp cluster (MyDotNetApp, MyDotNetApp.Consumer)
 3. MyDotNetApp2.Exclude (island)</p>
 <h3 id="cycles">Cycles<a class="headerlink" href="#cycles" title="Permanent link">&para;</a></h3>
@@ -1706,7 +1718,7 @@ MyDotNetApp2.Exclude (SDK, net8.0, Exe, standalone, no refs)
 <tbody>
 <tr>
 <td>SDK-style</td>
-<td>GalaxyWorks.Data, Common, Api, Data.Tests, MyGalaxyConsumerApp, MyGalaxyConsumerApp2, MyDotNetApp, MyDotNetApp.Consumer, MyDotNetApp2.Exclude</td>
+<td>GalaxyWorks.Data, Common, Api, Data.Tests, DevTools, Notifications, MyGalaxyConsumerApp, MyGalaxyConsumerApp2, MyDotNetApp, MyDotNetApp.Consumer, MyDotNetApp2.Exclude</td>
 <td><code>&lt;Project Sdk="..."&gt;</code>, compact XML, <code>&lt;TargetFramework&gt;</code></td>
 </tr>
 <tr>
@@ -1730,12 +1742,12 @@ MyDotNetApp2.Exclude (SDK, net8.0, Exe, standalone, no refs)
         <span class="n">disable_multiprocessing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">exclude_patterns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*/bin/*&quot;</span><span class="p">,</span> <span class="s2">&quot;*/obj/*&quot;</span><span class="p">,</span> <span class="s2">&quot;*/temp_test_data/*&quot;</span><span class="p">],</span>
     <span class="p">)</span>
-    <span class="c1"># 11 projects</span>
-    <span class="k">assert</span> <span class="n">graph</span><span class="o">.</span><span class="n">node_count</span> <span class="o">==</span> <span class="mi">11</span>
+    <span class="c1"># 13 projects</span>
+    <span class="k">assert</span> <span class="n">graph</span><span class="o">.</span><span class="n">node_count</span> <span class="o">==</span> <span class="mi">13</span>
 
     <span class="c1"># GalaxyWorks.Data has the most dependents</span>
     <span class="n">data_edges</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">get_edges_to</span><span class="p">(</span><span class="s2">&quot;GalaxyWorks.Data&quot;</span><span class="p">)</span>
-    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_edges</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">6</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_edges</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">9</span>
 </code></pre></div>
 <p>The <code>exclude_patterns</code> parameter filters out <code>bin/</code>, <code>obj/</code>, and <code>temp_test_data/</code> directories. Always include it when running against the repo root -- otherwise you'll pick up build artifacts.</p>
 

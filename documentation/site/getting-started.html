@@ -1416,7 +1416,7 @@
 <li><strong>Native install</strong> (this page) — Python 3.10+, Git, and uv. Best for development and daily use.</li>
 <li><strong><a href="usage/docker.html">Docker</a></strong> — just Docker. No Python, no uv, nothing else to install.</li>
 </ul>
-<p>This page covers the native install. The repo includes 11 sample .NET projects, so you don't need a production codebase to start.</p>
+<p>This page covers the native install. The repo includes 13 sample .NET projects, so you don't need a production codebase to start.</p>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Python 3.10+</strong> -- Scatter uses type hints and dataclass features</li>
@@ -1447,6 +1447,13 @@
 <li>Copies Claude Code skills into <code>.claude/skills/</code></li>
 </ol>
 <p>It's idempotent — safe to run again any time.</p>
+<div class="admonition note">
+<p class="admonition-title">Optional: AST validation</p>
+<p>For <code>--parser-mode hybrid</code> (tree-sitter false positive filtering), install the AST extra:
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>ast
+</code></pre></div>
+This is optional — without it, <code>--parser-mode hybrid</code> silently falls back to regex. The Docker image includes it by default.</p>
+</div>
 <div class="admonition note">
 <p class="admonition-title">Manual setup</p>
 <p>If you prefer to set things up yourself:</p>

@@ -1198,6 +1198,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#optional-extras" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional extras
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#adding-dependencies" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1546,6 +1557,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#optional-extras" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional extras
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#adding-dependencies" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1814,6 +1836,18 @@ uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span
 uv<span class="w"> </span>run<span class="w"> </span>mypy<span class="w"> </span>scatter
 </code></pre></div>
 <p>uv replaces <code>pip</code>, <code>pip-tools</code>, <code>venv</code>, and <code>requirements.txt</code>. There is no <code>requirements.txt</code> — <code>pyproject.toml</code> is the single source of truth.</p>
+<h3 id="optional-extras">Optional extras<a class="headerlink" href="#optional-extras" title="Permanent link">&para;</a></h3>
+<p>Scatter has optional dependency groups for features that not everyone needs:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># AST validation (tree-sitter for --parser-mode hybrid)</span>
+uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>ast
+
+<span class="c1"># Pipeline artifact parsing (pandas for parse_pipeline_artifacts.py)</span>
+uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>pipeline-tools
+
+<span class="c1"># Both</span>
+uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>ast<span class="w"> </span>--extra<span class="w"> </span>pipeline-tools
+</code></pre></div>
+<p>The <code>ast</code> extra installs <code>tree-sitter</code> and <code>tree-sitter-c-sharp</code>. Without it, <code>--parser-mode hybrid</code> silently falls back to regex. If you're working on anything in <code>scatter/parsers/</code>, install this.</p>
 <h3 id="adding-dependencies">Adding dependencies<a class="headerlink" href="#adding-dependencies" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Runtime dependency</span>
 uv<span class="w"> </span>add<span class="w"> </span>some-package

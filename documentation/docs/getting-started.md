@@ -5,7 +5,7 @@ Two ways to run scatter:
 - **Native install** (this page) — Python 3.10+, Git, and uv. Best for development and daily use.
 - **[Docker](usage/docker.md)** — just Docker. No Python, no uv, nothing else to install.
 
-This page covers the native install. The repo includes 11 sample .NET projects, so you don't need a production codebase to start.
+This page covers the native install. The repo includes 13 sample .NET projects, so you don't need a production codebase to start.
 
 ## Prerequisites
 
@@ -40,6 +40,13 @@ The setup script:
 5. Copies Claude Code skills into `.claude/skills/`
 
 It's idempotent — safe to run again any time.
+
+!!! note "Optional: AST validation"
+    For `--parser-mode hybrid` (tree-sitter false positive filtering), install the AST extra:
+    ```bash
+    uv sync --extra ast
+    ```
+    This is optional — without it, `--parser-mode hybrid` silently falls back to regex. The Docker image includes it by default.
 
 !!! note "Manual setup"
     If you prefer to set things up yourself:

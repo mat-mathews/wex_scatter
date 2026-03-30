@@ -434,10 +434,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-3-see-the-full-dependency-graph" class="md-nav__link">
+  <a href="#step-3-filter-out-false-positives-with-hybrid-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 3: See the full dependency graph
+        Step 3: Filter out false positives with hybrid mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-see-the-full-dependency-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: See the full dependency graph
       
     </span>
   </a>
@@ -1416,10 +1427,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-3-see-the-full-dependency-graph" class="md-nav__link">
+  <a href="#step-3-filter-out-false-positives-with-hybrid-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 3: See the full dependency graph
+        Step 3: Filter out false positives with hybrid mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-see-the-full-dependency-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: See the full dependency graph
       
     </span>
   </a>
@@ -1550,7 +1572,17 @@ Analysis complete. 6 consumer(s) found across 1 target(s).
 <span class="w">  </span>--class-name<span class="w"> </span>PortalDataService
 </code></pre></div>
 <p>Now Scatter only reports projects that actually reference <code>PortalDataService</code> specifically. The consumer list gets shorter — only the projects that use that class show up.</p>
-<h2 id="step-3-see-the-full-dependency-graph">Step 3: See the full dependency graph<a class="headerlink" href="#step-3-see-the-full-dependency-graph" title="Permanent link">&para;</a></h2>
+<h2 id="step-3-filter-out-false-positives-with-hybrid-mode">Step 3: Filter out false positives with hybrid mode<a class="headerlink" href="#step-3-filter-out-false-positives-with-hybrid-mode" title="Permanent link">&para;</a></h2>
+<p>The regex match in step 2 catches mentions of <code>PortalDataService</code> in comments and string literals too. Add <code>--parser-mode hybrid</code> to use tree-sitter AST validation and keep only real code references:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--class-name<span class="w"> </span>PortalDataService<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--parser-mode<span class="w"> </span>hybrid
+</code></pre></div>
+<p>On the sample projects, this drops the consumer count from 8 to 6 — two projects that only mentioned <code>PortalDataService</code> in comments or template strings are correctly filtered out.</p>
+<p>No API key needed. <code>--parser-mode hybrid</code> uses tree-sitter (a local parser), not an LLM. Requires <code>uv sync --extra ast</code> (included in Docker).</p>
+<h2 id="step-4-see-the-full-dependency-graph">Step 4: See the full dependency graph<a class="headerlink" href="#step-4-see-the-full-dependency-graph" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<span class="w"> </span>.
 </code></pre></div>
 <div class="highlight"><pre><span></span><code>============================================================

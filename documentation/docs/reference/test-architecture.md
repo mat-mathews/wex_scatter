@@ -20,7 +20,7 @@ pytest test_impact_analysis.py::test_something_specific
 python -m pytest --cov=scatter
 ```
 
-The full suite is 878 tests (1 xfail), and runs in roughly 25 seconds. No network calls, no database, no Docker. Just Python and your CPU.
+The full suite is 940 tests (1 xfail), and runs in roughly 45 seconds. No network calls, no database, no Docker. Just Python and your CPU.
 
 Coverage is configured in `pyproject.toml` with `fail_under=70%`. The coverage source is the `scatter/` package only -- test files themselves are excluded from the metric.
 
@@ -28,7 +28,7 @@ Coverage is configured in `pyproject.toml` with `fail_under=70%`. The coverage s
 
 ## Full Test Inventory
 
-33 test files. Here's every one of them, what it covers, and how many tests it contains.
+35 test files. Here's every one of them, what it covers, and how many tests it contains.
 
 | File | Tests | What it covers |
 |------|------:|----------------|
@@ -46,7 +46,9 @@ Coverage is configured in `pyproject.toml` with `fail_under=70%`. The coverage s
 | `test_graph_cache.py` | 28 | Cache serialization (v2 fact-based), hash computation, staleness detection |
 | `test_graph_enrichment.py` | 17 | Graph context enrichment: metrics injection, cycle detection, health dashboard |
 | `test_graph_patcher.py` | 49 | Incremental graph updates: 6 mutation types, correctness vs full rebuild |
-| `test_hybrid_git.py` | 7 | LLM-based symbol extraction: valid JSON, empty, invalid, markdown fences, exceptions |
+| `test_hybrid_git.py` | 7 | LLM-based symbol extraction (`--enable-hybrid-git`): valid JSON, empty, invalid, markdown fences, exceptions |
+| `test_ast_validator.py` | 25 | Tree-sitter AST validation (`--parser-mode hybrid`): identifiers in code, type declarations, type usage, non-ASCII byte offsets, thread safety, graceful fallback |
+| `test_consumer_ast_hybrid.py` | 12 | Consumer pipeline AST confirmation: class/method filtering with `use_ast`, false positive elimination, error fallback, non-ASCII |
 | `test_impact_analysis.py` | 82 | Impact analysis: BFS traversal, confidence decay, depth limits, transitive chains |
 | `test_markdown_reporter.py` | 39 | Markdown report generation: sections, tables, formatting, edge cases |
 | `test_multiprocessing_phase1.py` | 7 | Parallel file discovery: consistency with sequential, worker count handling |
@@ -149,7 +151,7 @@ Use `tmp_path` (pytest built-in) for any test that needs files on disk. It's aut
 
 ### Test Against Sample Projects
 
-The 11 `.csproj` files in the repo root are real .NET projects designed for integration testing. Use them when you need realistic project references, namespace structures, and type declarations:
+The 13 `.csproj` files in the repo root are real .NET projects designed for integration testing. Use them when you need realistic project references, namespace structures, and type declarations:
 
 ```python
 from pathlib import Path
@@ -159,7 +161,7 @@ REPO_ROOT = Path(__file__).parent
 def test_against_sample_projects():
     from scatter.analyzers.graph_builder import build_dependency_graph
     graph = build_dependency_graph(REPO_ROOT, disable_multiprocessing=True)
-    assert graph.node_count == 11
+    assert graph.node_count == 13
 ```
 
 See [Sample Projects](sample-projects.md) for the full dependency tree and expected values.
@@ -204,6 +206,13 @@ addopts = "-q"
 ```
 
 The `-q` (quiet) default keeps output manageable for 878 tests. Override with `-v` when debugging.
+
+Integration tests for hybrid AST live in `tests/integration/`:
+
+| File | Tests | What it covers |
+|------|------:|----------------|
+| `test_hybrid_regression.py` | 4 | Graph identity: parser_mode does not affect graph output (full edge-triple comparison) |
+| `test_hybrid_consumer_regression.py` | 2 | Consumer subset: hybrid consumers are a subset of regex consumers on sample projects |
 
 ---
 

@@ -1223,6 +1223,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#ast-validation-parser-mode-hybrid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AST Validation (--parser-mode hybrid)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AST Validation (--parser-mode hybrid)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What It Does
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#where-it-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where It Runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-differs-from-llm-hybrid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Differs from LLM Hybrid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#adding-a-new-extraction-strategy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1649,6 +1710,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#ast-validation-parser-mode-hybrid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AST Validation (--parser-mode hybrid)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AST Validation (--parser-mode hybrid)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What It Does
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#where-it-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where It Runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-differs-from-llm-hybrid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Differs from LLM Hybrid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#adding-a-new-extraction-strategy" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1868,8 +1990,92 @@ Rules:
 <p><strong>Used in</strong>: Stored procedure analysis. When Scatter finds a sproc reference like <code>"dbo.sp_InsertPortalConfiguration"</code> at position 1,247 in a file, <code>find_enclosing_type_name()</code> determines it's inside <code>PortalDataService</code>. That class name becomes the link in the consumer chain.</p>
 <p>The walk-backward approach is O(N) where N is the content length up to the match position. It doesn't try to parse brace nesting or understand scope -- it just finds the nearest type declaration above the match. For deeply nested types (type within a type), it returns the innermost one, which is usually what you want.</p>
 <hr />
+<h2 id="ast-validation-parser-mode-hybrid">AST Validation (<code>--parser-mode hybrid</code>)<a class="headerlink" href="#ast-validation-parser-mode-hybrid" title="Permanent link">&para;</a></h2>
+<p>A different kind of "hybrid" from the LLM approach above. This one uses <strong>tree-sitter</strong> (a local parser, no AI, no API calls) to filter false positives in the consumer pipeline's class and method filtering stages.</p>
+<h3 id="what-it-does">What It Does<a class="headerlink" href="#what-it-does" title="Permanent link">&para;</a></h3>
+<p>When you search for consumers of <code>PortalDataService</code> with <code>--class-name</code>, Scatter's regex (<code>\bPortalDataService\b</code>) matches every occurrence in every <code>.cs</code> file — including comments, string literals, and documentation templates. These are false positives: the project mentions the type but doesn't actually use it in code.</p>
+<p>With <code>--parser-mode hybrid</code>, after the regex finds a match, Scatter parses the file with tree-sitter, builds a map of non-code ranges (comments and strings), and checks whether the match falls inside one. If every occurrence is in a non-code position, the file is filtered out.</p>
+<h3 id="where-it-runs">Where It Runs<a class="headerlink" href="#where-it-runs" title="Permanent link">&para;</a></h3>
+<p>AST validation runs only in the <strong>consumer pipeline</strong> (stages 4 and 5), not during graph construction. The graph builder uses pure regex — AST overhead there adds ~40% build time for zero measured edge delta.</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stage 4 (class filter)</td>
+<td><code>validate_type_usage(content, class_name)</code></td>
+</tr>
+<tr>
+<td>Stage 5 (method filter)</td>
+<td><code>validate_type_usage(content, f".{method_name}")</code> — dot anchors to member access, no paren to handle <code>.Save (data)</code></td>
+</tr>
+</tbody>
+</table>
+<p>Regex runs first. AST only fires if regex found a match. Non-matching files pay zero additional cost.</p>
+<h3 id="how-it-differs-from-llm-hybrid">How It Differs from LLM Hybrid<a class="headerlink" href="#how-it-differs-from-llm-hybrid" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>--parser-mode hybrid</code> (AST)</th>
+<th><code>--enable-hybrid-git</code> (LLM)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Technology</strong></td>
+<td>tree-sitter (local C parser)</td>
+<td>Gemini API (remote LLM)</td>
+</tr>
+<tr>
+<td><strong>API key</strong></td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><strong>Speed</strong></td>
+<td>~1ms per file</td>
+<td>~1-2s per file</td>
+</tr>
+<tr>
+<td><strong>What it filters</strong></td>
+<td>False positives in consumer detection (comments/strings)</td>
+<td>Over-reported types in git branch extraction</td>
+</tr>
+<tr>
+<td><strong>Where it runs</strong></td>
+<td>Consumer pipeline stages 4-5</td>
+<td>Git mode type extraction (step 2)</td>
+</tr>
+<tr>
+<td><strong>Failure mode</strong></td>
+<td>Returns regex result (conservative)</td>
+<td>Falls back to regex</td>
+</tr>
+<tr>
+<td><strong>Install</strong></td>
+<td><code>uv sync --extra ast</code></td>
+<td>Included by default</td>
+</tr>
+</tbody>
+</table>
+<p>They solve different problems and can be used together.</p>
+<h3 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Install tree-sitter dependencies</span>
+uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>ast
+
+<span class="c1"># Use hybrid mode</span>
+scatter<span class="w"> </span>--target-project<span class="w"> </span>./MyLib/MyLib.csproj<span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--class-name<span class="w"> </span>MyService<span class="w"> </span>--parser-mode<span class="w"> </span>hybrid
+</code></pre></div>
+<p>If tree-sitter is not installed, <code>--parser-mode hybrid</code> silently falls back to regex.</p>
+<hr />
 <h2 id="adding-a-new-extraction-strategy">Adding a New Extraction Strategy<a class="headerlink" href="#adding-a-new-extraction-strategy" title="Permanent link">&para;</a></h2>
-<p>If you want to add a new extraction approach (say, Roslyn-based or tree-sitter):</p>
+<p>If you want to add a new extraction approach (say, Roslyn-based):</p>
 <ol>
 <li>Create a function with signature <code>(content: str) -&gt; Set[str]</code> in <code>scatter/scanners/type_scanner.py</code></li>
 <li>Wire it into <code>graph_builder.py</code> where <code>extract_type_names_from_content()</code> is called</li>
