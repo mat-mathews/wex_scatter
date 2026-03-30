@@ -1901,11 +1901,15 @@ PHASE 5: Follow-Up Consistency
       Currently uses === Title === (3 equals); should match the new ==== block style.
 
 ============================================================================
-INITIATIVE: HYBRID AST SPIKE — Phase 2 & Follow-Ups
-Spike shipped on feature/hybrid-ast-spike (2026-03-29)
+INITIATIVE: HYBRID AST SPIKE ✅ COMPLETE (2026-03-30)
+Spike shipped on feature/hybrid-ast-spike (2026-03-29–30)
 Phase 1 (spike): Config + CLI + parsers module + graph_builder wiring. DONE.
 Phase 2 (consumer wiring): Consumer pipeline AST confirmation. DONE.
 Phase 2b (graph simplification): Removed tree-sitter from graph build. DONE.
+Benchmark tool: --mode consumer compares regex vs hybrid. DONE.
+Sample projects: GalaxyWorks.DevTools (pure FP), GalaxyWorks.Notifications (mixed). DONE.
+Result: --parser-mode hybrid eliminates 2 false positives (8→6 consumers) at zero
+        graph build cost. AST runs only at consumer query time on regex-matched files.
 ============================================================================
 
 PHASE 2: Consumer Analyzer Wiring ✅ COMPLETED (2026-03-30)
@@ -1920,9 +1924,11 @@ PHASE 2: Consumer Analyzer Wiring ✅ COMPLETED (2026-03-30)
       Call sites updated: cli.py (target, git, sproc), modes/impact.py,
       impact_analyzer.py (run_impact_analysis, _analyze_single_target, trace_transitive_impact).
       Resolved use_ast once at top of find_consumers(), injected into stage_config dicts.
-- [ ] Extend validate_type_usage() to distinguish type references from other identifier
+- [~] Extend validate_type_usage() to distinguish type references from other identifier
       positions using AST node types (object_creation, variable_declaration, base_list, etc.)
-      Deferred — current byte-level substring + non-code range check is sufficient for Phase 2.
+      DEFERRED — current byte-level substring + non-code range check is sufficient.
+      Would improve precision but adds complexity. Revisit if false positive rate on
+      real monolith warrants it.
 - [x] Renamed local `analysis_config` dicts to `stage_config` in consumer_analyzer.py
       Avoids name collision with the new analysis_config: AnalysisConfig parameter (Priya).
 
@@ -1931,12 +1937,12 @@ PHASE 2: Performance ✅ COMPLETED (Devon, Priya)
 - [x] Cache compiled tree_sitter.Query objects at module level in ast_validator.py
       _query_cache: Dict[str, object] = {} — keyed by query string. QueryCursor stays
       fresh per call (it's stateful). Only 2 distinct queries, so cache stays tiny.
-- [ ] Profile ident_positions dict overhead vs. the old set-based path
-      Hybrid path builds Dict[str, List[int]] instead of Set[str]; more allocations.
-      Optimization: skip position capture for identifiers not in type_name_set (requires
-      knowing type_name_set at extraction time — pipeline restructure).
-- [ ] Wire --parser-mode into tools/benchmark_graph_build.py
-      Run both modes, report wall-clock delta. Currently the tool doesn't accept --parser-mode.
+- [x] Profile ident_positions dict overhead vs. the old set-based path
+      CLOSED — moot after Phase 2b removed the AST path from graph build entirely.
+      The Dict[str, List[int]] path no longer exists in production code.
+- [x] Wire --parser-mode into tools/benchmark_graph_build.py
+      DONE — --mode consumer compares regex vs hybrid automatically.
+      --parser-mode prints a note when used with graph build modes.
 
 PHASE 2: Correctness ✅ COMPLETED (Sam)
 ----------------------------------------------------------------------
@@ -1954,9 +1960,9 @@ PHASE 2: Resilience ✅ COMPLETED (Fatima)
 
 PHASE 2: Testing ✅ COMPLETED (Anya)
 ----------------------------------------------------------------------
-- [ ] Extract _byte_positions helper to shared location (scatter/parsers/ or test utils)
-      Test helper reimplements the same byte-position logic as graph_builder.
-      If those diverge, unit tests pass but integration fails. Low priority.
+- [~] Extract _byte_positions helper to shared location (scatter/parsers/ or test utils)
+      DEFERRED — low priority housekeeping. The byte-position logic in graph_builder
+      was removed in Phase 2b; the test helper is only used in test_ast_validator.py.
 - [x] Add concurrency test variant with different content per thread
       test_concurrent_varied_content: 4 different C# snippets across 8 threads,
       exercises query cache under contention.
@@ -1974,7 +1980,7 @@ PHASE 2: Tooling ✅ COMPLETED (Kai)
 - [x] Guard _ts_language against uninitialized access in _run_query
       Added `if _ts_language is None: _get_parser()` at top of _run_query().
 
-PHASE 2: Documentation (Marcus — leadership review follow-up)
+PHASE 2: Documentation ✅ COMPLETED (Marcus — leadership review follow-up)
 ----------------------------------------------------------------------
 - [x] Updated validate_type_usage docstring — removed "Reserved for Phase 2",
       replaced with description of its actual role in consumer analyzer stages 4-5.
