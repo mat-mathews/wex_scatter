@@ -3,7 +3,7 @@
 **Initiative**: PR Risk Integration
 **Target branch**: `feature/pr-risk-scoring`
 **Effort estimate**: 4–6 weeks across 4 phases (Phase 4 deferred until prediction data exists)
-**Dependencies**: Risk Engine (`RISK_ENGINE_PLAN.md`), graph engine (done), coupling analyzer (done), GitHub Actions (CI plan exists)
+**Dependencies**: Risk Engine Phase 1 (`RISK_ENGINE_PLAN.md` — ✅ SHIPPED), graph engine (done), coupling analyzer (done), GitHub Actions (CI plan exists)
 **Blockers**: GitHub API access for PR commenting, repo-level Actions permissions
 **Related docs**: `RISK_ENGINE_PLAN.md` (unified risk model), `SOW_SCOPING_PLAN.md` (shared infrastructure)
 
@@ -186,8 +186,9 @@ SOW scoping, and local dev. One risk model, used everywhere.
 def analyze_pr_risk(
     changed_files: list[Path],
     graph: DependencyGraph,
+    metrics: dict[str, ProjectMetrics],
+    cycles: list[CycleGroup],
     config: ScatterConfig,
-    ai_provider: Optional[AIProvider] = None,
 ) -> PRRiskReport:
     # 1. Extract changed types from diff
     changed_types = extract_changed_types(changed_files)
@@ -195,16 +196,20 @@ def analyze_pr_risk(
     # 2. Compute RiskProfile for each changed type (from risk engine)
     profiles = []
     for ct in changed_types:
-        consumers = find_consumers(ct.name, graph, config)
+        consumer_names = find_consumer_names(ct.name, graph, config)
         profile = compute_risk_profile(
             target=ct.name,
             graph=graph,
-            consumers=consumers,
+            metrics=metrics,
+            consumers=consumer_names,
+            cycles=cycles,
             context=PR_RISK_CONTEXT,         # PR-specific weights
-            changed_types=[ct],              # enables change_surface dimension
+            direct_consumer_count=len(consumer_names),
+            transitive_consumer_count=count_transitive(ct.name, graph),
             team_map=config.team_map,
-            ai_provider=ai_provider,
         )
+        # PR analyzer populates change_surface (engine leaves it zeroed)
+        profile.change_surface = score_change_surface([ct])
         profiles.append(profile)
 
     # 3. Aggregate across all targets (from risk engine)
@@ -462,14 +467,17 @@ locally and in CI, same output either way.
 
 #### Deliverables
 
-**1.1 Risk Engine** (prerequisite — see `RISK_ENGINE_PLAN.md` Phase 1–2)
-- `RiskProfile`, `RiskDimension`, `AggregateRisk`, `RiskContext`, `RiskLevel` in `models.py`
-- `risk_engine.py` + `risk_dimensions.py` in `analyzers/`
-- Shared infrastructure — SOW Scoping depends on the same engine
+**1.1 Risk Engine** (prerequisite — ✅ SHIPPED, see `RISK_ENGINE_PLAN.md`)
+- `RiskProfile`, `RiskDimension`, `AggregateRisk`, `RiskContext`, `RiskLevel` in `scatter/core/risk_models.py`
+- `risk_engine.py` + `risk_dimensions.py` in `scatter/analyzers/`
+- PR Risk depends on **Risk Engine Phase 1 only** — it calls `compute_risk_profile()`
+  and `aggregate_risk()` directly, it does not need the impact analysis wiring from Phase 2
 
 **1.2 PRRiskReport dataclass** (`scatter/core/models.py`)
-- Add `PRRiskReport`, `ChangedType` to models
-- `PRRiskReport` wraps `AggregateRisk` (from risk engine) with PR-specific metadata
+- Add `PRRiskReport`, `ChangedType` to `scatter/core/models.py` (PR-specific wrappers,
+  NOT in `risk_models.py` — risk vocabulary stays in `risk_models.py`, PR-specific
+  report types go in `models.py` alongside `ImpactReport` and `ConsumerResult`)
+- `PRRiskReport` wraps `AggregateRisk` (from `risk_models.py`) with PR-specific metadata
 - No `TargetRisk` — `RiskProfile` from the engine handles that
 
 **1.3 PR risk analyzer** (`scatter/analyzers/pr_risk_analyzer.py`)
@@ -478,7 +486,7 @@ locally and in CI, same output either way.
 - Internally:
   1. Extract changed types from diff (reuse `type_scanner.extract_type_declarations`)
   2. For each changed type, run consumer detection (reuse `find_consumers` with graph acceleration)
-  3. Call `compute_risk_profile()` from risk engine (handles all 7 dimensions)
+  3. Call `compute_risk_profile()` from risk engine (scores 6 graph-derived dimensions; PR analyzer populates `change_surface` separately)
   4. Call `aggregate_risk()` from risk engine
   5. Assemble `PRRiskReport`
 
@@ -699,10 +707,22 @@ class RiskPrediction:
 Stored as append-only JSONL (one line per PR) in a configurable location. No database
 needed — this is a log, not a query engine. You can `grep` it. That's the point.
 
-**3.2 Tests**
+**3.2 Log retention strategy**
+
+At 1 PR per day, each line is ~500 bytes. A year of data is ~180KB — small enough
+that rotation is not a year-one concern. When it becomes one:
+
+- Default location: `.scatter/predictions/pr_risk.jsonl`
+- No automatic rotation in Phase 3 — file stays small for typical repos
+- If file exceeds 10MB (~20K PRs), log a warning suggesting manual archival
+- Phase 4 calibration reads the full log, so rotation must preserve calibration data
+- Future: `scatter --prediction-archive` to move entries older than N days to a
+  dated archive file (e.g., `pr_risk_2026.jsonl`)
+
+**3.3 Tests**
 - Unit test: prediction record serialization to/from JSONL
 - Integration test: run PR analysis → verify prediction logged
-- Verify prediction log doesn't grow unbounded (rotation strategy)
+- Unit test: large file warning threshold (mock 10MB file)
 
 ### Phase 4: Calibration and Trust (2+ weeks, deferred until prediction data exists)
 
@@ -838,22 +858,40 @@ catch in Phase 3 and adjust for) than to flag a safe change as dangerous. People
 
 ## Files Summary
 
+### Already shipped (Risk Engine Phase 1)
+
+| File | Status | Purpose |
+|------|--------|---------|
+| `scatter/core/risk_models.py` | ✅ Shipped | `RiskProfile`, `RiskDimension`, `AggregateRisk`, `RiskContext`, `RiskLevel` |
+| `scatter/analyzers/risk_engine.py` | ✅ Shipped | `compute_risk_profile`, `aggregate_risk`, `format_risk_factors` |
+| `scatter/analyzers/risk_dimensions.py` | ✅ Shipped | Six `score_*` dimension functions |
+| `tests/unit/test_risk_engine.py` | ✅ Shipped | 26 tests: aggregation, composite scoring, edge cases |
+| `tests/unit/test_risk_dimensions.py` | ✅ Shipped | 37 tests: per-dimension scoring, interpolation |
+
+### PR Risk Phase 1 (new files)
+
 | File | Action | Purpose |
 |------|--------|---------|
-| `scatter/core/models.py` | Modify | Add `PRRiskReport`, `ChangedType` (risk engine types added separately) |
-| `scatter/analyzers/risk_engine.py` | Create | Unified risk: `compute_risk_profile`, `aggregate_risk` (shared with SOW) |
-| `scatter/analyzers/risk_dimensions.py` | Create | Seven dimension assessors (shared with SOW) |
+| `scatter/core/models.py` | Modify | Add `PRRiskReport`, `ChangedType` (PR-specific wrappers) |
 | `scatter/analyzers/pr_risk_analyzer.py` | Create | PR-specific: diff extraction, engine invocation, report assembly |
-| `scatter/ai/tasks/risk_narrative.py` | Create | AI risk narrative + mitigations (shared with SOW) |
-| `scatter/config.py` | Modify | Add `RiskConfig` with context weights |
+| `scatter/config.py` | Modify | Add `PRRiskConfig` with threshold defaults |
 | `scatter/cli.py` | Modify | Add `--pr-risk` mode handler |
 | `scatter/cli_parser.py` | Modify | Add `--pr-risk`, `--base-branch`, `--risk-context`, `--risk-details`, `--risk-only` |
-| `scatter/reports/pr_comment_reporter.py` | Create | Markdown PR comment formatter (dimension table, mitigations, collapsibles) |
+| `scatter/reports/pr_comment_reporter.py` | Create | Markdown PR comment formatter (dimension table, collapsibles) |
 | `scatter/reports/json_reporter.py` | Modify | Handle `PRRiskReport` with full `RiskProfile` serialization |
-| `scatter/reports/console_reporter.py` | Modify | Terminal preview with dimension bar chart |
+| `scatter/reports/console_reporter.py` | Modify | Terminal preview with dimension table |
+| `tests/unit/test_pr_risk_analyzer.py` | Create | PR report assembly, threshold edges, deleted-type detection |
+| `tests/unit/test_pr_comment_reporter.py` | Create | Golden-file snapshot tests for markdown output |
+
+### PR Risk Phase 2 (GitHub Actions)
+
+| File | Action | Purpose |
+|------|--------|---------|
 | `.github/workflows/scatter-pr-risk.yml` | Create | GitHub Actions workflow |
-| `tests/unit/test_pr_risk_analyzer.py` | Create | PR report assembly tests |
-| `tests/unit/test_pr_comment_reporter.py` | Create | Comment format tests |
-| `tests/unit/test_risk_engine.py` | Create | Aggregation, composite scoring (shared with SOW) |
-| `tests/unit/test_risk_dimensions.py` | Create | Per-dimension scoring (shared with SOW) |
-| `.scatter.yaml` (example) | Modify | Add `risk:` config section |
+
+### PR Risk Phase 3 (Prediction logging)
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `scatter/store/prediction_log.py` | Create | Append-only JSONL prediction storage |
+| `.scatter.yaml` (example) | Modify | Add `risk:` and `prediction_log:` config sections |

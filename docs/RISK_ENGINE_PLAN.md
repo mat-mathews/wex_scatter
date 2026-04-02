@@ -622,18 +622,23 @@ class AggregateRisk:
     targets_at_red: int
     targets_at_yellow: int
     targets_at_green: int
-    total_consumers: int            # unique across all targets
+    total_consumers: int            # sum across all targets (NOT deduplicated — see note below)
     total_transitive: int
-    teams_affected: int             # unique teams (if team_map available)
-    clusters_affected: int          # unique domain clusters
 
     # Hotspots — the targets driving the risk
     hotspots: list[RiskProfile]     # profiles sorted by composite_score, descending
-
-    # AI enrichment (optional)
-    aggregate_narrative: Optional[str]     # "This PR is high-risk because..."
-    mitigation_plan: Optional[list[str]]   # ordered list of risk-reducing actions
 ```
+
+> **Note on `total_consumers`**: This is `sum(p.consumer_count for p in profiles)`,
+> not a unique count. If two targets share consumers, those consumers are counted
+> twice. Callers that need unique consumer counts must deduplicate before passing
+> counts to `compute_risk_profile()`. The engine receives consumer counts as ints,
+> not consumer name lists, so deduplication at aggregation time is not possible.
+>
+> `teams_affected` and `clusters_affected` were removed from `AggregateRisk` — the
+> aggregate function only sees `RiskProfile`s and shouldn't re-derive team/cluster
+> data. These are reporter concerns: the SOW scoping reporter and PR comment
+> reporter compute these from their own context (team map, cluster assignments).
 
 ### Aggregation Logic
 
@@ -764,8 +769,9 @@ With the unified engine, it becomes a consumer:
 def analyze_pr_risk(
     changed_files: list[Path],
     graph: DependencyGraph,
+    metrics: dict[str, ProjectMetrics],
+    cycles: list[CycleGroup],
     config: ScatterConfig,
-    ai_provider: Optional[AIProvider] = None,
 ) -> PRRiskReport:
     # 1. Extract changed types from diff
     changed_types = extract_changed_types(changed_files)
@@ -773,14 +779,20 @@ def analyze_pr_risk(
     # 2. Compute RiskProfile for each changed type
     profiles = []
     for ct in changed_types:
+        consumer_names = find_consumer_names(ct.name, graph, config)
         profile = compute_risk_profile(
             target=ct.name,
             graph=graph,
-            changed_types=[ct],
-            consumers=find_consumers(ct, graph),
+            metrics=metrics,
+            consumers=consumer_names,
+            cycles=cycles,
             context=PR_RISK_CONTEXT,
-            ai_provider=ai_provider,
+            direct_consumer_count=len(consumer_names),
+            transitive_consumer_count=count_transitive(ct.name, graph),
+            team_map=config.team_map,
         )
+        # PR analyzer populates change_surface (engine leaves it zeroed)
+        profile.change_surface = score_change_surface([ct])
         profiles.append(profile)
 
     # 3. Aggregate across all targets
@@ -824,8 +836,9 @@ effort estimates.
 def scope_sow(
     sow_text: str,
     graph: DependencyGraph,
+    metrics: dict[str, ProjectMetrics],
+    cycles: list[CycleGroup],
     config: ScatterConfig,
-    ai_provider: Optional[AIProvider] = None,
 ) -> ScopingReport:
     # 1. Parse work request → targets
     targets = parse_work_request(sow_text, codebase_index)
@@ -833,14 +846,19 @@ def scope_sow(
     # 2. Compute RiskProfile for each target
     profiles = []
     for target in targets:
+        consumer_names = find_consumer_names(target.name, graph, config)
         profile = compute_risk_profile(
             target=target.name,
             graph=graph,
-            changed_types=None,         # SOW doesn't have a diff yet
-            consumers=find_consumers(target, graph),
+            metrics=metrics,
+            consumers=consumer_names,
+            cycles=cycles,
             context=SOW_RISK_CONTEXT,
-            ai_provider=ai_provider,
+            direct_consumer_count=len(consumer_names),
+            transitive_consumer_count=count_transitive(target.name, graph),
+            team_map=config.team_map,
         )
+        # change_surface stays zeroed — SOW doesn't have a diff
         profiles.append(profile)
 
     # 3. Aggregate risk
@@ -941,10 +959,10 @@ All risk computation lives in one module with a clean API.
 ### Module Structure
 
 ```
-scatter/analyzers/risk_engine.py       # Core: dimensions, profiles, aggregation
-scatter/analyzers/risk_dimensions.py   # Individual dimension assessors
-scatter/ai/tasks/risk_narrative.py     # AI: narrative, mitigations (replaces risk_assess.py)
-scatter/core/models.py                 # RiskProfile, RiskDimension, AggregateRisk, RiskContext
+scatter/core/risk_models.py            # RiskProfile, RiskDimension, AggregateRisk, RiskContext, RiskLevel
+scatter/analyzers/risk_engine.py       # Core: compute_risk_profile, aggregate_risk, format_risk_factors
+scatter/analyzers/risk_dimensions.py   # Six score_* dimension assessors
+scatter/ai/tasks/risk_narrative.py     # AI: narrative, mitigations (Phase 2+ — replaces risk_assess.py role)
 ```
 
 ### Public API
@@ -956,15 +974,20 @@ def compute_risk_profile(
     target: str,
     graph: DependencyGraph,
     metrics: dict[str, ProjectMetrics],   # pre-computed, never fetched internally (Devon)
-    consumers: list[ConsumerResult],
+    consumers: list[str],                 # consumer project names
     cycles: list[CycleGroup],
     context: RiskContext,
-    changed_types: Optional[list[ChangedType]] = None,
-    team_map: Optional[TeamMap] = None,
-    ai_provider: Optional[AIProvider] = None,
+    direct_consumer_count: int = 0,       # caller pre-counts (not derived from consumers list)
+    transitive_consumer_count: int = 0,
+    consumer_cluster_ids: Optional[list[str]] = None,   # for domain_boundary scoring
+    target_cluster_id: Optional[str] = None,
+    team_map: Optional[dict[str, str]] = None,          # project → team name
 ) -> RiskProfile:
     """
     Compute full risk profile for a single target.
+
+    Scores 6 graph-derived dimensions. change_surface is always zeroed —
+    it's a PR-only modifier populated by pr_risk_analyzer, not the engine.
 
     Decision #7 (Fatima): if target is not in graph or metrics,
     returns a GREEN profile with all dimensions at 0.0 and
@@ -982,6 +1005,10 @@ def aggregate_risk(
     Aggregate risk across multiple targets.
 
     Decision #8 (Fatima): empty list → GREEN aggregate, all zeros.
+
+    Note: total_consumers is sum(p.consumer_count), not deduplicated.
+    Callers that need unique consumer counts across targets must
+    deduplicate before passing counts to compute_risk_profile().
     """
 
 def format_risk_factors(
@@ -999,6 +1026,12 @@ need more than three functions to consume risk, the engine is too complicated."
 > The caller (mode handler) is responsible for running `compute_all_metrics` and
 > `detect_cycles` before invoking the engine. This keeps the engine testable without
 > a graph or filesystem.
+>
+> **Note on consumer counts**: `consumers` is a list of project names (for cycle
+> membership checks and domain boundary scoring). `direct_consumer_count` and
+> `transitive_consumer_count` are pre-computed ints for blast_radius scoring. The
+> engine does not derive counts from the `consumers` list — the caller owns that
+> arithmetic.
 
 ### Backward Compatibility
 
@@ -1169,7 +1202,7 @@ def test_ai_failure_graceful():
 
 ## Migration Path
 
-### Phase 1: Build the Engine (2 weeks)
+### Phase 1: Build the Engine ✅ COMPLETED (2026-04-01, PR #15)
 
 **Scope**: New modules only. Zero modifications to existing code paths. No CLI changes,
 no mode changes, no reporter changes. Existing `--sow`, `--branch-name`, `--graph` modes
@@ -1184,7 +1217,7 @@ work identically before and after.
 
 **Design constraints (from team review):**
 - **6 graph-derived dimensions**: structural, instability, cycle, database, blast_radius, domain_boundary
-- `change_surface` is **not** in the engine — it's a PR-only modifier that lives in `pr_risk_analyzer.py` because it requires diff data the engine doesn't have
+- `change_surface` is a field on `RiskProfile` and `AggregateRisk` (so the data model is always 7-dimensional), but the engine always defaults it to a zeroed dimension. The PR risk analyzer is responsible for populating it — it requires diff data the engine doesn't have
 - **Piecewise linear scoring** (Decision #2): smooth interpolation between thresholds, no cliffs at boundaries
 - **`score_*` naming** (Decision #3): `score_structural`, `score_instability`, `score_cycle`, `score_database`, `score_blast_radius`, `score_domain_boundary`
 - **`data_available` on RiskDimension** (Decision #4): distinguishes "safe" from "unknown"
@@ -1198,21 +1231,194 @@ work identically before and after.
 - **stdlib-only imports** in `risk_models.py` (Fatima): `dataclass`, `Optional`, `Path`, `Enum` — no external deps that could break existing `models.py` importers
 
 ### Phase 2: Wire into Impact Analysis (1 week)
-- Replace `risk_assess.py` AI-only risk with graph-derived + AI-enriched
-- `EnrichedConsumer.risk_rating` now comes from `RiskProfile`
-- Existing `--sow` output gains dimension data
-- Backward compatible: same output format, richer data
+
+**Goal**: Existing `--sow` mode gains graph-derived risk scoring. The current AI-only
+risk rating (from `risk_assess.py`) becomes a fallback when graph context is unavailable.
+When graph context IS available, the risk engine provides a deterministic, reproducible
+risk level that the AI then enriches with narrative.
+
+**How it works today** (Step 3 of `impact_analyzer.py`, lines 170-181):
+```python
+# Current: AI-only risk per target
+for target_impact in report.targets:
+    risk_result = assess_risk(target, consumers, ai_provider)
+    for consumer in target_impact.consumers:
+        consumer.risk_rating = risk_result.get("rating")     # "Low"|"Medium"|"High"|"Critical"
+        consumer.risk_justification = risk_result.get("justification")
+```
+
+**How it will work** (graph-derived first, AI optional enrichment):
+```python
+# New: graph-derived risk per target, AI adds narrative
+from scatter.analyzers.risk_engine import compute_risk_profile
+from scatter.core.risk_models import SOW_RISK_CONTEXT
+
+for target_impact in report.targets:
+    consumers = target_impact.consumers
+
+    # Graph-derived risk (deterministic, no AI needed)
+    if graph_ctx is not None:
+        profile = compute_risk_profile(
+            target=target_impact.target.name,
+            graph=graph_ctx.graph,
+            metrics=graph_ctx.metrics,
+            consumers=[c.consumer_name for c in consumers],
+            cycles=graph_ctx.cycles,
+            context=SOW_RISK_CONTEXT,
+            direct_consumer_count=target_impact.total_direct,
+            transitive_consumer_count=target_impact.total_transitive,
+        )
+        # Map RiskLevel.RED → "High", etc.
+        risk_label = _risk_level_to_label(profile.risk_level)
+        for consumer in consumers:
+            if consumer.risk_rating is None:
+                consumer.risk_rating = risk_label
+                consumer.risk_justification = "; ".join(profile.risk_factors[:3])
+
+    # AI enrichment (optional — enhances graph-derived result)
+    risk_result = assess_risk(target_impact.target, consumers, ai_provider)
+    if risk_result:
+        for consumer in consumers:
+            # AI can override rating or add justification
+            if consumer.risk_rating is None:
+                consumer.risk_rating = risk_result.get("rating")
+            if consumer.risk_justification is None:
+                consumer.risk_justification = risk_result.get("justification")
+```
+
+**Key design point**: Graph-derived risk fills in first. AI enrichment adds narrative
+where the graph can't (business context, code intent). If AI is unavailable, the
+graph-derived risk stands alone — this is the upgrade over the current AI-only path.
+
+#### Deliverables
+
+**2.1 Modify `scatter/analyzers/impact_analyzer.py`**
+- Add `graph_ctx` parameter to `run_impact_analysis()` (already has `graph=None`)
+- In Step 3, compute `RiskProfile` per target when `graph_ctx` is available
+- Map `RiskLevel` → existing label strings ("Low"/"Medium"/"High"/"Critical")
+- Existing AI risk assessment becomes fallback/enrichment, not primary
+- `ImpactReport.overall_risk` derived from max `RiskProfile.risk_level`
+
+**2.2 Modify `scatter/analyzers/graph_enrichment.py`**
+- Add `risk_profiles: Dict[str, RiskProfile]` to `GraphContext` (optional, computed lazily)
+- No changes to existing `enrich_legacy_results()` or `enrich_consumers()` — they
+  continue enriching with coupling metrics, separate from risk scoring
+
+**2.3 Modify `scatter/modes/impact.py`**
+- Pass `graph_ctx` through to `run_impact_analysis()` (it's already available in mode context)
+
+**2.4 Helper function**
+```python
+def _risk_level_to_label(level: RiskLevel) -> str:
+    """Map graph-derived RiskLevel to existing AI-compatible label."""
+    return {
+        RiskLevel.RED: "High",
+        RiskLevel.YELLOW: "Medium",
+        RiskLevel.GREEN: "Low",
+    }[level]
+```
+
+**2.5 Tests**
+- `tests/unit/test_impact_risk_integration.py`:
+  - `test_sow_with_graph_uses_risk_engine`: graph available → risk_rating from engine
+  - `test_sow_without_graph_uses_ai_only`: no graph → falls back to AI assess_risk
+  - `test_sow_with_graph_and_ai_enriches`: graph fills rating, AI adds justification
+  - `test_risk_level_to_label_mapping`: RED→High, YELLOW→Medium, GREEN→Low
+  - `test_overall_risk_derived_from_profiles`: max of per-target RiskLevel
+  - `test_backward_compat_sow_output_structure`: JSON schema unchanged
+
+**2.6 Backward compatibility**
+- `EnrichedConsumer` fields unchanged — same `risk_rating` and `risk_justification` strings
+- `ImpactReport` fields unchanged — same `overall_risk` string
+- JSON output schema unchanged — consumers still have `risk_rating` as a string
+- Only difference: risk_rating populated even without AI (was None without AI before)
 
 ### Phase 3: Expose via CLI (1 week)
-- `--risk-context pr|sow|local|{custom}` flag
-- `--risk-details` flag for full dimension breakdown in console output
-- JSON output includes full `RiskProfile` and `AggregateRisk`
-- Console output gains the risk dimension table
+
+**Goal**: Users can see risk dimension breakdowns in console output and control
+risk context via CLI flags.
+
+#### Deliverables
+
+**3.1 CLI flags** (`scatter/cli_parser.py`)
+- `--risk-context {pr,sow,local}` — selects dimension weight profile (default: auto-detect from mode)
+- `--risk-details` — shows full dimension breakdown in console/JSON output
+- `--risk-only` — shows just the composite score and top factors (no consumer table)
+
+**3.2 Console risk output** (`scatter/reports/console_reporter.py`)
+
+When `--risk-details` is used with any mode that has graph context:
+
+```
+Risk Profile: GalaxyWorks.Data
+══════════════════════════════════════════════════════════════
+  Composite: 0.78 (RED)
+
+  Dimension            Score  Severity  Top Factor
+  ─────────────────── ────── ───────── ──────────────────────────────────
+  Cycle entanglement    0.80  high      Data ↔ Api ↔ Core (3 projects)
+  Blast radius          0.70  high      8 direct, 12 transitive
+  Structural coupling   0.55  medium    Fan-in of 5 (top 10% of codebase)
+  Database coupling     0.40  medium    2 shared sprocs
+  Instability           0.30  medium    Instability 0.70 with fan-in 5
+  Domain boundary       0.20  low       Crosses 1 domain cluster
+```
+
+**3.3 JSON risk output** (`scatter/reports/json_reporter.py`)
+
+When `--risk-details` is used, JSON output includes:
+```json
+{
+  "risk_profile": {
+    "target_name": "GalaxyWorks.Data",
+    "composite_score": 0.78,
+    "risk_level": "RED",
+    "risk_factors": ["..."],
+    "dimensions": {
+      "structural": {"score": 0.55, "severity": "medium", "data_available": true, "factors": ["..."]},
+      "cycle": {"score": 0.80, "severity": "high", "data_available": true, "factors": ["..."]},
+      ...
+    }
+  }
+}
+```
+
+**3.4 Config integration** (`scatter/config.py`)
+- Add `RiskConfig` dataclass:
+  ```python
+  @dataclass
+  class RiskConfig:
+      default_context: str = "auto"      # "auto" | "pr" | "sow" | "local"
+      show_details: bool = False          # --risk-details default
+      red_threshold: Optional[float] = None   # override built-in contexts
+      yellow_threshold: Optional[float] = None
+  ```
+- Wire into `ScatterConfig`
+- Support `.scatter.yaml` `risk:` section
+
+**3.5 Auto-detect risk context**
+- `--sow` mode → `SOW_RISK_CONTEXT`
+- `--branch-name` or `--pr-risk` → `PR_RISK_CONTEXT`
+- `--target-project`, `--graph` → `LOCAL_DEV_CONTEXT`
+- `--risk-context` flag overrides auto-detection
+
+**3.6 Tests**
+- `tests/unit/test_risk_cli.py`:
+  - `test_risk_context_auto_detection`: each mode maps to correct context
+  - `test_risk_context_flag_override`: `--risk-context sow` with `--target-project`
+  - `test_risk_details_console_output`: snapshot test of dimension table
+  - `test_risk_details_json_output`: verify schema with dimensions object
+  - `test_risk_only_output`: only composite + factors, no consumer table
+  - `test_risk_config_from_scatter_yaml`: custom thresholds loaded
 
 ### Integration with PR Risk Scoring and SOW Scoping
-- PR Risk Scoring Phase 1 depends on Risk Engine Phase 1–2
-- SOW Scoping Phase 1 depends on Risk Engine Phase 1–3
-- Both initiatives consume `compute_risk_profile` and `aggregate_risk`
+- **PR Risk Scoring Phase 1** depends on **Risk Engine Phase 1 only**
+  (PR Risk calls `compute_risk_profile` and `aggregate_risk` directly —
+  it does NOT need the impact analysis wiring from Phase 2)
+- **SOW Scoping Phase 1** depends on **Risk Engine Phase 1–2**
+  (SOW Scoping builds on the impact analysis pipeline, which Phase 2 enriches)
+- **SOW Scoping Phase 2+** benefits from **Risk Engine Phase 3** (CLI flags,
+  risk config) but does not strictly require it
 
 ### Deferred (post-calibration / post-adoption)
 - **Dimension correlation analysis**: once we have enough real profiles, check whether any dimensions are redundant (always move together). Not worth analyzing without production data.
@@ -1249,19 +1455,21 @@ what to do about it. That's the differentiator."
 | `tests/unit/test_risk_engine.py` | **Create** | Aggregation, composite scoring, edge cases, performance |
 | `tests/unit/test_risk_dimensions.py` | **Create** | Per-dimension scoring, interpolation, data availability |
 
-### Phase 2 (wire into existing modes)
+### Phase 2 (wire into impact analysis)
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `scatter/analyzers/impact_analyzer.py` | Modify | Populate `EnrichedConsumer.risk_rating` from `RiskProfile` when graph available |
-| `scatter/core/models.py` | Modify | Import `RiskProfile` for type annotations on enriched consumers |
-| `scatter/ai/tasks/risk_narrative.py` | Create | AI prompts for narrative + mitigations (enriches graph-derived profiles) |
+| `scatter/analyzers/impact_analyzer.py` | Modify | Compute `RiskProfile` per target in Step 3, graph-derived first, AI fallback |
+| `scatter/analyzers/graph_enrichment.py` | Modify | Add optional `risk_profiles` to `GraphContext` |
+| `scatter/modes/impact.py` | Modify | Pass `graph_ctx` through to `run_impact_analysis()` |
+| `tests/unit/test_impact_risk_integration.py` | Create | Graph+AI risk integration, backward compat |
 
 ### Phase 3 (expose via CLI)
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `scatter/config.py` | Modify | Add `RiskConfig` with default context weights |
-| `scatter/cli_parser.py` | Modify | Add `--risk-context`, `--risk-details` flags |
-| `scatter/cli.py` | Modify | Wire risk engine into mode handlers |
-| `tests/unit/test_risk_integration.py` | Create | End-to-end with sample projects |
+| `scatter/config.py` | Modify | Add `RiskConfig` dataclass with context + threshold defaults |
+| `scatter/cli_parser.py` | Modify | Add `--risk-context`, `--risk-details`, `--risk-only` flags |
+| `scatter/reports/console_reporter.py` | Modify | Risk dimension table for `--risk-details` |
+| `scatter/reports/json_reporter.py` | Modify | Risk dimension object in JSON output |
+| `tests/unit/test_risk_cli.py` | Create | Context auto-detection, CLI flags, output snapshots |
