@@ -1350,6 +1350,25 @@ def _risk_level_to_label(level: RiskLevel) -> str:
 - JSON output schema unchanged — consumers still have `risk_rating` as a string
 - Only difference: risk_rating populated even without AI (was None without AI before)
 
+**2.7 Dimension coverage in `--sow` mode**
+
+Not all 7 dimensions will be active in the `--sow` path in Phase 2:
+
+| Dimension | Active? | Why |
+|-----------|---------|-----|
+| structural | Yes | `GraphContext.metrics` has fan-in/coupling data |
+| instability | Yes | `GraphContext.metrics` has instability data |
+| cycle | Yes | `GraphContext.cycles` available |
+| database | Yes | Graph has sproc references; team_map from `.scatter.yaml` if configured |
+| blast_radius | Yes | `target_impact.total_direct` / `total_transitive` passed as counts |
+| domain_boundary | Partial | Scores 0.0 unless `team_map` is configured in `.scatter.yaml`. Cluster data comes from `--graph` mode's domain clustering, which doesn't run in the `--sow` path. Phase 3 CLI integration can wire cluster data through. |
+| change_surface | No | `data_available=False`. Requires diff data that only exists in the PR/branch analysis path. Expected — SOWs don't have a diff. |
+
+This means Phase 2 effectively scores 5 active dimensions (structural, instability,
+cycle, database, blast_radius) with domain_boundary available when team ownership is
+configured. That's still a significant upgrade over AI-only risk ratings, which have
+no graph-derived signal at all.
+
 ### Phase 3: Expose via CLI (1 week)
 
 **Goal**: Users can see risk dimension breakdowns in console output and control
