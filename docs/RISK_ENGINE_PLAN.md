@@ -1237,6 +1237,23 @@ risk rating (from `risk_assess.py`) becomes a fallback when graph context is una
 When graph context IS available, the risk engine provides a deterministic, reproducible
 risk level that the AI then enriches with narrative.
 
+#### Phase 1 Tech Debt (bundle with Phase 2)
+
+These items were identified in the Phase 1 team review. They should ship alongside
+Phase 2 work since several touch the same files.
+
+**Code cleanup:**
+- Rename `_ZERO_DIMENSION` → `make_zero_dimension()` (or add `RiskDimension.zero()` classmethod). Currently exported as a private function but imported cross-module — make the public status explicit. (Priya)
+- Rename `blast` → `blast_radius` local variable in `risk_engine.py` for consistency with every other dimension local. (Devon)
+- Add a "dimension sync" comment in `risk_models.py` listing all locations that must be updated when adding a new dimension: `RiskProfile` fields, `AggregateRisk` fields, `VALID_DIMENSION_NAMES`, `aggregate_risk.dim_names`, `dimensions` property, and the logging format string. (Priya)
+- Document that partial `dimension_weights` in `RiskContext` silently defaults missing dimensions to weight 0.0. Either document this as intentional or add a warning log when a built-in dimension name is missing from a custom context. (Fatima)
+
+**Test improvements:**
+- Extract shared `_make_metrics` helper from `test_risk_engine.py` and `test_risk_dimensions.py` into `tests/conftest.py` or `tests/helpers.py` to prevent drift. (Anya)
+- Add deeper `score_database` tests: multi-sproc multi-team scenario, density interpolation within each scoring range, factor string truncation when >3 sprocs. (Anya)
+- Add `format_risk_factors` test with `AggregateRisk` input (currently only tested with `RiskProfile`). (Anya)
+- Mark `test_impact_analyzer_has_no_risk_imports` in `test_sow_regression.py` with a comment: this test should be updated or removed when Phase 2 ships, since Phase 2 adds risk engine imports to `impact_analyzer.py`. (Anya)
+
 **How it works today** (Step 3 of `impact_analyzer.py`, lines 170-181):
 ```python
 # Current: AI-only risk per target
