@@ -438,3 +438,13 @@ class TestComputeRiskProfileEndToEnd:
         )
         assert profile.risk_level == RiskLevel.GREEN
         assert profile.composite_score < 0.4
+
+    def test_change_surface_data_available_false(self):
+        """Engine sets change_surface.data_available=False (not computed here)."""
+        graph = _make_graph("A")
+        metrics = {"A": _make_metrics(fan_in=3)}
+        profile = compute_risk_profile(
+            "A", graph, metrics, [], [], PR_RISK_CONTEXT,
+        )
+        assert profile.change_surface.data_available is False
+        assert profile.change_surface.score == 0.0

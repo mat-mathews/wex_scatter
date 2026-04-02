@@ -121,6 +121,15 @@ class TestScoreStructural:
         # Both in adjacent ranges — gap should be moderate, not 0.3+
         assert abs(s_above - s_below) < 0.35
 
+    def test_score_monotonically_increasing(self):
+        """Higher fan_in → higher or equal score."""
+        scores = []
+        for fan_in in [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 15]:
+            m = _make_metrics(fan_in=fan_in)
+            scores.append(score_structural("A", m, {"A": m}).score)
+        for i in range(len(scores) - 1):
+            assert scores[i] <= scores[i + 1], f"Score decreased at fan_in step {i}"
+
     def test_none_metrics_returns_data_unavailable(self):
         result = score_structural("A", None, {})
         assert result.data_available is False
@@ -228,6 +237,21 @@ class TestScoreCycle:
         s4 = score_cycle("A", [c4]).score
         assert s3 < s4
 
+    def test_score_monotonically_increasing_with_cycle_size(self):
+        """Larger cycle → higher or equal score."""
+        scores = []
+        for size in [2, 3, 4, 5, 6, 8]:
+            members = [f"P{i}" for i in range(size)]
+            members[0] = "A"
+            cycle = CycleGroup(
+                projects=members,
+                shortest_cycle=members + ["A"],
+                edge_count=size,
+            )
+            scores.append(score_cycle("A", [cycle]).score)
+        for i in range(len(scores) - 1):
+            assert scores[i] <= scores[i + 1], f"Score decreased at cycle size step {i}"
+
 
 # --- Database ---
 
@@ -287,6 +311,22 @@ class TestScoreBlastRadius:
         s20 = score_blast_radius("A", 5, 20).score
         assert s10 < s15 < s20
 
+    def test_score_monotonically_increasing_direct(self):
+        """More direct consumers → higher or equal score (no transitive)."""
+        scores = []
+        for direct in [0, 1, 2, 3, 4, 5, 7, 10]:
+            scores.append(score_blast_radius("A", direct, 0).score)
+        for i in range(len(scores) - 1):
+            assert scores[i] <= scores[i + 1], f"Score decreased at direct consumer step {i}"
+
+    def test_score_monotonically_increasing_transitive(self):
+        """More transitive consumers → higher or equal score."""
+        scores = []
+        for trans in [0, 5, 10, 15, 20, 30]:
+            scores.append(score_blast_radius("A", 3, trans).score)
+        for i in range(len(scores) - 1):
+            assert scores[i] <= scores[i + 1], f"Score decreased at transitive consumer step {i}"
+
 
 # --- Domain Boundary ---
 
@@ -318,3 +358,12 @@ class TestScoreDomainBoundary:
     def test_no_clusters_returns_zero(self):
         result = score_domain_boundary("A", [], None)
         assert result.score == 0.0
+
+    def test_score_monotonically_increasing_with_clusters(self):
+        """More cluster crossings → higher or equal score."""
+        scores = []
+        for n_clusters in [0, 1, 2, 3, 4, 6]:
+            cluster_ids = [f"c{i}" for i in range(n_clusters)]
+            scores.append(score_domain_boundary("A", cluster_ids, "c_target").score)
+        for i in range(len(scores) - 1):
+            assert scores[i] <= scores[i + 1], f"Score decreased at cluster crossing step {i}"

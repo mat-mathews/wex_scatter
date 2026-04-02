@@ -78,8 +78,18 @@ def compute_risk_profile(
         consumers,
     )
 
-    # change_surface is always a zero default in engine — PR analyzer overrides
-    change_surface = _ZERO_DIMENSION("change_surface", "Change surface")
+    # change_surface is not computed by the engine — it requires diff data
+    # that only the PR analyzer has. data_available=False signals to reporters
+    # that this dimension was not analyzed, not that it scored zero.
+    change_surface = RiskDimension(
+        name="change_surface",
+        label="Change surface",
+        score=0.0,
+        severity="low",
+        factors=[],
+        raw_metrics={},
+        data_available=False,
+    )
 
     # Composite score: weighted max (not average)
     dimensions = [structural, instability, cycle, database, blast, domain, change_surface]
