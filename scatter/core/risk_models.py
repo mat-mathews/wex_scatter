@@ -173,8 +173,8 @@ class AggregateRisk:
     targets_at_red: int = 0
     targets_at_yellow: int = 0
     targets_at_green: int = 0
-    total_consumers: int = 0
-    total_transitive: int = 0
+    total_consumers: int = 0       # sum across profiles, NOT deduplicated
+    total_transitive: int = 0      # sum across profiles, NOT deduplicated
 
     # Hotspots — targets driving the risk
     hotspots: List[RiskProfile] = field(default_factory=list)

@@ -49,7 +49,8 @@ Point it at a `.csproj`, a branch, a stored procedure, or a plain-English work r
 - **Five analysis modes** — git branch, target project, stored procedure, natural-language impact analysis, and full graph health
 - **Zero-config graph acceleration** — builds a dependency graph on first run, caches it, patches incrementally via `git diff` on subsequent runs
 - **Graph-enriched output** — coupling score, fan-in/out, instability index, and cycle membership on every result
-- **AI-powered risk analysis** — describe a change in plain English, get affected projects, risk ratings, and effort estimates
+- **Graph-derived risk engine** — 6-dimension risk profiles (structural coupling, instability, cycles, database coupling, blast radius, domain boundaries) with weighted-max composite scoring
+- **AI-powered impact analysis** — describe a change in plain English, get affected projects, risk ratings, and effort estimates
 - **Six output formats** — console, JSON, CSV, markdown, Mermaid diagrams, and a pipe-friendly pipeline list
 - **CI-ready** — GitHub Action template for automatic PR impact comments
 
@@ -245,11 +246,13 @@ Scatter sends project names, type declarations, and dependency structure to the 
 
 ## Roadmap
 
-**Next** — Focused SOW index (solution-scoped LLM discovery), CI/CD exit codes (`--fail-on cycles`, `--fail-on risk:high`)
+**Next** — PR risk scoring (GitHub Action posts risk comment on every PR), SOW scoping (effort estimates with confidence bands)
 
-**Planned** — Baselines & diff reports, extraction planning, HTML reports with D3.js visualization
+**Recently shipped** — Unified risk engine: 6-dimension graph-derived risk profiles with weighted-max composite scoring, piecewise linear interpolation, structured logging, 3 built-in contexts (PR, SOW, local dev)
 
-**Deferred** — Unified report model, watch mode, AI response caching
+**Planned** — CI/CD exit codes (`--fail-on cycles`, `--fail-on risk:high`), baselines & diff reports, extraction planning
+
+**Deferred** — Unified report model, watch mode, AI response caching, HTML reports with D3.js visualization
 
 ---
 

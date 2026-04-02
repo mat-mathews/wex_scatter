@@ -3,9 +3,12 @@
 **Initiative**: SOW Scoping with Calibration
 **Target branch**: `feature/sow-scoping`
 **Effort estimate**: 6–8 weeks across 4 phases
-**Dependencies**: Risk Engine (`RISK_ENGINE_PLAN.md`), impact analysis mode (done), graph engine (done), AI provider system (done)
+**Dependencies**: Risk Engine Phase 1 (✅ SHIPPED) + Phase 2 (`RISK_ENGINE_PLAN.md`), impact analysis mode (done), graph engine (done), AI provider system (done)
 **Blockers**: Access to historical SOW data for calibration; team-hours tracking system
 **Related docs**: `RISK_ENGINE_PLAN.md` (unified risk model), `PR_RISK_SCORING_PLAN.md` (shared infrastructure)
+**Dataclass locations**: SOW-specific types (`ScopingReport`, `EffortBreakdown`, `ConfidenceBand`,
+`DatabaseImpact`, `TeamConsultation`, `ComparableSOW`) go in `scatter/core/models.py` alongside
+`ImpactReport`. Risk vocabulary (`RiskProfile`, `AggregateRisk`, etc.) lives in `scatter/core/risk_models.py`.
 **Team reviewers**: Priya (architecture), Marcus (metrics/observability), Fatima (failure modes), Devon (algorithms)
 
 ---

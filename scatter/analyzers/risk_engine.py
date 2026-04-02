@@ -154,6 +154,11 @@ def aggregate_risk(
 
     Decision #8 (Fatima): empty list → GREEN aggregate, all zeros.
     Never raises ValueError from max() on empty sequence.
+
+    Note: total_consumers and total_transitive are sums across profiles,
+    NOT deduplicated. If two targets share consumers, those consumers are
+    counted twice. Callers that need unique counts must deduplicate before
+    passing consumer counts to compute_risk_profile().
     """
     if not profiles:
         return AggregateRisk(profiles=[])
@@ -182,8 +187,7 @@ def aggregate_risk(
     # Collect unique risk factors across all profiles, sorted by weight * score
     all_factors = _collect_factors(list(agg_dims.values()), context)
 
-    # Consumer totals (unique across targets)
-    all_consumers: Set[str] = set()
+    # Consumer totals (sum, not deduplicated — see docstring)
     total_transitive = 0
     for p in profiles:
         total_transitive += p.transitive_consumer_count
