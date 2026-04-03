@@ -18,7 +18,9 @@ from scatter.core.risk_models import RiskDimension, score_to_severity
 # --- Interpolation helper ---
 
 
-def _interpolate(value: float, low: float, high: float, low_score: float, high_score: float) -> float:
+def _interpolate(
+    value: float, low: float, high: float, low_score: float, high_score: float
+) -> float:
     """Piecewise linear interpolation. Clamps to [low_score, high_score]."""
     if high <= low:
         return high_score
@@ -147,9 +149,7 @@ def score_instability(
 
     factors = []
     if score >= 0.5:
-        factors.append(
-            f"Instability {inst:.2f} with fan-in {fan_in} — fragile foundation pattern"
-        )
+        factors.append(f"Instability {inst:.2f} with fan-in {fan_in} — fragile foundation pattern")
     elif inst >= 0.8:
         factors.append(
             f"Instability {inst:.2f} — unstable but low fan-in (acceptable for leaf projects)"
@@ -221,9 +221,7 @@ def score_cycle(
     factors = []
     for cyc in target_cycles:
         cycle_path = " → ".join(cyc.shortest_cycle)
-        factors.append(
-            f"{target} is in a dependency cycle: {cycle_path} ({cyc.size} projects)"
-        )
+        factors.append(f"{target} is in a dependency cycle: {cycle_path} ({cyc.size} projects)")
     if len(target_cycles) > 1:
         factors.append(f"{target} is in {len(target_cycles)} overlapping cycles — deeply entangled")
 
@@ -387,7 +385,9 @@ def score_blast_radius(
         rank = sum(1 for fi in all_fan_ins if fi <= direct_consumer_count)
         percentile = int(100 * rank / len(all_fan_ins)) if all_fan_ins else 0
         if percentile >= 90:
-            factors.append(f"Blast radius reaches {total} projects — top {100 - percentile}% widest in codebase")
+            factors.append(
+                f"Blast radius reaches {total} projects — top {100 - percentile}% widest in codebase"
+            )
 
     return RiskDimension(
         name=name,
@@ -457,7 +457,9 @@ def score_domain_boundary(
     if clusters_crossed > 0:
         factors.append(f"Change crosses {clusters_crossed} domain clusters")
     if team_names:
-        factors.append(f"Consumers span {teams_crossed} teams: {', '.join(sorted(team_names))} — coordination required")
+        factors.append(
+            f"Consumers span {teams_crossed} teams: {', '.join(sorted(team_names))} — coordination required"
+        )
 
     return RiskDimension(
         name=name,
