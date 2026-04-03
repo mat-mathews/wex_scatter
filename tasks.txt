@@ -2025,6 +2025,7 @@ RISK ENGINE & PR RISK & SOW SCOPING ROADMAP
 Source: docs/RISK_ENGINE_PLAN.md, docs/PR_RISK_SCORING_PLAN.md, docs/SOW_SCOPING_PLAN.md
 Team review completed 2026-03-30. Feedback incorporated into plans.
 Implementation started 2026-04-01. Phase 1 shipped same day.
+Phase 2 team review 2026-04-02, shipped 2026-04-03 (PR #18). CI fixes PR #19.
 ============================================================================
 ============================================================================
 
@@ -2071,35 +2072,35 @@ Branch: feature/risk-engine. Merged to main via PR #15.
 - [x] stdlib-only import test for risk_models.py (no external deps)
 - [x] Full existing test suite (1,087 tests) passes with zero regressions
 
-PHASE 2: Wire into Impact Analysis (1 week)
+PHASE 2: Wire into Impact Analysis ✅ COMPLETED (2026-04-03, PR #18)
 ----------------------------------------------------------------------
 Phase 2 team review completed 2026-04-02. Decisions #11–22 incorporated.
-Delivery: two PRs — tech debt (pure refactor) then feature integration.
-Ref: docs/RISK_ENGINE_PLAN.md (Phase 2 section)
+Delivered as single PR (tech debt + feature). Leadership review (Priya, Marcus) approved.
+Branch: feature/risk-engine-phase2. Merged to main via PR #18.
 
 PR 1: Phase 1 Tech Debt (pure refactor, each item = own commit)
-- [ ] Commit 1: Extract _make_metrics helper → tests/conftest.py (Decision #19)
-- [ ] Commit 2: Rename _ZERO_DIMENSION → RiskDimension.zero() classmethod
-- [ ] Commit 3: Rename blast → blast_radius local in risk_engine.py
-- [ ] Commit 4: Add dimension sync comment in risk_models.py
-- [ ] Commit 5: Document partial dimension_weights behavior + warning log
-- [ ] Commit 6: Deeper score_database tests + format_risk_factors AggregateRisk test
+- [x] Commit 1: Extract _make_metrics helper → tests/conftest.py (Decision #19)
+- [x] Commit 2: Rename _ZERO_DIMENSION → RiskDimension.zero() classmethod
+- [x] Commit 3: Rename blast → blast_radius local in risk_engine.py
+- [x] Commit 4: Add dimension sync comment in risk_models.py
+- [x] Commit 5: Document partial dimension_weights behavior + warning log
+- [x] Commit 6: Deeper score_database tests + format_risk_factors AggregateRisk test
 
 PR 2: Feature — Wire Risk Engine into Impact Analysis
-- [ ] 2.1: impact_analyzer.py — replace graph=None with graph_ctx (Decision #12)
+- [x] 2.1: impact_analyzer.py — replace graph=None with graph_ctx (Decision #12)
       Derive graph = graph_ctx.graph internally for find_consumers/codebase_index
-- [ ] 2.1: impact_analyzer.py — Step 3: compute_risk_profile per target (Decision #11)
+- [x] 2.1: impact_analyzer.py — Step 3: compute_risk_profile per target (Decision #11)
       Per-target scoring, not per-consumer (limitation documented)
-- [ ] 2.1: impact_analyzer.py — AI escalation logic: can escalate, never downgrade (Decision #16)
+- [x] 2.1: impact_analyzer.py — AI escalation logic: can escalate, never downgrade (Decision #16)
       Graph tops out at "High"; only AI can reach "Critical" (Decision #15)
-- [ ] 2.1: impact_analyzer.py — overall_risk from aggregate_risk(profiles) (Decision #13)
+- [x] 2.1: impact_analyzer.py — overall_risk from aggregate_risk(profiles) (Decision #13)
       Extract _derive_overall_risk_from_consumers() as no-graph fallback
-- [ ] 2.4: risk_engine.py — incomplete data factor in _collect_factors() (Decision #20)
+- [x] 2.4: risk_engine.py — incomplete data factor in _collect_factors() (Decision #20)
       Weight > 0.5 + data_available=False → "Incomplete data: {dim} not available"
-- [ ] 2.3: modes/impact.py — update call site: graph_ctx=ctx.graph_ctx (Decision #12)
-- [ ] 2.3b: test_codebase_index.py — update graph= → graph_ctx= wrapper
-- [ ] 2.5: Helper functions: _risk_level_to_label(), RISK_ORDER dict
-- [ ] 2.6: Tests — test_impact_risk_integration.py (10 test cases):
+- [x] 2.3: modes/impact.py — update call site: graph_ctx=ctx.graph_ctx (Decision #12)
+- [x] 2.3b: test_codebase_index.py — update graph= → graph_ctx= wrapper
+- [x] 2.5: Helper functions: _risk_level_to_label(), RISK_ORDER dict
+- [x] 2.6: Tests — test_impact_risk_integration.py (16 tests, 10 planned + helpers):
       - test_sow_with_graph_uses_risk_engine
       - test_sow_without_graph_uses_ai_only
       - test_sow_with_graph_and_ai_enriches
@@ -2110,7 +2111,28 @@ PR 2: Feature — Wire Risk Engine into Impact Analysis
       - test_multiple_targets_aggregate_overall (Decision #17)
       - test_backward_compat_sow_output_structure
       - test_sow_regression_no_graph_byte_identical (Decision #17)
-- [ ] 2.6: test_sow_regression.py — flip boundary test to positive assertion (Decision #18)
+- [x] 2.6: test_sow_regression.py — flip boundary test to positive assertion (Decision #18)
+
+Leadership review action items (Priya, Marcus):
+- [x] Add Phase 3 context selection comment on hardcoded SOW_RISK_CONTEXT
+- [x] DEBUG logging for graph risk path and AI escalation events
+- [x] Unify RISK_ORDER dict (was duplicated as risk_levels in _derive_overall_risk)
+
+CI fixes (PR #19):
+- [x] Fix mypy: ast_validator.py Optional[object] → Any for tree-sitter types
+- [x] Fix test: skip test_branch_analysis_runs on shallow clone (CI)
+- [x] Apply ruff format to 32 previously unformatted test files
+- [x] All 5 CI jobs green (lint, type-check, test 3.10, test 3.11, smoke)
+
+Documentation (PR #20):
+- [x] README: roadmap, highlights, --sow description updated
+- [x] Architecture: directory tree + impact data flow diagram updated
+- [x] Impact analysis: canonical risk model explanation (single source of truth)
+- [x] AI features: brief + link to impact-analysis.md
+- [x] Coupling & cycles: risk engine integration section
+- [x] Deduplicated risk explanation across all pages
+
+Final stats: 1,152 tests passing, 0 regressions, 10 files changed in feature PR
 
 PHASE 3: Expose via CLI (1 week)
 ----------------------------------------------------------------------
