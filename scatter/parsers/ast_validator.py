@@ -6,17 +6,19 @@ so hybrid mode never produces *fewer* results than regex-only due to crashes.
 
 import bisect
 import logging
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple
 
 logger = logging.getLogger(__name__)
 
 # Module-level cache for the parser instance (created lazily).
-_parser: Optional[object] = None
-_ts_language: Optional[object] = None
+# Typed as Any because tree-sitter is an optional dependency —
+# the actual types (Language, Parser, Query) are only available at runtime.
+_parser: Any = None
+_ts_language: Any = None
 
 # Cache compiled Query objects (compilation is the repeated cost;
 # QueryCursor is stateful and must be fresh per call).
-_query_cache: Dict[str, object] = {}
+_query_cache: Dict[str, Any] = {}
 
 
 def is_hybrid_available() -> bool:

@@ -1,4 +1,5 @@
 """Tests for incremental graph updates (graph_patcher + cache v2 + edge removal)."""
+
 import hashlib
 import json
 import shutil
@@ -36,6 +37,7 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 # Helpers
 # ===========================================================================
 
+
 def _make_synthetic_codebase(tmp_path: Path, num_projects: int = 3):
     """Create a minimal synthetic .NET codebase for testing.
 
@@ -60,12 +62,12 @@ def _make_synthetic_codebase(tmp_path: Path, num_projects: int = 3):
             refs = f'    <ProjectReference Include="../{prev}/{prev}.csproj" />\n'
         csproj.write_text(
             f'<Project Sdk="Microsoft.NET.Sdk">\n'
-            f'  <PropertyGroup>\n'
-            f'    <TargetFramework>net8.0</TargetFramework>\n'
-            f'    <RootNamespace>{name}</RootNamespace>\n'
-            f'  </PropertyGroup>\n'
-            f'  <ItemGroup>\n{refs}  </ItemGroup>\n'
-            f'</Project>\n'
+            f"  <PropertyGroup>\n"
+            f"    <TargetFramework>net8.0</TargetFramework>\n"
+            f"    <RootNamespace>{name}</RootNamespace>\n"
+            f"  </PropertyGroup>\n"
+            f"  <ItemGroup>\n{refs}  </ItemGroup>\n"
+            f"</Project>\n"
         )
         csproj_paths.append(csproj)
 
@@ -108,6 +110,7 @@ def _build_graph_and_facts(scope: Path):
 # ===========================================================================
 # Phase 1: Cache Format v2
 # ===========================================================================
+
 
 class TestFileFacts:
     def test_construction(self):
@@ -265,6 +268,7 @@ class TestCacheV2SaveLoad:
 # Phase 2: Graph Mutation
 # ===========================================================================
 
+
 class TestRemoveEdgesFrom:
     def _make_graph(self):
         g = DependencyGraph()
@@ -367,6 +371,7 @@ class TestRemoveEdgesTo:
 # Phase 2: Fact Extraction
 # ===========================================================================
 
+
 class TestExtractFileFacts:
     def test_extracts_types_namespaces_sprocs(self, tmp_path):
         scope = tmp_path / "repo"
@@ -376,13 +381,13 @@ class TestExtractFileFacts:
 
         cs = proj_dir / "Service.cs"
         cs.write_text(
-            'using System;\n'
-            'using GalaxyWorks.Data;\n\n'
-            'namespace MyProj;\n\n'
-            'public class MyService\n{\n'
-            '    public void Run()\n    {\n'
+            "using System;\n"
+            "using GalaxyWorks.Data;\n\n"
+            "namespace MyProj;\n\n"
+            "public class MyService\n{\n"
+            "    public void Run()\n    {\n"
             '        Execute("sp_InsertFoo");\n'
-            '    }\n}\n'
+            "    }\n}\n"
         )
 
         facts = extract_file_facts(cs, "MyProj", scope)
@@ -410,17 +415,17 @@ class TestExtractProjectFacts:
         csproj_b = proj_b / "B.csproj"
         csproj_b.write_text(
             '<Project Sdk="Microsoft.NET.Sdk">\n'
-            '  <PropertyGroup><RootNamespace>MyNS</RootNamespace></PropertyGroup>\n'
-            '  <ItemGroup>\n'
+            "  <PropertyGroup><RootNamespace>MyNS</RootNamespace></PropertyGroup>\n"
+            "  <ItemGroup>\n"
             '    <ProjectReference Include="../A/A.csproj" />\n'
-            '  </ItemGroup>\n'
-            '</Project>\n'
+            "  </ItemGroup>\n"
+            "</Project>\n"
         )
 
         # A.csproj must exist for resolution
         (proj_a / "A.csproj").write_text(
             '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>'
-            '<TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>'
+            "<TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>"
         )
 
         facts = extract_project_facts(csproj_b, {"A", "B"})
@@ -432,6 +437,7 @@ class TestExtractProjectFacts:
 # ===========================================================================
 # Phase 2: Capture Facts in Builder
 # ===========================================================================
+
 
 class TestBuildWithCaptureFacts:
     def test_capture_facts_returns_tuple(self, tmp_path):
@@ -457,6 +463,7 @@ class TestBuildWithCaptureFacts:
     def test_without_capture_returns_graph_only(self, tmp_path):
         scope, _, _ = _make_synthetic_codebase(tmp_path)
         from scatter.analyzers.graph_builder import build_dependency_graph
+
         result = build_dependency_graph(scope, disable_multiprocessing=True)
         # Should be a plain DependencyGraph, not a tuple
         assert isinstance(result, DependencyGraph)
@@ -465,6 +472,7 @@ class TestBuildWithCaptureFacts:
 # ===========================================================================
 # Phase 3: Patch Algorithm
 # ===========================================================================
+
 
 class TestPatchEmpty:
     def test_no_changes_is_noop(self, tmp_path):
@@ -553,10 +561,7 @@ class TestPatchNewFile:
 
         # Add a new .cs file
         new_cs = scope / "ProjectA" / "NewHelper.cs"
-        new_cs.write_text(
-            "namespace ProjectA;\n\n"
-            "public class NewHelper { }\n"
-        )
+        new_cs.write_text("namespace ProjectA;\n\npublic class NewHelper { }\n")
 
         changed = ["ProjectA/NewHelper.cs"]
         result = patch_graph(graph, ff, pf, changed, scope)
@@ -576,15 +581,15 @@ class TestPatchCsprojChange:
         csproj = scope / "ProjectC" / "ProjectC.csproj"
         csproj.write_text(
             '<Project Sdk="Microsoft.NET.Sdk">\n'
-            '  <PropertyGroup>\n'
-            '    <TargetFramework>net8.0</TargetFramework>\n'
-            '    <RootNamespace>ProjectC</RootNamespace>\n'
-            '  </PropertyGroup>\n'
-            '  <ItemGroup>\n'
+            "  <PropertyGroup>\n"
+            "    <TargetFramework>net8.0</TargetFramework>\n"
+            "    <RootNamespace>ProjectC</RootNamespace>\n"
+            "  </PropertyGroup>\n"
+            "  <ItemGroup>\n"
             '    <ProjectReference Include="../ProjectB/ProjectB.csproj" />\n'
             '    <ProjectReference Include="../ProjectA/ProjectA.csproj" />\n'
-            '  </ItemGroup>\n'
-            '</Project>\n'
+            "  </ItemGroup>\n"
+            "</Project>\n"
         )
 
         changed = ["ProjectC/ProjectC.csproj"]
@@ -593,8 +598,7 @@ class TestPatchCsprojChange:
         assert result.patch_applied is True
         # ProjectC should now reference both A and B
         ref_edges = [
-            e for e in result.graph.get_edges_from("ProjectC")
-            if e.edge_type == "project_reference"
+            e for e in result.graph.get_edges_from("ProjectC") if e.edge_type == "project_reference"
         ]
         ref_targets = {e.target for e in ref_edges}
         assert "ProjectA" in ref_targets
@@ -627,7 +631,11 @@ class TestPatchThresholds:
             "ProjectB/ProjectBService.cs",
         ]
         result = patch_graph(
-            graph, ff, pf, changed, scope,
+            graph,
+            ff,
+            pf,
+            changed,
+            scope,
             rebuild_threshold_projects=1,
         )
         assert result.patch_applied is False
@@ -639,7 +647,11 @@ class TestPatchThresholds:
         # Change all files → exceeds 30% threshold
         all_cs = [rel for rel in ff.keys()]
         result = patch_graph(
-            graph, ff, pf, all_cs, scope,
+            graph,
+            ff,
+            pf,
+            all_cs,
+            scope,
             rebuild_threshold_pct=0.01,  # 1% threshold
         )
         assert result.patch_applied is False
@@ -655,8 +667,8 @@ class TestPatchStructuralChange:
         new_proj.mkdir()
         (new_proj / "ProjectD.csproj").write_text(
             '<Project Sdk="Microsoft.NET.Sdk">\n'
-            '<PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>\n'
-            '</Project>\n'
+            "<PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>\n"
+            "</Project>\n"
         )
 
         changed = ["ProjectD/ProjectD.csproj"]
@@ -679,6 +691,7 @@ class TestPatchStructuralChange:
 # Phase 3: Git Diff
 # ===========================================================================
 
+
 class TestGetChangedFiles:
     def test_returns_none_on_failure(self, tmp_path):
         """Non-git directory returns None."""
@@ -697,6 +710,7 @@ class TestGetChangedFiles:
 # Phase 4: Property-Based Tests
 # ===========================================================================
 
+
 class TestIncrementalMatchesFullRebuild:
     """Core correctness invariant: patched graph == fresh build."""
 
@@ -709,10 +723,8 @@ class TestIncrementalMatchesFullRebuild:
 
         # Same edges (compare by source, target, edge_type)
         def edge_set(g):
-            return {
-                (e.source, e.target, e.edge_type)
-                for e in g.all_edges
-            }
+            return {(e.source, e.target, e.edge_type) for e in g.all_edges}
+
         es1 = edge_set(g1)
         es2 = edge_set(g2)
         assert es1 == es2, f"Edge mismatch: added={es2 - es1}, removed={es1 - es2}"
@@ -783,9 +795,7 @@ class TestIncrementalMatchesFullRebuild:
         graph, ff, pf = _build_graph_and_facts(scope)
 
         new_cs = scope / "ProjectA" / "Extra.cs"
-        new_cs.write_text(
-            "namespace ProjectA;\npublic class ExtraHelper { }\n"
-        )
+        new_cs.write_text("namespace ProjectA;\npublic class ExtraHelper { }\n")
 
         changed = ["ProjectA/Extra.cs"]
         result = patch_graph(graph, ff, pf, changed, scope)
@@ -803,12 +813,12 @@ class TestIncrementalMatchesFullRebuild:
         csproj = scope / "ProjectA" / "ProjectA.csproj"
         csproj.write_text(
             '<Project Sdk="Microsoft.NET.Sdk">\n'
-            '  <PropertyGroup>\n'
-            '    <TargetFramework>net8.0</TargetFramework>\n'
-            '    <RootNamespace>ProjectA.Renamed</RootNamespace>\n'
-            '  </PropertyGroup>\n'
-            '  <ItemGroup>\n  </ItemGroup>\n'
-            '</Project>\n'
+            "  <PropertyGroup>\n"
+            "    <TargetFramework>net8.0</TargetFramework>\n"
+            "    <RootNamespace>ProjectA.Renamed</RootNamespace>\n"
+            "  </PropertyGroup>\n"
+            "  <ItemGroup>\n  </ItemGroup>\n"
+            "</Project>\n"
         )
 
         changed = ["ProjectA/ProjectA.csproj"]
@@ -827,15 +837,15 @@ class TestIncrementalMatchesFullRebuild:
         csproj = scope / "ProjectC" / "ProjectC.csproj"
         csproj.write_text(
             '<Project Sdk="Microsoft.NET.Sdk">\n'
-            '  <PropertyGroup>\n'
-            '    <TargetFramework>net8.0</TargetFramework>\n'
-            '    <RootNamespace>ProjectC</RootNamespace>\n'
-            '  </PropertyGroup>\n'
-            '  <ItemGroup>\n'
+            "  <PropertyGroup>\n"
+            "    <TargetFramework>net8.0</TargetFramework>\n"
+            "    <RootNamespace>ProjectC</RootNamespace>\n"
+            "  </PropertyGroup>\n"
+            "  <ItemGroup>\n"
             '    <ProjectReference Include="../ProjectB/ProjectB.csproj" />\n'
             '    <ProjectReference Include="../ProjectA/ProjectA.csproj" />\n'
-            '  </ItemGroup>\n'
-            '</Project>\n'
+            "  </ItemGroup>\n"
+            "</Project>\n"
         )
 
         changed = ["ProjectC/ProjectC.csproj"]
@@ -849,6 +859,7 @@ class TestIncrementalMatchesFullRebuild:
 # ===========================================================================
 # Phase 4: Integration
 # ===========================================================================
+
 
 class TestIntegrationWithRealRepo:
     def test_build_and_cache_v2(self, tmp_path):

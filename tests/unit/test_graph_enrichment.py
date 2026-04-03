@@ -1,4 +1,5 @@
 """Tests for graph metrics enrichment in legacy and impact modes."""
+
 import argparse
 import csv
 import json
@@ -36,6 +37,7 @@ from scatter.reports.console_reporter import print_console_report
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_graph() -> DependencyGraph:
     """A -> B -> C chain with a B <-> C cycle."""
@@ -79,8 +81,8 @@ def _make_enriched_consumer(name: str) -> EnrichedConsumer:
 # GraphContext construction
 # ---------------------------------------------------------------------------
 
-class TestGraphContext:
 
+class TestGraphContext:
     def test_cycle_members_populated(self):
         ctx = _make_graph_context()
         assert "B" in ctx.cycle_members
@@ -100,8 +102,8 @@ class TestGraphContext:
 # enrich_legacy_results
 # ---------------------------------------------------------------------------
 
-class TestEnrichLegacyResults:
 
+class TestEnrichLegacyResults:
     def test_metrics_injected(self):
         ctx = _make_graph_context()
         results = [_make_result("B")]
@@ -142,8 +144,8 @@ class TestEnrichLegacyResults:
 # enrich_consumers
 # ---------------------------------------------------------------------------
 
-class TestEnrichConsumers:
 
+class TestEnrichConsumers:
     def test_fields_populated(self):
         ctx = _make_graph_context()
         consumers = [_make_enriched_consumer("B")]
@@ -167,6 +169,7 @@ class TestEnrichConsumers:
 # ---------------------------------------------------------------------------
 # Reporter regression: "no graph" path unchanged
 # ---------------------------------------------------------------------------
+
 
 class TestNoGraphRegression:
     """When --graph-metrics is NOT passed, output must be identical to pre-change."""
@@ -204,6 +207,7 @@ class TestNoGraphRegression:
 # ---------------------------------------------------------------------------
 # Reporter: schema stability when flag is on
 # ---------------------------------------------------------------------------
+
 
 class TestSchemaWithGraphMetrics:
     """When --graph-metrics IS passed, schema includes graph columns even for unmatched."""
@@ -259,8 +263,10 @@ class TestSchemaWithGraphMetrics:
 # Auto graph loading (Phase A: transparent graph)
 # ---------------------------------------------------------------------------
 
-def _resolve_graph_loading(graph_metrics=False, no_graph=False,
-                           cache_hit=False, build_returns_ctx=True):
+
+def _resolve_graph_loading(
+    graph_metrics=False, no_graph=False, cache_hit=False, build_returns_ctx=True
+):
     """Simulate the graph loading logic from __main__.py.
 
     Returns (graph_ctx, graph_enriched) using the same branching as the real code.
@@ -282,7 +288,6 @@ def _resolve_graph_loading(graph_metrics=False, no_graph=False,
 
 
 class TestAutoGraphLoading:
-
     def test_auto_loads_when_cache_exists(self):
         ctx, enriched = _resolve_graph_loading(cache_hit=True)
         assert ctx is not None
@@ -333,44 +338,57 @@ class TestAutoGraphLoading:
 # _build_metadata graph_enriched field
 # ---------------------------------------------------------------------------
 
-class TestBuildMetadataGraphEnriched:
 
+class TestBuildMetadataGraphEnriched:
     def test_graph_enriched_true(self):
         from scatter.cli import _build_metadata
         import argparse
+
         args = argparse.Namespace(verbose=False, output_format="json")
         metadata = _build_metadata(args, Path("/fake"), 0.0, graph_enriched=True)
-        assert metadata['graph_enriched'] is True
+        assert metadata["graph_enriched"] is True
 
     def test_graph_enriched_false(self):
         from scatter.cli import _build_metadata
         import argparse
+
         args = argparse.Namespace(verbose=False, output_format="json")
         metadata = _build_metadata(args, Path("/fake"), 0.0, graph_enriched=False)
-        assert metadata['graph_enriched'] is False
+        assert metadata["graph_enriched"] is False
 
     def test_graph_enriched_default(self):
         from scatter.cli import _build_metadata
         import argparse
+
         args = argparse.Namespace(verbose=False, output_format="json")
         metadata = _build_metadata(args, Path("/fake"), 0.0)
-        assert metadata['graph_enriched'] is False
+        assert metadata["graph_enriched"] is False
 
 
 # ---------------------------------------------------------------------------
 # CLI integration: JSON metadata contains graph_enriched
 # ---------------------------------------------------------------------------
 
-class TestJsonGraphEnrichedField:
 
+class TestJsonGraphEnrichedField:
     def test_json_output_contains_graph_enriched(self, tmp_path):
         out = tmp_path / "result.json"
         result = subprocess.run(
-            [sys.executable, "-m", "scatter",
-             "--target-project", "./GalaxyWorks.Data/GalaxyWorks.Data.csproj",
-             "--search-scope", ".",
-             "--output-format", "json", "--output-file", str(out)],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "scatter",
+                "--target-project",
+                "./GalaxyWorks.Data/GalaxyWorks.Data.csproj",
+                "--search-scope",
+                ".",
+                "--output-format",
+                "json",
+                "--output-file",
+                str(out),
+            ],
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 0, result.stderr
         data = json.loads(out.read_text())
@@ -381,17 +399,23 @@ class TestJsonGraphEnrichedField:
     def test_auto_load_golden_path(self, tmp_path):
         """Build cache with --graph-metrics, then auto-load without it, then --no-graph."""
         base_args = [
-            sys.executable, "-m", "scatter",
-            "--target-project", "./GalaxyWorks.Data/GalaxyWorks.Data.csproj",
-            "--search-scope", ".",
-            "--output-format", "json",
+            sys.executable,
+            "-m",
+            "scatter",
+            "--target-project",
+            "./GalaxyWorks.Data/GalaxyWorks.Data.csproj",
+            "--search-scope",
+            ".",
+            "--output-format",
+            "json",
         ]
 
         # Step 1: Build cache with --graph-metrics
         out1 = tmp_path / "step1.json"
         r1 = subprocess.run(
             base_args + ["--graph-metrics", "--output-file", str(out1)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert r1.returncode == 0, r1.stderr
         data1 = json.loads(out1.read_text())
@@ -401,7 +425,8 @@ class TestJsonGraphEnrichedField:
         out2 = tmp_path / "step2.json"
         r2 = subprocess.run(
             base_args + ["--output-file", str(out2)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert r2.returncode == 0, r2.stderr
         data2 = json.loads(out2.read_text())
@@ -411,7 +436,8 @@ class TestJsonGraphEnrichedField:
         out3 = tmp_path / "step3.json"
         r3 = subprocess.run(
             base_args + ["--no-graph", "--output-file", str(out3)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert r3.returncode == 0, r3.stderr
         data3 = json.loads(out3.read_text())
@@ -421,6 +447,7 @@ class TestJsonGraphEnrichedField:
 # ---------------------------------------------------------------------------
 # Phase C: First-run graph build (_ensure_graph_context)
 # ---------------------------------------------------------------------------
+
 
 class TestEnsureGraphContext:
     """Unit tests for the _ensure_graph_context() idempotent helper.
@@ -483,16 +510,25 @@ class TestFirstRunIntegration:
         """First run without any cache should build graph and enrich results."""
         out = tmp_path / "result.json"
         result = subprocess.run(
-            [sys.executable, "-m", "scatter",
-             "--target-project", "./GalaxyWorks.Data/GalaxyWorks.Data.csproj",
-             "--search-scope", ".",
-             "--output-format", "json", "--output-file", str(out)],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "scatter",
+                "--target-project",
+                "./GalaxyWorks.Data/GalaxyWorks.Data.csproj",
+                "--search-scope",
+                ".",
+                "--output-format",
+                "json",
+                "--output-file",
+                str(out),
+            ],
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 0, result.stderr
         data = json.loads(out.read_text())
-        assert data["metadata"]["graph_enriched"] is True, \
-            "First run should build graph and enrich"
+        assert data["metadata"]["graph_enriched"] is True, "First run should build graph and enrich"
         # Verify enrichment fields present on results
         if data.get("all_results"):
             first = data["all_results"][0]
@@ -502,11 +538,22 @@ class TestFirstRunIntegration:
         """--no-graph on first run should not build or enrich."""
         out = tmp_path / "result.json"
         result = subprocess.run(
-            [sys.executable, "-m", "scatter",
-             "--target-project", "./GalaxyWorks.Data/GalaxyWorks.Data.csproj",
-             "--search-scope", ".", "--no-graph",
-             "--output-format", "json", "--output-file", str(out)],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "scatter",
+                "--target-project",
+                "./GalaxyWorks.Data/GalaxyWorks.Data.csproj",
+                "--search-scope",
+                ".",
+                "--no-graph",
+                "--output-format",
+                "json",
+                "--output-file",
+                str(out),
+            ],
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 0, result.stderr
         data = json.loads(out.read_text())

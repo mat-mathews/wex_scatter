@@ -1,4 +1,5 @@
 """Tests for packaging and version consistency."""
+
 from pathlib import Path
 
 import pytest

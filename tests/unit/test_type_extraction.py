@@ -3,6 +3,7 @@
 Covers every C# type declaration form: class, struct, interface, enum,
 record (all variants), delegate, and edge cases.
 """
+
 from scatter.scanners.type_scanner import extract_type_names_from_content
 
 
@@ -154,7 +155,7 @@ class TestAttributesBeforeDeclarations:
         assert "Bar" in extract_type_names_from_content(code)
 
     def test_attribute_with_params(self):
-        code = '[JsonConverter(typeof(MyConverter))]\npublic struct Baz {'
+        code = "[JsonConverter(typeof(MyConverter))]\npublic struct Baz {"
         assert "Baz" in extract_type_names_from_content(code)
 
 
@@ -178,23 +179,13 @@ class TestRecordFalsePositives:
 
 class TestNestedTypeExtraction:
     def test_private_class_inside_public_class(self):
-        code = (
-            "public class Outer {\n"
-            "    private class Inner {\n"
-            "    }\n"
-            "}\n"
-        )
+        code = "public class Outer {\n    private class Inner {\n    }\n}\n"
         types = extract_type_names_from_content(code)
         assert "Outer" in types
         assert "Inner" in types
 
     def test_struct_inside_class(self):
-        code = (
-            "public class Container {\n"
-            "    private struct Item {\n"
-            "    }\n"
-            "}\n"
-        )
+        code = "public class Container {\n    private struct Item {\n    }\n}\n"
         types = extract_type_names_from_content(code)
         assert "Container" in types
         assert "Item" in types

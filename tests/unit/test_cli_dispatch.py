@@ -1,4 +1,5 @@
 """Smoke tests for scatter.cli.dispatch_legacy_output."""
+
 import types
 from pathlib import Path
 from unittest.mock import MagicMock, patch, call
@@ -64,7 +65,6 @@ def _cr(**overrides):
 
 
 class TestDispatchLegacyOutput:
-
     @patch("scatter.cli.print_console_report")
     def test_console_format(self, mock_console):
         args = _fake_args(output_format="console")
@@ -147,7 +147,6 @@ class TestDispatchLegacyOutput:
 
 
 class TestBuildMetadata:
-
     def test_metadata_has_expected_keys(self):
         args = _fake_args()
         meta = _build_metadata(args, Path("/tmp"), 0.0, graph_enriched=True)
@@ -165,7 +164,6 @@ class TestBuildMetadata:
 
 
 class TestRequireOutputFile:
-
     def test_exits_when_missing(self):
         args = _fake_args(output_file=None)
         with pytest.raises(SystemExit):

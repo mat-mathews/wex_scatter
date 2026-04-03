@@ -1,4 +1,5 @@
 """Tests for Initiative 5 Phase 6: Graph Reporters + Health Dashboard."""
+
 import csv
 import subprocess
 import sys
@@ -51,15 +52,39 @@ def _sample_graph() -> DependencyGraph:
 
 def _sample_metrics() -> dict:
     return {
-        "A": ProjectMetrics(fan_in=0, fan_out=2, instability=1.0, coupling_score=2.0,
-                            afferent_coupling=0, efferent_coupling=2,
-                            shared_db_density=0.0, type_export_count=3, consumer_count=0),
-        "B": ProjectMetrics(fan_in=1, fan_out=1, instability=0.5, coupling_score=1.5,
-                            afferent_coupling=1, efferent_coupling=1,
-                            shared_db_density=0.0, type_export_count=2, consumer_count=1),
-        "C": ProjectMetrics(fan_in=2, fan_out=0, instability=0.0, coupling_score=1.0,
-                            afferent_coupling=2, efferent_coupling=0,
-                            shared_db_density=0.0, type_export_count=1, consumer_count=2),
+        "A": ProjectMetrics(
+            fan_in=0,
+            fan_out=2,
+            instability=1.0,
+            coupling_score=2.0,
+            afferent_coupling=0,
+            efferent_coupling=2,
+            shared_db_density=0.0,
+            type_export_count=3,
+            consumer_count=0,
+        ),
+        "B": ProjectMetrics(
+            fan_in=1,
+            fan_out=1,
+            instability=0.5,
+            coupling_score=1.5,
+            afferent_coupling=1,
+            efferent_coupling=1,
+            shared_db_density=0.0,
+            type_export_count=2,
+            consumer_count=1,
+        ),
+        "C": ProjectMetrics(
+            fan_in=2,
+            fan_out=0,
+            instability=0.0,
+            coupling_score=1.0,
+            afferent_coupling=2,
+            efferent_coupling=0,
+            shared_db_density=0.0,
+            type_export_count=1,
+            consumer_count=2,
+        ),
     }
 
 
@@ -75,12 +100,28 @@ def _cycle_graph() -> DependencyGraph:
 
 def _cycle_metrics() -> dict:
     return {
-        "A": ProjectMetrics(fan_in=1, fan_out=1, instability=0.5, coupling_score=2.0,
-                            afferent_coupling=1, efferent_coupling=1,
-                            shared_db_density=0.0, type_export_count=1, consumer_count=1),
-        "B": ProjectMetrics(fan_in=1, fan_out=1, instability=0.5, coupling_score=2.0,
-                            afferent_coupling=1, efferent_coupling=1,
-                            shared_db_density=0.0, type_export_count=1, consumer_count=1),
+        "A": ProjectMetrics(
+            fan_in=1,
+            fan_out=1,
+            instability=0.5,
+            coupling_score=2.0,
+            afferent_coupling=1,
+            efferent_coupling=1,
+            shared_db_density=0.0,
+            type_export_count=1,
+            consumer_count=1,
+        ),
+        "B": ProjectMetrics(
+            fan_in=1,
+            fan_out=1,
+            instability=0.5,
+            coupling_score=2.0,
+            afferent_coupling=1,
+            efferent_coupling=1,
+            shared_db_density=0.0,
+            type_export_count=1,
+            consumer_count=1,
+        ),
     }
 
 
@@ -123,8 +164,11 @@ class TestMermaidOutput:
         g = DependencyGraph()
         g.add_node(_make_node("GalaxyWorks.Data"))
         g.add_node(_make_node("GalaxyWorks.Web"))
-        g.add_edge(DependencyEdge(source="GalaxyWorks.Data", target="GalaxyWorks.Web",
-                                  edge_type="project_reference"))
+        g.add_edge(
+            DependencyEdge(
+                source="GalaxyWorks.Data", target="GalaxyWorks.Web", edge_type="project_reference"
+            )
+        )
         result = generate_mermaid(g)
         assert "GalaxyWorks_Data" in result
         assert "GalaxyWorks_Web" in result
@@ -174,9 +218,15 @@ class TestHealthDashboard:
         g.add_node(_make_node("Core"))
         metrics = {
             "Core": ProjectMetrics(
-                fan_in=7, fan_out=0, instability=0.0, coupling_score=5.0,
-                afferent_coupling=7, efferent_coupling=0,
-                shared_db_density=0.0, type_export_count=10, consumer_count=7,
+                fan_in=7,
+                fan_out=0,
+                instability=0.0,
+                coupling_score=5.0,
+                afferent_coupling=7,
+                efferent_coupling=0,
+                shared_db_density=0.0,
+                type_export_count=10,
+                consumer_count=7,
             ),
         }
         dashboard = compute_health_dashboard(g, metrics, [])
@@ -200,9 +250,15 @@ class TestHealthDashboard:
         g.add_node(_make_node("Big"))
         metrics = {
             "Big": ProjectMetrics(
-                fan_in=2, fan_out=3, instability=0.6, coupling_score=9.5,
-                afferent_coupling=4, efferent_coupling=6,
-                shared_db_density=0.0, type_export_count=5, consumer_count=2,
+                fan_in=2,
+                fan_out=3,
+                instability=0.6,
+                coupling_score=9.5,
+                afferent_coupling=4,
+                efferent_coupling=6,
+                shared_db_density=0.0,
+                type_export_count=5,
+                consumer_count=2,
             ),
         }
         dashboard = compute_health_dashboard(g, metrics, [])
@@ -216,9 +272,15 @@ class TestHealthDashboard:
             g.add_node(_make_node(name, sproc_references=["dbo.sp_Shared"]))
         metrics = {
             name: ProjectMetrics(
-                fan_in=0, fan_out=0, instability=0.0, coupling_score=0.0,
-                afferent_coupling=0, efferent_coupling=0,
-                shared_db_density=0.0, type_export_count=0, consumer_count=0,
+                fan_in=0,
+                fan_out=0,
+                instability=0.0,
+                coupling_score=0.0,
+                afferent_coupling=0,
+                efferent_coupling=0,
+                shared_db_density=0.0,
+                type_export_count=0,
+                consumer_count=0,
             )
             for name in ["P1", "P2", "P3"]
         }
@@ -233,15 +295,30 @@ class TestHealthDashboard:
         g.add_node(_make_node("X"))
         g.add_node(_make_node("Y"))
         metrics = {
-            "X": ProjectMetrics(fan_in=0, fan_out=0, instability=0.0, coupling_score=0.0,
-                                afferent_coupling=0, efferent_coupling=0,
-                                shared_db_density=0.0, type_export_count=0, consumer_count=0),
-            "Y": ProjectMetrics(fan_in=0, fan_out=0, instability=0.0, coupling_score=0.0,
-                                afferent_coupling=0, efferent_coupling=0,
-                                shared_db_density=0.0, type_export_count=0, consumer_count=0),
+            "X": ProjectMetrics(
+                fan_in=0,
+                fan_out=0,
+                instability=0.0,
+                coupling_score=0.0,
+                afferent_coupling=0,
+                efferent_coupling=0,
+                shared_db_density=0.0,
+                type_export_count=0,
+                consumer_count=0,
+            ),
+            "Y": ProjectMetrics(
+                fan_in=0,
+                fan_out=0,
+                instability=0.0,
+                coupling_score=0.0,
+                afferent_coupling=0,
+                efferent_coupling=0,
+                shared_db_density=0.0,
+                type_export_count=0,
+                consumer_count=0,
+            ),
         }
-        clusters = [_make_cluster("BadCluster", ["X", "Y"],
-                                  coupling_to_outside=0.8, cohesion=0.1)]
+        clusters = [_make_cluster("BadCluster", ["X", "Y"], coupling_to_outside=0.8, cohesion=0.1)]
         dashboard = compute_health_dashboard(g, metrics, [], clusters=clusters)
         rules = [o.rule for o in dashboard.observations]
         assert "low_cohesion_cluster" in rules
@@ -273,15 +350,29 @@ class TestGraphConsoleOutput:
         g = _sample_graph()
         ranked = [("A", _sample_metrics()["A"])]
         dashboard = HealthDashboard(
-            total_projects=3, total_edges=3, total_cycles=0,
-            total_clusters=0, avg_fan_in=1.0, avg_fan_out=1.0,
-            avg_instability=0.5, avg_coupling_score=1.5,
-            max_coupling_project="A", max_coupling_score=2.0,
+            total_projects=3,
+            total_edges=3,
+            total_cycles=0,
+            total_clusters=0,
+            avg_fan_in=1.0,
+            avg_fan_out=1.0,
+            avg_instability=0.5,
+            avg_coupling_score=1.5,
+            max_coupling_project="A",
+            max_coupling_score=2.0,
             observations=[
-                Observation(project="A", rule="high_coupling",
-                            message="A: high coupling score (9.0)", severity="warning"),
-                Observation(project="B", rule="in_cycle",
-                            message="B: participates in circular dependency", severity="critical"),
+                Observation(
+                    project="A",
+                    rule="high_coupling",
+                    message="A: high coupling score (9.0)",
+                    severity="warning",
+                ),
+                Observation(
+                    project="B",
+                    rule="in_cycle",
+                    message="B: participates in circular dependency",
+                    severity="critical",
+                ),
             ],
         )
         print_graph_report(g, ranked, [], dashboard=dashboard)
@@ -370,9 +461,17 @@ class TestGraphCsvEdgeCases:
         g = DependencyGraph()
         g.add_node(_make_node("NoNs"))  # namespace defaults to None
         metrics = {
-            "NoNs": ProjectMetrics(fan_in=0, fan_out=0, instability=0.0, coupling_score=0.0,
-                                   afferent_coupling=0, efferent_coupling=0,
-                                   shared_db_density=0.0, type_export_count=0, consumer_count=0),
+            "NoNs": ProjectMetrics(
+                fan_in=0,
+                fan_out=0,
+                instability=0.0,
+                coupling_score=0.0,
+                afferent_coupling=0,
+                efferent_coupling=0,
+                shared_db_density=0.0,
+                type_export_count=0,
+                consumer_count=0,
+            ),
         }
         out = tmp_path / "graph.csv"
         write_graph_csv_report(g, metrics, out)
@@ -399,10 +498,16 @@ class TestGraphJsonTopologyFlag:
         g = _sample_graph()
         metrics = _sample_metrics()
         dashboard = HealthDashboard(
-            total_projects=3, total_edges=3, total_cycles=0,
-            total_clusters=0, avg_fan_in=1.0, avg_fan_out=1.0,
-            avg_instability=0.5, avg_coupling_score=1.5,
-            max_coupling_project="A", max_coupling_score=2.0,
+            total_projects=3,
+            total_edges=3,
+            total_cycles=0,
+            total_clusters=0,
+            avg_fan_in=1.0,
+            avg_fan_out=1.0,
+            avg_instability=0.5,
+            avg_coupling_score=1.5,
+            max_coupling_project="A",
+            max_coupling_score=2.0,
         )
         result = build_graph_json(g, metrics, [], [], dashboard=dashboard)
         assert "health_dashboard" in result
@@ -438,13 +543,21 @@ class TestGraphJsonTopologyFlag:
         metrics = _sample_metrics()
         sol_metrics = {
             "Sol1": SolutionMetrics(
-                name="Sol1", project_count=2, internal_edges=1,
-                external_edges=1, cross_solution_ratio=0.5,
-                incoming_solutions=[], outgoing_solutions=["Sol2"],
+                name="Sol1",
+                project_count=2,
+                internal_edges=1,
+                external_edges=1,
+                cross_solution_ratio=0.5,
+                incoming_solutions=[],
+                outgoing_solutions=["Sol2"],
             ),
         }
         result = build_graph_json(
-            g, metrics, [], [], solution_metrics=sol_metrics,
+            g,
+            metrics,
+            [],
+            [],
+            solution_metrics=sol_metrics,
             bridge_projects=["A"],
         )
         assert "solution_metrics" in result
@@ -467,9 +580,13 @@ class TestSolutionCouplingConsole:
         ranked = [("A", _sample_metrics()["A"])]
         sol_metrics = {
             "Sol1": SolutionMetrics(
-                name="Sol1", project_count=2, internal_edges=3,
-                external_edges=1, cross_solution_ratio=0.25,
-                incoming_solutions=[], outgoing_solutions=[],
+                name="Sol1",
+                project_count=2,
+                internal_edges=3,
+                external_edges=1,
+                cross_solution_ratio=0.25,
+                incoming_solutions=[],
+                outgoing_solutions=[],
             ),
         }
         print_graph_report(g, ranked, [], solution_metrics=sol_metrics)
@@ -549,10 +666,19 @@ class TestMermaidCLI:
     def test_non_graph_mode_rejects_mermaid_format(self):
         """Mermaid format should be rejected outside of graph mode."""
         result = subprocess.run(
-            [sys.executable, "-m", "scatter",
-             "--target-project", "Fake.csproj", "--search-scope", ".",
-             "--output-format", "mermaid"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "scatter",
+                "--target-project",
+                "Fake.csproj",
+                "--search-scope",
+                ".",
+                "--output-format",
+                "mermaid",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 2
         assert "only supported in graph mode" in result.stderr

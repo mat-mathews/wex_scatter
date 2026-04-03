@@ -13,8 +13,12 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from scatter.core.models import (
-    FilterStage, FilterPipeline,
-    STAGE_DISCOVERY, STAGE_PROJECT_REFERENCE, STAGE_NAMESPACE, STAGE_CLASS,
+    FilterStage,
+    FilterPipeline,
+    STAGE_DISCOVERY,
+    STAGE_PROJECT_REFERENCE,
+    STAGE_NAMESPACE,
+    STAGE_CLASS,
 )
 from scatter.analyzers.consumer_analyzer import find_consumers
 from scatter.reports.console_reporter import print_console_report, print_filter_pipeline
@@ -25,6 +29,7 @@ from scatter.reports.csv_reporter import write_csv_report
 # ---------------------------------------------------------------------------
 # Shared test fixture — single source of truth for synthetic pipelines.
 # ---------------------------------------------------------------------------
+
 
 def _make_pipeline(zero_class=False, include_class=True):
     """Build a representative FilterPipeline for reporter tests.
@@ -72,6 +77,7 @@ def _make_large_pipeline():
 # ---------------------------------------------------------------------------
 # Data model tests
 # ---------------------------------------------------------------------------
+
 
 class TestFilterPipelineDataModel(unittest.TestCase):
     """Test FilterStage and FilterPipeline dataclass construction."""
@@ -130,13 +136,16 @@ class TestFilterPipelineDataModel(unittest.TestCase):
 # Integration tests — find_consumers returns pipeline
 # ---------------------------------------------------------------------------
 
+
 class TestFindConsumersReturnsPipeline(unittest.TestCase):
     """Test that find_consumers returns a (results, FilterPipeline) tuple."""
 
     def setUp(self):
         self.test_root = Path(__file__).parent.parent.parent.resolve()
         self.galaxy_works_project = self.test_root / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
-        self.exclude_project = self.test_root / "MyDotNetApp2.Exclude" / "MyDotNetApp2.Exclude.csproj"
+        self.exclude_project = (
+            self.test_root / "MyDotNetApp2.Exclude" / "MyDotNetApp2.Exclude.csproj"
+        )
 
     def test_target_mode_returns_pipeline(self):
         """find_consumers returns a tuple with a FilterPipeline."""
@@ -221,6 +230,7 @@ class TestFindConsumersReturnsPipeline(unittest.TestCase):
 # Console reporter tests
 # ---------------------------------------------------------------------------
 
+
 class TestConsoleFilterOutput(unittest.TestCase):
     """Test console reporter filter pipeline output."""
 
@@ -265,6 +275,7 @@ class TestConsoleFilterOutput(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # JSON reporter tests
 # ---------------------------------------------------------------------------
+
 
 class TestJsonFilterPipeline(unittest.TestCase):
     """Test JSON reporter filter pipeline output."""
@@ -318,6 +329,7 @@ class TestJsonFilterPipeline(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # CSV reporter tests
 # ---------------------------------------------------------------------------
+
 
 class TestCsvFilterPipeline(unittest.TestCase):
     """Test CSV reporter filter pipeline output."""

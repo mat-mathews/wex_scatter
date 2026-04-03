@@ -1,4 +1,5 @@
 """Tests for scatter/scanners/solution_scanner.py"""
+
 import logging
 from pathlib import Path
 from unittest.mock import patch
@@ -18,49 +19,50 @@ SLN_HEADER = "Microsoft Visual Studio Solution File, Format Version 12.00\n"
 
 SLN_THREE_CSHARP = (
     SLN_HEADER
-    + '# Visual Studio Version 17\n'
+    + "# Visual Studio Version 17\n"
     + 'Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alpha", "Alpha\\Alpha.csproj", "{AAAA}"\n'
-    + 'EndProject\n'
+    + "EndProject\n"
     + 'Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Beta", "libs\\Beta\\Beta.csproj", "{BBBB}"\n'
-    + 'EndProject\n'
+    + "EndProject\n"
     + 'Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gamma", "Gamma/Gamma.csproj", "{CCCC}"\n'
-    + 'EndProject\n'
+    + "EndProject\n"
 )
 
 SLN_SDK_STYLE = (
     SLN_HEADER
     + 'Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SdkProject", "SdkProject\\SdkProject.csproj", "{DDDD}"\n'
-    + 'EndProject\n'
+    + "EndProject\n"
 )
 
 SLN_MIXED_TYPES = (
     SLN_HEADER
-    + '# C# project\n'
+    + "# C# project\n"
     + 'Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSharp", "CSharp\\CSharp.csproj", "{1111}"\n'
-    + 'EndProject\n'
-    + '# Solution Folder\n'
+    + "EndProject\n"
+    + "# Solution Folder\n"
     + 'Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{2222}"\n'
-    + 'EndProject\n'
-    + '# VB.NET project\n'
+    + "EndProject\n"
+    + "# VB.NET project\n"
     + 'Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "VBProject", "VBProject\\VBProject.vbproj", "{3333}"\n'
-    + 'EndProject\n'
-    + '# F# project\n'
+    + "EndProject\n"
+    + "# F# project\n"
     + 'Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSharp", "FSharp\\FSharp.fsproj", "{4444}"\n'
-    + 'EndProject\n'
+    + "EndProject\n"
 )
 
 SLN_DUPLICATE = (
     SLN_HEADER
     + 'Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dup", "Dup\\Dup.csproj", "{AAAA}"\n'
-    + 'EndProject\n'
+    + "EndProject\n"
     + 'Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dup", "Dup\\Dup.csproj", "{BBBB}"\n'
-    + 'EndProject\n'
+    + "EndProject\n"
 )
 
 SLN_EMPTY_VALID = SLN_HEADER + "Global\nEndGlobal\n"
 
 
 # --- Helpers ---
+
 
 def _write_sln(tmp_path: Path, content: str, name: str = "Test.sln") -> Path:
     sln = tmp_path / name
@@ -69,6 +71,7 @@ def _write_sln(tmp_path: Path, content: str, name: str = "Test.sln") -> Path:
 
 
 # === Parsing Tests ===
+
 
 class TestParseSolutionFile:
     def test_parse_csharp_projects(self, tmp_path):
@@ -160,7 +163,7 @@ class TestParseSolutionFile:
 
     def test_parse_malformed_sln(self, tmp_path, caplog):
         # Has header but mangled Project lines
-        content = SLN_HEADER + 'Project(broken line\nmore garbage\n'
+        content = SLN_HEADER + "Project(broken line\nmore garbage\n"
         sln = _write_sln(tmp_path, content)
 
         with caplog.at_level(logging.WARNING):
@@ -182,6 +185,7 @@ class TestParseSolutionFile:
 
 
 # === Scanning Tests ===
+
 
 class TestScanSolutions:
     def test_scan_real_repo(self):
@@ -213,6 +217,7 @@ class TestScanSolutions:
 
 # === Reverse Index Tests ===
 
+
 class TestBuildProjectToSolutions:
     def test_reverse_index_basic(self, tmp_path):
         sln = _write_sln(tmp_path, SLN_THREE_CSHARP)
@@ -231,7 +236,7 @@ class TestBuildProjectToSolutions:
         sln_b_content = (
             SLN_HEADER
             + 'Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Alpha", "Alpha\\Alpha.csproj", "{XXXX}"\n'
-            + 'EndProject\n'
+            + "EndProject\n"
         )
         sln_b = _write_sln(tmp_path, sln_b_content, "Second.sln")
 
@@ -253,12 +258,12 @@ class TestBuildProjectToSolutions:
         sln_a_content = (
             SLN_HEADER
             + 'Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Utils", "dir_a\\Utils.csproj", "{AAAA}"\n'
-            + 'EndProject\n'
+            + "EndProject\n"
         )
         sln_b_content = (
             SLN_HEADER
             + 'Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Utils", "dir_b\\Utils.csproj", "{BBBB}"\n'
-            + 'EndProject\n'
+            + "EndProject\n"
         )
         sln_a = _write_sln(tmp_path, sln_a_content, "A.sln")
         sln_b = _write_sln(tmp_path, sln_b_content, "B.sln")
@@ -275,6 +280,7 @@ class TestBuildProjectToSolutions:
 
 
 # === Migration Tests ===
+
 
 class TestMigration:
     def test_migration_with_index(self, tmp_path):
@@ -310,7 +316,7 @@ class TestMigration:
         content = (
             SLN_HEADER
             + 'Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyAuth.Core", "MyAuth.Core\\MyAuth.Core.csproj", "{AAAA}"\n'
-            + 'EndProject\n'
+            + "EndProject\n"
         )
         sln = _write_sln(tmp_path, content)
         info = parse_solution_file(sln)

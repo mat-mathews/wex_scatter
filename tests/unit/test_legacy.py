@@ -11,7 +11,9 @@ from scatter._legacy import (
 
 class TestConfigureGemini:
     def test_returns_false_on_failure(self):
-        with patch("scatter.ai.providers.gemini_provider.GeminiProvider", side_effect=ValueError("no key")):
+        with patch(
+            "scatter.ai.providers.gemini_provider.GeminiProvider", side_effect=ValueError("no key")
+        ):
             import scatter._legacy as mod
 
             mod.gemini_model = None
@@ -35,7 +37,9 @@ class TestConfigureGemini:
         mod.gemini_model = None
         mock_provider = MagicMock()
         mock_provider.model = MagicMock()
-        with patch("scatter.ai.providers.gemini_provider.GeminiProvider", return_value=mock_provider):
+        with patch(
+            "scatter.ai.providers.gemini_provider.GeminiProvider", return_value=mock_provider
+        ):
             result = configure_gemini(api_key="test-key")
             assert result is True
             assert mod.gemini_model is mock_provider.model

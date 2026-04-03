@@ -50,8 +50,10 @@ class TestTargetProjectMode:
 
     def test_galaxy_data_finds_consumers(self):
         r = run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
         )
         assert "GalaxyWorks.Data" in r.stdout
         # Should find at least 4 consumers
@@ -59,48 +61,63 @@ class TestTargetProjectMode:
 
     def test_galaxy_data_consumer_names(self):
         r = run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
         )
         for name in ["GalaxyWorks.WebPortal", "GalaxyWorks.BatchProcessor"]:
             assert name in r.stdout, f"Expected consumer {name} not found in output"
 
     def test_webportal_finds_consumers(self):
         r = run_scatter(
-            "--target-project", str(WEBPORTAL_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
+            "--target-project",
+            str(WEBPORTAL_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
         )
         assert "GalaxyWorks.WebPortal" in r.stdout
 
     def test_mydotnet_finds_one_consumer(self):
         r = run_scatter(
-            "--target-project", str(MYDOTNET_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
+            "--target-project",
+            str(MYDOTNET_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
         )
         assert "MyDotNetApp.Consumer" in r.stdout
 
     def test_exclude_project_zero_consumers(self):
         r = run_scatter(
-            "--target-project", str(EXCLUDE_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
+            "--target-project",
+            str(EXCLUDE_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
         )
         assert "no consuming relationships found" in r.stdout.lower()
 
     def test_class_name_filter(self):
         r = run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
-            "--class-name", "PortalDataService",
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--class-name",
+            "PortalDataService",
         )
         assert "PortalDataService" in r.stdout
 
     def test_json_output(self, tmp_path):
         out = tmp_path / "result.json"
         run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
-            "--output-format", "json",
-            "--output-file", str(out),
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--output-format",
+            "json",
+            "--output-file",
+            str(out),
         )
         data = json.loads(out.read_text())
         assert isinstance(data, dict)
@@ -111,10 +128,14 @@ class TestTargetProjectMode:
     def test_csv_output(self, tmp_path):
         out = tmp_path / "result.csv"
         run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
-            "--output-format", "csv",
-            "--output-file", str(out),
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--output-format",
+            "csv",
+            "--output-file",
+            str(out),
         )
         content = out.read_text()
         lines = content.strip().split("\n")
@@ -123,10 +144,14 @@ class TestTargetProjectMode:
     def test_markdown_output(self, tmp_path):
         out = tmp_path / "result.md"
         run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
-            "--output-format", "markdown",
-            "--output-file", str(out),
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--output-format",
+            "markdown",
+            "--output-file",
+            str(out),
         )
         content = out.read_text()
         assert "GalaxyWorks.Data" in content
@@ -134,24 +159,30 @@ class TestTargetProjectMode:
 
     def test_graph_metrics_flag(self):
         r = run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
             "--graph-metrics",
         )
         assert "score" in r.stdout.lower()
 
     def test_no_graph_flag(self):
         r = run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
             "--no-graph",
         )
         assert "GalaxyWorks.Data" in r.stdout
 
     def test_rebuild_graph_flag(self):
         r = run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
             "--rebuild-graph",
         )
         assert "GalaxyWorks.Data" in r.stdout
@@ -167,8 +198,10 @@ class TestStoredProcedureMode:
 
     def test_sproc_finds_consumers(self):
         r = run_scatter(
-            "--stored-procedure", "dbo.sp_InsertPortalConfiguration",
-            "--search-scope", str(REPO_ROOT),
+            "--stored-procedure",
+            "dbo.sp_InsertPortalConfiguration",
+            "--search-scope",
+            str(REPO_ROOT),
         )
         assert "GalaxyWorks.Data" in r.stdout
         assert "consumer" in r.stdout.lower() or "Consumed by" in r.stdout
@@ -176,18 +209,24 @@ class TestStoredProcedureMode:
     def test_sproc_json_output(self, tmp_path):
         out = tmp_path / "sproc.json"
         run_scatter(
-            "--stored-procedure", "dbo.sp_InsertPortalConfiguration",
-            "--search-scope", str(REPO_ROOT),
-            "--output-format", "json",
-            "--output-file", str(out),
+            "--stored-procedure",
+            "dbo.sp_InsertPortalConfiguration",
+            "--search-scope",
+            str(REPO_ROOT),
+            "--output-format",
+            "json",
+            "--output-file",
+            str(out),
         )
         data = json.loads(out.read_text())
         assert isinstance(data, dict)
 
     def test_sproc_not_found(self):
         r = run_scatter(
-            "--stored-procedure", "dbo.sp_DoesNotExist",
-            "--search-scope", str(REPO_ROOT),
+            "--stored-procedure",
+            "dbo.sp_DoesNotExist",
+            "--search-scope",
+            str(REPO_ROOT),
         )
         assert "no consuming relationships found" in r.stdout.lower()
 
@@ -203,7 +242,8 @@ class TestGraphMode:
     def test_graph_console_output(self):
         r = run_scatter(
             "--graph",
-            "--search-scope", str(REPO_ROOT),
+            "--search-scope",
+            str(REPO_ROOT),
         )
         assert "projects" in r.stdout.lower()
         assert "dependencies" in r.stdout.lower()
@@ -212,9 +252,12 @@ class TestGraphMode:
         out = tmp_path / "graph.json"
         run_scatter(
             "--graph",
-            "--search-scope", str(REPO_ROOT),
-            "--output-format", "json",
-            "--output-file", str(out),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--output-format",
+            "json",
+            "--output-file",
+            str(out),
         )
         data = json.loads(out.read_text())
         assert isinstance(data, dict)
@@ -224,9 +267,12 @@ class TestGraphMode:
         out = tmp_path / "graph.csv"
         run_scatter(
             "--graph",
-            "--search-scope", str(REPO_ROOT),
-            "--output-format", "csv",
-            "--output-file", str(out),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--output-format",
+            "csv",
+            "--output-file",
+            str(out),
         )
         content = out.read_text()
         lines = content.strip().split("\n")
@@ -235,8 +281,10 @@ class TestGraphMode:
     def test_graph_mermaid_output(self):
         r = run_scatter(
             "--graph",
-            "--search-scope", str(REPO_ROOT),
-            "--output-format", "mermaid",
+            "--search-scope",
+            str(REPO_ROOT),
+            "--output-format",
+            "mermaid",
         )
         assert "graph" in r.stdout.lower() or "--->" in r.stdout
 
@@ -244,9 +292,12 @@ class TestGraphMode:
         out = tmp_path / "graph.md"
         run_scatter(
             "--graph",
-            "--search-scope", str(REPO_ROOT),
-            "--output-format", "markdown",
-            "--output-file", str(out),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--output-format",
+            "markdown",
+            "--output-file",
+            str(out),
         )
         content = out.read_text()
         assert "|" in content
@@ -255,7 +306,8 @@ class TestGraphMode:
     def test_graph_rebuild_flag(self):
         r = run_scatter(
             "--graph",
-            "--search-scope", str(REPO_ROOT),
+            "--search-scope",
+            str(REPO_ROOT),
             "--rebuild-graph",
         )
         assert "projects" in r.stdout.lower()
@@ -264,9 +316,12 @@ class TestGraphMode:
         out = tmp_path / "topo.json"
         run_scatter(
             "--graph",
-            "--search-scope", str(REPO_ROOT),
-            "--output-format", "json",
-            "--output-file", str(out),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--output-format",
+            "json",
+            "--output-file",
+            str(out),
             "--include-graph-topology",
         )
         data = json.loads(out.read_text())
@@ -287,14 +342,16 @@ class TestErrorCases:
 
     def test_missing_search_scope_target(self):
         r = run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
+            "--target-project",
+            str(GALAXY_CSPROJ),
             expect_fail=True,
         )
         assert r.returncode != 0
 
     def test_missing_search_scope_sproc(self):
         r = run_scatter(
-            "--stored-procedure", "dbo.sp_Test",
+            "--stored-procedure",
+            "dbo.sp_Test",
             expect_fail=True,
         )
         assert r.returncode != 0
@@ -305,17 +362,22 @@ class TestErrorCases:
 
     def test_bad_target_path(self):
         r = run_scatter(
-            "--target-project", "/nonexistent/path.csproj",
-            "--search-scope", str(REPO_ROOT),
+            "--target-project",
+            "/nonexistent/path.csproj",
+            "--search-scope",
+            str(REPO_ROOT),
             expect_fail=True,
         )
         assert r.returncode != 0
 
     def test_mermaid_only_in_graph_mode(self):
         r = run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
-            "--output-format", "mermaid",
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--output-format",
+            "mermaid",
             expect_fail=True,
         )
         assert r.returncode != 0
@@ -323,8 +385,10 @@ class TestErrorCases:
     def test_pipelines_not_in_graph_mode(self):
         r = run_scatter(
             "--graph",
-            "--search-scope", str(REPO_ROOT),
-            "--output-format", "pipelines",
+            "--search-scope",
+            str(REPO_ROOT),
+            "--output-format",
+            "pipelines",
             expect_fail=True,
         )
         assert r.returncode != 0
@@ -340,10 +404,22 @@ class TestGitBranchMode:
 
     def test_branch_analysis_runs(self):
         """Analyze main against main — should find 0 changes but not crash."""
+        # CI shallow clones may not have the main branch ref available.
+        import git
+
+        try:
+            repo = git.Repo(REPO_ROOT)
+            repo.commit("main")
+        except Exception:
+            pytest.skip("main branch not available (shallow clone)")
+
         r = run_scatter(
-            "--branch-name", "main",
-            "--repo-path", str(REPO_ROOT),
-            "--search-scope", str(REPO_ROOT),
+            "--branch-name",
+            "main",
+            "--repo-path",
+            str(REPO_ROOT),
+            "--search-scope",
+            str(REPO_ROOT),
         )
         # Should complete without error
         assert r.returncode == 0

@@ -1,7 +1,12 @@
 """Tests for Hybrid Git Analysis (Initiative 2) — LLM-enhanced diff analysis."""
+
 import pytest
 from unittest.mock import MagicMock, patch
-from scatter import get_affected_symbols_from_diff, get_diff_for_file, extract_type_names_from_content
+from scatter import (
+    get_affected_symbols_from_diff,
+    get_diff_for_file,
+    extract_type_names_from_content,
+)
 
 
 SAMPLE_CS_CONTENT = """
@@ -55,7 +60,7 @@ class TestGetAffectedSymbolsFromDiff:
         """AC-02: When diff is comment/import only, Gemini returns [] and no types are extracted."""
         mock_model = MagicMock()
         mock_response = MagicMock()
-        mock_response.text = '[]'
+        mock_response.text = "[]"
         mock_model.generate_content.return_value = mock_response
 
         comment_diff = """
@@ -85,7 +90,7 @@ class TestGetAffectedSymbolsFromDiff:
         """When Gemini returns unparseable text, returns None for fallback."""
         mock_model = MagicMock()
         mock_response = MagicMock()
-        mock_response.text = 'The affected types are ModifiedClass'
+        mock_response.text = "The affected types are ModifiedClass"
         mock_model.generate_content.return_value = mock_response
 
         result = get_affected_symbols_from_diff(

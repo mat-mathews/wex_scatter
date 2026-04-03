@@ -1,4 +1,5 @@
 """Tests for Initiative 4: CSE Impact Analysis & AI Enrichment."""
+
 import csv
 import json
 import sys
@@ -31,7 +32,10 @@ from scatter.ai.tasks.parse_work_request import (
 )
 from scatter.ai.tasks.risk_assess import assess_risk, assess_risk_with_model
 from scatter.ai.tasks.coupling_narrative import explain_coupling, explain_coupling_with_model
-from scatter.ai.tasks.impact_narrative import generate_impact_narrative, generate_narrative_with_model
+from scatter.ai.tasks.impact_narrative import (
+    generate_impact_narrative,
+    generate_narrative_with_model,
+)
 from scatter.ai.tasks.complexity_estimate import estimate_complexity, estimate_complexity_with_model
 from scatter.analyzers.impact_analyzer import (
     run_impact_analysis,
@@ -46,6 +50,7 @@ from scatter.core.tree import build_adjacency
 # =============================================================================
 # Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def sample_target():
@@ -132,6 +137,7 @@ def _make_mock_provider(response_text):
 # Phase 4.1: Data Models & Constants
 # =============================================================================
 
+
 class TestDataModels:
     def test_analysis_target_construction(self):
         t = AnalysisTarget(target_type="project", name="MyProject")
@@ -187,10 +193,12 @@ class TestDataModels:
 # Phase 4.1: CLI Argument Parsing
 # =============================================================================
 
+
 class TestCLIArgs:
     def test_sow_in_mutually_exclusive_group(self, monkeypatch):
         """--sow and --branch-name should be mutually exclusive."""
         from scatter.__main__ import main
+
         monkeypatch.setattr(sys, "argv", ["scatter", "--sow", "test", "--branch-name", "feature/x"])
         with pytest.raises(SystemExit):
             main()
@@ -198,13 +206,17 @@ class TestCLIArgs:
     def test_sow_file_in_mutually_exclusive_group(self, monkeypatch):
         """--sow-file and --target-project should be mutually exclusive."""
         from scatter.__main__ import main
-        monkeypatch.setattr(sys, "argv", ["scatter", "--sow-file", "test.txt", "--target-project", "a.csproj"])
+
+        monkeypatch.setattr(
+            sys, "argv", ["scatter", "--sow-file", "test.txt", "--target-project", "a.csproj"]
+        )
         with pytest.raises(SystemExit):
             main()
 
     def test_sow_requires_search_scope(self, monkeypatch):
         """--sow without --search-scope should error."""
         from scatter.__main__ import main
+
         monkeypatch.setattr(sys, "argv", ["scatter", "--sow", "test work request"])
         with pytest.raises(SystemExit):
             main()
@@ -213,6 +225,7 @@ class TestCLIArgs:
 # =============================================================================
 # Phase 4.1: AITaskType Extensions
 # =============================================================================
+
 
 class TestAITaskTypes:
     def test_new_task_types_exist(self):
@@ -224,6 +237,7 @@ class TestAITaskTypes:
 
     def test_gemini_supports_new_types(self):
         from scatter.ai.providers.gemini_provider import GeminiProvider
+
         # Can't instantiate without API key, but we can check the method
         # by calling it on a mock instance
         provider = MagicMock(spec=GeminiProvider)
@@ -239,12 +253,20 @@ class TestAITaskTypes:
 # Phase 4.2: Work Request Parsing
 # =============================================================================
 
+
 class TestWorkRequestParsing:
     def test_parse_valid_json(self):
-        response = json.dumps([
-            {"type": "project", "name": "GalaxyWorks.Data", "class_name": "PortalDataService", "confidence": 0.9},
-            {"type": "sproc", "name": "dbo.sp_InsertPortalConfiguration", "confidence": 1.0},
-        ])
+        response = json.dumps(
+            [
+                {
+                    "type": "project",
+                    "name": "GalaxyWorks.Data",
+                    "class_name": "PortalDataService",
+                    "confidence": 0.9,
+                },
+                {"type": "sproc", "name": "dbo.sp_InsertPortalConfiguration", "confidence": 1.0},
+            ]
+        )
         model = _make_mock_model(response)
         result = parse_work_request_with_model(model, "Modify PortalDataService")
         assert result is not None
@@ -311,9 +333,7 @@ class TestWorkRequestParsing:
         csproj = proj_dir / "GalaxyWorks.Data.csproj"
         csproj.write_text("<Project></Project>")
 
-        response = json.dumps([
-            {"type": "project", "name": "GalaxyWorks.Data", "confidence": 1.0}
-        ])
+        response = json.dumps([{"type": "project", "name": "GalaxyWorks.Data", "confidence": 1.0}])
         provider = _make_mock_provider(response)
 
         targets = parse_work_request("Modify GalaxyWorks.Data", provider, tmp_path)
@@ -325,6 +345,7 @@ class TestWorkRequestParsing:
 # =============================================================================
 # Phase 4.3: Transitive Impact Tracing
 # =============================================================================
+
 
 class TestTransitiveTracing:
     def test_depth_zero_returns_direct_only(self):
@@ -352,7 +373,7 @@ class TestTransitiveTracing:
             {"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []},
         ]
         # Make consumer path "exist" for the is_file() check
-        with patch.object(Path, 'is_file', return_value=True):
+        with patch.object(Path, "is_file", return_value=True):
             result = trace_transitive_impact(direct, Path("/search"), max_depth=1)
 
         assert len(result) == 2
@@ -368,13 +389,23 @@ class TestTransitiveTracing:
             {"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []},
         ]
         # Even with max_depth > 0, if find_consumers returns the same path, it's skipped
-        with patch("scatter.analyzers.impact_analyzer.find_consumers") as mock_fc, \
-             patch("scatter.analyzers.impact_analyzer.derive_namespace", return_value="A"), \
-             patch.object(Path, 'is_file', return_value=True):
+        with (
+            patch("scatter.analyzers.impact_analyzer.find_consumers") as mock_fc,
+            patch("scatter.analyzers.impact_analyzer.derive_namespace", return_value="A"),
+            patch.object(Path, "is_file", return_value=True),
+        ):
             # Return A again as a consumer of A (cycle)
             mock_fc.return_value = (
-                [{"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []}],
-                FilterPipeline(search_scope="/search", total_projects_scanned=0, total_files_scanned=0),
+                [
+                    {
+                        "consumer_path": Path("/a/A.csproj"),
+                        "consumer_name": "A",
+                        "relevant_files": [],
+                    }
+                ],
+                FilterPipeline(
+                    search_scope="/search", total_projects_scanned=0, total_files_scanned=0
+                ),
             )
             result = trace_transitive_impact(direct, Path("/search"), max_depth=2)
 
@@ -382,30 +413,54 @@ class TestTransitiveTracing:
 
     def test_confidence_values_by_depth(self):
         """Confidence decays correctly at each depth."""
-        with patch("scatter.analyzers.impact_analyzer.find_consumers") as mock_fc, \
-             patch("scatter.analyzers.impact_analyzer.derive_namespace", return_value="NS"), \
-             patch.object(Path, 'is_file', return_value=True):
-
+        with (
+            patch("scatter.analyzers.impact_analyzer.find_consumers") as mock_fc,
+            patch("scatter.analyzers.impact_analyzer.derive_namespace", return_value="NS"),
+            patch.object(Path, "is_file", return_value=True),
+        ):
             # Depth 0 → A, Depth 1 → B, Depth 2 → C
-            _dummy_pipeline = FilterPipeline(search_scope="/search", total_projects_scanned=0, total_files_scanned=0)
+            _dummy_pipeline = FilterPipeline(
+                search_scope="/search", total_projects_scanned=0, total_files_scanned=0
+            )
             call_count = [0]
+
             def side_effect(*args, **kwargs):
                 call_count[0] += 1
                 if call_count[0] == 1:
-                    return ([{"consumer_path": Path("/b/B.csproj"), "consumer_name": "B", "relevant_files": []}], _dummy_pipeline)
+                    return (
+                        [
+                            {
+                                "consumer_path": Path("/b/B.csproj"),
+                                "consumer_name": "B",
+                                "relevant_files": [],
+                            }
+                        ],
+                        _dummy_pipeline,
+                    )
                 elif call_count[0] == 2:
-                    return ([{"consumer_path": Path("/c/C.csproj"), "consumer_name": "C", "relevant_files": []}], _dummy_pipeline)
+                    return (
+                        [
+                            {
+                                "consumer_path": Path("/c/C.csproj"),
+                                "consumer_name": "C",
+                                "relevant_files": [],
+                            }
+                        ],
+                        _dummy_pipeline,
+                    )
                 return ([], _dummy_pipeline)
 
             mock_fc.side_effect = side_effect
 
-            direct = [{"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []}]
+            direct = [
+                {"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []}
+            ]
             result = trace_transitive_impact(direct, Path("/search"), max_depth=2)
 
         assert len(result) == 3
-        assert result[0].confidence == CONFIDENCE_HIGH    # depth 0
-        assert result[1].confidence == CONFIDENCE_MEDIUM   # depth 1
-        assert result[2].confidence == CONFIDENCE_LOW      # depth 2
+        assert result[0].confidence == CONFIDENCE_HIGH  # depth 0
+        assert result[1].confidence == CONFIDENCE_MEDIUM  # depth 1
+        assert result[2].confidence == CONFIDENCE_LOW  # depth 2
 
     def test_empty_direct_consumers(self):
         result = trace_transitive_impact([], Path("/search"), max_depth=2)
@@ -416,14 +471,17 @@ class TestTransitiveTracing:
 # Phase 4.4: Risk Assessment
 # =============================================================================
 
+
 class TestRiskAssessment:
     def test_valid_risk_response(self):
-        response = json.dumps({
-            "rating": "Medium",
-            "justification": "Moderate blast radius",
-            "concerns": ["Breaking changes"],
-            "mitigations": ["Add integration tests"],
-        })
+        response = json.dumps(
+            {
+                "rating": "Medium",
+                "justification": "Moderate blast radius",
+                "concerns": ["Breaking changes"],
+                "mitigations": ["Add integration tests"],
+            }
+        )
         model = _make_mock_model(response)
         target = AnalysisTarget(target_type="project", name="TestProj")
         consumers = [EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A")]
@@ -462,26 +520,33 @@ class TestRiskAssessment:
 # Phase 4.5: Coupling Narrative & Impact Narrative
 # =============================================================================
 
+
 class TestCouplingNarrative:
     def test_valid_coupling_response(self):
-        response = json.dumps({
-            "narrative": "ConsumerA uses PortalDataService for data access.",
-            "vectors": ["Direct class instantiation", "Method calls"],
-        })
+        response = json.dumps(
+            {
+                "narrative": "ConsumerA uses PortalDataService for data access.",
+                "vectors": ["Direct class instantiation", "Method calls"],
+            }
+        )
         model = _make_mock_model(response)
         target = AnalysisTarget(target_type="project", name="GalaxyWorks.Data")
         consumer = EnrichedConsumer(
-            consumer_path=Path("/a.csproj"), consumer_name="A",
+            consumer_path=Path("/a.csproj"),
+            consumer_name="A",
             relevant_files=[],
         )
-        result = explain_coupling_with_model(model, target, consumer, ["// File: Test.cs\nclass Test {}"])
+        result = explain_coupling_with_model(
+            model, target, consumer, ["// File: Test.cs\nclass Test {}"]
+        )
         assert result["narrative"] is not None
         assert "vectors" in result
 
     def test_no_relevant_files(self):
         target = AnalysisTarget(target_type="project", name="Test")
         consumer = EnrichedConsumer(
-            consumer_path=Path("/a.csproj"), consumer_name="A",
+            consumer_path=Path("/a.csproj"),
+            consumer_name="A",
             relevant_files=[],
         )
         provider = _make_mock_provider("{}")
@@ -499,12 +564,17 @@ class TestImpactNarrative:
     def test_valid_narrative_response(self):
         response = json.dumps({"narrative": "This change has moderate impact."})
         model = _make_mock_model(response)
-        report = ImpactReport(sow_text="test", targets=[
-            TargetImpact(
-                target=AnalysisTarget(target_type="project", name="X"),
-                consumers=[EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A")],
-            )
-        ])
+        report = ImpactReport(
+            sow_text="test",
+            targets=[
+                TargetImpact(
+                    target=AnalysisTarget(target_type="project", name="X"),
+                    consumers=[
+                        EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A")
+                    ],
+                )
+            ],
+        )
         result = generate_narrative_with_model(model, report)
         assert result["narrative"] == "This change has moderate impact."
 
@@ -522,9 +592,10 @@ class TestImpactNarrative:
     def test_ai_failure_returns_none(self):
         model = MagicMock()
         model.generate_content.side_effect = Exception("fail")
-        report = ImpactReport(sow_text="test", targets=[
-            TargetImpact(target=AnalysisTarget(target_type="project", name="X"))
-        ])
+        report = ImpactReport(
+            sow_text="test",
+            targets=[TargetImpact(target=AnalysisTarget(target_type="project", name="X"))],
+        )
         result = generate_narrative_with_model(model, report)
         assert result is None
 
@@ -533,21 +604,29 @@ class TestImpactNarrative:
 # Phase 4.6: Complexity Estimate
 # =============================================================================
 
+
 class TestComplexityEstimate:
     def test_valid_complexity_response(self):
-        response = json.dumps({
-            "rating": "Medium",
-            "justification": "Moderate scope",
-            "effort_estimate": "3-5 developer-days",
-            "factors": ["Multiple consumers", "Pipeline dependencies"],
-        })
+        response = json.dumps(
+            {
+                "rating": "Medium",
+                "justification": "Moderate scope",
+                "effort_estimate": "3-5 developer-days",
+                "factors": ["Multiple consumers", "Pipeline dependencies"],
+            }
+        )
         model = _make_mock_model(response)
-        report = ImpactReport(sow_text="test", targets=[
-            TargetImpact(
-                target=AnalysisTarget(target_type="project", name="X"),
-                consumers=[EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A")],
-            )
-        ])
+        report = ImpactReport(
+            sow_text="test",
+            targets=[
+                TargetImpact(
+                    target=AnalysisTarget(target_type="project", name="X"),
+                    consumers=[
+                        EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A")
+                    ],
+                )
+            ],
+        )
         result = estimate_complexity_with_model(model, report)
         assert result["rating"] == "Medium"
         assert result["effort_estimate"] == "3-5 developer-days"
@@ -567,6 +646,7 @@ class TestComplexityEstimate:
 # =============================================================================
 # Phase 4.7: Reporter Extensions
 # =============================================================================
+
 
 class TestConsoleReporter:
     def test_print_impact_report(self, sample_report, capsys):
@@ -623,7 +703,7 @@ class TestCsvReporter:
         output = tmp_path / "report.csv"
         write_impact_csv_report(sample_report, output)
         assert output.exists()
-        with open(output, newline='') as f:
+        with open(output, newline="") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
         assert len(rows) == 2  # 2 consumers
@@ -632,17 +712,28 @@ class TestCsvReporter:
         assert rows[1]["Consumer"] == "ConsumerB"
         assert rows[1]["Depth"] == "1"
         # Check expected columns
-        expected_cols = {'Target', 'TargetType', 'Consumer', 'ConsumerPath',
-                         'Depth', 'PropagationParent', 'Confidence', 'ConfidenceLabel',
-                         'RiskRating', 'RiskJustification', 'Pipeline',
-                         'Solutions', 'CouplingVectors'}
+        expected_cols = {
+            "Target",
+            "TargetType",
+            "Consumer",
+            "ConsumerPath",
+            "Depth",
+            "PropagationParent",
+            "Confidence",
+            "ConfidenceLabel",
+            "RiskRating",
+            "RiskJustification",
+            "Pipeline",
+            "Solutions",
+            "CouplingVectors",
+        }
         assert set(reader.fieldnames) == expected_cols
 
     def test_write_empty_report_csv(self, tmp_path):
         output = tmp_path / "empty.csv"
         report = ImpactReport(sow_text="empty")
         write_impact_csv_report(report, output)
-        with open(output, newline='') as f:
+        with open(output, newline="") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
         assert len(rows) == 0
@@ -651,6 +742,7 @@ class TestCsvReporter:
 # =============================================================================
 # Phase 4.8: End-to-End Integration (all AI mocked)
 # =============================================================================
+
 
 class TestEndToEnd:
     @patch("scatter.analyzers.impact_analyzer.find_consumers")
@@ -670,8 +762,16 @@ class TestEndToEnd:
 
         mock_ns.return_value = "GalaxyWorks.Data"
         mock_fc.return_value = (
-            [{"consumer_path": consumer_csproj, "consumer_name": "ConsumerA", "relevant_files": []}],
-            FilterPipeline(search_scope=str(tmp_path), total_projects_scanned=0, total_files_scanned=0),
+            [
+                {
+                    "consumer_path": consumer_csproj,
+                    "consumer_name": "ConsumerA",
+                    "relevant_files": [],
+                }
+            ],
+            FilterPipeline(
+                search_scope=str(tmp_path), total_projects_scanned=0, total_files_scanned=0
+            ),
         )
 
         # Mock AI provider with responses for each task
@@ -679,32 +779,48 @@ class TestEndToEnd:
 
         # parse_work_request call
         parse_response = MagicMock()
-        parse_response.text = json.dumps([
-            {"type": "project", "name": "GalaxyWorks.Data", "class_name": "PortalDataService", "confidence": 1.0}
-        ])
+        parse_response.text = json.dumps(
+            [
+                {
+                    "type": "project",
+                    "name": "GalaxyWorks.Data",
+                    "class_name": "PortalDataService",
+                    "confidence": 1.0,
+                }
+            ]
+        )
 
         # risk_assess call
         risk_response = MagicMock()
-        risk_response.text = json.dumps({
-            "rating": "Medium", "justification": "Moderate blast radius",
-            "concerns": [], "mitigations": [],
-        })
+        risk_response.text = json.dumps(
+            {
+                "rating": "Medium",
+                "justification": "Moderate blast radius",
+                "concerns": [],
+                "mitigations": [],
+            }
+        )
 
         # complexity call
         complexity_response = MagicMock()
-        complexity_response.text = json.dumps({
-            "rating": "Low", "justification": "Simple change",
-            "effort_estimate": "1-2 developer-days", "factors": [],
-        })
+        complexity_response.text = json.dumps(
+            {
+                "rating": "Low",
+                "justification": "Simple change",
+                "effort_estimate": "1-2 developer-days",
+                "factors": [],
+            }
+        )
 
         # narrative call
         narrative_response = MagicMock()
-        narrative_response.text = json.dumps({
-            "narrative": "This is a low-impact change."
-        })
+        narrative_response.text = json.dumps({"narrative": "This is a low-impact change."})
 
         provider.model.generate_content.side_effect = [
-            parse_response, risk_response, complexity_response, narrative_response,
+            parse_response,
+            risk_response,
+            complexity_response,
+            narrative_response,
         ]
 
         report = run_impact_analysis(
@@ -744,6 +860,7 @@ class TestEndToEnd:
 # Quick Start Example Coverage Tests
 # =============================================================================
 
+
 class TestQuickStartTargetProjectExamples:
     """Tests covering every target-project Quick Start example in the README."""
 
@@ -766,8 +883,9 @@ class TestQuickStartTargetProjectExamples:
             disable_multiprocessing=True,
         )
         consumer_names = {c["consumer_name"] for c in consumers}
-        assert any("BatchProcessor" in name for name in consumer_names), \
+        assert any("BatchProcessor" in name for name in consumer_names), (
             f"Expected a BatchProcessor consumer, got {consumer_names}"
+        )
 
     def test_mydotnetapp_as_target(self):
         """README: --target-project MyDotNetApp → consumer includes MyDotNetApp.Consumer."""
@@ -784,8 +902,9 @@ class TestQuickStartTargetProjectExamples:
             disable_multiprocessing=True,
         )
         consumer_names = {c["consumer_name"] for c in consumers}
-        assert any("Consumer" in name for name in consumer_names), \
+        assert any("Consumer" in name for name in consumer_names), (
             f"Expected a Consumer project, got {consumer_names}"
+        )
 
     def test_exclude_project_zero_consumers(self):
         """README: --target-project MyDotNetApp2.Exclude → 0 consumers."""
@@ -801,7 +920,9 @@ class TestQuickStartTargetProjectExamples:
             method_name=None,
             disable_multiprocessing=True,
         )
-        assert len(consumers) == 0, f"Expected 0 consumers for exclude project, got {len(consumers)}"
+        assert len(consumers) == 0, (
+            f"Expected 0 consumers for exclude project, got {len(consumers)}"
+        )
 
 
 class TestQuickStartSprocExamples:
@@ -823,8 +944,9 @@ class TestQuickStartSprocExamples:
         found_classes = []
         for project_path, classes_dict in sproc_results.items():
             found_classes.extend(classes_dict.keys())
-        assert "PortalDataService" in found_classes, \
+        assert "PortalDataService" in found_classes, (
             f"Expected PortalDataService to reference sp_GetPortalConfigurationDetails, got {found_classes}"
+        )
 
     def test_sproc_with_class_filter(self):
         """README: --stored-procedure ... --class-name PortalDataService."""
@@ -851,8 +973,9 @@ class TestQuickStartSprocExamples:
                     method_name=None,
                     disable_multiprocessing=True,
                 )
-                assert len(consumers) > 0, \
+                assert len(consumers) > 0, (
                     "Should find consumers of PortalDataService via sproc pipeline"
+                )
                 break
         else:
             pytest.fail("PortalDataService not found in sproc results")
@@ -884,13 +1007,15 @@ class TestQuickStartOutputFormatExamples:
         # Build results as ConsumerResult objects
         all_results = []
         for c in consumers:
-            all_results.append(ConsumerResult(
-                target_project_name="GalaxyWorks.Data",
-                target_project_path=str(self.galaxy_csproj),
-                triggering_type="TargetProject",
-                consumer_project_name=c["consumer_name"],
-                consumer_project_path=str(c["consumer_path"]),
-            ))
+            all_results.append(
+                ConsumerResult(
+                    target_project_name="GalaxyWorks.Data",
+                    target_project_path=str(self.galaxy_csproj),
+                    triggering_type="TargetProject",
+                    consumer_project_name=c["consumer_name"],
+                    consumer_project_path=str(c["consumer_path"]),
+                )
+            )
 
         detailed = prepare_detailed_results(all_results)
         output_file = tmp_path / "results.json"
@@ -917,15 +1042,18 @@ class TestQuickStartOutputFormatExamples:
 
         all_results = []
         for c in consumers:
-            all_results.append(ConsumerResult(
-                target_project_name="GalaxyWorks.Data",
-                target_project_path=str(self.galaxy_csproj),
-                triggering_type="TargetProject",
-                consumer_project_name=c["consumer_name"],
-                consumer_project_path=str(c["consumer_path"]),
-            ))
+            all_results.append(
+                ConsumerResult(
+                    target_project_name="GalaxyWorks.Data",
+                    target_project_path=str(self.galaxy_csproj),
+                    triggering_type="TargetProject",
+                    consumer_project_name=c["consumer_name"],
+                    consumer_project_path=str(c["consumer_path"]),
+                )
+            )
 
         from scatter.reports.json_reporter import prepare_detailed_results as _prep
+
         output_file = tmp_path / "results.csv"
         write_csv_report(_prep(all_results), output_file)
         assert output_file.exists()
@@ -963,7 +1091,9 @@ class TestQuickStartAIExamples:
 
     def test_sow_file_reads_from_disk(self, tmp_path):
         """--sow-file content flows through to impact analysis report."""
-        sow_content = "Modify PortalDataService to add new parameter to sp_InsertPortalConfiguration"
+        sow_content = (
+            "Modify PortalDataService to add new parameter to sp_InsertPortalConfiguration"
+        )
         sow_file = tmp_path / "sow.txt"
         sow_file.write_text(sow_content, encoding="utf-8")
 
@@ -972,9 +1102,9 @@ class TestQuickStartAIExamples:
 
         provider = MagicMock()
         parse_response = MagicMock()
-        parse_response.text = json.dumps([
-            {"type": "project", "name": "GalaxyWorks.Data", "confidence": 1.0}
-        ])
+        parse_response.text = json.dumps(
+            [{"type": "project", "name": "GalaxyWorks.Data", "confidence": 1.0}]
+        )
         provider.model.generate_content.return_value = parse_response
 
         report = run_impact_analysis(
@@ -1005,8 +1135,10 @@ class TestBlastRadiusTreeView:
     def test_enriched_consumer_with_parent(self):
         """propagation_parent can be set to a consumer name."""
         c = EnrichedConsumer(
-            consumer_path=Path("/b.csproj"), consumer_name="B",
-            depth=1, propagation_parent="A",
+            consumer_path=Path("/b.csproj"),
+            consumer_name="B",
+            depth=1,
+            propagation_parent="A",
         )
         assert c.propagation_parent == "A"
 
@@ -1024,7 +1156,7 @@ class TestBlastRadiusTreeView:
         direct = [
             {"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []},
         ]
-        with patch.object(Path, 'is_file', return_value=True):
+        with patch.object(Path, "is_file", return_value=True):
             result = trace_transitive_impact(direct, Path("/search"), max_depth=1)
 
         assert result[1].consumer_name == "B"
@@ -1051,7 +1183,7 @@ class TestBlastRadiusTreeView:
         direct = [
             {"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []},
         ]
-        with patch.object(Path, 'is_file', return_value=True):
+        with patch.object(Path, "is_file", return_value=True):
             result = trace_transitive_impact(direct, Path("/search"), max_depth=2)
 
         assert len(result) == 1
@@ -1063,7 +1195,9 @@ class TestBlastRadiusTreeView:
         """When two direct consumers discover the same transitive, first discoverer is parent."""
         mock_ns.return_value = "NS"
         _dummy_pipeline = FilterPipeline(
-            search_scope="/search", total_projects_scanned=0, total_files_scanned=0,
+            search_scope="/search",
+            total_projects_scanned=0,
+            total_files_scanned=0,
         )
         call_count = [0]
 
@@ -1071,7 +1205,13 @@ class TestBlastRadiusTreeView:
             call_count[0] += 1
             if call_count[0] <= 2:  # Both A and B discover C
                 return (
-                    [{"consumer_path": Path("/c/C.csproj"), "consumer_name": "C", "relevant_files": []}],
+                    [
+                        {
+                            "consumer_path": Path("/c/C.csproj"),
+                            "consumer_name": "C",
+                            "relevant_files": [],
+                        }
+                    ],
                     _dummy_pipeline,
                 )
             return ([], _dummy_pipeline)
@@ -1082,7 +1222,7 @@ class TestBlastRadiusTreeView:
             {"consumer_path": Path("/a/A.csproj"), "consumer_name": "A", "relevant_files": []},
             {"consumer_path": Path("/b/B.csproj"), "consumer_name": "B", "relevant_files": []},
         ]
-        with patch.object(Path, 'is_file', return_value=True):
+        with patch.object(Path, "is_file", return_value=True):
             result = trace_transitive_impact(direct, Path("/search"), max_depth=1)
 
         assert len(result) == 3
@@ -1093,12 +1233,17 @@ class TestBlastRadiusTreeView:
         """If propagation_parent references removed consumer, renders at root level as 'direct'."""
         consumers = [
             EnrichedConsumer(
-                consumer_path=Path("/a.csproj"), consumer_name="A", depth=0,
+                consumer_path=Path("/a.csproj"),
+                consumer_name="A",
+                depth=0,
                 confidence_label="HIGH",
             ),
             EnrichedConsumer(
-                consumer_path=Path("/b.csproj"), consumer_name="B", depth=1,
-                confidence_label="MEDIUM", propagation_parent="Removed",
+                consumer_path=Path("/b.csproj"),
+                consumer_name="B",
+                depth=1,
+                confidence_label="MEDIUM",
+                propagation_parent="Removed",
             ),
         ]
         lines = render_tree(consumers)
@@ -1116,7 +1261,12 @@ class TestBlastRadiusTreeView:
         """build_adjacency re-parents orphans whose parent isn't in the item list."""
         consumers = [
             EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0),
-            EnrichedConsumer(consumer_path=Path("/b.csproj"), consumer_name="B", depth=1, propagation_parent="Removed"),
+            EnrichedConsumer(
+                consumer_path=Path("/b.csproj"),
+                consumer_name="B",
+                depth=1,
+                propagation_parent="Removed",
+            ),
         ]
         tree = build_adjacency(
             consumers,
@@ -1132,9 +1282,27 @@ class TestBlastRadiusTreeView:
     def test_tree_output_single_target_direct_only(self):
         """3 direct consumers render with box-drawing chars."""
         consumers = [
-            EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0, confidence=CONFIDENCE_HIGH, confidence_label="HIGH"),
-            EnrichedConsumer(consumer_path=Path("/b.csproj"), consumer_name="B", depth=0, confidence=CONFIDENCE_MEDIUM, confidence_label="MEDIUM"),
-            EnrichedConsumer(consumer_path=Path("/c.csproj"), consumer_name="C", depth=0, confidence=CONFIDENCE_LOW, confidence_label="LOW"),
+            EnrichedConsumer(
+                consumer_path=Path("/a.csproj"),
+                consumer_name="A",
+                depth=0,
+                confidence=CONFIDENCE_HIGH,
+                confidence_label="HIGH",
+            ),
+            EnrichedConsumer(
+                consumer_path=Path("/b.csproj"),
+                consumer_name="B",
+                depth=0,
+                confidence=CONFIDENCE_MEDIUM,
+                confidence_label="MEDIUM",
+            ),
+            EnrichedConsumer(
+                consumer_path=Path("/c.csproj"),
+                consumer_name="C",
+                depth=0,
+                confidence=CONFIDENCE_LOW,
+                confidence_label="LOW",
+            ),
         ]
         lines = render_tree(consumers)
         joined = "\n".join(lines)
@@ -1147,8 +1315,21 @@ class TestBlastRadiusTreeView:
     def test_tree_output_mixed_depths(self):
         """1 direct + 1 transitive renders nested tree with 'via' label."""
         consumers = [
-            EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0, confidence=CONFIDENCE_HIGH, confidence_label="HIGH"),
-            EnrichedConsumer(consumer_path=Path("/b.csproj"), consumer_name="B", depth=1, confidence=CONFIDENCE_MEDIUM, confidence_label="MEDIUM", propagation_parent="A"),
+            EnrichedConsumer(
+                consumer_path=Path("/a.csproj"),
+                consumer_name="A",
+                depth=0,
+                confidence=CONFIDENCE_HIGH,
+                confidence_label="HIGH",
+            ),
+            EnrichedConsumer(
+                consumer_path=Path("/b.csproj"),
+                consumer_name="B",
+                depth=1,
+                confidence=CONFIDENCE_MEDIUM,
+                confidence_label="MEDIUM",
+                propagation_parent="A",
+            ),
         ]
         lines = render_tree(consumers)
         joined = "\n".join(lines)
@@ -1163,9 +1344,29 @@ class TestBlastRadiusTreeView:
     def test_tree_output_deep_nesting(self):
         """Depth 0->1->2 chain renders 3-level tree."""
         consumers = [
-            EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0, confidence=CONFIDENCE_HIGH, confidence_label="HIGH"),
-            EnrichedConsumer(consumer_path=Path("/b.csproj"), consumer_name="B", depth=1, confidence=CONFIDENCE_MEDIUM, confidence_label="MEDIUM", propagation_parent="A"),
-            EnrichedConsumer(consumer_path=Path("/c.csproj"), consumer_name="C", depth=2, confidence=CONFIDENCE_LOW, confidence_label="LOW", propagation_parent="B"),
+            EnrichedConsumer(
+                consumer_path=Path("/a.csproj"),
+                consumer_name="A",
+                depth=0,
+                confidence=CONFIDENCE_HIGH,
+                confidence_label="HIGH",
+            ),
+            EnrichedConsumer(
+                consumer_path=Path("/b.csproj"),
+                consumer_name="B",
+                depth=1,
+                confidence=CONFIDENCE_MEDIUM,
+                confidence_label="MEDIUM",
+                propagation_parent="A",
+            ),
+            EnrichedConsumer(
+                consumer_path=Path("/c.csproj"),
+                consumer_name="C",
+                depth=2,
+                confidence=CONFIDENCE_LOW,
+                confidence_label="LOW",
+                propagation_parent="B",
+            ),
         ]
         lines = render_tree(consumers)
         joined = "\n".join(lines)
@@ -1183,9 +1384,27 @@ class TestBlastRadiusTreeView:
     def test_tree_output_sorts_by_confidence(self):
         """HIGH consumers render before LOW within same parent."""
         consumers = [
-            EnrichedConsumer(consumer_path=Path("/low.csproj"), consumer_name="Low", depth=0, confidence=CONFIDENCE_LOW, confidence_label="LOW"),
-            EnrichedConsumer(consumer_path=Path("/high.csproj"), consumer_name="High", depth=0, confidence=CONFIDENCE_HIGH, confidence_label="HIGH"),
-            EnrichedConsumer(consumer_path=Path("/med.csproj"), consumer_name="Med", depth=0, confidence=CONFIDENCE_MEDIUM, confidence_label="MEDIUM"),
+            EnrichedConsumer(
+                consumer_path=Path("/low.csproj"),
+                consumer_name="Low",
+                depth=0,
+                confidence=CONFIDENCE_LOW,
+                confidence_label="LOW",
+            ),
+            EnrichedConsumer(
+                consumer_path=Path("/high.csproj"),
+                consumer_name="High",
+                depth=0,
+                confidence=CONFIDENCE_HIGH,
+                confidence_label="HIGH",
+            ),
+            EnrichedConsumer(
+                consumer_path=Path("/med.csproj"),
+                consumer_name="Med",
+                depth=0,
+                confidence=CONFIDENCE_MEDIUM,
+                confidence_label="MEDIUM",
+            ),
         ]
         lines = render_tree(consumers)
         joined = "\n".join(lines)
@@ -1195,7 +1414,9 @@ class TestBlastRadiusTreeView:
         """Tree output should not repeat the target name (header already shows it)."""
         target = AnalysisTarget(target_type="project", name="MyTarget")
         consumer = EnrichedConsumer(
-            consumer_path=Path("/a.csproj"), consumer_name="A", depth=0,
+            consumer_path=Path("/a.csproj"),
+            consumer_name="A",
+            depth=0,
             confidence_label="HIGH",
         )
         ti = TargetImpact(target=target, consumers=[consumer], total_direct=1)
@@ -1223,8 +1444,16 @@ class TestBlastRadiusTreeView:
         """Nested children structure matches BFS chain."""
         target = AnalysisTarget(target_type="project", name="X")
         consumers = [
-            EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0, confidence_label="HIGH"),
-            EnrichedConsumer(consumer_path=Path("/b.csproj"), consumer_name="B", depth=1, confidence_label="MEDIUM", propagation_parent="A"),
+            EnrichedConsumer(
+                consumer_path=Path("/a.csproj"), consumer_name="A", depth=0, confidence_label="HIGH"
+            ),
+            EnrichedConsumer(
+                consumer_path=Path("/b.csproj"),
+                consumer_name="B",
+                depth=1,
+                confidence_label="MEDIUM",
+                propagation_parent="A",
+            ),
         ]
         ti = TargetImpact(target=target, consumers=consumers, total_direct=1, total_transitive=1)
         report = ImpactReport(sow_text="test", targets=[ti])
@@ -1255,8 +1484,18 @@ class TestBlastRadiusTreeView:
         """JSON propagation_tree sorts children HIGH before LOW, matching console."""
         target = AnalysisTarget(target_type="project", name="X")
         consumers = [
-            EnrichedConsumer(consumer_path=Path("/low.csproj"), consumer_name="Low", depth=0, confidence_label="LOW"),
-            EnrichedConsumer(consumer_path=Path("/high.csproj"), consumer_name="High", depth=0, confidence_label="HIGH"),
+            EnrichedConsumer(
+                consumer_path=Path("/low.csproj"),
+                consumer_name="Low",
+                depth=0,
+                confidence_label="LOW",
+            ),
+            EnrichedConsumer(
+                consumer_path=Path("/high.csproj"),
+                consumer_name="High",
+                depth=0,
+                confidence_label="HIGH",
+            ),
         ]
         ti = TargetImpact(target=target, consumers=consumers, total_direct=2)
         report = ImpactReport(sow_text="test", targets=[ti])
@@ -1279,25 +1518,27 @@ class TestBlastRadiusTreeView:
 
         output = tmp_path / "report.csv"
         write_impact_csv_report(report, output)
-        with open(output, newline='') as f:
+        with open(output, newline="") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
-        assert 'PropagationParent' in reader.fieldnames
+        assert "PropagationParent" in reader.fieldnames
 
     def test_csv_propagation_parent_values(self, tmp_path):
         """Correct parent names in CSV rows."""
         target = AnalysisTarget(target_type="project", name="X")
         consumers = [
             EnrichedConsumer(consumer_path=Path("/a.csproj"), consumer_name="A", depth=0),
-            EnrichedConsumer(consumer_path=Path("/b.csproj"), consumer_name="B", depth=1, propagation_parent="A"),
+            EnrichedConsumer(
+                consumer_path=Path("/b.csproj"), consumer_name="B", depth=1, propagation_parent="A"
+            ),
         ]
         ti = TargetImpact(target=target, consumers=consumers, total_direct=1, total_transitive=1)
         report = ImpactReport(sow_text="test", targets=[ti])
 
         output = tmp_path / "report.csv"
         write_impact_csv_report(report, output)
-        with open(output, newline='') as f:
+        with open(output, newline="") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
-        assert rows[0]['PropagationParent'] == ''
-        assert rows[1]['PropagationParent'] == 'A'
+        assert rows[0]["PropagationParent"] == ""
+        assert rows[1]["PropagationParent"] == "A"

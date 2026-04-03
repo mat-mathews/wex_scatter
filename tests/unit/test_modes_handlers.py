@@ -12,6 +12,7 @@ import pytest
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _fake_args(**overrides):
     defaults = dict(
         branch_name=None,
@@ -101,7 +102,6 @@ _GRAPH_PATCHES = {
 
 
 class TestRunGraphMode:
-
     def _run(self, args, ctx, **mock_overrides):
         """Run graph mode with all dependencies mocked."""
         from scatter.modes.graph import run_graph_mode
@@ -161,7 +161,9 @@ class TestRunGraphMode:
     def test_mermaid_output_to_stdout(self, make_mode_context):
         args = _fake_args(graph=True, output_format="mermaid", output_file=None)
         ctx = _graph_mode_ctx(make_mode_context)
-        with patch("scatter.reports.graph_reporter.generate_mermaid", return_value="graph TD") as mock_merm:
+        with patch(
+            "scatter.reports.graph_reporter.generate_mermaid", return_value="graph TD"
+        ) as mock_merm:
             self._run(args, ctx)
             mock_merm.assert_called_once()
 
@@ -184,7 +186,9 @@ class TestRunGraphMode:
     def test_markdown_to_stdout(self, make_mode_context):
         args = _fake_args(graph=True, output_format="markdown", output_file=None)
         ctx = _graph_mode_ctx(make_mode_context)
-        with patch("scatter.reports.markdown_reporter.build_graph_markdown", return_value="# Graph") as mock_md:
+        with patch(
+            "scatter.reports.markdown_reporter.build_graph_markdown", return_value="# Graph"
+        ) as mock_md:
             self._run(args, ctx)
             mock_md.assert_called_once()
 
@@ -195,7 +199,6 @@ class TestRunGraphMode:
 
 
 class TestRunImpactMode:
-
     def _make_impact_report(self):
         report = MagicMock()
         target = MagicMock()
@@ -207,7 +210,9 @@ class TestRunImpactMode:
     @patch("scatter.modes.impact.apply_impact_graph_enrichment")
     @patch("scatter.analyzers.impact_analyzer.run_impact_analysis")
     @patch("scatter.reports.console_reporter.print_impact_report")
-    def test_console_output(self, mock_print_report, mock_analysis, mock_enrich, mock_print, make_mode_context):
+    def test_console_output(
+        self, mock_print_report, mock_analysis, mock_enrich, mock_print, make_mode_context
+    ):
         from scatter.modes.impact import run_impact_mode
 
         report = self._make_impact_report()
@@ -224,7 +229,9 @@ class TestRunImpactMode:
     @patch("scatter.modes.impact.apply_impact_graph_enrichment")
     @patch("scatter.analyzers.impact_analyzer.run_impact_analysis")
     @patch("scatter.reports.json_reporter.write_impact_json_report")
-    def test_json_output(self, mock_json, mock_analysis, mock_enrich, mock_print, make_mode_context, tmp_path):
+    def test_json_output(
+        self, mock_json, mock_analysis, mock_enrich, mock_print, make_mode_context, tmp_path
+    ):
         from scatter.modes.impact import run_impact_mode
 
         report = self._make_impact_report()
@@ -242,7 +249,9 @@ class TestRunImpactMode:
     @patch("scatter.modes.impact.apply_impact_graph_enrichment")
     @patch("scatter.analyzers.impact_analyzer.run_impact_analysis")
     @patch("scatter.reports.csv_reporter.write_impact_csv_report")
-    def test_csv_output(self, mock_csv, mock_analysis, mock_enrich, mock_print, make_mode_context, tmp_path):
+    def test_csv_output(
+        self, mock_csv, mock_analysis, mock_enrich, mock_print, make_mode_context, tmp_path
+    ):
         from scatter.modes.impact import run_impact_mode
 
         report = self._make_impact_report()
@@ -269,14 +278,21 @@ class TestRunImpactMode:
         ctx = make_mode_context()
         ctx.config.max_depth = 3
 
-        with patch("scatter.reports.pipeline_reporter.extract_impact_pipeline_names", return_value=["pipe-1"]):
-            with patch("scatter.reports.pipeline_reporter.format_pipeline_output", return_value="pipe-1"):
+        with patch(
+            "scatter.reports.pipeline_reporter.extract_impact_pipeline_names",
+            return_value=["pipe-1"],
+        ):
+            with patch(
+                "scatter.reports.pipeline_reporter.format_pipeline_output", return_value="pipe-1"
+            ):
                 run_impact_mode(args, ctx, 0.0)
 
     @patch("scatter.modes.impact.print")
     @patch("scatter.modes.impact.apply_impact_graph_enrichment")
     @patch("scatter.analyzers.impact_analyzer.run_impact_analysis")
-    def test_sow_file_input(self, mock_analysis, mock_enrich, mock_print, make_mode_context, tmp_path):
+    def test_sow_file_input(
+        self, mock_analysis, mock_enrich, mock_print, make_mode_context, tmp_path
+    ):
         from scatter.modes.impact import run_impact_mode
 
         sow_file = tmp_path / "sow.txt"
@@ -318,14 +334,18 @@ class TestRunImpactMode:
         ctx = make_mode_context()
         ctx.config.max_depth = 3
 
-        with patch("scatter.reports.markdown_reporter.build_impact_markdown", return_value="# Impact") as mock_md:
+        with patch(
+            "scatter.reports.markdown_reporter.build_impact_markdown", return_value="# Impact"
+        ) as mock_md:
             run_impact_mode(args, ctx, 0.0)
             mock_md.assert_called_once()
 
     @patch("scatter.modes.impact.print")
     @patch("scatter.modes.impact.apply_impact_graph_enrichment")
     @patch("scatter.analyzers.impact_analyzer.run_impact_analysis")
-    def test_markdown_to_file(self, mock_analysis, mock_enrich, mock_print, make_mode_context, tmp_path):
+    def test_markdown_to_file(
+        self, mock_analysis, mock_enrich, mock_print, make_mode_context, tmp_path
+    ):
         from scatter.modes.impact import run_impact_mode
 
         report = self._make_impact_report()
@@ -343,7 +363,9 @@ class TestRunImpactMode:
     @patch("scatter.modes.impact.print")
     @patch("scatter.modes.impact.apply_impact_graph_enrichment")
     @patch("scatter.analyzers.impact_analyzer.run_impact_analysis")
-    def test_pipelines_to_file(self, mock_analysis, mock_enrich, mock_print, make_mode_context, tmp_path):
+    def test_pipelines_to_file(
+        self, mock_analysis, mock_enrich, mock_print, make_mode_context, tmp_path
+    ):
         from scatter.modes.impact import run_impact_mode
 
         report = self._make_impact_report()
@@ -354,7 +376,9 @@ class TestRunImpactMode:
         ctx = make_mode_context()
         ctx.config.max_depth = 3
 
-        with patch("scatter.reports.pipeline_reporter.extract_impact_pipeline_names", return_value=["p1"]):
+        with patch(
+            "scatter.reports.pipeline_reporter.extract_impact_pipeline_names", return_value=["p1"]
+        ):
             with patch("scatter.reports.pipeline_reporter.write_pipeline_report") as mock_write:
                 run_impact_mode(args, ctx, 0.0)
                 mock_write.assert_called_once()
@@ -366,10 +390,11 @@ class TestRunImpactMode:
 
 
 class TestRunTargetMode:
-
     @patch("scatter.modes.target.dispatch_legacy_output")
     @patch("scatter.modes.target.run_target_analysis")
-    def test_dispatches_csproj_file(self, mock_analysis, mock_dispatch, make_mode_context, tmp_path):
+    def test_dispatches_csproj_file(
+        self, mock_analysis, mock_dispatch, make_mode_context, tmp_path
+    ):
         from scatter.modes.target import run_target_mode
 
         csproj = tmp_path / "Foo.csproj"
@@ -386,7 +411,9 @@ class TestRunTargetMode:
 
     @patch("scatter.modes.target.dispatch_legacy_output")
     @patch("scatter.modes.target.run_target_analysis")
-    def test_resolves_directory_to_csproj(self, mock_analysis, mock_dispatch, make_mode_context, tmp_path):
+    def test_resolves_directory_to_csproj(
+        self, mock_analysis, mock_dispatch, make_mode_context, tmp_path
+    ):
         from scatter.modes.target import run_target_mode
 
         csproj = tmp_path / "Foo.csproj"
@@ -432,7 +459,6 @@ class TestRunTargetMode:
 
 
 class TestRunGitMode:
-
     @patch("scatter.modes.git.dispatch_legacy_output")
     @patch("scatter.modes.git.run_git_analysis")
     def test_dispatches_result(self, mock_analysis, mock_dispatch, make_mode_context):
@@ -476,7 +502,6 @@ class TestRunGitMode:
 
 
 class TestRunSprocMode:
-
     @patch("scatter.modes.sproc.dispatch_legacy_output")
     @patch("scatter.modes.sproc.run_sproc_analysis")
     def test_dispatches_result(self, mock_analysis, mock_dispatch, make_mode_context):
@@ -513,7 +538,6 @@ class TestRunSprocMode:
 
 
 class TestRunDumpIndexMode:
-
     def test_exits_without_search_scope(self):
         from scatter.modes.dump_index import run_dump_index_mode
 

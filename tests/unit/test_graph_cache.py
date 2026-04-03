@@ -1,4 +1,5 @@
 """Tests for Initiative 5 Phase 3: Graph persistence + cache invalidation."""
+
 import json
 import time
 from pathlib import Path
@@ -67,6 +68,7 @@ class TestSaveLoad:
         class BrokenGraph:
             node_count = 1
             edge_count = 0
+
             def to_dict(self):
                 raise RuntimeError("simulated serialization failure")
 
@@ -91,18 +93,26 @@ class TestSaveLoad:
     def test_load_wrong_version(self, tmp_path):
         """load_graph returns None if cache version doesn't match."""
         cache_path = tmp_path / "old.json"
-        cache_path.write_text(json.dumps({
-            "version": 999,
-            "graph": {},
-        }))
+        cache_path.write_text(
+            json.dumps(
+                {
+                    "version": 999,
+                    "graph": {},
+                }
+            )
+        )
         assert load_graph(cache_path) is None
 
     def test_load_missing_graph_key(self, tmp_path):
         """load_graph returns None if 'graph' key is missing."""
         cache_path = tmp_path / "bad.json"
-        cache_path.write_text(json.dumps({
-            "version": CACHE_VERSION,
-        }))
+        cache_path.write_text(
+            json.dumps(
+                {
+                    "version": CACHE_VERSION,
+                }
+            )
+        )
         assert load_graph(cache_path) is None
 
     def test_cache_metadata(self, tmp_path):
@@ -133,8 +143,10 @@ class TestCacheValidation:
         save_graph(graph, cache_path, tmp_path)
 
         # Mock git to return the same hash and no changed files
-        with patch("scatter.store.graph_cache._get_git_head", return_value="abc123"), \
-             patch("scatter.store.graph_cache._git_has_code_changes", return_value=False):
+        with (
+            patch("scatter.store.graph_cache._get_git_head", return_value="abc123"),
+            patch("scatter.store.graph_cache._git_has_code_changes", return_value=False),
+        ):
             assert is_cache_valid(cache_path, tmp_path, invalidation="git")
 
     def test_cache_invalid_git_code_changed(self, tmp_path):
@@ -229,8 +241,10 @@ class TestLoadAndValidate:
         cache_path = tmp_path / "graph.json"
         save_graph(graph, cache_path, tmp_path)
 
-        with patch("scatter.store.graph_cache._git_has_code_changes", return_value=False), \
-             patch("scatter.store.graph_cache._get_git_head", return_value="abc123"):
+        with (
+            patch("scatter.store.graph_cache._git_has_code_changes", return_value=False),
+            patch("scatter.store.graph_cache._get_git_head", return_value="abc123"),
+        ):
             # Need the cache to have a git_head for git validation
             pass
 
@@ -282,6 +296,7 @@ class TestDefaultCachePath:
 class TestCacheExists:
     def test_cache_exists_true(self, tmp_path):
         from scatter.store.graph_cache import cache_exists
+
         cache_dir = tmp_path / ".scatter"
         cache_dir.mkdir()
         (cache_dir / "graph_cache.json").write_text("{}")
@@ -289,10 +304,12 @@ class TestCacheExists:
 
     def test_cache_exists_false(self, tmp_path):
         from scatter.store.graph_cache import cache_exists
+
         assert cache_exists(tmp_path) is False
 
     def test_cache_exists_with_config_dir(self, tmp_path):
         from scatter.store.graph_cache import cache_exists
+
         custom_dir = tmp_path / "custom_cache"
         custom_dir.mkdir()
         (custom_dir / "graph_cache.json").write_text("{}")
@@ -361,8 +378,10 @@ class TestCLIArgParsing:
         test_args = ["scatter", "--graph", "--search-scope", "."]
         with mock_patch("sys.argv", test_args):
             from scatter.__main__ import main
+
             # We just need to verify arg parsing works — not full execution
             import scatter.__main__ as main_mod
+
             parser = argparse.ArgumentParser()
             mode_group = parser.add_mutually_exclusive_group(required=True)
             mode_group.add_argument("--graph", action="store_true", default=False)
@@ -374,6 +393,7 @@ class TestCLIArgParsing:
     def test_graph_mutually_exclusive_with_target(self):
         """--graph and --target-project cannot both be specified."""
         import argparse
+
         parser = argparse.ArgumentParser()
         mode_group = parser.add_mutually_exclusive_group(required=True)
         mode_group.add_argument("--graph", action="store_true", default=False)
@@ -385,6 +405,7 @@ class TestCLIArgParsing:
         """--rebuild-graph CLI flag flows through to config.graph.rebuild."""
         from scatter.cli_parser import _build_cli_overrides
         import argparse
+
         ns = argparse.Namespace(
             google_api_key=None,
             gemini_model=None,
@@ -406,7 +427,11 @@ class TestGraphModeIntegration:
     def test_graph_mode_builds_and_caches(self, tmp_path):
         """Integration: build graph from sample projects, verify cache created."""
         from scatter.analyzers.graph_builder import build_dependency_graph
-        from scatter.analyzers.coupling_analyzer import compute_all_metrics, detect_cycles, rank_by_coupling
+        from scatter.analyzers.coupling_analyzer import (
+            compute_all_metrics,
+            detect_cycles,
+            rank_by_coupling,
+        )
 
         graph = build_dependency_graph(
             REPO_ROOT,

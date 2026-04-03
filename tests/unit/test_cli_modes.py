@@ -1,17 +1,21 @@
 """Smoke tests for mode handlers in scatter.cli."""
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from scatter.cli import (
-    ModeContext, ModeResult, _apply_graph_enrichment,
-    run_git_analysis, run_target_analysis, run_sproc_analysis,
+    ModeContext,
+    ModeResult,
+    _apply_graph_enrichment,
+    run_git_analysis,
+    run_target_analysis,
+    run_sproc_analysis,
 )
 
 
 class TestModeResult:
-
     def test_dataclass_defaults(self):
         r = ModeResult()
         assert r.all_results == []
@@ -20,7 +24,6 @@ class TestModeResult:
 
 
 class TestRunTargetAnalysis:
-
     @patch("scatter.analyzers.consumer_analyzer.find_consumers")
     @patch("scatter.scanners.project_scanner.derive_namespace", return_value="GalaxyWorks.Data")
     def test_returns_mode_result(self, mock_ns, mock_fc, make_mode_context):
@@ -39,9 +42,9 @@ class TestRunTargetAnalysis:
     @patch("scatter.scanners.project_scanner.derive_namespace", return_value="Foo.Ns")
     def test_calls_v1_bridge_on_consumers(self, mock_ns, mock_fc, mock_bridge, make_mode_context):
         consumer = {
-            'consumer_name': 'Bar',
-            'consumer_path': Path('/tmp/scope/Bar/Bar.csproj'),
-            'relevant_files': [],
+            "consumer_name": "Bar",
+            "consumer_path": Path("/tmp/scope/Bar/Bar.csproj"),
+            "relevant_files": [],
         }
         mock_fc.return_value = ([consumer], MagicMock())
 
@@ -52,7 +55,7 @@ class TestRunTargetAnalysis:
 
         mock_bridge.assert_called_once()
         call_kwargs = mock_bridge.call_args
-        assert call_kwargs[1]['target_project_name'] == 'Foo'
+        assert call_kwargs[1]["target_project_name"] == "Foo"
 
     @patch("scatter.analyzers.consumer_analyzer.find_consumers")
     @patch("scatter.scanners.project_scanner.derive_namespace", return_value="Foo.Ns")
@@ -81,11 +84,13 @@ class TestRunTargetAnalysis:
     @patch("scatter.compat.v1_bridge._process_consumer_summaries_and_append_results")
     @patch("scatter.analyzers.consumer_analyzer.find_consumers")
     @patch("scatter.scanners.project_scanner.derive_namespace", return_value="Foo.Ns")
-    def test_trigger_level_with_class_and_method(self, mock_ns, mock_fc, mock_bridge, make_mode_context):
+    def test_trigger_level_with_class_and_method(
+        self, mock_ns, mock_fc, mock_bridge, make_mode_context
+    ):
         consumer = {
-            'consumer_name': 'Bar',
-            'consumer_path': Path('/tmp/scope/Bar/Bar.csproj'),
-            'relevant_files': [],
+            "consumer_name": "Bar",
+            "consumer_path": Path("/tmp/scope/Bar/Bar.csproj"),
+            "relevant_files": [],
         }
         mock_fc.return_value = ([consumer], MagicMock())
         ctx = make_mode_context(class_name="MyClass", method_name="DoStuff")
@@ -94,16 +99,17 @@ class TestRunTargetAnalysis:
         run_target_analysis(ctx, target)
 
         call_kwargs = mock_bridge.call_args[1]
-        assert call_kwargs['triggering_info'] == "MyClass.DoStuff"
+        assert call_kwargs["triggering_info"] == "MyClass.DoStuff"
 
 
 class TestRunSprocAnalysis:
-
     @patch("scatter.compat.v1_bridge._process_consumer_summaries_and_append_results")
     @patch("scatter.analyzers.consumer_analyzer.find_consumers")
     @patch("scatter.scanners.project_scanner.derive_namespace", return_value="GW.Data")
     @patch("scatter.scanners.sproc_scanner.find_cs_files_referencing_sproc")
-    def test_accumulates_across_classes(self, mock_sproc, mock_ns, mock_fc, mock_bridge, make_mode_context):
+    def test_accumulates_across_classes(
+        self, mock_sproc, mock_ns, mock_fc, mock_bridge, make_mode_context
+    ):
         proj = Path("/tmp/scope/GW/GW.csproj")
         mock_sproc.return_value = {
             proj: {
@@ -112,9 +118,9 @@ class TestRunSprocAnalysis:
             }
         }
         consumer = {
-            'consumer_name': 'Consumer1',
-            'consumer_path': Path('/tmp/scope/C1/C1.csproj'),
-            'relevant_files': [],
+            "consumer_name": "Consumer1",
+            "consumer_path": Path("/tmp/scope/C1/C1.csproj"),
+            "relevant_files": [],
         }
         mock_fc.return_value = ([consumer], MagicMock())
 
@@ -154,17 +160,20 @@ class TestRunSprocAnalysis:
         # find_consumers should only be called for ClassA, not ClassB
         assert mock_fc.call_count == 1
         call_args = mock_fc.call_args
-        assert call_args[1]['class_name'] == "ClassA"
+        assert call_args[1]["class_name"] == "ClassA"
 
 
 class TestRunGitAnalysis:
-
     @patch("scatter.analyzers.git_analyzer.analyze_branch_changes")
     def test_no_changes_returns_empty(self, mock_analyze, make_mode_context):
         mock_analyze.return_value = {}
         ctx = make_mode_context()
         result = run_git_analysis(
-            ctx, Path("/tmp/repo"), "feature/x", "main", False,
+            ctx,
+            Path("/tmp/repo"),
+            "feature/x",
+            "main",
+            False,
         )
         assert isinstance(result, ModeResult)
         assert result.all_results == []
@@ -173,7 +182,9 @@ class TestRunGitAnalysis:
     @patch("scatter.analyzers.consumer_analyzer.find_consumers")
     @patch("scatter.scanners.project_scanner.derive_namespace", return_value="MyApp")
     @patch("scatter.analyzers.git_analyzer.analyze_branch_changes")
-    def test_multi_type_accumulation(self, mock_analyze, mock_ns, mock_fc, mock_bridge, make_mode_context, tmp_path):
+    def test_multi_type_accumulation(
+        self, mock_analyze, mock_ns, mock_fc, mock_bridge, make_mode_context, tmp_path
+    ):
         # Set up a fake repo with a csproj and a CS file
         proj_dir = tmp_path / "MyApp"
         proj_dir.mkdir()
@@ -187,15 +198,19 @@ class TestRunGitAnalysis:
         }
 
         consumer = {
-            'consumer_name': 'Consumer1',
-            'consumer_path': tmp_path / "C1" / "C1.csproj",
-            'relevant_files': [],
+            "consumer_name": "Consumer1",
+            "consumer_path": tmp_path / "C1" / "C1.csproj",
+            "relevant_files": [],
         }
         mock_fc.return_value = ([consumer], MagicMock())
 
         ctx = make_mode_context(search_scope=tmp_path)
         result = run_git_analysis(
-            ctx, tmp_path, "feature/x", "main", False,
+            ctx,
+            tmp_path,
+            "feature/x",
+            "main",
+            False,
         )
 
         # find_consumers called once per type (Foo and Bar)
@@ -221,7 +236,11 @@ class TestRunGitAnalysis:
 
         ctx = make_mode_context(search_scope=tmp_path, class_name="Foo")
         result = run_git_analysis(
-            ctx, tmp_path, "feature/x", "main", False,
+            ctx,
+            tmp_path,
+            "feature/x",
+            "main",
+            False,
         )
 
         # Only Foo should be analyzed, not Bar
@@ -230,7 +249,6 @@ class TestRunGitAnalysis:
 
 
 class TestApplyGraphEnrichment:
-
     @patch("scatter.analyzers.graph_enrichment.enrich_legacy_results")
     def test_enriches_when_graph_ctx_present(self, mock_enrich, make_mode_context):
         graph_ctx = MagicMock()

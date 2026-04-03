@@ -5,6 +5,7 @@ docs/SAMPLE_PROJECT_EVALUATION.md: records, file-scoped namespaces,
 global usings, common type names, multi-targeting, extension methods,
 using aliases, solution files, test project detection, and more.
 """
+
 import re
 from pathlib import Path
 
@@ -32,7 +33,7 @@ class TestRecordDeclarations:
 
     def test_positional_record_detected(self):
         """Positional record is now detected via 'record' type keyword."""
-        code = 'public record PersonDto(string Name, int Age, string Email);'
+        code = "public record PersonDto(string Name, int Age, string Email);"
         types = extract_type_names_from_content(code)
         assert "PersonDto" in types
 
@@ -47,7 +48,7 @@ class TestRecordDeclarations:
 
     def test_record_struct_positional_detected(self):
         """Positional record struct — 'record' modifier + '(' lookahead."""
-        code = 'public record struct Point(double X, double Y);'
+        code = "public record struct Point(double X, double Y);"
         types = extract_type_names_from_content(code)
         assert "Point" in types
 
@@ -78,11 +79,11 @@ class TestRecordDeclarations:
         content = records_file.read_text(encoding="utf-8")
         types = extract_type_names_from_content(content)
 
-        assert "PersonDto" in types     # positional record
+        assert "PersonDto" in types  # positional record
         assert "OrderSummary" in types  # record class with body
-        assert "Point" in types         # positional record struct
-        assert "Coordinate" in types    # record struct with body
-        assert "EmployeeDto" in types   # record with inheritance
+        assert "Point" in types  # positional record struct
+        assert "Coordinate" in types  # record struct with body
+        assert "EmployeeDto" in types  # record with inheritance
 
 
 # ===========================================================================
@@ -522,7 +523,9 @@ class TestInternalsVisibleTo:
 
     def test_internal_record_extracted(self):
         """Internal positional records are now detected via 'record' keyword."""
-        code = "internal record InternalAuditEntry(string Action, string UserId, DateTime Timestamp);"
+        code = (
+            "internal record InternalAuditEntry(string Action, string UserId, DateTime Timestamp);"
+        )
         types = extract_type_names_from_content(code)
         assert "InternalAuditEntry" in types
 
@@ -535,7 +538,9 @@ class TestConditionalCompilation:
 
     def test_conditional_compilation_in_sample(self):
         """ServiceCollectionExtensions.cs should have #if preprocessor directives."""
-        ext_file = REPO_ROOT / "GalaxyWorks.Common" / "Extensions" / "ServiceCollectionExtensions.cs"
+        ext_file = (
+            REPO_ROOT / "GalaxyWorks.Common" / "Extensions" / "ServiceCollectionExtensions.cs"
+        )
         if not ext_file.exists():
             pytest.skip("Sample project not available")
         content = ext_file.read_text(encoding="utf-8")
@@ -664,11 +669,11 @@ class TestGraphIntegrationWithNewProjects:
         """All record variants are now detected by the updated regex."""
         node = graph.get_node("GalaxyWorks.Common")
         assert node is not None
-        assert "PersonDto" in node.type_declarations     # positional record
+        assert "PersonDto" in node.type_declarations  # positional record
         assert "OrderSummary" in node.type_declarations  # record class
-        assert "Point" in node.type_declarations         # record struct positional
-        assert "Coordinate" in node.type_declarations    # record struct with body
-        assert "EmployeeDto" in node.type_declarations   # record with inheritance
+        assert "Point" in node.type_declarations  # record struct positional
+        assert "Coordinate" in node.type_declarations  # record struct with body
+        assert "EmployeeDto" in node.type_declarations  # record with inheritance
 
     def test_data_has_new_consumers(self, graph):
         """GalaxyWorks.Data should have Common, Api, and Data.Tests as consumers."""

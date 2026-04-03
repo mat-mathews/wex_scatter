@@ -1,4 +1,5 @@
 """Tests for scatter.analyzers.domain_analyzer — domain boundary detection."""
+
 import pytest
 from pathlib import Path
 from typing import List, Tuple
@@ -29,10 +30,19 @@ def _make_node(name: str, **kwargs) -> ProjectNode:
     return ProjectNode(**defaults)
 
 
-def _make_edge(source: str, target: str, edge_type: str = "project_reference", weight: float = 1.0, evidence=None) -> DependencyEdge:
+def _make_edge(
+    source: str,
+    target: str,
+    edge_type: str = "project_reference",
+    weight: float = 1.0,
+    evidence=None,
+) -> DependencyEdge:
     return DependencyEdge(
-        source=source, target=target, edge_type=edge_type,
-        weight=weight, evidence=evidence,
+        source=source,
+        target=target,
+        edge_type=edge_type,
+        weight=weight,
+        evidence=evidence,
     )
 
 
@@ -51,7 +61,9 @@ def _galaxy_graph() -> DependencyGraph:
       MyDotNetApp2.Exclude (no edges)
     """
     g = DependencyGraph()
-    g.add_node(_make_node("GalaxyWorks.Data", type_declarations=["PortalDataService", "DataConfig"]))
+    g.add_node(
+        _make_node("GalaxyWorks.Data", type_declarations=["PortalDataService", "DataConfig"])
+    )
     g.add_node(_make_node("MyGalaxyConsumerApp"))
     g.add_node(_make_node("MyGalaxyConsumerApp2"))
     g.add_node(_make_node("MyDotNetApp", type_declarations=["AppService"]))
@@ -110,8 +122,8 @@ def _two_subgroup_graph(n: int = 25) -> DependencyGraph:
 # TestFindClusters
 # ============================================================
 
-class TestFindClusters:
 
+class TestFindClusters:
     def test_two_clusters_in_sample_projects(self):
         """Real-ish graph produces 2 clusters; isolated node excluded."""
         g = _galaxy_graph()
@@ -202,8 +214,8 @@ class TestFindClusters:
 # TestClusterNameDerivation
 # ============================================================
 
-class TestClusterNameDerivation:
 
+class TestClusterNameDerivation:
     def test_common_prefix_name(self):
         """Projects with common prefix get that as cluster name."""
         name = _derive_cluster_name(
@@ -222,8 +234,8 @@ class TestClusterNameDerivation:
 # TestExtractionFeasibility
 # ============================================================
 
-class TestExtractionFeasibility:
 
+class TestExtractionFeasibility:
     def test_easy_extraction(self):
         """Isolated cluster with no external coupling -> easy."""
         g = _fully_connected_graph(["A", "B", "C"])
@@ -254,9 +266,12 @@ class TestExtractionFeasibility:
 
         # Build cluster for just X,Y with a cross-boundary cycle
         cross_cycle = CycleGroup(
-            projects=["Ext_0", "X"], shortest_cycle=["X", "Ext_0"], edge_count=2,
+            projects=["Ext_0", "X"],
+            shortest_cycle=["X", "Ext_0"],
+            edge_count=2,
         )
         from scatter.analyzers.domain_analyzer import _build_cluster
+
         cluster = _build_cluster(["X", "Y"], g, cluster_index=0, cycles=[cross_cycle])
 
         assert cluster.extraction_feasibility in ("hard", "very_hard")
@@ -281,12 +296,18 @@ class TestExtractionFeasibility:
         g.add_node(_make_node("Lib", type_declarations=["FooService", "BarHelper"]))
         g.add_node(_make_node("App"))
         # App uses FooService from Lib (crossing boundary)
-        g.add_edge(_make_edge(
-            "App", "Lib", edge_type="type_usage", weight=1.0,
-            evidence=["/src/App/Worker.cs:FooService"],
-        ))
+        g.add_edge(
+            _make_edge(
+                "App",
+                "Lib",
+                edge_type="type_usage",
+                weight=1.0,
+                evidence=["/src/App/Worker.cs:FooService"],
+            )
+        )
 
         from scatter.analyzers.domain_analyzer import _build_cluster
+
         cluster = _build_cluster(["Lib"], g, cluster_index=0)
 
         # 1 of 2 types externally used -> api_surface_ratio = 0.5
@@ -351,9 +372,7 @@ class TestSolutionAlignment:
         g.add_node(_sol_node("D", solutions=["Y"]))
         g.add_node(_sol_node("E", solutions=["Y"]))
 
-        alignment, dominant = _compute_solution_alignment(
-            ["A", "B", "C", "D", "E"], g
-        )
+        alignment, dominant = _compute_solution_alignment(["A", "B", "C", "D", "E"], g)
         assert alignment == pytest.approx(0.6)
         assert dominant == "X"
 
