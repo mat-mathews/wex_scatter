@@ -48,11 +48,10 @@ def _risk_level_to_label(level: RiskLevel) -> str:
 
 def _derive_overall_risk_from_consumers(report: ImpactReport) -> str:
     """Derive overall risk from max consumer risk_rating (AI-only fallback)."""
-    risk_levels = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}
     max_risk = "Low"
     for ti in report.targets:
         for c in ti.consumers:
-            if c.risk_rating and risk_levels.get(c.risk_rating, 0) > risk_levels.get(max_risk, 0):
+            if c.risk_rating and RISK_ORDER.get(c.risk_rating, 0) > RISK_ORDER.get(max_risk, 0):
                 max_risk = c.risk_rating
     return max_risk
 
@@ -225,12 +224,16 @@ def run_impact_analysis(
                 metrics=graph_ctx.metrics,
                 consumers=[c.consumer_name for c in consumers],
                 cycles=graph_ctx.cycles,
-                context=SOW_RISK_CONTEXT,
+                context=SOW_RISK_CONTEXT,  # Phase 3 replaces with mode-aware context selection
                 direct_consumer_count=target_impact.total_direct,
                 transitive_consumer_count=target_impact.total_transitive,
             )
             risk_profiles.append(profile)
             risk_label = _risk_level_to_label(profile.risk_level)
+            logging.debug(
+                "risk_engine: %s → %s (composite %.3f)",
+                target_impact.target.name, risk_label, profile.composite_score,
+            )
             for consumer in consumers:
                 consumer.risk_rating = risk_label
                 consumer.risk_justification = "; ".join(profile.risk_factors[:3])
@@ -246,6 +249,11 @@ def run_impact_analysis(
                     consumer.risk_justification = risk_result.get("justification")
                 elif ai_rating and RISK_ORDER.get(ai_rating, 0) > RISK_ORDER.get(consumer.risk_rating, 0):
                     # AI escalates graph-derived risk (e.g. "High" → "Critical")
+                    logging.debug(
+                        "risk_ai_escalation: %s consumer=%s %s→%s",
+                        target_impact.target.name, consumer.consumer_name,
+                        consumer.risk_rating, ai_rating,
+                    )
                     consumer.risk_rating = ai_rating
                 if consumer.risk_justification is None:
                     consumer.risk_justification = risk_result.get("justification")
