@@ -22,44 +22,23 @@ from scatter.core.risk_models import (
     RiskDimension,
     RiskLevel,
     RiskProfile,
-    _ZERO_DIMENSION,
     composite_to_risk_level,
     PR_RISK_CONTEXT,
     SOW_RISK_CONTEXT,
     LOCAL_DEV_CONTEXT,
 )
-
-
-# --- Helpers ---
-
-
-def _make_metrics(
-    fan_in: int = 0,
-    fan_out: int = 0,
-    instability: float = 0.0,
-    coupling_score: float = 0.0,
-    shared_db_density: float = 0.0,
-) -> ProjectMetrics:
-    return ProjectMetrics(
-        fan_in=fan_in,
-        fan_out=fan_out,
-        instability=instability,
-        coupling_score=coupling_score,
-        afferent_coupling=fan_in,
-        efferent_coupling=fan_out,
-        shared_db_density=shared_db_density,
-        type_export_count=0,
-        consumer_count=fan_in,
-    )
+from tests.conftest import make_metrics
 
 
 def _make_graph(*names: str) -> DependencyGraph:
     graph = DependencyGraph()
     for name in names:
-        graph.add_node(ProjectNode(
-            path=Path(f"{name}/{name}.csproj"),
-            name=name,
-        ))
+        graph.add_node(
+            ProjectNode(
+                path=Path(f"{name}/{name}.csproj"),
+                name=name,
+            )
+        )
     return graph
 
 
@@ -154,8 +133,12 @@ class TestCompositeScore:
             target_name="A",
             target_type="project",
             cycle=RiskDimension(
-                name="cycle", label="Cycle", score=0.9, severity="critical",
-                factors=["in cycle"], raw_metrics={},
+                name="cycle",
+                label="Cycle",
+                score=0.9,
+                severity="critical",
+                factors=["in cycle"],
+                raw_metrics={},
             ),
         )
         # Using PR context where cycle weight = 1.0
@@ -169,13 +152,23 @@ class TestCompositeScore:
     def test_composite_bounded_zero_to_one(self):
         """Composite score is always in [0.0, 1.0]."""
         graph = _make_graph("A")
-        metrics = {"A": _make_metrics(fan_in=20, instability=1.0, shared_db_density=1.0)}
-        cycles = [CycleGroup(projects=["A", "B", "C", "D", "E", "F"],
-                             shortest_cycle=["A", "B", "C", "D", "E", "F", "A"],
-                             edge_count=6)]
+        metrics = {"A": make_metrics(fan_in=20, instability=1.0, shared_db_density=1.0)}
+        cycles = [
+            CycleGroup(
+                projects=["A", "B", "C", "D", "E", "F"],
+                shortest_cycle=["A", "B", "C", "D", "E", "F", "A"],
+                edge_count=6,
+            )
+        ]
         profile = compute_risk_profile(
-            "A", graph, metrics, ["B", "C"], cycles, PR_RISK_CONTEXT,
-            direct_consumer_count=30, transitive_consumer_count=50,
+            "A",
+            graph,
+            metrics,
+            ["B", "C"],
+            cycles,
+            PR_RISK_CONTEXT,
+            direct_consumer_count=30,
+            transitive_consumer_count=50,
         )
         assert 0.0 <= profile.composite_score <= 1.0
 
@@ -192,9 +185,14 @@ class TestUnknownTarget:
     def test_unknown_target_returns_safe_profile(self):
         """Target not in graph → GREEN, data_available=False on metric-dependent dims."""
         graph = _make_graph("B")  # A is not in the graph
-        metrics = {"B": _make_metrics()}
+        metrics = {"B": make_metrics()}
         profile = compute_risk_profile(
-            "A", graph, metrics, [], [], PR_RISK_CONTEXT,
+            "A",
+            graph,
+            metrics,
+            [],
+            [],
+            PR_RISK_CONTEXT,
         )
         assert profile.risk_level == RiskLevel.GREEN
         # Composite may be slightly above 0 (blast_radius scores 0.1 for 0 consumers)
@@ -207,7 +205,12 @@ class TestUnknownTarget:
         graph = _make_graph("B")
         metrics = {}
         profile = compute_risk_profile(
-            "A", graph, metrics, [], [], PR_RISK_CONTEXT,
+            "A",
+            graph,
+            metrics,
+            [],
+            [],
+            PR_RISK_CONTEXT,
         )
         assert "data_unavailable" in profile.structural.factors
 
@@ -217,7 +220,12 @@ class TestUnknownTarget:
         graph = _make_graph("B")
         metrics = {}
         profile = compute_risk_profile(
-            "A", graph, metrics, [], [], PR_RISK_CONTEXT,
+            "A",
+            graph,
+            metrics,
+            [],
+            [],
+            PR_RISK_CONTEXT,
         )
         # Only blast_radius and domain_boundary have data_available=True (but low scores)
         # Structural, instability, database all have data_available=False
@@ -242,16 +250,24 @@ class TestAggregation:
     def test_aggregate_risk_level_never_lower_than_max_target(self):
         """If any target is RED, aggregate must be RED."""
         red_profile = RiskProfile(
-            target_name="A", target_type="project",
-            composite_score=0.8, risk_level=RiskLevel.RED,
+            target_name="A",
+            target_type="project",
+            composite_score=0.8,
+            risk_level=RiskLevel.RED,
             cycle=RiskDimension(
-                name="cycle", label="Cycle", score=0.9, severity="critical",
-                factors=["big cycle"], raw_metrics={},
+                name="cycle",
+                label="Cycle",
+                score=0.9,
+                severity="critical",
+                factors=["big cycle"],
+                raw_metrics={},
             ),
         )
         green_profile = RiskProfile(
-            target_name="B", target_type="project",
-            composite_score=0.1, risk_level=RiskLevel.GREEN,
+            target_name="B",
+            target_type="project",
+            composite_score=0.1,
+            risk_level=RiskLevel.GREEN,
         )
         agg = aggregate_risk([red_profile, green_profile], PR_RISK_CONTEXT)
         assert agg.risk_level == RiskLevel.RED
@@ -266,8 +282,12 @@ class TestAggregation:
     def test_risk_factors_are_unique(self):
         """No duplicate factors in the output list."""
         dim = RiskDimension(
-            name="cycle", label="Cycle", score=0.9, severity="critical",
-            factors=["same factor", "same factor"], raw_metrics={},
+            name="cycle",
+            label="Cycle",
+            score=0.9,
+            severity="critical",
+            factors=["same factor", "same factor"],
+            raw_metrics={},
         )
         p1 = RiskProfile(target_name="A", target_type="project", cycle=dim)
         p2 = RiskProfile(target_name="B", target_type="project", cycle=dim)
@@ -275,12 +295,15 @@ class TestAggregation:
         assert len(agg.risk_factors) == len(set(agg.risk_factors))
 
     def test_target_level_counts(self):
-        red = RiskProfile(target_name="A", target_type="project",
-                          composite_score=0.8, risk_level=RiskLevel.RED)
-        yellow = RiskProfile(target_name="B", target_type="project",
-                             composite_score=0.5, risk_level=RiskLevel.YELLOW)
-        green = RiskProfile(target_name="C", target_type="project",
-                            composite_score=0.1, risk_level=RiskLevel.GREEN)
+        red = RiskProfile(
+            target_name="A", target_type="project", composite_score=0.8, risk_level=RiskLevel.RED
+        )
+        yellow = RiskProfile(
+            target_name="B", target_type="project", composite_score=0.5, risk_level=RiskLevel.YELLOW
+        )
+        green = RiskProfile(
+            target_name="C", target_type="project", composite_score=0.1, risk_level=RiskLevel.GREEN
+        )
         agg = aggregate_risk([red, yellow, green], PR_RISK_CONTEXT)
         assert agg.targets_at_red == 1
         assert agg.targets_at_yellow == 1
@@ -294,14 +317,24 @@ class TestContextDifferences:
     def test_pr_context_vs_sow_context(self):
         """Same target may produce different composites with different contexts."""
         graph = _make_graph("A", "B")
-        metrics = {"A": _make_metrics(fan_in=5, shared_db_density=0.6)}
+        metrics = {"A": make_metrics(fan_in=5, shared_db_density=0.6)}
         # Database scores differently in SOW (weight 1.0) vs PR (weight 0.8)
         pr_profile = compute_risk_profile(
-            "A", graph, metrics, ["B"], [], PR_RISK_CONTEXT,
+            "A",
+            graph,
+            metrics,
+            ["B"],
+            [],
+            PR_RISK_CONTEXT,
             direct_consumer_count=1,
         )
         sow_profile = compute_risk_profile(
-            "A", graph, metrics, ["B"], [], SOW_RISK_CONTEXT,
+            "A",
+            graph,
+            metrics,
+            ["B"],
+            [],
+            SOW_RISK_CONTEXT,
             direct_consumer_count=1,
         )
         # They may differ — the important thing is both are valid
@@ -315,7 +348,8 @@ class TestContextDifferences:
 class TestFormatRiskFactors:
     def test_returns_top_n(self):
         profile = RiskProfile(
-            target_name="A", target_type="project",
+            target_name="A",
+            target_type="project",
             risk_factors=["f1", "f2", "f3", "f4", "f5", "f6"],
         )
         result = format_risk_factors(profile, top_n=3)
@@ -323,11 +357,30 @@ class TestFormatRiskFactors:
 
     def test_returns_all_if_fewer_than_n(self):
         profile = RiskProfile(
-            target_name="A", target_type="project",
+            target_name="A",
+            target_type="project",
             risk_factors=["f1"],
         )
         result = format_risk_factors(profile, top_n=5)
         assert len(result) == 1
+
+    def test_works_with_aggregate_risk(self):
+        """format_risk_factors accepts AggregateRisk, not just RiskProfile."""
+        agg = AggregateRisk(
+            profiles=[],
+            risk_factors=["agg_f1", "agg_f2", "agg_f3", "agg_f4"],
+            composite_score=0.5,
+            risk_level=RiskLevel.YELLOW,
+            targets_at_red=0,
+            targets_at_yellow=1,
+            targets_at_green=0,
+            total_consumers=5,
+            total_transitive=10,
+            hotspots=[],
+        )
+        result = format_risk_factors(agg, top_n=3)
+        assert len(result) == 3
+        assert result[0] == "agg_f1"
 
 
 # --- risk_models import safety ---
@@ -356,14 +409,16 @@ class TestPerformance:
         graph = DependencyGraph()
         names = [f"Project{i}" for i in range(13)]
         for name in names:
-            graph.add_node(ProjectNode(
-                path=Path(f"{name}/{name}.csproj"),
-                name=name,
-                sproc_references=["sp_shared"] if name in ("Project0", "Project1") else [],
-            ))
+            graph.add_node(
+                ProjectNode(
+                    path=Path(f"{name}/{name}.csproj"),
+                    name=name,
+                    sproc_references=["sp_shared"] if name in ("Project0", "Project1") else [],
+                )
+            )
 
         metrics = {
-            name: _make_metrics(
+            name: make_metrics(
                 fan_in=i % 5,
                 fan_out=(i + 2) % 4,
                 instability=0.3 + (i % 5) * 0.1,
@@ -385,8 +440,12 @@ class TestPerformance:
         profiles = []
         for name in names:
             profile = compute_risk_profile(
-                name, graph, metrics, [n for n in names if n != name],
-                cycles, PR_RISK_CONTEXT,
+                name,
+                graph,
+                metrics,
+                [n for n in names if n != name],
+                cycles,
+                PR_RISK_CONTEXT,
                 direct_consumer_count=3,
                 transitive_consumer_count=5,
             )
@@ -407,19 +466,26 @@ class TestComputeRiskProfileEndToEnd:
         """A project in a cycle with high fan-in should score RED."""
         graph = _make_graph("Data", "Api", "Core")
         metrics = {
-            "Data": _make_metrics(fan_in=8, instability=0.7, coupling_score=5.0),
-            "Api": _make_metrics(fan_in=3),
-            "Core": _make_metrics(fan_in=2),
+            "Data": make_metrics(fan_in=8, instability=0.7, coupling_score=5.0),
+            "Api": make_metrics(fan_in=3),
+            "Core": make_metrics(fan_in=2),
         }
-        cycles = [CycleGroup(
-            projects=["Data", "Api", "Core"],
-            shortest_cycle=["Data", "Api", "Core", "Data"],
-            edge_count=3,
-        )]
+        cycles = [
+            CycleGroup(
+                projects=["Data", "Api", "Core"],
+                shortest_cycle=["Data", "Api", "Core", "Data"],
+                edge_count=3,
+            )
+        ]
         profile = compute_risk_profile(
-            "Data", graph, metrics, ["Api", "Core", "Consumer1"],
-            cycles, PR_RISK_CONTEXT,
-            direct_consumer_count=8, transitive_consumer_count=12,
+            "Data",
+            graph,
+            metrics,
+            ["Api", "Core", "Consumer1"],
+            cycles,
+            PR_RISK_CONTEXT,
+            direct_consumer_count=8,
+            transitive_consumer_count=12,
         )
         assert profile.risk_level == RiskLevel.RED
         assert profile.cycle.score > 0.0
@@ -430,11 +496,17 @@ class TestComputeRiskProfileEndToEnd:
         """A project with no consumers, no cycles, no sprocs → GREEN."""
         graph = _make_graph("LeafApp")
         metrics = {
-            "LeafApp": _make_metrics(fan_in=0, fan_out=3, instability=1.0),
+            "LeafApp": make_metrics(fan_in=0, fan_out=3, instability=1.0),
         }
         profile = compute_risk_profile(
-            "LeafApp", graph, metrics, [], [], PR_RISK_CONTEXT,
-            direct_consumer_count=0, transitive_consumer_count=0,
+            "LeafApp",
+            graph,
+            metrics,
+            [],
+            [],
+            PR_RISK_CONTEXT,
+            direct_consumer_count=0,
+            transitive_consumer_count=0,
         )
         assert profile.risk_level == RiskLevel.GREEN
         assert profile.composite_score < 0.4
@@ -442,9 +514,14 @@ class TestComputeRiskProfileEndToEnd:
     def test_change_surface_data_available_false(self):
         """Engine sets change_surface.data_available=False (not computed here)."""
         graph = _make_graph("A")
-        metrics = {"A": _make_metrics(fan_in=3)}
+        metrics = {"A": make_metrics(fan_in=3)}
         profile = compute_risk_profile(
-            "A", graph, metrics, [], [], PR_RISK_CONTEXT,
+            "A",
+            graph,
+            metrics,
+            [],
+            [],
+            PR_RISK_CONTEXT,
         )
         assert profile.change_surface.data_available is False
         assert profile.change_surface.score == 0.0

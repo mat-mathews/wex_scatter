@@ -29,7 +29,6 @@ from scatter.core.risk_models import (
     RiskDimension,
     RiskLevel,
     RiskProfile,
-    _ZERO_DIMENSION,
     composite_to_risk_level,
 )
 
@@ -67,8 +66,11 @@ def compute_risk_profile(
     instability = score_instability(target, target_metrics)
     cycle = score_cycle(target, cycles)
     database = score_database(target, graph, target_metrics, team_map)
-    blast = score_blast_radius(
-        target, direct_consumer_count, transitive_consumer_count, metrics,
+    blast_radius = score_blast_radius(
+        target,
+        direct_consumer_count,
+        transitive_consumer_count,
+        metrics,
     )
     domain = score_domain_boundary(
         target,
@@ -92,7 +94,7 @@ def compute_risk_profile(
     )
 
     # Composite score: weighted max (not average)
-    dimensions = [structural, instability, cycle, database, blast, domain, change_surface]
+    dimensions = [structural, instability, cycle, database, blast_radius, domain, change_surface]
     composite = _compute_composite(dimensions, context)
     risk_level = composite_to_risk_level(composite, context)
 
@@ -122,7 +124,7 @@ def compute_risk_profile(
         instability=instability,
         cycle=cycle,
         database=database,
-        blast_radius=blast,
+        blast_radius=blast_radius,
         domain_boundary=domain,
         change_surface=change_surface,
         composite_score=round(composite, 3),
@@ -141,16 +143,25 @@ def compute_risk_profile(
         "database=%.3f blast_radius=%.3f domain_boundary=%.3f "
         "data_available=[%s]",
         target,
-        structural.score, instability.score, cycle.score,
-        database.score, blast.score, domain.score,
+        structural.score,
+        instability.score,
+        cycle.score,
+        database.score,
+        blast_radius.score,
+        domain.score,
         ",".join(
-            d.name for d in [structural, instability, cycle, database, blast, domain]
+            d.name
+            for d in [structural, instability, cycle, database, blast_radius, domain]
             if not d.data_available
-        ) or "all",
+        )
+        or "all",
     )
     logger.info(
         "risk_profile target=%s composite=%.3f level=%s elapsed_ms=%.1f",
-        target, composite, risk_level.value, elapsed_ms,
+        target,
+        composite,
+        risk_level.value,
+        elapsed_ms,
     )
 
     return profile
@@ -262,7 +273,7 @@ def _compute_composite(
 
     if not weighted:
         return 0.0
-    return max(weighted)
+    return float(max(weighted))
 
 
 def _collect_factors(
@@ -270,14 +281,23 @@ def _collect_factors(
     context: RiskContext,
     top_n: int = 5,
 ) -> List[str]:
-    """Collect factors from all dimensions, deduplicate, sort by weight * score."""
+    """Collect factors from all dimensions, deduplicate, sort by weight * score.
+
+    Decision #20: when a dimension with weight > 0.5 has data_available=False,
+    add an incomplete data factor so the gap is visible in risk reports.
+    """
     scored_factors: List[tuple] = []
     seen: Set[str] = set()
 
     for d in dimensions:
-        if not d.data_available:
-            continue
         weight = context.dimension_weights.get(d.name, 0.0)
+        if not d.data_available:
+            if weight > 0.5:
+                factor = f"Incomplete data: {d.name} not available"
+                if factor not in seen:
+                    seen.add(factor)
+                    scored_factors.append((weight * 0.5, factor))
+            continue
         for factor in d.factors:
             if factor not in seen:
                 seen.add(factor)

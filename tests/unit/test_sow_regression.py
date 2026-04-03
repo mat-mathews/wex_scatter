@@ -121,9 +121,15 @@ class TestSOWJsonRegression:
         report = _build_baseline_report()
         report_dict = asdict(report)
         expected_keys = {
-            "sow_text", "targets", "impact_narrative", "complexity_rating",
-            "complexity_justification", "effort_estimate", "overall_risk",
-            "ambiguity_level", "avg_target_confidence",
+            "sow_text",
+            "targets",
+            "impact_narrative",
+            "complexity_rating",
+            "complexity_justification",
+            "effort_estimate",
+            "overall_risk",
+            "ambiguity_level",
+            "avg_target_confidence",
         }
         assert set(report_dict.keys()) == expected_keys
 
@@ -133,7 +139,10 @@ class TestSOWJsonRegression:
         report_dict = asdict(report)
         ti = report_dict["targets"][0]
         expected_keys = {
-            "target", "consumers", "total_direct", "total_transitive",
+            "target",
+            "consumers",
+            "total_direct",
+            "total_transitive",
             "max_depth_reached",
         }
         assert set(ti.keys()) == expected_keys
@@ -144,11 +153,24 @@ class TestSOWJsonRegression:
         report_dict = asdict(report)
         consumer = report_dict["targets"][0]["consumers"][0]
         expected_keys = {
-            "consumer_path", "consumer_name", "relevant_files", "solutions",
-            "pipeline_name", "depth", "confidence", "confidence_label",
-            "risk_rating", "risk_justification", "coupling_narrative",
-            "coupling_vectors", "propagation_parent",
-            "coupling_score", "fan_in", "fan_out", "instability", "in_cycle",
+            "consumer_path",
+            "consumer_name",
+            "relevant_files",
+            "solutions",
+            "pipeline_name",
+            "depth",
+            "confidence",
+            "confidence_label",
+            "risk_rating",
+            "risk_justification",
+            "coupling_narrative",
+            "coupling_vectors",
+            "propagation_parent",
+            "coupling_score",
+            "fan_in",
+            "fan_out",
+            "instability",
+            "in_cycle",
         }
         assert set(consumer.keys()) == expected_keys
 
@@ -158,8 +180,14 @@ class TestSOWJsonRegression:
         report_dict = asdict(report)
         target = report_dict["targets"][0]["target"]
         expected_keys = {
-            "target_type", "name", "csproj_path", "namespace",
-            "class_name", "method_name", "confidence", "match_evidence",
+            "target_type",
+            "name",
+            "csproj_path",
+            "namespace",
+            "class_name",
+            "method_name",
+            "confidence",
+            "match_evidence",
         }
         assert set(target.keys()) == expected_keys
 
@@ -288,16 +316,15 @@ class TestRiskEngineDoesNotAffectSOW:
         assert "from scatter.core.risk_models" not in source
         assert "import scatter.core.risk_models" not in source
 
-    def test_impact_analyzer_has_no_risk_imports(self):
-        """scatter.analyzers.impact_analyzer must not import risk engine.
+    def test_impact_analyzer_imports_risk_engine(self):
+        """scatter.analyzers.impact_analyzer imports risk engine (Phase 2 shipped).
 
-        Risk engine wiring into impact analysis is Phase 2.
-        Phase 1 must not touch impact_analyzer.py.
+        Flipped from Phase 1's negative assertion (Decision #18). Documents
+        that risk engine wiring is active in impact analysis.
         """
         import inspect
         import scatter.analyzers.impact_analyzer as ia_mod
 
         source = inspect.getsource(ia_mod)
-        assert "from scatter.analyzers.risk_engine" not in source
-        assert "from scatter.core.risk_models" not in source
-        assert "import scatter.analyzers.risk_engine" not in source
+        assert "from scatter.analyzers.risk_engine" in source
+        assert "from scatter.core.risk_models" in source

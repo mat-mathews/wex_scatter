@@ -8,13 +8,23 @@ Stdlib-only imports so that importing this module can never break existing
 code that imports from models.py.
 """
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional
+
+logger = logging.getLogger(__name__)
 
 # --- Constants ---
 
+# DIMENSION SYNC: When adding a new dimension, update ALL of these locations:
+#   1. VALID_DIMENSION_NAMES (below)
+#   2. RiskProfile fields (named field + dimensions property)
+#   3. AggregateRisk fields (named field + dimension aggregation in aggregate_risk)
+#   4. aggregate_risk() dim_names list in risk_engine.py
+#   5. compute_risk_profile() dimension scoring + dimensions list in risk_engine.py
+#   6. Logging format string in compute_risk_profile() (risk_engine.py)
 VALID_DIMENSION_NAMES = frozenset(
     {
         "structural",
@@ -59,6 +69,19 @@ class RiskDimension:
     raw_metrics: dict  # underlying numbers for transparency
     data_available: bool = True  # False when metrics were missing
 
+    @classmethod
+    def zero(cls, name: str, label: str) -> "RiskDimension":
+        """Create a zeroed-out dimension (safe default)."""
+        return cls(
+            name=name,
+            label=label,
+            score=0.0,
+            severity="low",
+            factors=[],
+            raw_metrics={},
+            data_available=True,
+        )
+
 
 @dataclass
 class RiskContext:
@@ -66,6 +89,12 @@ class RiskContext:
 
     Validates at construction time (Decision #9, Fatima) — fail fast
     with specific error messages, not at scoring time.
+
+    Partial dimension_weights: dimensions not listed default to weight 0.0,
+    meaning they are excluded from the weighted-max composite. This is
+    intentional — a context can focus on a subset of dimensions. A warning
+    is logged when a built-in dimension is missing from a custom context
+    so misconfiguration is visible.
     """
 
     name: str
@@ -85,13 +114,18 @@ class RiskContext:
         for dim, weight in self.dimension_weights.items():
             if dim not in VALID_DIMENSION_NAMES:
                 raise ValueError(
-                    f"Unknown dimension '{dim}' in weights — "
-                    f"valid: {sorted(VALID_DIMENSION_NAMES)}"
+                    f"Unknown dimension '{dim}' in weights — valid: {sorted(VALID_DIMENSION_NAMES)}"
                 )
             if not 0.0 <= weight <= 1.0:
-                raise ValueError(
-                    f"Dimension weight '{dim}' is {weight}, must be in [0.0, 1.0]"
-                )
+                raise ValueError(f"Dimension weight '{dim}' is {weight}, must be in [0.0, 1.0]")
+        missing = VALID_DIMENSION_NAMES - set(self.dimension_weights.keys())
+        if missing:
+            logger.warning(
+                "RiskContext '%s' is missing weights for dimensions %s — "
+                "these will default to 0.0 (excluded from composite)",
+                self.name,
+                sorted(missing),
+            )
 
 
 @dataclass
@@ -104,13 +138,27 @@ class RiskProfile:
     target_path: Optional[Path] = None
 
     # Dimensions (always present — graph-derived, no AI needed)
-    structural: RiskDimension = field(default_factory=lambda: _ZERO_DIMENSION("structural", "Structural coupling"))
-    instability: RiskDimension = field(default_factory=lambda: _ZERO_DIMENSION("instability", "Instability"))
-    cycle: RiskDimension = field(default_factory=lambda: _ZERO_DIMENSION("cycle", "Cycle entanglement"))
-    database: RiskDimension = field(default_factory=lambda: _ZERO_DIMENSION("database", "Database coupling"))
-    blast_radius: RiskDimension = field(default_factory=lambda: _ZERO_DIMENSION("blast_radius", "Blast radius"))
-    domain_boundary: RiskDimension = field(default_factory=lambda: _ZERO_DIMENSION("domain_boundary", "Domain boundary"))
-    change_surface: RiskDimension = field(default_factory=lambda: _ZERO_DIMENSION("change_surface", "Change surface"))
+    structural: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("structural", "Structural coupling")
+    )
+    instability: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("instability", "Instability")
+    )
+    cycle: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("cycle", "Cycle entanglement")
+    )
+    database: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("database", "Database coupling")
+    )
+    blast_radius: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("blast_radius", "Blast radius")
+    )
+    domain_boundary: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("domain_boundary", "Domain boundary")
+    )
+    change_surface: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("change_surface", "Change surface")
+    )
 
     # Aggregate
     composite_score: float = 0.0  # 0.0–1.0, weighted combination
@@ -156,13 +204,27 @@ class AggregateRisk:
     profiles: List[RiskProfile]
 
     # Aggregate dimensions (max across all targets per dimension)
-    structural: RiskDimension = field(default_factory=lambda: _ZERO_DIMENSION("structural", "Structural coupling"))
-    instability: RiskDimension = field(default_factory=lambda: _ZERO_DIMENSION("instability", "Instability"))
-    cycle: RiskDimension = field(default_factory=lambda: _ZERO_DIMENSION("cycle", "Cycle entanglement"))
-    database: RiskDimension = field(default_factory=lambda: _ZERO_DIMENSION("database", "Database coupling"))
-    blast_radius: RiskDimension = field(default_factory=lambda: _ZERO_DIMENSION("blast_radius", "Blast radius"))
-    domain_boundary: RiskDimension = field(default_factory=lambda: _ZERO_DIMENSION("domain_boundary", "Domain boundary"))
-    change_surface: RiskDimension = field(default_factory=lambda: _ZERO_DIMENSION("change_surface", "Change surface"))
+    structural: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("structural", "Structural coupling")
+    )
+    instability: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("instability", "Instability")
+    )
+    cycle: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("cycle", "Cycle entanglement")
+    )
+    database: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("database", "Database coupling")
+    )
+    blast_radius: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("blast_radius", "Blast radius")
+    )
+    domain_boundary: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("domain_boundary", "Domain boundary")
+    )
+    change_surface: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("change_surface", "Change surface")
+    )
 
     # Aggregate score and level
     composite_score: float = 0.0
@@ -173,8 +235,8 @@ class AggregateRisk:
     targets_at_red: int = 0
     targets_at_yellow: int = 0
     targets_at_green: int = 0
-    total_consumers: int = 0       # sum across profiles, NOT deduplicated
-    total_transitive: int = 0      # sum across profiles, NOT deduplicated
+    total_consumers: int = 0  # sum across profiles, NOT deduplicated
+    total_transitive: int = 0  # sum across profiles, NOT deduplicated
 
     # Hotspots — targets driving the risk
     hotspots: List[RiskProfile] = field(default_factory=list)
@@ -247,19 +309,6 @@ LOCAL_DEV_CONTEXT = RiskContext(
 # --- Helpers ---
 
 
-def _ZERO_DIMENSION(name: str, label: str) -> RiskDimension:
-    """Create a zeroed-out dimension (safe default)."""
-    return RiskDimension(
-        name=name,
-        label=label,
-        score=0.0,
-        severity="low",
-        factors=[],
-        raw_metrics={},
-        data_available=True,
-    )
-
-
 def score_to_severity(score: float) -> str:
     """Map a 0.0–1.0 score to a severity label."""
     if score >= 0.8:
@@ -272,7 +321,8 @@ def score_to_severity(score: float) -> str:
 
 
 def composite_to_risk_level(
-    score: float, context: RiskContext,
+    score: float,
+    context: RiskContext,
 ) -> RiskLevel:
     """Map composite score to RED/YELLOW/GREEN using context thresholds."""
     if score >= context.red_threshold:
