@@ -50,7 +50,7 @@ Point it at a `.csproj`, a branch, a stored procedure, or a plain-English work r
 - **Zero-config graph acceleration** — builds a dependency graph on first run, caches it, patches incrementally via `git diff` on subsequent runs
 - **Graph-enriched output** — coupling score, fan-in/out, instability index, and cycle membership on every result
 - **Graph-derived risk engine** — 6-dimension risk profiles (structural coupling, instability, cycles, database coupling, blast radius, domain boundaries) with weighted-max composite scoring
-- **AI-powered impact analysis** — describe a change in plain English, get affected projects, risk ratings, and effort estimates
+- **AI-powered impact analysis** — describe a change in plain English, get affected projects, graph-derived risk ratings, and effort estimates
 - **Six output formats** — console, JSON, CSV, markdown, Mermaid diagrams, and a pipe-friendly pipeline list
 - **CI-ready** — GitHub Action template for automatic PR impact comments
 
@@ -148,7 +148,7 @@ Targets identified: 2 (confidence: clear)
 Overall Risk: MEDIUM    Complexity: moderate    Estimated Effort: 3-5 days
 ```
 
-Requires `GOOGLE_API_KEY` in your environment. Scatter builds a codebase index from the dependency graph and sends it as grounding context — the AI selects from known projects and types, not thin air. Risk ratings and effort estimates are AI-generated approximations, not engineering commitments. Accepts a file with `--sow-file`.
+Requires `GOOGLE_API_KEY` in your environment. Scatter builds a codebase index from the dependency graph and sends it as grounding context — the AI selects from known projects and types, not thin air. When a dependency graph is available, risk ratings are graph-derived (deterministic) from 6 dimensions — the AI adds narrative and can escalate but never downgrade. Without a graph, AI provides the risk rating directly. Effort estimates are AI-generated approximations, not engineering commitments. Accepts a file with `--sow-file`.
 
 ### Map your architecture
 
@@ -248,9 +248,9 @@ Scatter sends project names, type declarations, and dependency structure to the 
 
 **Next** — PR risk scoring (GitHub Action posts risk comment on every PR), SOW scoping (effort estimates with confidence bands)
 
-**Recently shipped** — Unified risk engine: 6-dimension graph-derived risk profiles with weighted-max composite scoring, piecewise linear interpolation, structured logging, 3 built-in contexts (PR, SOW, local dev)
+**Recently shipped** — Risk engine wired into impact analysis: `--sow` mode now produces graph-derived risk ratings (deterministic, reproducible) with AI escalation. Graph sets the floor, AI can escalate to "Critical" but never downgrade. 6-dimension profiles (structural coupling, instability, cycles, database coupling, blast radius, domain boundaries) with weighted-max composite scoring.
 
-**Planned** — CI/CD exit codes (`--fail-on cycles`, `--fail-on risk:high`), baselines & diff reports, extraction planning
+**Planned** — Risk engine CLI flags (`--risk-context`, `--risk-details`), CI/CD exit codes (`--fail-on cycles`, `--fail-on risk:high`), baselines & diff reports
 
 **Deferred** — Unified report model, watch mode, AI response caching, HTML reports with D3.js visualization
 
