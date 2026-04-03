@@ -4,8 +4,30 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from scatter.analyzers.coupling_analyzer import ProjectMetrics
 from scatter.cli import ModeContext
 from scatter.core.models import ConsumerResult
+
+
+def make_metrics(
+    fan_in: int = 0,
+    fan_out: int = 0,
+    instability: float = 0.0,
+    coupling_score: float = 0.0,
+    shared_db_density: float = 0.0,
+) -> ProjectMetrics:
+    """Build a ProjectMetrics with sensible defaults for risk engine tests."""
+    return ProjectMetrics(
+        fan_in=fan_in,
+        fan_out=fan_out,
+        instability=instability,
+        coupling_score=coupling_score,
+        afferent_coupling=fan_in,
+        efferent_coupling=fan_out,
+        shared_db_density=shared_db_density,
+        type_export_count=0,
+        consumer_count=fan_in,
+    )
 
 
 @pytest.fixture

@@ -28,29 +28,7 @@ from scatter.core.risk_models import (
     SOW_RISK_CONTEXT,
     LOCAL_DEV_CONTEXT,
 )
-
-
-# --- Helpers ---
-
-
-def _make_metrics(
-    fan_in: int = 0,
-    fan_out: int = 0,
-    instability: float = 0.0,
-    coupling_score: float = 0.0,
-    shared_db_density: float = 0.0,
-) -> ProjectMetrics:
-    return ProjectMetrics(
-        fan_in=fan_in,
-        fan_out=fan_out,
-        instability=instability,
-        coupling_score=coupling_score,
-        afferent_coupling=fan_in,
-        efferent_coupling=fan_out,
-        shared_db_density=shared_db_density,
-        type_export_count=0,
-        consumer_count=fan_in,
-    )
+from tests.conftest import make_metrics
 
 
 def _make_graph(*names: str) -> DependencyGraph:
@@ -169,7 +147,7 @@ class TestCompositeScore:
     def test_composite_bounded_zero_to_one(self):
         """Composite score is always in [0.0, 1.0]."""
         graph = _make_graph("A")
-        metrics = {"A": _make_metrics(fan_in=20, instability=1.0, shared_db_density=1.0)}
+        metrics = {"A": make_metrics(fan_in=20, instability=1.0, shared_db_density=1.0)}
         cycles = [CycleGroup(projects=["A", "B", "C", "D", "E", "F"],
                              shortest_cycle=["A", "B", "C", "D", "E", "F", "A"],
                              edge_count=6)]
@@ -192,7 +170,7 @@ class TestUnknownTarget:
     def test_unknown_target_returns_safe_profile(self):
         """Target not in graph → GREEN, data_available=False on metric-dependent dims."""
         graph = _make_graph("B")  # A is not in the graph
-        metrics = {"B": _make_metrics()}
+        metrics = {"B": make_metrics()}
         profile = compute_risk_profile(
             "A", graph, metrics, [], [], PR_RISK_CONTEXT,
         )
@@ -294,7 +272,7 @@ class TestContextDifferences:
     def test_pr_context_vs_sow_context(self):
         """Same target may produce different composites with different contexts."""
         graph = _make_graph("A", "B")
-        metrics = {"A": _make_metrics(fan_in=5, shared_db_density=0.6)}
+        metrics = {"A": make_metrics(fan_in=5, shared_db_density=0.6)}
         # Database scores differently in SOW (weight 1.0) vs PR (weight 0.8)
         pr_profile = compute_risk_profile(
             "A", graph, metrics, ["B"], [], PR_RISK_CONTEXT,
@@ -363,7 +341,7 @@ class TestPerformance:
             ))
 
         metrics = {
-            name: _make_metrics(
+            name: make_metrics(
                 fan_in=i % 5,
                 fan_out=(i + 2) % 4,
                 instability=0.3 + (i % 5) * 0.1,
@@ -407,9 +385,9 @@ class TestComputeRiskProfileEndToEnd:
         """A project in a cycle with high fan-in should score RED."""
         graph = _make_graph("Data", "Api", "Core")
         metrics = {
-            "Data": _make_metrics(fan_in=8, instability=0.7, coupling_score=5.0),
-            "Api": _make_metrics(fan_in=3),
-            "Core": _make_metrics(fan_in=2),
+            "Data": make_metrics(fan_in=8, instability=0.7, coupling_score=5.0),
+            "Api": make_metrics(fan_in=3),
+            "Core": make_metrics(fan_in=2),
         }
         cycles = [CycleGroup(
             projects=["Data", "Api", "Core"],
@@ -430,7 +408,7 @@ class TestComputeRiskProfileEndToEnd:
         """A project with no consumers, no cycles, no sprocs → GREEN."""
         graph = _make_graph("LeafApp")
         metrics = {
-            "LeafApp": _make_metrics(fan_in=0, fan_out=3, instability=1.0),
+            "LeafApp": make_metrics(fan_in=0, fan_out=3, instability=1.0),
         }
         profile = compute_risk_profile(
             "LeafApp", graph, metrics, [], [], PR_RISK_CONTEXT,
@@ -442,7 +420,7 @@ class TestComputeRiskProfileEndToEnd:
     def test_change_surface_data_available_false(self):
         """Engine sets change_surface.data_available=False (not computed here)."""
         graph = _make_graph("A")
-        metrics = {"A": _make_metrics(fan_in=3)}
+        metrics = {"A": make_metrics(fan_in=3)}
         profile = compute_risk_profile(
             "A", graph, metrics, [], [], PR_RISK_CONTEXT,
         )
