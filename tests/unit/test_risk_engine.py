@@ -306,6 +306,24 @@ class TestFormatRiskFactors:
         result = format_risk_factors(profile, top_n=5)
         assert len(result) == 1
 
+    def test_works_with_aggregate_risk(self):
+        """format_risk_factors accepts AggregateRisk, not just RiskProfile."""
+        agg = AggregateRisk(
+            profiles=[],
+            risk_factors=["agg_f1", "agg_f2", "agg_f3", "agg_f4"],
+            composite_score=0.5,
+            risk_level=RiskLevel.YELLOW,
+            targets_at_red=0,
+            targets_at_yellow=1,
+            targets_at_green=0,
+            total_consumers=5,
+            total_transitive=10,
+            hotspots=[],
+        )
+        result = format_risk_factors(agg, top_n=3)
+        assert len(result) == 3
+        assert result[0] == "agg_f1"
+
 
 # --- risk_models import safety ---
 

@@ -266,6 +266,60 @@ class TestScoreDatabase:
         result = score_database("A", graph, m)
         assert result.score == 0.0
 
+    # --- Deeper database tests (Phase 2 tech debt, Anya) ---
+
+    def test_multi_sproc_multi_team(self):
+        """Multiple shared sprocs across multiple teams scores high."""
+        graph = _make_graph_with_sprocs(
+            "A",
+            ["sp_One", "sp_Two", "sp_Three"],
+            {"B": ["sp_One", "sp_Two"], "C": ["sp_Two", "sp_Three"], "D": ["sp_Three"]},
+        )
+        m = make_metrics(shared_db_density=0.7)
+        team_map = {"A": "Alpha", "B": "Beta", "C": "Gamma", "D": "Alpha"}
+        result = score_database("A", graph, m, team_map)
+        assert result.score >= 0.8
+        assert result.raw_metrics["cross_team"] is True
+        assert len(result.raw_metrics["shared_sproc_names"]) == 3
+        assert len(result.raw_metrics["teams_involved"]) >= 2
+
+    def test_density_interpolation_low_range(self):
+        """density 0.15 (mid low range) interpolates between 0.2–0.5."""
+        graph = _make_graph_with_sprocs("A", ["sp_X"], {"B": ["sp_X"]})
+        m = make_metrics(shared_db_density=0.15)
+        result = score_database("A", graph, m)
+        assert 0.2 < result.score < 0.5
+
+    def test_density_interpolation_mid_range(self):
+        """density 0.4 (mid range, no cross-team) interpolates between 0.5–0.8."""
+        graph = _make_graph_with_sprocs("A", ["sp_X"], {"B": ["sp_X"]})
+        m = make_metrics(shared_db_density=0.4)
+        result = score_database("A", graph, m)
+        assert 0.5 <= result.score <= 0.8
+
+    def test_density_interpolation_high_range(self):
+        """density 0.75 + cross-team interpolates between 0.8–1.0."""
+        graph = _make_graph_with_sprocs("A", ["sp_X"], {"B": ["sp_X"]})
+        m = make_metrics(shared_db_density=0.75)
+        team_map = {"A": "Alpha", "B": "Beta"}
+        result = score_database("A", graph, m, team_map)
+        assert 0.8 <= result.score <= 1.0
+
+    def test_factor_string_truncation_many_sprocs(self):
+        """Factor string lists at most 3 sproc names when >3 are shared."""
+        sprocs = [f"sp_{i}" for i in range(5)]
+        graph = _make_graph_with_sprocs("A", sprocs, {"B": sprocs})
+        m = make_metrics(shared_db_density=0.6)
+        team_map = {"A": "Alpha", "B": "Beta"}
+        result = score_database("A", graph, m, team_map)
+        cross_team_factors = [f for f in result.factors if "cross-team" in f.lower()]
+        assert len(cross_team_factors) == 1
+        # The sproc list in the factor string should be truncated to 3
+        sproc_factor = cross_team_factors[0]
+        # Count commas — "sp_0, sp_1, sp_2" has 2 commas (3 items max)
+        sproc_part = sproc_factor.split("Sprocs ")[1].split(" are")[0]
+        assert sproc_part.count(",") <= 2
+
 
 # --- Blast Radius ---
 
