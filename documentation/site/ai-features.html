@@ -1806,7 +1806,7 @@
 <td>Impact Analysis</td>
 <td><code>--sow</code> / <code>--sow-file</code></td>
 <td>Impact mode</td>
-<td>Parses a work request, traces blast radius, rates risk and complexity</td>
+<td>Parses a work request, traces blast radius, graph-derived risk + AI enrichment</td>
 </tr>
 </tbody>
 </table>
@@ -1970,8 +1970,8 @@ scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/port
 <hr />
 <h2 id="impact-analysis">Impact Analysis<a class="headerlink" href="#impact-analysis" title="Permanent link">&para;</a></h2>
 <p><strong>Flags:</strong> <code>--sow</code> (inline text) or <code>--sow-file</code> (path to file)</p>
-<p>Impact analysis mode takes a work request in plain English, uses AI to identify affected projects and stored procedures, then runs the full consumer analysis automatically. It layers on five AI tasks: parsing, risk assessment, coupling narrative, complexity estimation, and an impact narrative.</p>
-<p>If any individual task fails, the report continues without that enrichment -- graceful degradation throughout.</p>
+<p>Impact analysis mode takes a work request in plain English, uses AI to identify affected projects and stored procedures, then runs the full consumer analysis automatically. Risk ratings are graph-derived when a dependency graph is available — AI enrichment can escalate but never downgrade (see <a href="usage/impact-analysis.html#reading-the-report">Reading the Report</a> for the full model).</p>
+<p>The pipeline runs five AI tasks: SOW parsing, risk enrichment (escalation-only), coupling narrative, complexity estimation, and an impact narrative. If any individual task fails, the report continues without that enrichment -- graceful degradation throughout.</p>
 <h3 id="codebase-index">Codebase Index<a class="headerlink" href="#codebase-index" title="Permanent link">&para;</a></h3>
 <p>When a dependency graph is available, Scatter automatically builds a compact <strong>codebase index</strong> and sends it to the LLM alongside the SOW. The index lists every project name, its types, and stored procedures in a token-efficient one-line-per-project format. This grounds the LLM in what actually exists in the codebase, so it maps domain language (e.g., "portal configuration workflow") to real artifacts (e.g., <code>GalaxyWorks.Data</code>, <code>PortalDataService</code>) instead of hallucinating names.</p>
 <p>After the LLM responds, any target names not found in the index have their confidence automatically halved.</p>

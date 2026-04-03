@@ -1696,6 +1696,7 @@
 ├── core/              # Data models, graph, parallel infrastructure
 │   ├── graph.py       # DependencyGraph, ProjectNode, DependencyEdge
 │   ├── models.py      # FilterPipeline, FilterStage, ImpactReport, constants
+│   ├── risk_models.py # RiskDimension, RiskProfile, AggregateRisk, RiskContext, RiskLevel
 │   ├── parallel.py    # ProcessPoolExecutor orchestrators and workers
 │   ├── patterns.py    # Compiled regex (IDENT, SPROC, USING patterns)
 │   └── tree.py        # Tree rendering utilities
@@ -1711,12 +1712,14 @@
 │   ├── sproc_scanner.py     # Stored procedure reference detection
 │   └── db_scanner.py        # Database dependency scanning, comment stripping
 │
-├── analyzers/         # Consumer, git, graph builder, impact, coupling, domain, health
+├── analyzers/         # Consumer, git, graph builder, impact, coupling, domain, health, risk
 │   ├── consumer_analyzer.py  # 5-stage filter pipeline
 │   ├── git_analyzer.py       # Branch diff analysis
 │   ├── graph_builder.py      # Single-pass O(P+F) graph construction
 │   ├── graph_enrichment.py   # Graph context loading, result enrichment
-│   ├── impact_analyzer.py    # SOW-driven impact analysis
+│   ├── impact_analyzer.py    # SOW-driven impact analysis (graph-derived risk + AI enrichment)
+│   ├── risk_engine.py        # compute_risk_profile, aggregate_risk, format_risk_factors
+│   ├── risk_dimensions.py    # 6 score_* functions (structural, instability, cycle, database, blast_radius, domain_boundary)
 │   ├── coupling_analyzer.py  # Metrics + Tarjan&#39;s cycle detection
 │   ├── domain_analyzer.py    # Clustering + extraction feasibility
 │   └── health_analyzer.py    # Health dashboard computation
@@ -1803,15 +1806,19 @@
 </code></pre></div>
 <h3 id="impact-analysis-mode-sow-driven">Impact Analysis Mode (SOW-driven)<a class="headerlink" href="#impact-analysis-mode-sow-driven" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>__main__.py: parse args, load config, resolve SOW text
-  --&gt; impact_analyzer: run_impact_analysis()
+  --&gt; impact_analyzer: run_impact_analysis(graph_ctx=...)
     --&gt; ai: parse work request --&gt; extract AnalysisTargets
     --&gt; consumer_analyzer: find_consumers() per target
     --&gt; graph: transitive consumer BFS
-    --&gt; ai: risk assessment, coupling narrative per consumer
+    --&gt; risk_engine: compute_risk_profile() per target (graph-derived, deterministic)
+    --&gt; ai: risk enrichment (can escalate, never downgrade graph-derived risk)
+    --&gt; ai: coupling narrative per consumer
     --&gt; ai: impact narrative, complexity estimate for report
+    --&gt; risk_engine: aggregate_risk() for overall_risk
   --&gt; apply_impact_graph_enrichment()
   --&gt; console_reporter | json_reporter | csv_reporter | markdown_reporter
 </code></pre></div>
+<p>Risk uses graph-derived scoring (deterministic) with AI escalation. See <a href="../usage/impact-analysis.html#reading-the-report">Impact Analysis — Reading the Report</a> for the full model.</p>
 <h3 id="graph-analysis-mode">Graph Analysis Mode<a class="headerlink" href="#graph-analysis-mode" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>__main__.py: parse args, load config
   --&gt; graph_cache: load_and_validate() (try cache first)
@@ -1862,7 +1869,7 @@
 </tr>
 <tr>
 <td><code>RISK_ASSESSMENT</code></td>
-<td>Per-consumer risk rating</td>
+<td>AI risk enrichment (escalation-only when graph-derived risk exists)</td>
 </tr>
 <tr>
 <td><code>COUPLING_NARRATIVE</code></td>

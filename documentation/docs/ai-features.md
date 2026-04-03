@@ -6,7 +6,7 @@ Scatter has three AI-powered features. All of them are optional. None of them ru
 |---------|------|-------------|--------------|
 | Consumer Summarization | `--summarize-consumers` | Git, Target, Sproc | Summarizes what each consumer file actually does with your code |
 | Hybrid Type Extraction | `--enable-hybrid-git` | Git mode only | Identifies only the types whose body/signature actually changed in a diff |
-| Impact Analysis | `--sow` / `--sow-file` | Impact mode | Parses a work request, traces blast radius, rates risk and complexity |
+| Impact Analysis | `--sow` / `--sow-file` | Impact mode | Parses a work request, traces blast radius, graph-derived risk + AI enrichment |
 
 ---
 
@@ -196,9 +196,9 @@ INFO: Hybrid analysis for GalaxyWorks.Data/PortalDataService.cs: 1 affected type
 
 **Flags:** `--sow` (inline text) or `--sow-file` (path to file)
 
-Impact analysis mode takes a work request in plain English, uses AI to identify affected projects and stored procedures, then runs the full consumer analysis automatically. It layers on five AI tasks: parsing, risk assessment, coupling narrative, complexity estimation, and an impact narrative.
+Impact analysis mode takes a work request in plain English, uses AI to identify affected projects and stored procedures, then runs the full consumer analysis automatically. Risk ratings are graph-derived when a dependency graph is available — AI enrichment can escalate but never downgrade (see [Reading the Report](usage/impact-analysis.md#reading-the-report) for the full model).
 
-If any individual task fails, the report continues without that enrichment -- graceful degradation throughout.
+The pipeline runs five AI tasks: SOW parsing, risk enrichment (escalation-only), coupling narrative, complexity estimation, and an impact narrative. If any individual task fails, the report continues without that enrichment -- graceful degradation throughout.
 
 ### Codebase Index
 

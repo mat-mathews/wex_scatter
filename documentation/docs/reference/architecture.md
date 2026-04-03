@@ -11,6 +11,7 @@ scatter/
 ├── core/              # Data models, graph, parallel infrastructure
 │   ├── graph.py       # DependencyGraph, ProjectNode, DependencyEdge
 │   ├── models.py      # FilterPipeline, FilterStage, ImpactReport, constants
+│   ├── risk_models.py # RiskDimension, RiskProfile, AggregateRisk, RiskContext, RiskLevel
 │   ├── parallel.py    # ProcessPoolExecutor orchestrators and workers
 │   ├── patterns.py    # Compiled regex (IDENT, SPROC, USING patterns)
 │   └── tree.py        # Tree rendering utilities
@@ -26,12 +27,14 @@ scatter/
 │   ├── sproc_scanner.py     # Stored procedure reference detection
 │   └── db_scanner.py        # Database dependency scanning, comment stripping
 │
-├── analyzers/         # Consumer, git, graph builder, impact, coupling, domain, health
+├── analyzers/         # Consumer, git, graph builder, impact, coupling, domain, health, risk
 │   ├── consumer_analyzer.py  # 5-stage filter pipeline
 │   ├── git_analyzer.py       # Branch diff analysis
 │   ├── graph_builder.py      # Single-pass O(P+F) graph construction
 │   ├── graph_enrichment.py   # Graph context loading, result enrichment
-│   ├── impact_analyzer.py    # SOW-driven impact analysis
+│   ├── impact_analyzer.py    # SOW-driven impact analysis (graph-derived risk + AI enrichment)
+│   ├── risk_engine.py        # compute_risk_profile, aggregate_risk, format_risk_factors
+│   ├── risk_dimensions.py    # 6 score_* functions (structural, instability, cycle, database, blast_radius, domain_boundary)
 │   ├── coupling_analyzer.py  # Metrics + Tarjan's cycle detection
 │   ├── domain_analyzer.py    # Clustering + extraction feasibility
 │   └── health_analyzer.py    # Health dashboard computation
@@ -143,15 +146,20 @@ __main__.py: parse args, load config, build ModeContext
 
 ```
 __main__.py: parse args, load config, resolve SOW text
-  --> impact_analyzer: run_impact_analysis()
+  --> impact_analyzer: run_impact_analysis(graph_ctx=...)
     --> ai: parse work request --> extract AnalysisTargets
     --> consumer_analyzer: find_consumers() per target
     --> graph: transitive consumer BFS
-    --> ai: risk assessment, coupling narrative per consumer
+    --> risk_engine: compute_risk_profile() per target (graph-derived, deterministic)
+    --> ai: risk enrichment (can escalate, never downgrade graph-derived risk)
+    --> ai: coupling narrative per consumer
     --> ai: impact narrative, complexity estimate for report
+    --> risk_engine: aggregate_risk() for overall_risk
   --> apply_impact_graph_enrichment()
   --> console_reporter | json_reporter | csv_reporter | markdown_reporter
 ```
+
+Risk uses graph-derived scoring (deterministic) with AI escalation. See [Impact Analysis — Reading the Report](../usage/impact-analysis.md#reading-the-report) for the full model.
 
 ### Graph Analysis Mode
 
@@ -197,7 +205,7 @@ Eight task types are defined in `AITaskType`:
 | `SUMMARIZATION` | Consumer file summaries |
 | `SYMBOL_EXTRACTION` | Hybrid git analysis |
 | `WORK_REQUEST_PARSING` | Impact analysis SOW parsing |
-| `RISK_ASSESSMENT` | Per-consumer risk rating |
+| `RISK_ASSESSMENT` | AI risk enrichment (escalation-only when graph-derived risk exists) |
 | `COUPLING_NARRATIVE` | Per-consumer coupling story |
 | `IMPACT_NARRATIVE` | Report-level impact summary |
 | `COMPLEXITY_ESTIMATE` | Effort/complexity rating |

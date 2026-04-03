@@ -1138,6 +1138,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#risk-engine-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Risk Engine Integration
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1693,6 +1704,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#risk-engine-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Risk Engine Integration
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1957,6 +1979,15 @@
 <p>Projects appearing in 3+ solutions. These are coupling bottlenecks across solution boundaries. Returned as a separate list alongside the metrics dict.</p>
 <h3 id="multi-solution-edge-classification">Multi-Solution Edge Classification<a class="headerlink" href="#multi-solution-edge-classification" title="Permanent link">&para;</a></h3>
 <p>A single edge can be internal to one solution and external to another. If project A is in solutions {X, Y} and project B is in {X} only, then edge A→B is internal to X but external to Y. The algorithm handles this by iterating source and target solution sets independently.</p>
+<hr />
+<h2 id="risk-engine-integration">Risk Engine Integration<a class="headerlink" href="#risk-engine-integration" title="Permanent link">&para;</a></h2>
+<p>Coupling metrics and cycle detection feed directly into the <a href="architecture.html">risk engine</a>. Three of the six risk dimensions use data from this module:</p>
+<ul>
+<li><strong>Structural coupling</strong> — uses <code>fan_in</code>, <code>coupling_score</code>, and percentile ranking from <code>compute_all_metrics()</code></li>
+<li><strong>Instability</strong> — uses the <code>instability</code> metric (fan_out / (fan_in + fan_out)) with fan_in weighting</li>
+<li><strong>Cycle entanglement</strong> — uses <code>CycleGroup</code> objects from <code>detect_cycles()</code>, scoring by cycle size and multi-cycle membership</li>
+</ul>
+<p>These metrics are computed once via <code>GraphContext</code> and reused by both the risk engine and the consumer enrichment pipeline.</p>
 
 
 

@@ -235,3 +235,15 @@ Projects appearing in 3+ solutions. These are coupling bottlenecks across soluti
 ### Multi-Solution Edge Classification
 
 A single edge can be internal to one solution and external to another. If project A is in solutions {X, Y} and project B is in {X} only, then edge A→B is internal to X but external to Y. The algorithm handles this by iterating source and target solution sets independently.
+
+---
+
+## Risk Engine Integration
+
+Coupling metrics and cycle detection feed directly into the [risk engine](../reference/architecture.md). Three of the six risk dimensions use data from this module:
+
+- **Structural coupling** — uses `fan_in`, `coupling_score`, and percentile ranking from `compute_all_metrics()`
+- **Instability** — uses the `instability` metric (fan_out / (fan_in + fan_out)) with fan_in weighting
+- **Cycle entanglement** — uses `CycleGroup` objects from `detect_cycles()`, scoring by cycle size and multi-cycle membership
+
+These metrics are computed once via `GraphContext` and reused by both the risk engine and the consumer enrichment pipeline.
