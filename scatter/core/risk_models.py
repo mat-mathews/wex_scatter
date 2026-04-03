@@ -8,10 +8,13 @@ Stdlib-only imports so that importing this module can never break existing
 code that imports from models.py.
 """
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Union
+
+logger = logging.getLogger(__name__)
 
 # --- Constants ---
 
@@ -86,6 +89,12 @@ class RiskContext:
 
     Validates at construction time (Decision #9, Fatima) — fail fast
     with specific error messages, not at scoring time.
+
+    Partial dimension_weights: dimensions not listed default to weight 0.0,
+    meaning they are excluded from the weighted-max composite. This is
+    intentional — a context can focus on a subset of dimensions. A warning
+    is logged when a built-in dimension is missing from a custom context
+    so misconfiguration is visible.
     """
 
     name: str
@@ -112,6 +121,14 @@ class RiskContext:
                 raise ValueError(
                     f"Dimension weight '{dim}' is {weight}, must be in [0.0, 1.0]"
                 )
+        missing = VALID_DIMENSION_NAMES - set(self.dimension_weights.keys())
+        if missing:
+            logger.warning(
+                "RiskContext '%s' is missing weights for dimensions %s — "
+                "these will default to 0.0 (excluded from composite)",
+                self.name,
+                sorted(missing),
+            )
 
 
 @dataclass
