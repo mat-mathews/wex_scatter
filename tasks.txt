@@ -1192,11 +1192,11 @@ LOW IMPACT (nice-to-have, unlikely to block eval):
 - [ ] Demo script in CI as smoke test (Initiative 11 Phase 3, line ~1147)
 
 ============================================================================
-PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-03-30)
+PROJECT STATUS SUMMARY (VALIDATED AGAINST CODEBASE 2026-04-01)
 ============================================================================
 
-CODEBASE STATE (updated 2026-03-28, post console reporter redesign + truncation removal):
-  - scatter/ package with 29+ modules across core/, scanners/, analyzers/, ai/, reports/, compat/, store/, modes/
+CODEBASE STATE (updated 2026-04-01, post risk engine Phase 1):
+  - scatter/ package with 32+ modules across core/, scanners/, analyzers/, ai/, reports/, compat/, store/, modes/
   - scatter/core/tree.py: shared tree-building utilities (build_adjacency, CONFIDENCE_LABEL_RANK)
   - scatter.py: 10-line thin entry point (delegates to scatter/__main__.py via runpy)
   - scatter/__main__.py: 71 lines (parse args → shared setup → mode dispatch)
@@ -1219,7 +1219,10 @@ CODEBASE STATE (updated 2026-03-28, post console reporter redesign + truncation 
   - tools/generate_synthetic_codebase.py: synthetic .NET codebase generator (100-800 project presets)
   - tools/benchmark_graph_build.py: graph builder benchmark harness with per-stage timing
   - docs/ADR_GRAPH_PERFORMANCE.md: architecture decision record for graph builder 100x optimization
-  - 940 tests across 35 test files (939 pass, 1 xfail)
+  - scatter/core/risk_models.py: risk vocabulary (RiskDimension, RiskProfile, AggregateRisk, RiskContext, RiskLevel)
+  - scatter/analyzers/risk_engine.py: unified risk engine (compute_risk_profile, aggregate_risk, format_risk_factors)
+  - scatter/analyzers/risk_dimensions.py: 6 piecewise-linear dimension scorers (structural, instability, cycle, database, blast_radius, domain_boundary)
+  - 1,003+ tests across 37 test files (1,002+ pass, 1 xfail)
   - 30 e2e CLI tests (tests/integration/test_cli_e2e.py) covering all 6 modes × all output formats
   - 22 AI budget tests (tests/unit/test_ai_budget.py) — budget tracking, proxy, retries, CLI, config
   - CI: ruff check + ruff format + mypy (0 errors) + pytest + smoke tests in GitHub Actions
@@ -2021,6 +2024,7 @@ Separate PR, not blocking.
 RISK ENGINE & PR RISK & SOW SCOPING ROADMAP
 Source: docs/RISK_ENGINE_PLAN.md, docs/PR_RISK_SCORING_PLAN.md, docs/SOW_SCOPING_PLAN.md
 Team review completed 2026-03-30. Feedback incorporated into plans.
+Implementation started 2026-04-01. Phase 1 shipped same day.
 ============================================================================
 ============================================================================
 
@@ -2031,30 +2035,96 @@ Goal: Single risk model (7 dimensions, weighted-max composite) consumed by
 Ref: docs/RISK_ENGINE_PLAN.md
 ============================================================================
 
-PHASE 1: Core Engine (2 weeks)
+PHASE 1: Core Engine ✅ COMPLETED (2026-04-01, PR #15)
 ----------------------------------------------------------------------
-- [ ] Add RiskProfile, RiskDimension, AggregateRisk, RiskContext, RiskLevel to models.py
-- [ ] Create risk_engine.py with compute_risk_profile(), aggregate_risk(), format_risk_factors()
-- [ ] Create risk_dimensions.py with 6 graph-derived dimension assessors
-      (structural, instability, cycle, database, blast_radius, domain_boundary)
-      NOTE: change_surface is PR-only — lives in pr_risk_analyzer, not the engine
-- [ ] Implement weighted-max composite scoring with configurable dimension weights
-      Document ceiling behavior: weight caps max contribution per dimension
-- [ ] Add intermediate instability bracket at 0.6-0.8 (currently jumps 0.3→0.9)
-- [ ] Add config validation for weights (sum, range) and thresholds (ordering)
-- [ ] Add structured logging/observability from day one (dimension scores, timing, data quality)
-- [ ] Handle partial/degraded data visibly (missing metrics → dimension scores 0, log warning)
-- [ ] Unit tests for all 6 dimensions + aggregation + composite scoring
-- [ ] Property tests: composite bounded [0,1], aggregate never lower than max target
+Purely additive — zero existing files modified, zero existing tests broken.
+Team review decisions (10 items) incorporated before implementation.
+Branch: feature/risk-engine. Merged to main via PR #15.
 
-PHASE 2: Wire into Existing Modes (1 week)
+- [x] Create scatter/core/risk_models.py (Decision #1, Priya: separate from models.py)
+      RiskDimension (with data_available field, Decision #4 Marcus),
+      RiskProfile (named fields, 6 dimensions + change_surface placeholder),
+      AggregateRisk, RiskContext (with __post_init__ validation, Decision #9 Fatima),
+      RiskLevel enum, 3 built-in contexts (PR, SOW, local dev),
+      score_to_severity(), composite_to_risk_level() helpers
+- [x] Create scatter/analyzers/risk_engine.py — public API:
+      compute_risk_profile(), aggregate_risk(), format_risk_factors()
+      Structured logging at DEBUG/INFO (Decision #5, Marcus)
+      Unknown target → zeroed GREEN profile (Decision #7, Fatima)
+      Empty profile list → GREEN aggregate (Decision #8, Fatima)
+- [x] Create scatter/analyzers/risk_dimensions.py — 6 score_* functions
+      (Decision #3, Devon: score_structural, score_instability, score_cycle,
+       score_database, score_blast_radius, score_domain_boundary)
+      Piecewise linear interpolation, no step-function cliffs (Decision #2, Devon)
+      Missing metrics → data_available=False with "data_unavailable" factor
+      NOTE: change_surface is PR-only — lives in pr_risk_analyzer, not the engine
+- [x] Weighted-max composite scoring with configurable dimension weights
+- [x] Piecewise linear instability scoring (0.5→0.6→0.8 ranges, no cliff)
+- [x] RiskContext.__post_init__ validation: weights in [0,1], yellow < red, valid dimension names
+- [x] Structured logging from day one (per-dimension DEBUG, composite INFO, timing)
+- [x] Partial data handling: data_available=False with visible "data_unavailable" factor
+- [x] 37 tests in test_risk_dimensions.py (per-dimension scoring, interpolation, monotonicity, data availability)
+- [x] 26 tests in test_risk_engine.py (aggregation, composite scoring, edge cases, context validation, performance)
+- [x] Property tests: composite bounded [0,1], aggregate never lower than max target,
+      weighted-max-not-average proof, risk factors unique
+- [x] Performance test: 13 projects in <100ms (actual: ~0.09s)
+- [x] stdlib-only import test for risk_models.py (no external deps)
+- [x] Full existing test suite (1,087 tests) passes with zero regressions
+
+PHASE 2: Wire into Impact Analysis (1 week)
 ----------------------------------------------------------------------
-- [ ] Replace risk_assess.py AI-only risk with graph-derived + AI-enriched
-- [ ] EnrichedConsumer.risk_rating populated from RiskProfile.risk_level
-- [ ] Existing --sow output gains dimension data (backward compatible)
-- [ ] Add --risk-context pr|sow|local flag, --risk-details for dimension breakdown
+Phase 2 team review completed 2026-04-02. Decisions #11–22 incorporated.
+Delivery: two PRs — tech debt (pure refactor) then feature integration.
+Ref: docs/RISK_ENGINE_PLAN.md (Phase 2 section)
+
+PR 1: Phase 1 Tech Debt (pure refactor, each item = own commit)
+- [ ] Commit 1: Extract _make_metrics helper → tests/conftest.py (Decision #19)
+- [ ] Commit 2: Rename _ZERO_DIMENSION → RiskDimension.zero() classmethod
+- [ ] Commit 3: Rename blast → blast_radius local in risk_engine.py
+- [ ] Commit 4: Add dimension sync comment in risk_models.py
+- [ ] Commit 5: Document partial dimension_weights behavior + warning log
+- [ ] Commit 6: Deeper score_database tests + format_risk_factors AggregateRisk test
+
+PR 2: Feature — Wire Risk Engine into Impact Analysis
+- [ ] 2.1: impact_analyzer.py — replace graph=None with graph_ctx (Decision #12)
+      Derive graph = graph_ctx.graph internally for find_consumers/codebase_index
+- [ ] 2.1: impact_analyzer.py — Step 3: compute_risk_profile per target (Decision #11)
+      Per-target scoring, not per-consumer (limitation documented)
+- [ ] 2.1: impact_analyzer.py — AI escalation logic: can escalate, never downgrade (Decision #16)
+      Graph tops out at "High"; only AI can reach "Critical" (Decision #15)
+- [ ] 2.1: impact_analyzer.py — overall_risk from aggregate_risk(profiles) (Decision #13)
+      Extract _derive_overall_risk_from_consumers() as no-graph fallback
+- [ ] 2.4: risk_engine.py — incomplete data factor in _collect_factors() (Decision #20)
+      Weight > 0.5 + data_available=False → "Incomplete data: {dim} not available"
+- [ ] 2.3: modes/impact.py — update call site: graph_ctx=ctx.graph_ctx (Decision #12)
+- [ ] 2.3b: test_codebase_index.py — update graph= → graph_ctx= wrapper
+- [ ] 2.5: Helper functions: _risk_level_to_label(), RISK_ORDER dict
+- [ ] 2.6: Tests — test_impact_risk_integration.py (10 test cases):
+      - test_sow_with_graph_uses_risk_engine
+      - test_sow_without_graph_uses_ai_only
+      - test_sow_with_graph_and_ai_enriches
+      - test_sow_with_graph_ai_escalates_not_downgrades (Decision #16)
+      - test_sow_no_graph_no_ai (Decision #14, 4th path)
+      - test_risk_level_to_label_mapping (Decision #15, no "Critical")
+      - test_overall_risk_derived_from_profiles (Decision #13)
+      - test_multiple_targets_aggregate_overall (Decision #17)
+      - test_backward_compat_sow_output_structure
+      - test_sow_regression_no_graph_byte_identical (Decision #17)
+- [ ] 2.6: test_sow_regression.py — flip boundary test to positive assertion (Decision #18)
+
+PHASE 3: Expose via CLI (1 week)
+----------------------------------------------------------------------
+- [ ] --risk-context {pr,sow,local} flag with auto-detection from mode
+- [ ] --risk-details flag for full dimension breakdown in console/JSON
+- [ ] --risk-only flag for composite score + top factors only
+- [ ] RiskConfig dataclass in config.py, .scatter.yaml risk: section
+- [ ] Console risk dimension table in console_reporter.py
+- [ ] JSON risk dimension object in json_reporter.py
+- [ ] Tests: context auto-detection, flag override, output snapshots
 
 [D] DEFERRED — after calibration data exists:
+- [ ] Per-consumer risk profiles (per-edge metrics, Decision #11)
+- [ ] Cached risk profiles on GraphContext (Decision #22, for Phase 3+ if needed)
 - [ ] Dimension correlation analysis (detect redundant dimensions)
 - [ ] Coupling vector scoring (weight structural dimension by vector type)
 - [ ] Custom risk contexts via .scatter.yaml (teams define own weight profiles)
@@ -2065,7 +2135,7 @@ INITIATIVE: PR RISK SCORING
 Goal: GitHub Action posts risk comment on every PR. Same output locally via
       scatter --pr-risk. Zero-config for consuming teams.
 Ref: docs/PR_RISK_SCORING_PLAN.md
-Dependencies: Risk Engine Phase 1-2
+Dependencies: Risk Engine Phase 1 only (calls compute_risk_profile directly)
 ============================================================================
 
 PHASE 1: Core PR Risk Mode (2 weeks)

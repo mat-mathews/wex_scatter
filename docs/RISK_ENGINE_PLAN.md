@@ -11,8 +11,10 @@
 
 ## Team Review Decisions
 
-The team reviewed the Phase 1 implementation plan. These decisions are resolved and baked
-into the spec below. Rationale is preserved so future readers know *why*, not just *what*.
+The team reviewed the Phase 1 and Phase 2 implementation plans. These decisions are resolved
+and baked into the spec below. Rationale is preserved so future readers know *why*, not just *what*.
+
+### Phase 1 Decisions
 
 | # | Decision | Owner | Rationale |
 |---|----------|-------|-----------|
@@ -26,6 +28,23 @@ into the spec below. Rationale is preserved so future readers know *why*, not ju
 | 8 | Empty profile list → GREEN aggregate with all zeros | Fatima | `aggregate_risk([])` returns a safe aggregate instead of throwing `ValueError` from `max()` on empty sequence. This happens when a PR modifies only non-C# files. Tested explicitly. |
 | 9 | `RiskContext.__post_init__` validation, fail-fast | Fatima | Weights outside [0.0, 1.0], `yellow_threshold >= red_threshold`, missing dimension keys — all caught at construction time with specific error messages, not at scoring time three layers deep. |
 | 10 | Regression snapshot test for existing `--sow` mode | Fatima | Before and after the risk engine lands, the `--sow` output against sample projects must be byte-identical. This is our safety net that purely additive means purely additive. |
+
+### Phase 2 Decisions
+
+| # | Decision | Owner | Rationale |
+|---|----------|-------|-----------|
+| 11 | Risk scoring is per-target, not per-consumer — name the limitation | Priya | `compute_risk_profile` scores a target's graph position, not an individual consumer's coupling to that target. Two consumers of the same target get the same `risk_rating`. This is correct for "how risky is changing this target" but doesn't answer "how exposed is this specific consumer." Per-consumer profiles are a future option (would need per-edge metrics). Document this so nobody misreads `risk_rating` as consumer-specific. |
+| 12 | Replace `graph=None` with `graph_ctx: Optional[GraphContext] = None` | Priya | `run_impact_analysis()` currently takes a raw `DependencyGraph` via `graph=None`. Phase 2 needs graph + metrics + cycles. Rather than adding a second parameter, replace `graph` with `graph_ctx` and access the graph via `graph_ctx.graph`. One parameter, clean pipe, no ambiguity about which object carries the data. |
+| 13 | `overall_risk` derived from graph aggregate, AI adds narrative only | Priya | `overall_risk = _risk_level_to_label(aggregate_risk(profiles).risk_level)` when graph is available. AI enrichment can escalate individual consumer ratings but does not override the aggregate. When graph is unavailable, falls back to current AI-derived max. This makes `overall_risk` deterministic and reproducible when graph context exists. |
+| 14 | Test all four code paths including no-graph-no-AI | Fatima | Four paths exist: (1) graph + AI, (2) graph only, (3) AI only, (4) neither. Path 4 means all `risk_rating` fields stay `None` and `overall_risk` stays `None`. Must not crash. The plan originally listed only paths 1–3. Path 4 is the silent failure mode that's easy to miss. |
+| 15 | Graph-derived risk tops out at "High"; only AI can escalate to "Critical" | Fatima | `RiskLevel` has three values: GREEN, YELLOW, RED. Mapping: GREEN→"Low", YELLOW→"Medium", RED→"High". No "Critical" in the enum. Adding `CRITICAL` would change Phase 1 models for a signal the graph can't actually produce — "Critical" implies business context (regulatory, financial) that only AI can assess. Keep the enum stable; let AI be the escalation path to "Critical." |
+| 16 | AI can escalate graph-derived risk but never downgrade | Fatima | Graph sets the floor. AI enrichment can raise a consumer from "Medium" to "High" or "High" to "Critical" but cannot lower "High" to "Low." This prevents the AI from undermining deterministic graph signal while still allowing it to add business context the graph can't see. The original plan's code comment said "AI can override" — that's removed; the code and comment now agree. |
+| 17 | Four additional test cases beyond the original six | Anya | `test_sow_no_graph_no_ai` (path 4, no crashes), `test_graph_risk_does_not_downgrade_existing` (defensive), `test_multiple_targets_aggregate_overall` (RED+GREEN→"High"), `test_sow_regression_no_graph_byte_identical` (no-graph path unchanged by Phase 2). Total: 10 test cases. |
+| 18 | Flip boundary test to positive assertion | Anya | `test_impact_analyzer_has_no_risk_imports` becomes `test_impact_analyzer_imports_risk_engine` — asserts that risk engine imports ARE present. Documents that Phase 2 shipped. Don't delete the test; invert it. |
+| 19 | Extract `_make_metrics` helper as first commit | Anya | Shared test fixture helper extracted to `tests/conftest.py` before any feature work. Prevents a third copy when writing integration tests. First commit on the tech debt PR. |
+| 20 | Surface incomplete data as a risk factor | Devon | When any dimension with weight > 0.5 has `data_available=False`, add a factor: "Incomplete data: {dimension} not available in {mode} mode." The engine already tracks `data_available` — this makes the gap visible in risk reports instead of silently producing a lower composite. |
+| 21 | Tech debt in isolated commits, separate PR | Devon, Sam | Renames (`blast` → `blast_radius`, `_ZERO_DIMENSION` → `RiskDimension.zero()`), dimension sync comment, `_make_metrics` extraction, deeper tests — each in its own commit. Ship as a tech debt PR (pure refactor) before the Phase 2 feature PR. Clean diffs, easy review, safe to revert independently. |
+| 22 | Skip deliverable 2.2 — no `risk_profiles` on `GraphContext` | Sam | `compute_risk_profile` is <100ms for 13 projects. Profiles are computed inline in `impact_analyzer.py` Step 3, which already knows the targets. Caching on `GraphContext` makes it responsible for risk computation, breaking its role as a data holder. If Phase 3 CLI needs cached profiles, add it then. |
 
 ---
 
@@ -1237,22 +1256,44 @@ risk rating (from `risk_assess.py`) becomes a fallback when graph context is una
 When graph context IS available, the risk engine provides a deterministic, reproducible
 risk level that the AI then enriches with narrative.
 
-#### Phase 1 Tech Debt (bundle with Phase 2)
+**Delivery strategy** (Decision #21): Phase 2 ships as **two PRs**:
+1. **Tech debt PR** (pure refactor, no behavior change) — renames, test helpers, deeper tests
+2. **Feature PR** (the integration) — risk engine wired into impact analysis
 
-These items were identified in the Phase 1 team review. They should ship alongside
-Phase 2 work since several touch the same files.
+#### PR 1: Phase 1 Tech Debt (pure refactor)
 
-**Code cleanup:**
-- Rename `_ZERO_DIMENSION` → `make_zero_dimension()` (or add `RiskDimension.zero()` classmethod). Currently exported as a private function but imported cross-module — make the public status explicit. (Priya)
-- Rename `blast` → `blast_radius` local variable in `risk_engine.py` for consistency with every other dimension local. (Devon)
-- Add a "dimension sync" comment in `risk_models.py` listing all locations that must be updated when adding a new dimension: `RiskProfile` fields, `AggregateRisk` fields, `VALID_DIMENSION_NAMES`, `aggregate_risk.dim_names`, `dimensions` property, and the logging format string. (Priya)
-- Document that partial `dimension_weights` in `RiskContext` silently defaults missing dimensions to weight 0.0. Either document this as intentional or add a warning log when a built-in dimension name is missing from a custom context. (Fatima)
+These items were identified in the Phase 1 team review. They ship as a standalone PR
+before the feature work. Each item is its own commit — clean diffs, easy review, safe
+to revert independently.
 
-**Test improvements:**
-- Extract shared `_make_metrics` helper from `test_risk_engine.py` and `test_risk_dimensions.py` into `tests/conftest.py` or `tests/helpers.py` to prevent drift. (Anya)
-- Add deeper `score_database` tests: multi-sproc multi-team scenario, density interpolation within each scoring range, factor string truncation when >3 sprocs. (Anya)
-- Add `format_risk_factors` test with `AggregateRisk` input (currently only tested with `RiskProfile`). (Anya)
-- Mark `test_impact_analyzer_has_no_risk_imports` in `test_sow_regression.py` with a comment: this test should be updated or removed when Phase 2 ships, since Phase 2 adds risk engine imports to `impact_analyzer.py`. (Anya)
+**Commit 1: Extract `_make_metrics` helper** (Decision #19)
+- Move shared `_make_metrics` from `test_risk_engine.py` and `test_risk_dimensions.py` into `tests/conftest.py`
+- Prevents a third copy when writing Phase 2 integration tests
+- This commit lands first because Phase 2 tests depend on the shared helper
+
+**Commit 2: Rename `_ZERO_DIMENSION` → `RiskDimension.zero()` classmethod**
+- Currently a private function imported cross-module — make the public status explicit (Priya)
+
+**Commit 3: Rename `blast` → `blast_radius` local variable in `risk_engine.py`**
+- Consistency with every other dimension local: `structural`, `instability`, `cycle`, `database`, `domain` (Devon)
+
+**Commit 4: Add dimension sync comment in `risk_models.py`**
+- List all locations that must be updated when adding a new dimension: `RiskProfile` fields, `AggregateRisk` fields, `VALID_DIMENSION_NAMES`, `aggregate_risk.dim_names`, `dimensions` property, and the logging format string (Priya)
+
+**Commit 5: Document partial `dimension_weights` behavior**
+- Partial `dimension_weights` in `RiskContext` silently defaults missing dimensions to weight 0.0. Add a warning log when a built-in dimension name is missing from a custom context. (Fatima)
+
+**Commit 6: Deeper tests**
+- Add deeper `score_database` tests: multi-sproc multi-team scenario, density interpolation, factor string truncation when >3 sprocs (Anya)
+- Add `format_risk_factors` test with `AggregateRisk` input — currently only tested with `RiskProfile` (Anya)
+
+#### PR 2: Feature — Wire Risk Engine into Impact Analysis
+
+**Important limitation** (Decision #11): Risk scoring is **per-target**, not per-consumer.
+`compute_risk_profile` scores a target's graph position — all consumers of the same
+target receive the same `risk_rating`. This answers "how risky is changing this target"
+not "how exposed is this specific consumer." Per-consumer profiles (per-edge metrics)
+are a future option, not Phase 2 scope.
 
 **How it works today** (Step 3 of `impact_analyzer.py`, lines 170-181):
 ```python
@@ -1264,11 +1305,14 @@ for target_impact in report.targets:
         consumer.risk_justification = risk_result.get("justification")
 ```
 
-**How it will work** (graph-derived first, AI optional enrichment):
+**How it will work** (graph-derived first, AI escalation only):
 ```python
-# New: graph-derived risk per target, AI adds narrative
-from scatter.analyzers.risk_engine import compute_risk_profile
+# New: graph-derived risk per target, AI can escalate but never downgrade
+from scatter.analyzers.risk_engine import compute_risk_profile, aggregate_risk
 from scatter.core.risk_models import SOW_RISK_CONTEXT
+
+RISK_ORDER = {"Low": 0, "Medium": 1, "High": 2, "Critical": 3}
+profiles = []
 
 for target_impact in report.targets:
     consumers = target_impact.consumers
@@ -1285,72 +1329,117 @@ for target_impact in report.targets:
             direct_consumer_count=target_impact.total_direct,
             transitive_consumer_count=target_impact.total_transitive,
         )
-        # Map RiskLevel.RED → "High", etc.
+        profiles.append(profile)
         risk_label = _risk_level_to_label(profile.risk_level)
         for consumer in consumers:
-            if consumer.risk_rating is None:
-                consumer.risk_rating = risk_label
-                consumer.risk_justification = "; ".join(profile.risk_factors[:3])
+            consumer.risk_rating = risk_label
+            consumer.risk_justification = "; ".join(profile.risk_factors[:3])
 
-    # AI enrichment (optional — enhances graph-derived result)
+    # AI enrichment (optional — can escalate, never downgrade) (Decision #16)
     risk_result = assess_risk(target_impact.target, consumers, ai_provider)
     if risk_result:
+        ai_rating = risk_result.get("rating")
         for consumer in consumers:
-            # AI can override rating or add justification
             if consumer.risk_rating is None:
-                consumer.risk_rating = risk_result.get("rating")
+                # No graph data — AI is primary
+                consumer.risk_rating = ai_rating
+                consumer.risk_justification = risk_result.get("justification")
+            elif ai_rating and RISK_ORDER.get(ai_rating, 0) > RISK_ORDER.get(consumer.risk_rating, 0):
+                # AI escalates graph-derived risk (e.g. "High" → "Critical")
+                consumer.risk_rating = ai_rating
             if consumer.risk_justification is None:
                 consumer.risk_justification = risk_result.get("justification")
+
+# Overall risk from graph aggregate when available (Decision #13)
+if profiles:
+    agg = aggregate_risk(profiles, SOW_RISK_CONTEXT)
+    report.overall_risk = _risk_level_to_label(agg.risk_level)
+else:
+    # Fallback: derive from max consumer risk_rating (current behavior)
+    report.overall_risk = _derive_overall_risk_from_consumers(report)
 ```
 
-**Key design point**: Graph-derived risk fills in first. AI enrichment adds narrative
-where the graph can't (business context, code intent). If AI is unavailable, the
-graph-derived risk stands alone — this is the upgrade over the current AI-only path.
+**Key design points**:
+- Graph-derived risk fills in first (Decision #11). AI enrichment can only escalate,
+  never downgrade (Decision #16). "Critical" is AI-only — graph tops out at "High"
+  (Decision #15).
+- `overall_risk` comes from graph aggregate when available, AI-derived max otherwise
+  (Decision #13).
+- If graph is unavailable AND AI is unavailable, all risk fields stay `None` — tested
+  explicitly (Decision #14).
+- Incomplete data warnings (Decision #20) live in `risk_engine.py`'s `_collect_factors()`
+  — when a dimension with weight > 0.5 has `data_available=False`, a factor is added.
+  This applies to all callers (SOW, PR, local), not just impact analysis.
 
 #### Deliverables
 
 **2.1 Modify `scatter/analyzers/impact_analyzer.py`**
-- Add `graph_ctx` parameter to `run_impact_analysis()` (already has `graph=None`)
+- Replace `graph=None` parameter with `graph_ctx: Optional[GraphContext] = None` on `run_impact_analysis()`, `_analyze_single_target()`, and `trace_transitive_impact()` (Decision #12)
+- Derive `graph = graph_ctx.graph if graph_ctx else None` at the top of `run_impact_analysis()` — internal code continues passing raw `graph` to `find_consumers()`, `build_codebase_index()`, and transitive tracing (these don't need metrics/cycles)
 - In Step 3, compute `RiskProfile` per target when `graph_ctx` is available
-- Map `RiskLevel` → existing label strings ("Low"/"Medium"/"High"/"Critical")
-- Existing AI risk assessment becomes fallback/enrichment, not primary
-- `ImpactReport.overall_risk` derived from max `RiskProfile.risk_level`
+- Map `RiskLevel` → label strings: RED→"High", YELLOW→"Medium", GREEN→"Low" (Decision #15)
+- AI risk assessment can escalate but never downgrade graph-derived ratings (Decision #16)
+- `ImpactReport.overall_risk` derived from `aggregate_risk(profiles)` when graph available (Decision #13)
+- Extract current inline `overall_risk` logic (lines 215–222) into `_derive_overall_risk_from_consumers(report)` for the no-graph fallback path
+- **Enrichment ordering**: Risk scoring in Step 3 reads `graph_ctx.metrics` directly — does NOT depend on `enrich_consumers()` which runs after `run_impact_analysis()` returns. No ordering conflict.
 
-**2.2 Modify `scatter/analyzers/graph_enrichment.py`**
-- Add `risk_profiles: Dict[str, RiskProfile]` to `GraphContext` (optional, computed lazily)
-- No changes to existing `enrich_legacy_results()` or `enrich_consumers()` — they
-  continue enriching with coupling metrics, separate from risk scoring
+**2.2 ~~Modify `scatter/analyzers/graph_enrichment.py`~~** — REMOVED (Decision #22)
+- ~~Add `risk_profiles: Dict[str, RiskProfile]` to `GraphContext`~~
+- `GraphContext` stays a data holder. Profiles computed inline in `impact_analyzer.py`.
+- No changes to `graph_enrichment.py` in Phase 2.
 
 **2.3 Modify `scatter/modes/impact.py`**
-- Pass `graph_ctx` through to `run_impact_analysis()` (it's already available in mode context)
+- Update call site (line 53): replace `graph=ctx.graph_ctx.graph if ctx.graph_ctx else None` with `graph_ctx=ctx.graph_ctx` (Decision #12)
+- No other changes — `apply_impact_graph_enrichment()` continues running after analysis, enriching consumers for reporters
 
-**2.4 Helper function**
+**2.3b Update `tests/unit/test_codebase_index.py`**
+- Update call at line 475: replace `graph=graph` with `graph_ctx=` wrapper (only other test calling `run_impact_analysis` with `graph=`)
+
+**2.4 Modify `scatter/analyzers/risk_engine.py`** (Decision #20)
+- In `_collect_factors()`, when a dimension has `data_available=False` and its weight in the context exceeds 0.5, add factor: "Incomplete data: {dimension.name} not available"
+- This surfaces data gaps in risk reports for all callers (SOW, PR, local) — not SOW-specific
+
+**2.5 Helper functions**
 ```python
 def _risk_level_to_label(level: RiskLevel) -> str:
-    """Map graph-derived RiskLevel to existing AI-compatible label."""
+    """Map graph-derived RiskLevel to existing AI-compatible label.
+
+    Note (Decision #15): No "Critical" mapping. Graph tops out at "High".
+    Only AI enrichment can escalate to "Critical".
+    """
     return {
         RiskLevel.RED: "High",
         RiskLevel.YELLOW: "Medium",
         RiskLevel.GREEN: "Low",
     }[level]
+
+# RISK_ORDER used by AI escalation logic (Decision #16)
+RISK_ORDER = {"Low": 0, "Medium": 1, "High": 2, "Critical": 3}
 ```
 
-**2.5 Tests**
+**2.6 Tests**
 - `tests/unit/test_impact_risk_integration.py`:
   - `test_sow_with_graph_uses_risk_engine`: graph available → risk_rating from engine
   - `test_sow_without_graph_uses_ai_only`: no graph → falls back to AI assess_risk
   - `test_sow_with_graph_and_ai_enriches`: graph fills rating, AI adds justification
-  - `test_risk_level_to_label_mapping`: RED→High, YELLOW→Medium, GREEN→Low
-  - `test_overall_risk_derived_from_profiles`: max of per-target RiskLevel
+  - `test_sow_with_graph_ai_escalates_not_downgrades`: AI "Critical" overrides "High", AI "Low" does not override "Medium" (Decision #16)
+  - `test_sow_no_graph_no_ai`: no graph, no AI → all risk fields None, no crashes (Decision #14)
+  - `test_risk_level_to_label_mapping`: RED→"High", YELLOW→"Medium", GREEN→"Low", no "Critical" (Decision #15)
+  - `test_overall_risk_derived_from_profiles`: aggregate of per-target profiles (Decision #13)
+  - `test_multiple_targets_aggregate_overall`: RED target + GREEN target → overall "High" (Decision #17)
   - `test_backward_compat_sow_output_structure`: JSON schema unchanged
+  - `test_sow_regression_no_graph_byte_identical`: no-graph path unchanged by Phase 2 (Decision #17)
+- `tests/unit/test_sow_regression.py`:
+  - Flip `test_impact_analyzer_has_no_risk_imports` → `test_impact_analyzer_imports_risk_engine` (Decision #18)
 
-**2.6 Backward compatibility**
+**2.7 Backward compatibility**
 - `EnrichedConsumer` fields unchanged — same `risk_rating` and `risk_justification` strings
 - `ImpactReport` fields unchanged — same `overall_risk` string
 - JSON output schema unchanged — consumers still have `risk_rating` as a string
 - Only difference: risk_rating populated even without AI (was None without AI before)
+- "Critical" remains a valid `risk_rating` value — only reachable via AI escalation (Decision #15)
 
-**2.7 Dimension coverage in `--sow` mode**
+**2.8 Dimension coverage in `--sow` mode**
 
 Not all 7 dimensions will be active in the `--sow` path in Phase 2:
 
@@ -1368,6 +1457,12 @@ This means Phase 2 effectively scores 5 active dimensions (structural, instabili
 cycle, database, blast_radius) with domain_boundary available when team ownership is
 configured. That's still a significant upgrade over AI-only risk ratings, which have
 no graph-derived signal at all.
+
+When `change_surface` (weight 0.4 in SOW context) has `data_available=False`, it is
+below the 0.5 threshold and will NOT trigger an incomplete data warning. If
+`domain_boundary` (weight 0.9) has `data_available=False` due to missing team_map,
+a risk factor will be surfaced: "Incomplete data: domain_boundary not available without
+team ownership config." (Decision #20)
 
 ### Phase 3: Expose via CLI (1 week)
 
@@ -1457,10 +1552,12 @@ When `--risk-details` is used, JSON output includes:
   risk config) but does not strictly require it
 
 ### Deferred (post-calibration / post-adoption)
+- **Per-consumer risk profiles** (Decision #11): Score each consumer's specific coupling to a target (per-edge metrics: coupling vector type, shared sproc count, cycle co-membership). Current Phase 2 scores per-target only. Adds precision but requires per-edge data that doesn't exist yet.
 - **Dimension correlation analysis**: once we have enough real profiles, check whether any dimensions are redundant (always move together). Not worth analyzing without production data.
 - **Coupling vector scoring**: weight the structural dimension by coupling vector type (interface impl = 1.0, namespace import = 0.2). Adds precision but adds complexity — defer until structural dimension proves too coarse.
 - **Custom risk contexts**: let teams define their own weight profiles in `.scatter.yaml`. The three built-in contexts (PR, SOW, local) cover the launch. Custom contexts are a v2 feature.
 - **Dict-based dimension storage**: `RiskProfile` uses named fields (`self.structural`, `self.cycle`, etc.) — clean for 6 dimensions with autocomplete and type checking (Priya). Switch threshold: 10+ dimensions. Not needed now.
+- **Cached risk profiles on `GraphContext`** (Decision #22): If Phase 3 CLI or other modes need profiles without re-running `impact_analyzer.py`, add `risk_profiles: Dict[str, RiskProfile]` to `GraphContext` then. Not needed while only the impact path consumes profiles.
 
 ---
 
@@ -1491,14 +1588,26 @@ what to do about it. That's the differentiator."
 | `tests/unit/test_risk_engine.py` | **Create** | Aggregation, composite scoring, edge cases, performance |
 | `tests/unit/test_risk_dimensions.py` | **Create** | Per-dimension scoring, interpolation, data availability |
 
-### Phase 2 (wire into impact analysis)
+### Phase 2 — PR 1: Tech Debt (pure refactor)
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `scatter/analyzers/impact_analyzer.py` | Modify | Compute `RiskProfile` per target in Step 3, graph-derived first, AI fallback |
-| `scatter/analyzers/graph_enrichment.py` | Modify | Add optional `risk_profiles` to `GraphContext` |
-| `scatter/modes/impact.py` | Modify | Pass `graph_ctx` through to `run_impact_analysis()` |
-| `tests/unit/test_impact_risk_integration.py` | Create | Graph+AI risk integration, backward compat |
+| `tests/conftest.py` | Modify | Extract shared `_make_metrics` helper (Decision #19) |
+| `tests/unit/test_risk_engine.py` | Modify | Use shared `_make_metrics` from conftest |
+| `tests/unit/test_risk_dimensions.py` | Modify | Use shared `_make_metrics` from conftest; add deeper `score_database` tests |
+| `scatter/core/risk_models.py` | Modify | `_ZERO_DIMENSION` → `RiskDimension.zero()` classmethod; dimension sync comment |
+| `scatter/analyzers/risk_engine.py` | Modify | Rename `blast` → `blast_radius` local variable |
+
+### Phase 2 — PR 2: Wire into Impact Analysis
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `scatter/analyzers/impact_analyzer.py` | Modify | Replace `graph=None` with `graph_ctx`, compute per-target `RiskProfile` in Step 3, AI escalation logic, extract `_derive_overall_risk_from_consumers()` (Decisions #11–16) |
+| `scatter/analyzers/risk_engine.py` | Modify | Add incomplete data factor to `_collect_factors()` for dimensions with weight > 0.5 and `data_available=False` (Decision #20) |
+| `scatter/modes/impact.py` | Modify | Update call site: `graph_ctx=ctx.graph_ctx` instead of `graph=ctx.graph_ctx.graph` (Decision #12) |
+| `tests/unit/test_codebase_index.py` | Modify | Update `run_impact_analysis()` call to use `graph_ctx=` (Decision #12) |
+| `tests/unit/test_impact_risk_integration.py` | Create | 10 test cases: graph+AI paths, escalation, aggregate, backward compat (Decisions #14–18) |
+| `tests/unit/test_sow_regression.py` | Modify | Flip boundary test to positive assertion (Decision #18) |
 
 ### Phase 3 (expose via CLI)
 
