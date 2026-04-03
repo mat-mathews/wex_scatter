@@ -15,6 +15,13 @@ from typing import List, Optional, Union
 
 # --- Constants ---
 
+# DIMENSION SYNC: When adding a new dimension, update ALL of these locations:
+#   1. VALID_DIMENSION_NAMES (below)
+#   2. RiskProfile fields (named field + dimensions property)
+#   3. AggregateRisk fields (named field + dimension aggregation in aggregate_risk)
+#   4. aggregate_risk() dim_names list in risk_engine.py
+#   5. compute_risk_profile() dimension scoring + dimensions list in risk_engine.py
+#   6. Logging format string in compute_risk_profile() (risk_engine.py)
 VALID_DIMENSION_NAMES = frozenset(
     {
         "structural",
