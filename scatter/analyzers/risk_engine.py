@@ -269,14 +269,23 @@ def _collect_factors(
     context: RiskContext,
     top_n: int = 5,
 ) -> List[str]:
-    """Collect factors from all dimensions, deduplicate, sort by weight * score."""
+    """Collect factors from all dimensions, deduplicate, sort by weight * score.
+
+    Decision #20: when a dimension with weight > 0.5 has data_available=False,
+    add an incomplete data factor so the gap is visible in risk reports.
+    """
     scored_factors: List[tuple] = []
     seen: Set[str] = set()
 
     for d in dimensions:
-        if not d.data_available:
-            continue
         weight = context.dimension_weights.get(d.name, 0.0)
+        if not d.data_available:
+            if weight > 0.5:
+                factor = f"Incomplete data: {d.name} not available"
+                if factor not in seen:
+                    seen.add(factor)
+                    scored_factors.append((weight * 0.5, factor))
+            continue
         for factor in d.factors:
             if factor not in seen:
                 seen.add(factor)

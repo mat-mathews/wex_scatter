@@ -50,7 +50,7 @@ def run_impact_mode(args, ctx: ModeContext, start_time: float) -> None:
         disable_multiprocessing=ctx.disable_multiprocessing,
         cs_analysis_chunk_size=ctx.cs_analysis_chunk_size,
         csproj_analysis_chunk_size=ctx.csproj_analysis_chunk_size,
-        graph=ctx.graph_ctx.graph if ctx.graph_ctx else None,
+        graph_ctx=ctx.graph_ctx,
         min_confidence=args.sow_min_confidence,
         solution_index=ctx.solution_index,
         analysis_config=ctx.config.analysis,

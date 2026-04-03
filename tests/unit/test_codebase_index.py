@@ -469,10 +469,14 @@ class TestConfidenceFiltering:
             ("MyApp", "MyApp", ["Service"], []),
         ])
 
+        # Wrap graph in a mock GraphContext (Decision #12)
+        mock_graph_ctx = MagicMock()
+        mock_graph_ctx.graph = graph
+
         with pytest.raises(RuntimeError, match="estimated") as exc_info:
             run_impact_analysis(
                 sow_text="test", search_scope=Path("/search"),
-                ai_provider=provider, graph=graph,
+                ai_provider=provider, graph_ctx=mock_graph_ctx,
             )
         # Should mention tokens and contain the original exception
         assert "tokens" in str(exc_info.value)

@@ -288,16 +288,15 @@ class TestRiskEngineDoesNotAffectSOW:
         assert "from scatter.core.risk_models" not in source
         assert "import scatter.core.risk_models" not in source
 
-    def test_impact_analyzer_has_no_risk_imports(self):
-        """scatter.analyzers.impact_analyzer must not import risk engine.
+    def test_impact_analyzer_imports_risk_engine(self):
+        """scatter.analyzers.impact_analyzer imports risk engine (Phase 2 shipped).
 
-        Risk engine wiring into impact analysis is Phase 2.
-        Phase 1 must not touch impact_analyzer.py.
+        Flipped from Phase 1's negative assertion (Decision #18). Documents
+        that risk engine wiring is active in impact analysis.
         """
         import inspect
         import scatter.analyzers.impact_analyzer as ia_mod
 
         source = inspect.getsource(ia_mod)
-        assert "from scatter.analyzers.risk_engine" not in source
-        assert "from scatter.core.risk_models" not in source
-        assert "import scatter.analyzers.risk_engine" not in source
+        assert "from scatter.analyzers.risk_engine" in source
+        assert "from scatter.core.risk_models" in source

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 
 if TYPE_CHECKING:
     from scatter.config import AnalysisConfig
+    from scatter.analyzers.graph_enrichment import GraphContext
 
 from scatter.core.models import (
     AnalysisTarget,
@@ -22,8 +23,38 @@ from scatter.core.models import (
     _confidence_label,
 )
 from scatter.analyzers.consumer_analyzer import find_consumers
+from scatter.analyzers.risk_engine import aggregate_risk, compute_risk_profile
+from scatter.core.risk_models import RiskLevel, SOW_RISK_CONTEXT
 from scatter.scanners.project_scanner import derive_namespace
 from scatter.compat.v1_bridge import find_solutions_for_project
+
+# Risk level ordering for AI escalation logic (Decision #16).
+# Graph-derived risk tops out at "High"; only AI can escalate to "Critical".
+RISK_ORDER = {"Low": 0, "Medium": 1, "High": 2, "Critical": 3}
+
+
+def _risk_level_to_label(level: RiskLevel) -> str:
+    """Map graph-derived RiskLevel to existing AI-compatible label.
+
+    Decision #15: No "Critical" mapping. Graph tops out at "High".
+    Only AI enrichment can escalate to "Critical".
+    """
+    return {
+        RiskLevel.RED: "High",
+        RiskLevel.YELLOW: "Medium",
+        RiskLevel.GREEN: "Low",
+    }[level]
+
+
+def _derive_overall_risk_from_consumers(report: ImpactReport) -> str:
+    """Derive overall risk from max consumer risk_rating (AI-only fallback)."""
+    risk_levels = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}
+    max_risk = "Low"
+    for ti in report.targets:
+        for c in ti.consumers:
+            if c.risk_rating and risk_levels.get(c.risk_rating, 0) > risk_levels.get(max_risk, 0):
+                max_risk = c.risk_rating
+    return max_risk
 
 
 def _compute_ambiguity_label(targets: List[AnalysisTarget]) -> str:
@@ -58,7 +89,7 @@ def run_impact_analysis(
     disable_multiprocessing: bool = False,
     cs_analysis_chunk_size: int = 50,
     csproj_analysis_chunk_size: int = 25,
-    graph=None,
+    graph_ctx: Optional["GraphContext"] = None,
     min_confidence: float = 0.3,
     solution_index=None,
     analysis_config: Optional["AnalysisConfig"] = None,
@@ -73,6 +104,11 @@ def run_impact_analysis(
         pipeline_map = {}
     if solution_file_cache is None:
         solution_file_cache = []
+
+    # Extract raw graph for consumer tracing and codebase index (Decision #12).
+    # Risk scoring uses graph_ctx directly (metrics, cycles); consumer tracing
+    # and codebase index only need the raw DependencyGraph.
+    graph = graph_ctx.graph if graph_ctx else None
 
     report = ImpactReport(sow_text=sow_text)
 
@@ -161,24 +197,58 @@ def run_impact_analysis(
             disable_multiprocessing=disable_multiprocessing,
             cs_analysis_chunk_size=cs_analysis_chunk_size,
             csproj_analysis_chunk_size=csproj_analysis_chunk_size,
-            graph=graph,
+            graph=graph,  # raw graph for consumer tracing
             solution_index=solution_index,
             analysis_config=analysis_config,
         )
         report.targets.append(target_impact)
 
-    # Step 3: AI risk assessment per target
+    # Step 3: Risk assessment per target (Decision #11 — per-target, not per-consumer)
+    # Graph-derived risk fills first when graph_ctx is available. AI enrichment
+    # can escalate but never downgrade (Decision #16).
     logging.info("\nStep 3: Assessing risk per target...")
     from scatter.ai.tasks.risk_assess import assess_risk
 
+    risk_profiles = []
+
     for target_impact in report.targets:
-        if target_impact.consumers:
-            risk_result = assess_risk(target_impact.target, target_impact.consumers, ai_provider)
-            if risk_result:
-                for consumer in target_impact.consumers:
-                    if consumer.risk_rating is None:
-                        consumer.risk_rating = risk_result.get("rating")
-                        consumer.risk_justification = risk_result.get("justification")
+        if not target_impact.consumers:
+            continue
+
+        consumers = target_impact.consumers
+
+        # Graph-derived risk (deterministic, no AI needed)
+        if graph_ctx is not None:
+            profile = compute_risk_profile(
+                target=target_impact.target.name,
+                graph=graph_ctx.graph,
+                metrics=graph_ctx.metrics,
+                consumers=[c.consumer_name for c in consumers],
+                cycles=graph_ctx.cycles,
+                context=SOW_RISK_CONTEXT,
+                direct_consumer_count=target_impact.total_direct,
+                transitive_consumer_count=target_impact.total_transitive,
+            )
+            risk_profiles.append(profile)
+            risk_label = _risk_level_to_label(profile.risk_level)
+            for consumer in consumers:
+                consumer.risk_rating = risk_label
+                consumer.risk_justification = "; ".join(profile.risk_factors[:3])
+
+        # AI enrichment (can escalate, never downgrade — Decision #16)
+        risk_result = assess_risk(target_impact.target, consumers, ai_provider)
+        if risk_result:
+            ai_rating = risk_result.get("rating")
+            for consumer in consumers:
+                if consumer.risk_rating is None:
+                    # No graph data — AI is primary
+                    consumer.risk_rating = ai_rating
+                    consumer.risk_justification = risk_result.get("justification")
+                elif ai_rating and RISK_ORDER.get(ai_rating, 0) > RISK_ORDER.get(consumer.risk_rating, 0):
+                    # AI escalates graph-derived risk (e.g. "High" → "Critical")
+                    consumer.risk_rating = ai_rating
+                if consumer.risk_justification is None:
+                    consumer.risk_justification = risk_result.get("justification")
 
     # Step 4: AI coupling narrative (optional, per consumer)
     logging.info("Step 4: Generating coupling narratives...")
@@ -212,14 +282,13 @@ def run_impact_analysis(
     if narrative:
         report.impact_narrative = narrative.get("narrative")
 
-    # Derive overall risk from targets
-    risk_levels = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}
-    max_risk = "Low"
-    for ti in report.targets:
-        for c in ti.consumers:
-            if c.risk_rating and risk_levels.get(c.risk_rating, 0) > risk_levels.get(max_risk, 0):
-                max_risk = c.risk_rating
-    report.overall_risk = max_risk
+    # Derive overall risk (Decision #13): graph aggregate when available,
+    # AI-derived max otherwise.
+    if risk_profiles:
+        agg = aggregate_risk(risk_profiles, SOW_RISK_CONTEXT)
+        report.overall_risk = _risk_level_to_label(agg.risk_level)
+    else:
+        report.overall_risk = _derive_overall_risk_from_consumers(report)
 
     return report
 
