@@ -58,7 +58,12 @@ That's a lot of information from a one-line description. Let's break down what y
 
 ## Reading the Report
 
-**Overall Risk and Complexity** appear at the top. When a dependency graph is available, risk is computed by the risk engine across 6 dimensions (structural coupling, instability, cycles, database coupling, blast radius, domain boundaries) — deterministic and reproducible. AI enrichment can escalate the rating (e.g. "High" to "Critical") but cannot downgrade it. Overall risk is the worst-case across all targets. Without a graph, risk comes from AI assessment directly. Complexity is always an AI estimate of effort.
+**Overall Risk and Complexity** appear at the top. Complexity is always an AI estimate of effort. Risk uses a two-layer model:
+
+1. **Graph-derived risk** (deterministic) — when a dependency graph is available, the risk engine scores each target across 6 dimensions: structural coupling, instability, cycle entanglement, database coupling, blast radius, and domain boundaries. This produces a reproducible rating — same input, same score, no AI variance.
+2. **AI enrichment** (escalation-only) — AI can raise a rating (e.g. "High" to "Critical") when it detects business context the graph can't see, but it can never lower a graph-derived rating. Without a graph, AI provides the primary risk rating directly.
+
+Overall risk is the worst-case across all targets.
 
 **The tree view** shows direct consumers at the root level and transitive consumers nested beneath the consumer they flow through. The brackets show confidence:
 
@@ -191,4 +196,4 @@ See [Output Formats](../output-formats.md) for detailed structure of each format
 ---
 
 !!! info "How this works"
-    When a dependency graph is available, Scatter builds a compact codebase index (project names, types, sprocs) and sends it alongside the SOW to the LLM. The AI parses the work request into structured targets grounded in actual code artifacts, Scatter runs consumer detection per target, then BFS traces transitive consumers up to `--max-depth`. The risk engine scores each target across 6 graph-derived dimensions (deterministic, no AI needed). AI enrichment tasks (risk escalation, coupling narrative, complexity, impact narrative) layer on top — AI can escalate risk but never downgrade graph-derived ratings. Target names not in the index get their confidence halved automatically. See [Architecture Overview](../reference/architecture.md) for the full pipeline.
+    Scatter builds a codebase index from the dependency graph and sends it alongside the SOW to the LLM. The AI parses the work request into structured targets, Scatter runs consumer detection per target, then BFS traces transitive consumers up to `--max-depth`. Risk scoring and AI enrichment follow (see [Reading the Report](#reading-the-report) above). Target names not in the index get their confidence halved automatically. See [Architecture Overview](../reference/architecture.md) for the full pipeline.

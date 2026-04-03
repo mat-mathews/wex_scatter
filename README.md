@@ -148,7 +148,7 @@ Targets identified: 2 (confidence: clear)
 Overall Risk: MEDIUM    Complexity: moderate    Estimated Effort: 3-5 days
 ```
 
-Requires `GOOGLE_API_KEY` in your environment. Scatter builds a codebase index from the dependency graph and sends it as grounding context — the AI selects from known projects and types, not thin air. When a dependency graph is available, risk ratings are graph-derived (deterministic) from 6 dimensions — the AI adds narrative and can escalate but never downgrade. Without a graph, AI provides the risk rating directly. Effort estimates are AI-generated approximations, not engineering commitments. Accepts a file with `--sow-file`.
+Requires `GOOGLE_API_KEY` in your environment. Scatter builds a codebase index from the dependency graph and sends it as grounding context — the AI selects from known projects and types, not thin air. Risk ratings are graph-derived when a graph is available; AI can escalate but never downgrade. Effort estimates are AI-generated approximations, not engineering commitments. Accepts a file with `--sow-file`. See [Impact Analysis](documentation/docs/usage/impact-analysis.md) for the full risk model.
 
 ### Map your architecture
 

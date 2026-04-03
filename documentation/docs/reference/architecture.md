@@ -159,7 +159,7 @@ __main__.py: parse args, load config, resolve SOW text
   --> console_reporter | json_reporter | csv_reporter | markdown_reporter
 ```
 
-Risk assessment uses a two-layer model. When `graph_ctx` is available, `compute_risk_profile()` scores each target across 6 dimensions (structural coupling, instability, cycles, database coupling, blast radius, domain boundaries) and produces a deterministic rating. AI enrichment runs second and can escalate the rating (e.g. "High" to "Critical") but cannot downgrade it. When no graph is available, AI provides the primary risk rating directly. This means risk ratings are reproducible when graph context exists — running the same analysis twice produces the same scores.
+Risk uses graph-derived scoring (deterministic) with AI escalation. See [Impact Analysis — Reading the Report](../usage/impact-analysis.md#reading-the-report) for the full model.
 
 ### Graph Analysis Mode
 

@@ -196,11 +196,9 @@ INFO: Hybrid analysis for GalaxyWorks.Data/PortalDataService.cs: 1 affected type
 
 **Flags:** `--sow` (inline text) or `--sow-file` (path to file)
 
-Impact analysis mode takes a work request in plain English, uses AI to identify affected projects and stored procedures, then runs the full consumer analysis automatically.
+Impact analysis mode takes a work request in plain English, uses AI to identify affected projects and stored procedures, then runs the full consumer analysis automatically. Risk ratings are graph-derived when a dependency graph is available — AI enrichment can escalate but never downgrade (see [Reading the Report](usage/impact-analysis.md#reading-the-report) for the full model).
 
-When a dependency graph is available, risk ratings are **graph-derived first** — the risk engine scores each target across 6 dimensions (structural coupling, instability, cycles, database coupling, blast radius, domain boundaries) to produce a deterministic, reproducible rating. AI enrichment runs second and can escalate the rating (e.g. "High" to "Critical" based on business context) but can never downgrade it. When no graph is available, AI provides the primary risk rating.
-
-The pipeline layers on five AI tasks: SOW parsing, risk enrichment (escalation-only), coupling narrative, complexity estimation, and an impact narrative. If any individual task fails, the report continues without that enrichment -- graceful degradation throughout.
+The pipeline runs five AI tasks: SOW parsing, risk enrichment (escalation-only), coupling narrative, complexity estimation, and an impact narrative. If any individual task fails, the report continues without that enrichment -- graceful degradation throughout.
 
 ### Codebase Index
 
