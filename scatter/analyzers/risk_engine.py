@@ -66,7 +66,7 @@ def compute_risk_profile(
     instability = score_instability(target, target_metrics)
     cycle = score_cycle(target, cycles)
     database = score_database(target, graph, target_metrics, team_map)
-    blast = score_blast_radius(
+    blast_radius = score_blast_radius(
         target, direct_consumer_count, transitive_consumer_count, metrics,
     )
     domain = score_domain_boundary(
@@ -91,7 +91,7 @@ def compute_risk_profile(
     )
 
     # Composite score: weighted max (not average)
-    dimensions = [structural, instability, cycle, database, blast, domain, change_surface]
+    dimensions = [structural, instability, cycle, database, blast_radius, domain, change_surface]
     composite = _compute_composite(dimensions, context)
     risk_level = composite_to_risk_level(composite, context)
 
@@ -121,7 +121,7 @@ def compute_risk_profile(
         instability=instability,
         cycle=cycle,
         database=database,
-        blast_radius=blast,
+        blast_radius=blast_radius,
         domain_boundary=domain,
         change_surface=change_surface,
         composite_score=round(composite, 3),
@@ -141,9 +141,9 @@ def compute_risk_profile(
         "data_available=[%s]",
         target,
         structural.score, instability.score, cycle.score,
-        database.score, blast.score, domain.score,
+        database.score, blast_radius.score, domain.score,
         ",".join(
-            d.name for d in [structural, instability, cycle, database, blast, domain]
+            d.name for d in [structural, instability, cycle, database, blast_radius, domain]
             if not d.data_available
         ) or "all",
     )
