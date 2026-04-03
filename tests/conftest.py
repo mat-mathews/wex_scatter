@@ -1,4 +1,5 @@
 """Shared test fixtures for Scatter CLI tests."""
+
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -39,6 +40,7 @@ def make_mode_context():
         def test_something(make_mode_context):
             ctx = make_mode_context(class_name="Foo")
     """
+
     def _factory(**overrides) -> ModeContext:
         defaults = dict(
             search_scope=Path("/tmp/scope"),
@@ -63,6 +65,7 @@ def make_mode_context():
         )
         defaults.update(overrides)
         return ModeContext(**defaults)
+
     return _factory
 
 
@@ -75,6 +78,7 @@ def make_consumer_result():
         def test_something(make_consumer_result):
             r = make_consumer_result(consumer_project_name="MyApp")
     """
+
     def _factory(**overrides) -> ConsumerResult:
         defaults = dict(
             target_project_name="TargetProject",
@@ -85,4 +89,5 @@ def make_consumer_result():
         )
         defaults.update(overrides)
         return ConsumerResult(**defaults)
+
     return _factory

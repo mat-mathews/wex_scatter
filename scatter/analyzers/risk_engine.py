@@ -67,7 +67,10 @@ def compute_risk_profile(
     cycle = score_cycle(target, cycles)
     database = score_database(target, graph, target_metrics, team_map)
     blast_radius = score_blast_radius(
-        target, direct_consumer_count, transitive_consumer_count, metrics,
+        target,
+        direct_consumer_count,
+        transitive_consumer_count,
+        metrics,
     )
     domain = score_domain_boundary(
         target,
@@ -140,16 +143,25 @@ def compute_risk_profile(
         "database=%.3f blast_radius=%.3f domain_boundary=%.3f "
         "data_available=[%s]",
         target,
-        structural.score, instability.score, cycle.score,
-        database.score, blast_radius.score, domain.score,
+        structural.score,
+        instability.score,
+        cycle.score,
+        database.score,
+        blast_radius.score,
+        domain.score,
         ",".join(
-            d.name for d in [structural, instability, cycle, database, blast_radius, domain]
+            d.name
+            for d in [structural, instability, cycle, database, blast_radius, domain]
             if not d.data_available
-        ) or "all",
+        )
+        or "all",
     )
     logger.info(
         "risk_profile target=%s composite=%.3f level=%s elapsed_ms=%.1f",
-        target, composite, risk_level.value, elapsed_ms,
+        target,
+        composite,
+        risk_level.value,
+        elapsed_ms,
     )
 
     return profile

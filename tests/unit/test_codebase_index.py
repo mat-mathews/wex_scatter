@@ -1,4 +1,5 @@
 """Tests for Initiative 10: Codebase Index for SOW mode."""
+
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -30,6 +31,7 @@ from scatter.core.models import (
 # =============================================================================
 # Helpers
 # =============================================================================
+
 
 def _make_graph_with_projects(projects):
     """Build a DependencyGraph from a list of (name, namespace, types, sprocs) tuples."""
@@ -64,6 +66,7 @@ def _make_mock_provider(response_text):
 # Phase 1: Codebase Index Building
 # =============================================================================
 
+
 class TestCodebaseIndex:
     def test_empty_graph_produces_empty_index(self):
         graph = DependencyGraph()
@@ -76,20 +79,28 @@ class TestCodebaseIndex:
         assert index.size_bytes == 0
 
     def test_index_contains_project_names(self):
-        graph = _make_graph_with_projects([
-            ("GalaxyWorks.Data", "GalaxyWorks.Data", ["PortalDataService"], []),
-            ("MyDotNetApp", "MyDotNetApp", ["Program"], []),
-        ])
+        graph = _make_graph_with_projects(
+            [
+                ("GalaxyWorks.Data", "GalaxyWorks.Data", ["PortalDataService"], []),
+                ("MyDotNetApp", "MyDotNetApp", ["Program"], []),
+            ]
+        )
         index = build_codebase_index(graph)
         assert "P:GalaxyWorks.Data" in index.text
         assert "P:MyDotNetApp" in index.text
         assert index.project_count == 2
 
     def test_index_contains_type_declarations(self):
-        graph = _make_graph_with_projects([
-            ("GalaxyWorks.Data", "GalaxyWorks.Data",
-             ["PortalDataService", "IDataService", "PortalConfig"], []),
-        ])
+        graph = _make_graph_with_projects(
+            [
+                (
+                    "GalaxyWorks.Data",
+                    "GalaxyWorks.Data",
+                    ["PortalDataService", "IDataService", "PortalConfig"],
+                    [],
+                ),
+            ]
+        )
         index = build_codebase_index(graph)
         assert "PortalDataService" in index.text
         assert "IDataService" in index.text
@@ -97,52 +108,68 @@ class TestCodebaseIndex:
         assert index.type_count == 3
 
     def test_index_contains_sproc_references(self):
-        graph = _make_graph_with_projects([
-            ("GalaxyWorks.Data", "GalaxyWorks.Data", [],
-             ["dbo.sp_InsertPortalConfiguration", "dbo.sp_GetPortalConfig"]),
-        ])
+        graph = _make_graph_with_projects(
+            [
+                (
+                    "GalaxyWorks.Data",
+                    "GalaxyWorks.Data",
+                    [],
+                    ["dbo.sp_InsertPortalConfiguration", "dbo.sp_GetPortalConfig"],
+                ),
+            ]
+        )
         index = build_codebase_index(graph)
         assert "dbo.sp_InsertPortalConfiguration" in index.text
         assert "dbo.sp_GetPortalConfig" in index.text
         assert index.sproc_count == 2
 
     def test_namespace_omitted_when_matches_project(self):
-        graph = _make_graph_with_projects([
-            ("GalaxyWorks.Data", "GalaxyWorks.Data", [], []),
-        ])
+        graph = _make_graph_with_projects(
+            [
+                ("GalaxyWorks.Data", "GalaxyWorks.Data", [], []),
+            ]
+        )
         index = build_codebase_index(graph)
         # Namespace should NOT appear when it matches the project name
         assert "NS:" not in index.text
 
     def test_namespace_included_when_differs(self):
-        graph = _make_graph_with_projects([
-            ("GalaxyWorks.Data", "GW.DataAccess", [], []),
-        ])
+        graph = _make_graph_with_projects(
+            [
+                ("GalaxyWorks.Data", "GW.DataAccess", [], []),
+            ]
+        )
         index = build_codebase_index(graph)
         assert "NS:GW.DataAccess" in index.text
 
     def test_header_contains_project_count(self):
-        graph = _make_graph_with_projects([
-            ("ProjectA", "ProjectA", [], []),
-            ("ProjectB", "ProjectB", [], []),
-        ])
+        graph = _make_graph_with_projects(
+            [
+                ("ProjectA", "ProjectA", [], []),
+                ("ProjectB", "ProjectB", [], []),
+            ]
+        )
         index = build_codebase_index(graph)
         assert "(2 projects)" in index.text
 
     def test_compact_one_line_per_project_format(self):
-        graph = _make_graph_with_projects([
-            ("MyApp", "MyApp", ["Service", "Controller"], ["dbo.sp_Get"]),
-        ])
+        graph = _make_graph_with_projects(
+            [
+                ("MyApp", "MyApp", ["Service", "Controller"], ["dbo.sp_Get"]),
+            ]
+        )
         index = build_codebase_index(graph)
         # Should be one line with all fields
         assert "P:MyApp T:Service,Controller SP:dbo.sp_Get" in index.text
 
     def test_sproc_cross_reference_when_shared(self):
-        graph = _make_graph_with_projects([
-            ("ProjectA", "ProjectA", [], ["dbo.sp_Shared"]),
-            ("ProjectB", "ProjectB", [], ["dbo.sp_Shared"]),
-            ("ProjectC", "ProjectC", [], ["dbo.sp_Unique"]),
-        ])
+        graph = _make_graph_with_projects(
+            [
+                ("ProjectA", "ProjectA", [], ["dbo.sp_Shared"]),
+                ("ProjectB", "ProjectB", [], ["dbo.sp_Shared"]),
+                ("ProjectC", "ProjectC", [], ["dbo.sp_Unique"]),
+            ]
+        )
         index = build_codebase_index(graph)
         assert "=== Shared Stored Procedures ===" in index.text
         assert "dbo.sp_Shared" in index.text
@@ -156,17 +183,21 @@ class TestCodebaseIndex:
                 pytest.fail("sp_Unique should not appear in shared sproc section")
 
     def test_no_sproc_cross_reference_when_no_shared(self):
-        graph = _make_graph_with_projects([
-            ("ProjectA", "ProjectA", [], ["dbo.sp_OnlyA"]),
-            ("ProjectB", "ProjectB", [], ["dbo.sp_OnlyB"]),
-        ])
+        graph = _make_graph_with_projects(
+            [
+                ("ProjectA", "ProjectA", [], ["dbo.sp_OnlyA"]),
+                ("ProjectB", "ProjectB", [], ["dbo.sp_OnlyB"]),
+            ]
+        )
         index = build_codebase_index(graph)
         assert "=== Shared Stored Procedures ===" not in index.text
 
     def test_graph_with_empty_type_declarations(self):
-        graph = _make_graph_with_projects([
-            ("EmptyProject", "EmptyProject", [], []),
-        ])
+        graph = _make_graph_with_projects(
+            [
+                ("EmptyProject", "EmptyProject", [], []),
+            ]
+        )
         index = build_codebase_index(graph)
         assert "P:EmptyProject" in index.text
         assert index.project_count == 1
@@ -195,18 +226,18 @@ class TestCodebaseIndex:
         assert index.file_count == 2
 
     def test_no_file_count_without_search_scope(self):
-        graph = _make_graph_with_projects([
-            ("MyApp", "MyApp", ["Program"], []),
-        ])
+        graph = _make_graph_with_projects(
+            [
+                ("MyApp", "MyApp", ["Program"], []),
+            ]
+        )
         index = build_codebase_index(graph, search_scope=None)
         assert index.file_count == 0
 
     def test_large_graph_returns_all_types_no_truncation(self):
         """A large graph (100 projects, 50 types each) returns all types — no truncation."""
         projects = [
-            (f"Project{i}", f"Namespace{i}",
-             [f"Type{j}" for j in range(50)],
-             [])
+            (f"Project{i}", f"Namespace{i}", [f"Type{j}" for j in range(50)], [])
             for i in range(100)
         ]
         graph = _make_graph_with_projects(projects)
@@ -221,7 +252,12 @@ class TestCodebaseIndex:
     def test_sample_projects_in_index(self):
         """Index built from sample-like projects contains all project names."""
         sample_projects = [
-            ("GalaxyWorks.Data", "GalaxyWorks.Data", ["PortalDataService"], ["dbo.sp_InsertPortalConfiguration"]),
+            (
+                "GalaxyWorks.Data",
+                "GalaxyWorks.Data",
+                ["PortalDataService"],
+                ["dbo.sp_InsertPortalConfiguration"],
+            ),
             ("MyDotNetApp", "MyDotNetApp", ["Program"], []),
             ("MyDotNetApp.Consumer", "MyDotNetApp.Consumer", ["ConsumerService"], []),
             ("MyGalaxyConsumerApp", "MyGalaxyConsumerApp", ["GalaxyService"], []),
@@ -233,9 +269,11 @@ class TestCodebaseIndex:
             assert f"P:{name}" in index.text
 
     def test_legend_in_header(self):
-        graph = _make_graph_with_projects([
-            ("MyApp", "MyApp", [], []),
-        ])
+        graph = _make_graph_with_projects(
+            [
+                ("MyApp", "MyApp", [], []),
+            ]
+        )
         index = build_codebase_index(graph)
         assert "P=Project" in index.text
         assert "T=Types" in index.text
@@ -246,17 +284,27 @@ class TestCodebaseIndex:
 # Phase 2: Prompt with Index & Evidence
 # =============================================================================
 
+
 class TestPromptWithIndex:
     def test_prompt_includes_index_when_provided(self):
         index = CodebaseIndex(
             text="=== Codebase Index (1 projects) ===\nP:MyApp T:Service\n",
-            project_count=1, type_count=1, sproc_count=0,
-            file_count=0, size_bytes=50,
+            project_count=1,
+            type_count=1,
+            sproc_count=0,
+            file_count=0,
+            size_bytes=50,
         )
-        response = json.dumps([
-            {"type": "project", "name": "MyApp", "confidence": 0.9,
-             "match_evidence": "Explicitly named in SOW"}
-        ])
+        response = json.dumps(
+            [
+                {
+                    "type": "project",
+                    "name": "MyApp",
+                    "confidence": 0.9,
+                    "match_evidence": "Explicitly named in SOW",
+                }
+            ]
+        )
         model = _make_mock_model(response)
 
         result = parse_work_request_with_model(model, "Modify MyApp", codebase_index=index)
@@ -266,9 +314,7 @@ class TestPromptWithIndex:
         assert "ONLY return names that appear in the codebase index" in call_args
 
     def test_prompt_omits_index_when_none(self):
-        response = json.dumps([
-            {"type": "project", "name": "MyApp", "confidence": 0.9}
-        ])
+        response = json.dumps([{"type": "project", "name": "MyApp", "confidence": 0.9}])
         model = _make_mock_model(response)
 
         result = parse_work_request_with_model(model, "Modify MyApp", codebase_index=None)
@@ -278,10 +324,16 @@ class TestPromptWithIndex:
         assert "ONLY return names" not in call_args
 
     def test_match_evidence_parsed(self):
-        response = json.dumps([
-            {"type": "project", "name": "MyApp", "confidence": 0.9,
-             "match_evidence": "Project handles portal configuration"}
-        ])
+        response = json.dumps(
+            [
+                {
+                    "type": "project",
+                    "name": "MyApp",
+                    "confidence": 0.9,
+                    "match_evidence": "Project handles portal configuration",
+                }
+            ]
+        )
         model = _make_mock_model(response)
         result = parse_work_request_with_model(model, "Update portal config")
         assert result[0]["match_evidence"] == "Project handles portal configuration"
@@ -291,10 +343,16 @@ class TestPromptWithIndex:
         proj_dir.mkdir()
         (proj_dir / "MyApp.csproj").write_text("<Project></Project>")
 
-        response = json.dumps([
-            {"type": "project", "name": "MyApp", "confidence": 0.9,
-             "match_evidence": "Contains portal service classes"}
-        ])
+        response = json.dumps(
+            [
+                {
+                    "type": "project",
+                    "name": "MyApp",
+                    "confidence": 0.9,
+                    "match_evidence": "Contains portal service classes",
+                }
+            ]
+        )
         provider = _make_mock_provider(response)
         targets = parse_work_request("Update portal config", provider, tmp_path)
         assert len(targets) == 1
@@ -307,16 +365,24 @@ class TestPromptWithIndex:
 
         index = CodebaseIndex(
             text="P:RealProject T:RealClass\n",
-            project_count=1, type_count=1, sproc_count=0,
-            file_count=0, size_bytes=30,
+            project_count=1,
+            type_count=1,
+            sproc_count=0,
+            file_count=0,
+            size_bytes=30,
         )
-        response = json.dumps([
-            {"type": "project", "name": "RealProject", "confidence": 0.8},
-            {"type": "project", "name": "HallucinatedProject", "confidence": 0.9},
-        ])
+        response = json.dumps(
+            [
+                {"type": "project", "name": "RealProject", "confidence": 0.8},
+                {"type": "project", "name": "HallucinatedProject", "confidence": 0.9},
+            ]
+        )
         provider = _make_mock_provider(response)
         targets = parse_work_request(
-            "Modify some projects", provider, tmp_path, codebase_index=index,
+            "Modify some projects",
+            provider,
+            tmp_path,
+            codebase_index=index,
         )
         real = [t for t in targets if t.name == "RealProject"][0]
         hallucinated = [t for t in targets if t.name == "HallucinatedProject"][0]
@@ -362,39 +428,35 @@ class TestExtractIndexNames:
 # Phase 3: Ambiguity Detection & Confidence Filtering
 # =============================================================================
 
+
 class TestAmbiguityLabel:
     def test_clear_few_targets_high_confidence(self):
         targets = [
-            AnalysisTarget(target_type="project", name=f"P{i}", confidence=0.9)
-            for i in range(3)
+            AnalysisTarget(target_type="project", name=f"P{i}", confidence=0.9) for i in range(3)
         ]
         assert _compute_ambiguity_label(targets) == "clear"
 
     def test_moderate_many_targets(self):
         targets = [
-            AnalysisTarget(target_type="project", name=f"P{i}", confidence=0.8)
-            for i in range(8)
+            AnalysisTarget(target_type="project", name=f"P{i}", confidence=0.8) for i in range(8)
         ]
         assert _compute_ambiguity_label(targets) == "moderate"
 
     def test_moderate_medium_confidence(self):
         targets = [
-            AnalysisTarget(target_type="project", name=f"P{i}", confidence=0.5)
-            for i in range(3)
+            AnalysisTarget(target_type="project", name=f"P{i}", confidence=0.5) for i in range(3)
         ]
         assert _compute_ambiguity_label(targets) == "moderate"
 
     def test_vague_too_many_targets(self):
         targets = [
-            AnalysisTarget(target_type="project", name=f"P{i}", confidence=0.8)
-            for i in range(15)
+            AnalysisTarget(target_type="project", name=f"P{i}", confidence=0.8) for i in range(15)
         ]
         assert _compute_ambiguity_label(targets) == "vague"
 
     def test_vague_low_confidence(self):
         targets = [
-            AnalysisTarget(target_type="project", name=f"P{i}", confidence=0.2)
-            for i in range(3)
+            AnalysisTarget(target_type="project", name=f"P{i}", confidence=0.2) for i in range(3)
         ]
         assert _compute_ambiguity_label(targets) == "vague"
 
@@ -416,16 +478,23 @@ class TestConfidenceFiltering:
     def test_low_confidence_targets_filtered(self, mock_parse):
         """Targets below min_confidence are excluded."""
         mock_parse.return_value = [
-            AnalysisTarget(target_type="project", name="HighConf",
-                          csproj_path=Path("/a.csproj"), confidence=0.9),
-            AnalysisTarget(target_type="project", name="LowConf",
-                          csproj_path=Path("/b.csproj"), confidence=0.2),
+            AnalysisTarget(
+                target_type="project",
+                name="HighConf",
+                csproj_path=Path("/a.csproj"),
+                confidence=0.9,
+            ),
+            AnalysisTarget(
+                target_type="project", name="LowConf", csproj_path=Path("/b.csproj"), confidence=0.2
+            ),
         ]
         provider = _make_mock_provider("[]")
 
         report = run_impact_analysis(
-            sow_text="test", search_scope=Path("/search"),
-            ai_provider=provider, min_confidence=0.5,
+            sow_text="test",
+            search_scope=Path("/search"),
+            ai_provider=provider,
+            min_confidence=0.5,
         )
         target_names = [ti.target.name for ti in report.targets]
         assert "HighConf" in target_names
@@ -441,7 +510,8 @@ class TestConfidenceFiltering:
 
         with pytest.raises(RuntimeError, match="narrowing --search-scope"):
             run_impact_analysis(
-                sow_text="test", search_scope=Path("/search"),
+                sow_text="test",
+                search_scope=Path("/search"),
                 ai_provider=provider,
             )
 
@@ -453,7 +523,8 @@ class TestConfidenceFiltering:
 
         with pytest.raises(KeyError, match="something unrelated"):
             run_impact_analysis(
-                sow_text="test", search_scope=Path("/search"),
+                sow_text="test",
+                search_scope=Path("/search"),
                 ai_provider=provider,
             )
 
@@ -465,9 +536,11 @@ class TestConfidenceFiltering:
         provider = _make_mock_provider("[]")
 
         # Build a graph so the index has a known size
-        graph = _make_graph_with_projects([
-            ("MyApp", "MyApp", ["Service"], []),
-        ])
+        graph = _make_graph_with_projects(
+            [
+                ("MyApp", "MyApp", ["Service"], []),
+            ]
+        )
 
         # Wrap graph in a mock GraphContext (Decision #12)
         mock_graph_ctx = MagicMock()
@@ -475,8 +548,10 @@ class TestConfidenceFiltering:
 
         with pytest.raises(RuntimeError, match="estimated") as exc_info:
             run_impact_analysis(
-                sow_text="test", search_scope=Path("/search"),
-                ai_provider=provider, graph_ctx=mock_graph_ctx,
+                sow_text="test",
+                search_scope=Path("/search"),
+                ai_provider=provider,
+                graph_ctx=mock_graph_ctx,
             )
         # Should mention tokens and contain the original exception
         assert "tokens" in str(exc_info.value)
@@ -486,15 +561,21 @@ class TestConfidenceFiltering:
     def test_ambiguity_computed_before_filtering(self, mock_parse):
         """Ambiguity label uses full target list (before filtering)."""
         mock_parse.return_value = [
-            AnalysisTarget(target_type="project", name=f"P{i}",
-                          csproj_path=Path(f"/{i}.csproj"), confidence=0.2)
+            AnalysisTarget(
+                target_type="project",
+                name=f"P{i}",
+                csproj_path=Path(f"/{i}.csproj"),
+                confidence=0.2,
+            )
             for i in range(15)
         ]
         provider = _make_mock_provider("[]")
 
         report = run_impact_analysis(
-            sow_text="test", search_scope=Path("/search"),
-            ai_provider=provider, min_confidence=0.5,
+            sow_text="test",
+            search_scope=Path("/search"),
+            ai_provider=provider,
+            min_confidence=0.5,
         )
         assert report.ambiguity_level == "vague"
         assert report.avg_target_confidence == pytest.approx(0.2)
@@ -505,12 +586,14 @@ class TestConfidenceFiltering:
 # Phase 4: Console Reporter
 # =============================================================================
 
+
 class TestConsoleReporterIndex:
     def test_ambiguity_shown_in_output(self, capsys):
         from scatter.reports.console_reporter import print_impact_report
 
         target = AnalysisTarget(
-            target_type="project", name="MyApp",
+            target_type="project",
+            name="MyApp",
             match_evidence="Contains portal classes",
             confidence=0.8,
         )
@@ -530,7 +613,8 @@ class TestConsoleReporterIndex:
         from scatter.reports.console_reporter import print_impact_report
 
         target = AnalysisTarget(
-            target_type="project", name="MyApp",
+            target_type="project",
+            name="MyApp",
             match_evidence="Contains portal classes",
             confidence=0.8,
         )
@@ -547,7 +631,9 @@ class TestConsoleReporterIndex:
         from scatter.reports.console_reporter import print_impact_report
 
         target = AnalysisTarget(
-            target_type="project", name="MyApp", confidence=0.8,
+            target_type="project",
+            name="MyApp",
+            confidence=0.8,
         )
         ti = TargetImpact(target=target, total_direct=0, total_transitive=0)
         report = ImpactReport(
@@ -562,7 +648,8 @@ class TestConsoleReporterIndex:
         from scatter.reports.console_reporter import print_impact_report
 
         target = AnalysisTarget(
-            target_type="project", name="MyApp",
+            target_type="project",
+            name="MyApp",
             match_evidence="Matched via index",
             confidence=0.8,
         )
@@ -580,12 +667,14 @@ class TestConsoleReporterIndex:
 # Phase 4: JSON Reporter
 # =============================================================================
 
+
 class TestJsonReporterIndex:
     def test_ambiguity_and_evidence_in_json(self, tmp_path):
         from scatter.reports.json_reporter import write_impact_json_report
 
         target = AnalysisTarget(
-            target_type="project", name="MyApp",
+            target_type="project",
+            name="MyApp",
             match_evidence="Contains portal classes",
             confidence=0.8,
         )

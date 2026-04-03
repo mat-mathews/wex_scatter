@@ -114,13 +114,10 @@ class RiskContext:
         for dim, weight in self.dimension_weights.items():
             if dim not in VALID_DIMENSION_NAMES:
                 raise ValueError(
-                    f"Unknown dimension '{dim}' in weights — "
-                    f"valid: {sorted(VALID_DIMENSION_NAMES)}"
+                    f"Unknown dimension '{dim}' in weights — valid: {sorted(VALID_DIMENSION_NAMES)}"
                 )
             if not 0.0 <= weight <= 1.0:
-                raise ValueError(
-                    f"Dimension weight '{dim}' is {weight}, must be in [0.0, 1.0]"
-                )
+                raise ValueError(f"Dimension weight '{dim}' is {weight}, must be in [0.0, 1.0]")
         missing = VALID_DIMENSION_NAMES - set(self.dimension_weights.keys())
         if missing:
             logger.warning(
@@ -141,13 +138,27 @@ class RiskProfile:
     target_path: Optional[Path] = None
 
     # Dimensions (always present — graph-derived, no AI needed)
-    structural: RiskDimension = field(default_factory=lambda: RiskDimension.zero("structural", "Structural coupling"))
-    instability: RiskDimension = field(default_factory=lambda: RiskDimension.zero("instability", "Instability"))
-    cycle: RiskDimension = field(default_factory=lambda: RiskDimension.zero("cycle", "Cycle entanglement"))
-    database: RiskDimension = field(default_factory=lambda: RiskDimension.zero("database", "Database coupling"))
-    blast_radius: RiskDimension = field(default_factory=lambda: RiskDimension.zero("blast_radius", "Blast radius"))
-    domain_boundary: RiskDimension = field(default_factory=lambda: RiskDimension.zero("domain_boundary", "Domain boundary"))
-    change_surface: RiskDimension = field(default_factory=lambda: RiskDimension.zero("change_surface", "Change surface"))
+    structural: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("structural", "Structural coupling")
+    )
+    instability: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("instability", "Instability")
+    )
+    cycle: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("cycle", "Cycle entanglement")
+    )
+    database: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("database", "Database coupling")
+    )
+    blast_radius: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("blast_radius", "Blast radius")
+    )
+    domain_boundary: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("domain_boundary", "Domain boundary")
+    )
+    change_surface: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("change_surface", "Change surface")
+    )
 
     # Aggregate
     composite_score: float = 0.0  # 0.0–1.0, weighted combination
@@ -193,13 +204,27 @@ class AggregateRisk:
     profiles: List[RiskProfile]
 
     # Aggregate dimensions (max across all targets per dimension)
-    structural: RiskDimension = field(default_factory=lambda: RiskDimension.zero("structural", "Structural coupling"))
-    instability: RiskDimension = field(default_factory=lambda: RiskDimension.zero("instability", "Instability"))
-    cycle: RiskDimension = field(default_factory=lambda: RiskDimension.zero("cycle", "Cycle entanglement"))
-    database: RiskDimension = field(default_factory=lambda: RiskDimension.zero("database", "Database coupling"))
-    blast_radius: RiskDimension = field(default_factory=lambda: RiskDimension.zero("blast_radius", "Blast radius"))
-    domain_boundary: RiskDimension = field(default_factory=lambda: RiskDimension.zero("domain_boundary", "Domain boundary"))
-    change_surface: RiskDimension = field(default_factory=lambda: RiskDimension.zero("change_surface", "Change surface"))
+    structural: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("structural", "Structural coupling")
+    )
+    instability: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("instability", "Instability")
+    )
+    cycle: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("cycle", "Cycle entanglement")
+    )
+    database: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("database", "Database coupling")
+    )
+    blast_radius: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("blast_radius", "Blast radius")
+    )
+    domain_boundary: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("domain_boundary", "Domain boundary")
+    )
+    change_surface: RiskDimension = field(
+        default_factory=lambda: RiskDimension.zero("change_surface", "Change surface")
+    )
 
     # Aggregate score and level
     composite_score: float = 0.0
@@ -210,8 +235,8 @@ class AggregateRisk:
     targets_at_red: int = 0
     targets_at_yellow: int = 0
     targets_at_green: int = 0
-    total_consumers: int = 0       # sum across profiles, NOT deduplicated
-    total_transitive: int = 0      # sum across profiles, NOT deduplicated
+    total_consumers: int = 0  # sum across profiles, NOT deduplicated
+    total_transitive: int = 0  # sum across profiles, NOT deduplicated
 
     # Hotspots — targets driving the risk
     hotspots: List[RiskProfile] = field(default_factory=list)
@@ -284,8 +309,6 @@ LOCAL_DEV_CONTEXT = RiskContext(
 # --- Helpers ---
 
 
-
-
 def score_to_severity(score: float) -> str:
     """Map a 0.0–1.0 score to a severity label."""
     if score >= 0.8:
@@ -298,7 +321,8 @@ def score_to_severity(score: float) -> str:
 
 
 def composite_to_risk_level(
-    score: float, context: RiskContext,
+    score: float,
+    context: RiskContext,
 ) -> RiskLevel:
     """Map composite score to RED/YELLOW/GREEN using context thresholds."""
     if score >= context.red_threshold:

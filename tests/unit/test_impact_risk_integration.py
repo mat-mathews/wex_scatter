@@ -30,10 +30,12 @@ def _make_graph_ctx(project_names):
 
     graph = DependencyGraph()
     for name in project_names:
-        graph.add_node(ProjectNode(
-            path=Path(f"{name}/{name}.csproj"),
-            name=name,
-        ))
+        graph.add_node(
+            ProjectNode(
+                path=Path(f"{name}/{name}.csproj"),
+                name=name,
+            )
+        )
 
     metrics = {name: make_metrics(fan_in=2, fan_out=3, instability=0.6) for name in project_names}
     return GraphContext(graph=graph, metrics=metrics, cycles=[], cycle_members=set())
@@ -110,12 +112,19 @@ class TestSowWithGraphUsesRiskEngine:
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
     @patch("scatter.analyzers.impact_analyzer._analyze_single_target")
     def test_graph_populates_risk_rating(
-        self, mock_analyze, mock_parse, mock_narrative, mock_complexity,
-        mock_coupling, mock_risk,
+        self,
+        mock_analyze,
+        mock_parse,
+        mock_narrative,
+        mock_complexity,
+        mock_coupling,
+        mock_risk,
     ):
         target = AnalysisTarget(
-            name="GalaxyWorks.Data", target_type="class",
-            confidence=0.9, csproj_path=Path("GW/GW.csproj"),
+            name="GalaxyWorks.Data",
+            target_type="class",
+            confidence=0.9,
+            csproj_path=Path("GW/GW.csproj"),
         )
         mock_parse.return_value = [target]
 
@@ -147,12 +156,19 @@ class TestSowWithoutGraphUsesAiOnly:
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
     @patch("scatter.analyzers.impact_analyzer._analyze_single_target")
     def test_ai_only_risk(
-        self, mock_analyze, mock_parse, mock_narrative, mock_complexity,
-        mock_coupling, mock_risk,
+        self,
+        mock_analyze,
+        mock_parse,
+        mock_narrative,
+        mock_complexity,
+        mock_coupling,
+        mock_risk,
     ):
         target = AnalysisTarget(
-            name="MyApp", target_type="class",
-            confidence=0.9, csproj_path=Path("MA/MA.csproj"),
+            name="MyApp",
+            target_type="class",
+            confidence=0.9,
+            csproj_path=Path("MA/MA.csproj"),
         )
         mock_parse.return_value = [target]
 
@@ -183,12 +199,19 @@ class TestSowWithGraphAndAiEnriches:
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
     @patch("scatter.analyzers.impact_analyzer._analyze_single_target")
     def test_graph_fills_ai_adds_justification(
-        self, mock_analyze, mock_parse, mock_narrative, mock_complexity,
-        mock_coupling, mock_risk,
+        self,
+        mock_analyze,
+        mock_parse,
+        mock_narrative,
+        mock_complexity,
+        mock_coupling,
+        mock_risk,
     ):
         target = AnalysisTarget(
-            name="Target", target_type="class",
-            confidence=0.9, csproj_path=Path("T/T.csproj"),
+            name="Target",
+            target_type="class",
+            confidence=0.9,
+            csproj_path=Path("T/T.csproj"),
         )
         mock_parse.return_value = [target]
 
@@ -226,12 +249,21 @@ class TestSowWithGraphAiEscalatesNotDowngrades:
     @patch("scatter.analyzers.impact_analyzer.aggregate_risk")
     @patch("scatter.analyzers.impact_analyzer.compute_risk_profile")
     def test_ai_escalates_to_critical(
-        self, mock_compute, mock_aggregate, mock_analyze, mock_parse,
-        mock_narrative, mock_complexity, mock_coupling, mock_risk,
+        self,
+        mock_compute,
+        mock_aggregate,
+        mock_analyze,
+        mock_parse,
+        mock_narrative,
+        mock_complexity,
+        mock_coupling,
+        mock_risk,
     ):
         target = AnalysisTarget(
-            name="Target", target_type="class",
-            confidence=0.9, csproj_path=Path("T/T.csproj"),
+            name="Target",
+            target_type="class",
+            confidence=0.9,
+            csproj_path=Path("T/T.csproj"),
         )
         mock_parse.return_value = [target]
 
@@ -273,12 +305,21 @@ class TestSowWithGraphAiEscalatesNotDowngrades:
     @patch("scatter.analyzers.impact_analyzer.aggregate_risk")
     @patch("scatter.analyzers.impact_analyzer.compute_risk_profile")
     def test_ai_cannot_downgrade(
-        self, mock_compute, mock_aggregate, mock_analyze, mock_parse,
-        mock_narrative, mock_complexity, mock_coupling, mock_risk,
+        self,
+        mock_compute,
+        mock_aggregate,
+        mock_analyze,
+        mock_parse,
+        mock_narrative,
+        mock_complexity,
+        mock_coupling,
+        mock_risk,
     ):
         target = AnalysisTarget(
-            name="Target", target_type="class",
-            confidence=0.9, csproj_path=Path("T/T.csproj"),
+            name="Target",
+            target_type="class",
+            confidence=0.9,
+            csproj_path=Path("T/T.csproj"),
         )
         mock_parse.return_value = [target]
 
@@ -322,12 +363,19 @@ class TestSowNoGraphNoAi:
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
     @patch("scatter.analyzers.impact_analyzer._analyze_single_target")
     def test_no_graph_no_ai_no_crash(
-        self, mock_analyze, mock_parse, mock_narrative, mock_complexity,
-        mock_coupling, mock_risk,
+        self,
+        mock_analyze,
+        mock_parse,
+        mock_narrative,
+        mock_complexity,
+        mock_coupling,
+        mock_risk,
     ):
         target = AnalysisTarget(
-            name="A", target_type="class",
-            confidence=0.9, csproj_path=Path("A/A.csproj"),
+            name="A",
+            target_type="class",
+            confidence=0.9,
+            csproj_path=Path("A/A.csproj"),
         )
         mock_parse.return_value = [target]
 
@@ -358,12 +406,19 @@ class TestOverallRiskDerivedFromProfiles:
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
     @patch("scatter.analyzers.impact_analyzer._analyze_single_target")
     def test_overall_risk_from_graph_aggregate(
-        self, mock_analyze, mock_parse, mock_narrative, mock_complexity,
-        mock_coupling, mock_risk,
+        self,
+        mock_analyze,
+        mock_parse,
+        mock_narrative,
+        mock_complexity,
+        mock_coupling,
+        mock_risk,
     ):
         target = AnalysisTarget(
-            name="Target", target_type="class",
-            confidence=0.9, csproj_path=Path("T/T.csproj"),
+            name="Target",
+            target_type="class",
+            confidence=0.9,
+            csproj_path=Path("T/T.csproj"),
         )
         mock_parse.return_value = [target]
 
@@ -395,14 +450,29 @@ class TestMultipleTargetsAggregateOverall:
     @patch("scatter.analyzers.impact_analyzer.aggregate_risk")
     @patch("scatter.analyzers.impact_analyzer.compute_risk_profile")
     def test_max_of_profiles(
-        self, mock_compute, mock_aggregate, mock_analyze, mock_parse,
-        mock_narrative, mock_complexity, mock_coupling, mock_risk,
+        self,
+        mock_compute,
+        mock_aggregate,
+        mock_analyze,
+        mock_parse,
+        mock_narrative,
+        mock_complexity,
+        mock_coupling,
+        mock_risk,
     ):
         targets = [
-            AnalysisTarget(name="HighRisk", target_type="class", confidence=0.9,
-                           csproj_path=Path("HR/HR.csproj")),
-            AnalysisTarget(name="LowRisk", target_type="class", confidence=0.9,
-                           csproj_path=Path("LR/LR.csproj")),
+            AnalysisTarget(
+                name="HighRisk",
+                target_type="class",
+                confidence=0.9,
+                csproj_path=Path("HR/HR.csproj"),
+            ),
+            AnalysisTarget(
+                name="LowRisk",
+                target_type="class",
+                confidence=0.9,
+                csproj_path=Path("LR/LR.csproj"),
+            ),
         ]
         mock_parse.return_value = targets
 
@@ -453,12 +523,19 @@ class TestBackwardCompatSowOutput:
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
     @patch("scatter.analyzers.impact_analyzer._analyze_single_target")
     def test_consumer_fields_unchanged(
-        self, mock_analyze, mock_parse, mock_narrative, mock_complexity,
-        mock_coupling, mock_risk,
+        self,
+        mock_analyze,
+        mock_parse,
+        mock_narrative,
+        mock_complexity,
+        mock_coupling,
+        mock_risk,
     ):
         target = AnalysisTarget(
-            name="A", target_type="class",
-            confidence=0.9, csproj_path=Path("A/A.csproj"),
+            name="A",
+            target_type="class",
+            confidence=0.9,
+            csproj_path=Path("A/A.csproj"),
         )
         mock_parse.return_value = [target]
 
@@ -494,12 +571,19 @@ class TestSowRegressionNoGraphByteIdentical:
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
     @patch("scatter.analyzers.impact_analyzer._analyze_single_target")
     def test_no_graph_path_uses_ai_only(
-        self, mock_analyze, mock_parse, mock_narrative, mock_complexity,
-        mock_coupling, mock_risk,
+        self,
+        mock_analyze,
+        mock_parse,
+        mock_narrative,
+        mock_complexity,
+        mock_coupling,
+        mock_risk,
     ):
         target = AnalysisTarget(
-            name="A", target_type="class",
-            confidence=0.9, csproj_path=Path("A/A.csproj"),
+            name="A",
+            target_type="class",
+            confidence=0.9,
+            csproj_path=Path("A/A.csproj"),
         )
         mock_parse.return_value = [target]
 

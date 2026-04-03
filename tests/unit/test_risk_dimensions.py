@@ -29,18 +29,22 @@ def _make_graph_with_sprocs(
     graph = DependencyGraph()
     from pathlib import Path
 
-    graph.add_node(ProjectNode(
-        path=Path(f"{target_name}/{target_name}.csproj"),
-        name=target_name,
-        sproc_references=target_sprocs,
-    ))
+    graph.add_node(
+        ProjectNode(
+            path=Path(f"{target_name}/{target_name}.csproj"),
+            name=target_name,
+            sproc_references=target_sprocs,
+        )
+    )
     if other_projects:
         for name, sprocs in other_projects.items():
-            graph.add_node(ProjectNode(
-                path=Path(f"{name}/{name}.csproj"),
-                name=name,
-                sproc_references=sprocs,
-            ))
+            graph.add_node(
+                ProjectNode(
+                    path=Path(f"{name}/{name}.csproj"),
+                    name=name,
+                    sproc_references=sprocs,
+                )
+            )
     return graph
 
 
@@ -197,7 +201,11 @@ class TestScoreCycle:
         assert result.severity == "critical"
 
     def test_multiple_cycles_caps_at_one(self):
-        c1 = CycleGroup(projects=["A", "B", "C", "D", "E"], shortest_cycle=["A", "B", "C", "D", "E", "A"], edge_count=5)
+        c1 = CycleGroup(
+            projects=["A", "B", "C", "D", "E"],
+            shortest_cycle=["A", "B", "C", "D", "E", "A"],
+            edge_count=5,
+        )
         c2 = CycleGroup(projects=["A", "X", "Y"], shortest_cycle=["A", "X", "Y", "A"], edge_count=3)
         result = score_cycle("A", [c1, c2])
         assert result.score <= 1.0
@@ -210,7 +218,9 @@ class TestScoreCycle:
     def test_interpolation_between_sizes(self):
         """Cycle size 3 and 4 should produce different scores."""
         c3 = CycleGroup(projects=["A", "B", "C"], shortest_cycle=["A", "B", "C", "A"], edge_count=3)
-        c4 = CycleGroup(projects=["A", "B", "C", "D"], shortest_cycle=["A", "B", "C", "D", "A"], edge_count=4)
+        c4 = CycleGroup(
+            projects=["A", "B", "C", "D"], shortest_cycle=["A", "B", "C", "D", "A"], edge_count=4
+        )
         s3 = score_cycle("A", [c3]).score
         s4 = score_cycle("A", [c4]).score
         assert s3 < s4
@@ -373,15 +383,15 @@ class TestScoreDomainBoundary:
         assert result.score > 0.0
 
     def test_crosses_many_clusters(self):
-        result = score_domain_boundary(
-            "A", ["c1", "c2", "c3", "c4"], "c0"
-        )
+        result = score_domain_boundary("A", ["c1", "c2", "c3", "c4"], "c0")
         assert result.score >= 0.6
 
     def test_team_boundaries_increase_score(self):
         result_no_teams = score_domain_boundary("A", ["c1", "c2"], "c0")
         result_with_teams = score_domain_boundary(
-            "A", ["c1", "c2"], "c0",
+            "A",
+            ["c1", "c2"],
+            "c0",
             team_map={"A": "T1", "B": "T2", "C": "T3"},
             consumer_names=["B", "C"],
         )

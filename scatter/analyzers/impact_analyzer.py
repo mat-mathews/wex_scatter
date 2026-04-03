@@ -232,7 +232,9 @@ def run_impact_analysis(
             risk_label = _risk_level_to_label(profile.risk_level)
             logging.debug(
                 "risk_engine: %s → %s (composite %.3f)",
-                target_impact.target.name, risk_label, profile.composite_score,
+                target_impact.target.name,
+                risk_label,
+                profile.composite_score,
             )
             for consumer in consumers:
                 consumer.risk_rating = risk_label
@@ -247,12 +249,16 @@ def run_impact_analysis(
                     # No graph data — AI is primary
                     consumer.risk_rating = ai_rating
                     consumer.risk_justification = risk_result.get("justification")
-                elif ai_rating and RISK_ORDER.get(ai_rating, 0) > RISK_ORDER.get(consumer.risk_rating, 0):
+                elif ai_rating and RISK_ORDER.get(ai_rating, 0) > RISK_ORDER.get(
+                    consumer.risk_rating, 0
+                ):
                     # AI escalates graph-derived risk (e.g. "High" → "Critical")
                     logging.debug(
                         "risk_ai_escalation: %s consumer=%s %s→%s",
-                        target_impact.target.name, consumer.consumer_name,
-                        consumer.risk_rating, ai_rating,
+                        target_impact.target.name,
+                        consumer.consumer_name,
+                        consumer.risk_rating,
+                        ai_rating,
                     )
                     consumer.risk_rating = ai_rating
                 if consumer.risk_justification is None:
