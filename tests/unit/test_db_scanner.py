@@ -1,4 +1,5 @@
 """Tests for Initiative 5 Phase 4: Database dependency mapping."""
+
 from pathlib import Path
 from textwrap import dedent
 
@@ -82,7 +83,7 @@ class TestCommentStripping:
         code = "line1\n/* comment\nspanning\nlines */\nline5"
         result = _strip_cs_comments(code)
         # Original line 5 should still be on line 5
-        lines = result.split('\n')
+        lines = result.split("\n")
         assert len(lines) == 5
         assert lines[0] == "line1"
         assert lines[4] == "line5"
@@ -240,12 +241,9 @@ class TestBuildDbMatrix:
     def test_shared_sprocs_appear_in_matrix(self):
         """Sprocs shared by 2+ projects appear in matrix."""
         deps = [
-            DbDependency("dbo.sp_Insert", "sproc", Path("a.cs"), "ProjectA",
-                          "string_literal"),
-            DbDependency("dbo.sp_Insert", "sproc", Path("b.cs"), "ProjectB",
-                          "string_literal"),
-            DbDependency("dbo.sp_OnlyA", "sproc", Path("a2.cs"), "ProjectA",
-                          "string_literal"),
+            DbDependency("dbo.sp_Insert", "sproc", Path("a.cs"), "ProjectA", "string_literal"),
+            DbDependency("dbo.sp_Insert", "sproc", Path("b.cs"), "ProjectB", "string_literal"),
+            DbDependency("dbo.sp_OnlyA", "sproc", Path("a2.cs"), "ProjectA", "string_literal"),
         ]
         matrix = build_db_dependency_matrix(deps)
         assert "dbo.sp_Insert" in matrix
@@ -279,10 +277,8 @@ class TestAddDbEdges:
         """Shared sproc between A and B creates bidirectional edges."""
         graph = self._make_graph()
         deps = [
-            DbDependency("dbo.sp_Shared", "sproc", Path("a.cs"), "A",
-                          "string_literal"),
-            DbDependency("dbo.sp_Shared", "sproc", Path("b.cs"), "B",
-                          "string_literal"),
+            DbDependency("dbo.sp_Shared", "sproc", Path("a.cs"), "A", "string_literal"),
+            DbDependency("dbo.sp_Shared", "sproc", Path("b.cs"), "B", "string_literal"),
         ]
         edges_added = add_db_edges_to_graph(graph, deps)
         assert edges_added == 2
@@ -297,8 +293,7 @@ class TestAddDbEdges:
         """Sproc used by only one project creates no edges."""
         graph = self._make_graph()
         deps = [
-            DbDependency("dbo.sp_OnlyA", "sproc", Path("a.cs"), "A",
-                          "string_literal"),
+            DbDependency("dbo.sp_OnlyA", "sproc", Path("a.cs"), "A", "string_literal"),
         ]
         edges_added = add_db_edges_to_graph(graph, deps)
         assert edges_added == 0
@@ -402,6 +397,7 @@ class TestFileIndex:
     def test_enclosing_struct(self):
         """_FileIndex.enclosing_class finds struct after regex fix."""
         from scatter.scanners.db_scanner import _FileIndex
+
         code = "public struct MyStruct {\n    var x = 1;\n}"
         idx = _FileIndex(code)
         offset = code.index("var x")
@@ -410,6 +406,7 @@ class TestFileIndex:
     def test_enclosing_record(self):
         """_FileIndex.enclosing_class finds record."""
         from scatter.scanners.db_scanner import _FileIndex
+
         code = "public record MyRecord {\n    var x = 1;\n}"
         idx = _FileIndex(code)
         offset = code.index("var x")
@@ -418,6 +415,7 @@ class TestFileIndex:
     def test_enclosing_interface(self):
         """_FileIndex.enclosing_class finds interface."""
         from scatter.scanners.db_scanner import _FileIndex
+
         code = "public interface IMyService {\n    void Do();\n}"
         idx = _FileIndex(code)
         offset = code.index("void Do")
@@ -426,6 +424,7 @@ class TestFileIndex:
     def test_before_any_declaration_returns_none(self):
         """No enclosing type before any declaration."""
         from scatter.scanners.db_scanner import _FileIndex
+
         code = "using System;\nnamespace Foo {\n    public class Bar { }\n}"
         idx = _FileIndex(code)
         offset = code.index("namespace")

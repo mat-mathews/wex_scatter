@@ -30,6 +30,7 @@ from scatter.modes.setup import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _fake_args(**overrides):
     """Build a minimal args namespace with sensible defaults."""
     defaults = dict(
@@ -392,7 +393,9 @@ class TestLoadBatchJobs:
         args = _fake_args()
         assert load_batch_jobs(args) == {}
 
-    @patch("scatter.compat.v1_bridge.map_batch_jobs_from_config_repo", return_value={"pipe": ["j1"]})
+    @patch(
+        "scatter.compat.v1_bridge.map_batch_jobs_from_config_repo", return_value={"pipe": ["j1"]}
+    )
     def test_loads_from_path(self, mock_map, tmp_path):
         args = _fake_args(app_config_path=str(tmp_path))
         result = load_batch_jobs(args)
@@ -419,9 +422,7 @@ class TestLoadPipelineCsv:
 
     def test_loads_valid_csv(self, tmp_path):
         csv_file = tmp_path / "pipe.csv"
-        csv_file.write_text(
-            "Application Name,Pipeline Name\nFoo,pipe-foo\nBar,pipe-bar\n"
-        )
+        csv_file.write_text("Application Name,Pipeline Name\nFoo,pipe-foo\nBar,pipe-bar\n")
         result = load_pipeline_csv(csv_file)
         assert result == {"Foo": "pipe-foo", "Bar": "pipe-bar"}
 
@@ -433,17 +434,13 @@ class TestLoadPipelineCsv:
 
     def test_duplicate_apps_last_wins(self, tmp_path):
         csv_file = tmp_path / "pipe.csv"
-        csv_file.write_text(
-            "Application Name,Pipeline Name\nFoo,pipe-1\nFoo,pipe-2\n"
-        )
+        csv_file.write_text("Application Name,Pipeline Name\nFoo,pipe-1\nFoo,pipe-2\n")
         result = load_pipeline_csv(csv_file)
         assert result == {"Foo": "pipe-2"}
 
     def test_skips_blank_rows(self, tmp_path):
         csv_file = tmp_path / "pipe.csv"
-        csv_file.write_text(
-            "Application Name,Pipeline Name\nFoo,pipe-foo\n,\n"
-        )
+        csv_file.write_text("Application Name,Pipeline Name\nFoo,pipe-foo\n,\n")
         result = load_pipeline_csv(csv_file)
         assert result == {"Foo": "pipe-foo"}
 
@@ -500,7 +497,15 @@ class TestBuildModeContext:
         solutions = SolutionData(infos=[], index={}, file_cache=[])
 
         ctx = build_mode_context(
-            args, paths, config, None, solutions, {}, {}, None, False,
+            args,
+            paths,
+            config,
+            None,
+            solutions,
+            {},
+            {},
+            None,
+            False,
         )
         assert ctx.search_scope == Path("/tmp/scope")
         assert ctx.disable_multiprocessing is True

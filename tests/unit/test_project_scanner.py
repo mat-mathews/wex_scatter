@@ -92,7 +92,9 @@ class TestDeriveNamespace:
 
     def test_falls_back_to_stem(self, tmp_path):
         csproj = tmp_path / "Foo.csproj"
-        csproj.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup></PropertyGroup></Project>')
+        csproj.write_text(
+            '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup></PropertyGroup></Project>'
+        )
         assert derive_namespace(csproj) == "Foo"
 
     def test_returns_none_for_missing_file(self, tmp_path):

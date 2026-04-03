@@ -24,49 +24,60 @@ class TestMultiprocessingPhase1(unittest.TestCase):
         # Use the actual mock projects in the repository
         self.test_root = Path(__file__).parent.parent.parent.resolve()
         self.galaxy_works_project = self.test_root / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
-        self.consumer1_project = self.test_root / "MyGalaxyConsumerApp" / "MyGalaryConsumerApp.csproj"
-        self.consumer2_project = self.test_root / "MyGalaxyConsumerApp2" / "MyGalaryConsumerApp2.csproj"
+        self.consumer1_project = (
+            self.test_root / "MyGalaxyConsumerApp" / "MyGalaryConsumerApp.csproj"
+        )
+        self.consumer2_project = (
+            self.test_root / "MyGalaxyConsumerApp2" / "MyGalaryConsumerApp2.csproj"
+        )
 
         # Verify test projects exist
-        self.assertTrue(self.galaxy_works_project.exists(),
-                       f"Target project not found: {self.galaxy_works_project}")
-        self.assertTrue(self.consumer1_project.exists(),
-                       f"Consumer project 1 not found: {self.consumer1_project}")
-        self.assertTrue(self.consumer2_project.exists(),
-                       f"Consumer project 2 not found: {self.consumer2_project}")
+        self.assertTrue(
+            self.galaxy_works_project.exists(),
+            f"Target project not found: {self.galaxy_works_project}",
+        )
+        self.assertTrue(
+            self.consumer1_project.exists(),
+            f"Consumer project 1 not found: {self.consumer1_project}",
+        )
+        self.assertTrue(
+            self.consumer2_project.exists(),
+            f"Consumer project 2 not found: {self.consumer2_project}",
+        )
 
     def test_parallel_file_discovery_csproj_files(self):
         """Test parallel discovery of .csproj files."""
         # Test with multiprocessing enabled
         csproj_files_parallel = scatter.find_files_with_pattern_parallel(
-            self.test_root, '*.csproj',
-            max_workers=2,
-            chunk_size=10,
-            disable_multiprocessing=False
+            self.test_root, "*.csproj", max_workers=2, chunk_size=10, disable_multiprocessing=False
         )
 
         # Test with multiprocessing disabled (sequential)
         csproj_files_sequential = scatter.find_files_with_pattern_parallel(
-            self.test_root, '*.csproj',
-            disable_multiprocessing=True
+            self.test_root, "*.csproj", disable_multiprocessing=True
         )
 
         # Both should find the same files
         parallel_names = {f.name for f in csproj_files_parallel}
         sequential_names = {f.name for f in csproj_files_sequential}
 
-        self.assertEqual(parallel_names, sequential_names,
-                        "Parallel and sequential file discovery should find the same .csproj files")
+        self.assertEqual(
+            parallel_names,
+            sequential_names,
+            "Parallel and sequential file discovery should find the same .csproj files",
+        )
 
         # Should find at least our test projects
         expected_projects = {
             "GalaxyWorks.Data.csproj",
             "MyGalaryConsumerApp.csproj",
-            "MyGalaryConsumerApp2.csproj"
+            "MyGalaryConsumerApp2.csproj",
         }
 
-        self.assertTrue(expected_projects.issubset(parallel_names),
-                       f"Expected projects {expected_projects} not found in {parallel_names}")
+        self.assertTrue(
+            expected_projects.issubset(parallel_names),
+            f"Expected projects {expected_projects} not found in {parallel_names}",
+        )
 
     def test_parallel_file_discovery_cs_files(self):
         """Test parallel discovery of .cs files."""
@@ -74,28 +85,28 @@ class TestMultiprocessingPhase1(unittest.TestCase):
 
         # Test with multiprocessing
         cs_files_parallel = scatter.find_files_with_pattern_parallel(
-            galaxy_works_dir, '*.cs',
-            max_workers=2,
-            chunk_size=5,
-            disable_multiprocessing=False
+            galaxy_works_dir, "*.cs", max_workers=2, chunk_size=5, disable_multiprocessing=False
         )
 
         # Test sequential
         cs_files_sequential = scatter.find_files_with_pattern_parallel(
-            galaxy_works_dir, '*.cs',
-            disable_multiprocessing=True
+            galaxy_works_dir, "*.cs", disable_multiprocessing=True
         )
 
         # Should find the same files
         parallel_names = {f.name for f in cs_files_parallel}
         sequential_names = {f.name for f in cs_files_sequential}
 
-        self.assertEqual(parallel_names, sequential_names,
-                        "Parallel and sequential should find the same .cs files")
+        self.assertEqual(
+            parallel_names,
+            sequential_names,
+            "Parallel and sequential should find the same .cs files",
+        )
 
         # Should find at least some .cs files in GalaxyWorks.Data
-        self.assertGreater(len(cs_files_parallel), 0,
-                          "Should find at least one .cs file in GalaxyWorks.Data")
+        self.assertGreater(
+            len(cs_files_parallel), 0, "Should find at least one .cs file in GalaxyWorks.Data"
+        )
 
     def test_chunk_list_utility(self):
         """Test the chunk_list utility function."""
@@ -123,11 +134,9 @@ class TestMultiprocessingPhase1(unittest.TestCase):
         valid_path = self.test_root
 
         # This should not crash even with invalid paths mixed in
-        result = scatter.find_files_with_pattern_chunk((
-            self.test_root,
-            '*.csproj',
-            [valid_path, non_existent_path]
-        ))
+        result = scatter.find_files_with_pattern_chunk(
+            (self.test_root, "*.csproj", [valid_path, non_existent_path])
+        )
 
         # Should return results for valid paths and handle invalid ones gracefully
         self.assertIsInstance(result, list)
@@ -155,7 +164,7 @@ class TestTargetSymbolSearch(unittest.TestCase):
             class_name="PortalDataService",
             method_name="StorePortalConfigurationAsync",
             max_workers=2,
-            disable_multiprocessing=False
+            disable_multiprocessing=False,
         )
 
         # Should return valid results (might be empty if method not used in consumers)
@@ -163,9 +172,9 @@ class TestTargetSymbolSearch(unittest.TestCase):
 
         # Validate structure for any found consumers
         for consumer in consumers:
-            self.assertIn('consumer_path', consumer)
-            self.assertIn('consumer_name', consumer)
-            self.assertIn('relevant_files', consumer)
+            self.assertIn("consumer_path", consumer)
+            self.assertIn("consumer_name", consumer)
+            self.assertIn("relevant_files", consumer)
 
     def test_symbol_search_consistency_parallel_vs_sequential(self):
         """Test that symbol search produces consistent results between parallel and sequential modes."""
@@ -188,7 +197,7 @@ class TestTargetSymbolSearch(unittest.TestCase):
                     class_name=class_name,
                     method_name=method_name,
                     max_workers=2,
-                    disable_multiprocessing=False
+                    disable_multiprocessing=False,
                 )
 
                 # Sequential version
@@ -198,18 +207,24 @@ class TestTargetSymbolSearch(unittest.TestCase):
                     target_namespace="GalaxyWorks.Data",
                     class_name=class_name,
                     method_name=method_name,
-                    disable_multiprocessing=True
+                    disable_multiprocessing=True,
                 )
 
                 # Should produce identical results
-                self.assertEqual(len(consumers_parallel), len(consumers_sequential),
-                               f"Parallel and sequential should find same number of consumers for {class_name}")
+                self.assertEqual(
+                    len(consumers_parallel),
+                    len(consumers_sequential),
+                    f"Parallel and sequential should find same number of consumers for {class_name}",
+                )
 
                 if consumers_parallel:
-                    parallel_names = {c['consumer_name'] for c in consumers_parallel}
-                    sequential_names = {c['consumer_name'] for c in consumers_sequential}
-                    self.assertEqual(parallel_names, sequential_names,
-                                   f"Should find same consumers for {class_name}")
+                    parallel_names = {c["consumer_name"] for c in consumers_parallel}
+                    sequential_names = {c["consumer_name"] for c in consumers_sequential}
+                    self.assertEqual(
+                        parallel_names,
+                        sequential_names,
+                        f"Should find same consumers for {class_name}",
+                    )
 
 
 class TestBackwardsCompatibility(unittest.TestCase):
@@ -228,7 +243,7 @@ class TestBackwardsCompatibility(unittest.TestCase):
             search_scope_path=self.test_root,
             target_namespace="GalaxyWorks.Data",
             class_name=None,
-            method_name=None
+            method_name=None,
             # Note: NOT passing max_workers, chunk_size, or disable_multiprocessing
         )
 
@@ -238,13 +253,15 @@ class TestBackwardsCompatibility(unittest.TestCase):
 
         # Validate structure is unchanged
         for consumer in consumers:
-            self.assertIn('consumer_path', consumer)
-            self.assertIn('consumer_name', consumer)
-            self.assertIn('relevant_files', consumer)
+            self.assertIn("consumer_path", consumer)
+            self.assertIn("consumer_name", consumer)
+            self.assertIn("relevant_files", consumer)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Configure logging for tests
     import logging
+
     logging.basicConfig(level=logging.WARNING)  # Reduce noise during tests
 
     # Run the tests

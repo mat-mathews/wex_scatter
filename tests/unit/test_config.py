@@ -1,4 +1,5 @@
 """Tests for scatter.config and scatter.ai.router."""
+
 import os
 import logging
 from argparse import Namespace
@@ -13,20 +14,25 @@ from scatter.ai.router import AIRouter
 
 
 # Env vars the config system reads — cleared by the autouse fixture below
-_CONFIG_ENV_VARS = ("GOOGLE_API_KEY", "SCATTER_DEFAULT_PROVIDER", "WEX_AI_API_KEY", "WEX_AI_ENDPOINT")
+_CONFIG_ENV_VARS = (
+    "GOOGLE_API_KEY",
+    "SCATTER_DEFAULT_PROVIDER",
+    "WEX_AI_API_KEY",
+    "WEX_AI_ENDPOINT",
+)
 
 
 @pytest.fixture(autouse=True)
 def _clean_env():
     """Remove config-relevant env vars so the real environment doesn't leak."""
-    with patch.dict(os.environ, {k: v for k, v in os.environ.items()
-                                  if k not in _CONFIG_ENV_VARS}):
+    with patch.dict(os.environ, {k: v for k, v in os.environ.items() if k not in _CONFIG_ENV_VARS}):
         yield
 
 
 # ---------------------------------------------------------------------------
 # TestScatterConfig
 # ---------------------------------------------------------------------------
+
 
 class TestScatterConfig:
     """Tests for configuration loading and precedence."""
@@ -67,12 +73,7 @@ class TestScatterConfig:
         """~/.scatter/config.yaml values applied."""
         user_dir = tmp_path / ".scatter"
         user_dir.mkdir()
-        yaml_content = (
-            "ai:\n"
-            "  gemini_model: gemini-pro\n"
-            "multiprocessing:\n"
-            "  max_workers: 8\n"
-        )
+        yaml_content = "ai:\n  gemini_model: gemini-pro\nmultiprocessing:\n  max_workers: 8\n"
         (user_dir / "config.yaml").write_text(yaml_content)
 
         with patch("scatter.config.Path.home", return_value=tmp_path):
@@ -152,12 +153,7 @@ class TestScatterConfig:
 
     def test_exclude_patterns_from_config(self, tmp_path):
         """search.exclude_patterns replaces defaults (not merges)."""
-        yaml_content = (
-            "search:\n"
-            "  exclude_patterns:\n"
-            "    - '*/node_modules/*'\n"
-            "    - '*.test.cs'\n"
-        )
+        yaml_content = "search:\n  exclude_patterns:\n    - '*/node_modules/*'\n    - '*.test.cs'\n"
         (tmp_path / ".scatter.yaml").write_text(yaml_content)
         config = load_config(repo_root=tmp_path)
         assert config.exclude_patterns == ["*/node_modules/*", "*.test.cs"]
@@ -166,12 +162,7 @@ class TestScatterConfig:
 
     def test_credentials_from_yaml(self, tmp_path):
         """Credentials loaded from YAML config."""
-        yaml_content = (
-            "ai:\n"
-            "  credentials:\n"
-            "    gemini:\n"
-            "      api_key: yaml-key\n"
-        )
+        yaml_content = "ai:\n  credentials:\n    gemini:\n      api_key: yaml-key\n"
         (tmp_path / ".scatter.yaml").write_text(yaml_content)
         config = load_config(repo_root=tmp_path)
         assert config.ai.credentials["gemini"]["api_key"] == "yaml-key"
@@ -211,12 +202,7 @@ class TestScatterConfig:
 
     def test_multiprocessing_config(self, tmp_path):
         """Multiprocessing settings loaded from YAML."""
-        yaml_content = (
-            "multiprocessing:\n"
-            "  disabled: true\n"
-            "  max_workers: 4\n"
-            "  chunk_size: 100\n"
-        )
+        yaml_content = "multiprocessing:\n  disabled: true\n  max_workers: 4\n  chunk_size: 100\n"
         (tmp_path / ".scatter.yaml").write_text(yaml_content)
         config = load_config(repo_root=tmp_path)
         assert config.disable_multiprocessing is True
@@ -228,12 +214,14 @@ class TestScatterConfig:
 # TestBuildCliOverrides
 # ---------------------------------------------------------------------------
 
+
 class TestBuildCliOverrides:
     """Tests for _build_cli_overrides in __main__."""
 
     def test_no_flags_produces_empty(self):
         """When user passes no relevant flags, overrides dict is empty."""
         from scatter.cli_parser import _build_cli_overrides
+
         args = Namespace(
             google_api_key=None,
             gemini_model=None,
@@ -245,6 +233,7 @@ class TestBuildCliOverrides:
     def test_explicit_default_value_still_overrides(self):
         """User explicitly passing the default value IS captured as override."""
         from scatter.cli_parser import _build_cli_overrides
+
         args = Namespace(
             google_api_key=None,
             gemini_model="gemini-2.0-flash",  # same as config default
@@ -258,6 +247,7 @@ class TestBuildCliOverrides:
     def test_all_flags_populated(self):
         """All override-able flags captured."""
         from scatter.cli_parser import _build_cli_overrides
+
         args = Namespace(
             google_api_key="my-key",
             gemini_model="gemini-2.0-flash",
@@ -276,6 +266,7 @@ class TestBuildCliOverrides:
 # ---------------------------------------------------------------------------
 # TestAIRouter
 # ---------------------------------------------------------------------------
+
 
 class TestAIRouter:
     """Tests for AI task routing."""
@@ -316,9 +307,7 @@ class TestAIRouter:
         mock_provider.supports.return_value = True
         mock_create.return_value = mock_provider
 
-        config = self._make_config(
-            task_overrides={"work_request_parsing": "anthropic"}
-        )
+        config = self._make_config(task_overrides={"work_request_parsing": "anthropic"})
         router = AIRouter(config)
         router.get_provider(AITaskType.WORK_REQUEST_PARSING)
 

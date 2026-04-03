@@ -1,4 +1,5 @@
 """Quick smoke test for Gemini API access and quota."""
+
 import sys
 
 import google.generativeai as genai

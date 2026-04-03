@@ -1,4 +1,5 @@
 """Tests for Initiative 5 Phase 1: Graph model + bulk builder."""
+
 import json
 from pathlib import Path
 from typing import Optional
@@ -279,13 +280,9 @@ class TestDependencyGraph:
         g = DependencyGraph()
         g.add_node(_make_node("A"))
         with pytest.raises(ValueError, match="not found"):
-            g.add_edge(
-                DependencyEdge(source="A", target="Z", edge_type="project_reference")
-            )
+            g.add_edge(DependencyEdge(source="A", target="Z", edge_type="project_reference"))
         with pytest.raises(ValueError, match="not found"):
-            g.add_edge(
-                DependencyEdge(source="Z", target="A", edge_type="project_reference")
-            )
+            g.add_edge(DependencyEdge(source="Z", target="A", edge_type="project_reference"))
 
     def test_all_edges_property(self):
         g = _sample_graph()

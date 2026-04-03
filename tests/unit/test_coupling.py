@@ -1,4 +1,5 @@
 """Tests for Initiative 5 Phase 2: Coupling metrics + cycle detection."""
+
 from pathlib import Path
 
 import pytest
@@ -535,8 +536,11 @@ class TestSolutionHealthObservations:
         sol_metrics, bridges = compute_solution_metrics(g)
 
         dashboard = compute_health_dashboard(
-            g, proj_metrics, cycles,
-            solution_metrics=sol_metrics, bridge_projects=bridges,
+            g,
+            proj_metrics,
+            cycles,
+            solution_metrics=sol_metrics,
+            bridge_projects=bridges,
         )
 
         rules = [o.rule for o in dashboard.observations]
@@ -558,8 +562,11 @@ class TestSolutionHealthObservations:
         sol_metrics, bridges = compute_solution_metrics(g)
 
         dashboard = compute_health_dashboard(
-            g, proj_metrics, cycles,
-            solution_metrics=sol_metrics, bridge_projects=bridges,
+            g,
+            proj_metrics,
+            cycles,
+            solution_metrics=sol_metrics,
+            bridge_projects=bridges,
         )
 
         rules = [o.rule for o in dashboard.observations]
@@ -581,8 +588,11 @@ class TestSolutionHealthObservations:
         sol_metrics, bridges = compute_solution_metrics(g)
 
         dashboard = compute_health_dashboard(
-            g, proj_metrics, cycles,
-            solution_metrics=sol_metrics, bridge_projects=bridges,
+            g,
+            proj_metrics,
+            cycles,
+            solution_metrics=sol_metrics,
+            bridge_projects=bridges,
         )
 
         rules = [o.rule for o in dashboard.observations]
@@ -606,8 +616,11 @@ class TestSolutionHealthObservations:
         sol_metrics, bridges = compute_solution_metrics(g)
 
         dashboard = compute_health_dashboard(
-            g, proj_metrics, cycles,
-            solution_metrics=sol_metrics, bridge_projects=bridges,
+            g,
+            proj_metrics,
+            cycles,
+            solution_metrics=sol_metrics,
+            bridge_projects=bridges,
         )
 
         rules = [o.rule for o in dashboard.observations]

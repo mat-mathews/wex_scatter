@@ -1,4 +1,5 @@
 """Tests for Phase B: graph-accelerated consumer lookup in find_consumers()."""
+
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 from unittest.mock import patch
@@ -13,7 +14,8 @@ from scatter.analyzers.consumer_analyzer import (
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.core.models import (
     FilterStage,
-    STAGE_DISCOVERY, STAGE_PROJECT_REFERENCE,
+    STAGE_DISCOVERY,
+    STAGE_PROJECT_REFERENCE,
 )
 
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -23,9 +25,11 @@ REPO_ROOT = Path(__file__).parent.parent.parent
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _build_sample_graph() -> DependencyGraph:
     """Build graph from the sample projects in the repo."""
     from scatter.analyzers.graph_builder import build_dependency_graph
+
     return build_dependency_graph(
         REPO_ROOT,
         disable_multiprocessing=True,
@@ -48,12 +52,15 @@ def _make_graph_with_edges() -> DependencyGraph:
 # TestGraphStages12
 # ===========================================================================
 
-class TestGraphStages12:
 
-    @pytest.mark.parametrize("target_stem", [
-        "GalaxyWorks.Data",
-        "MyDotNetApp",
-    ])
+class TestGraphStages12:
+    @pytest.mark.parametrize(
+        "target_stem",
+        [
+            "GalaxyWorks.Data",
+            "MyDotNetApp",
+        ],
+    )
     def test_graph_returns_same_consumers_as_filesystem(self, target_stem):
         """Core correctness: graph path and filesystem path produce the same consumer set."""
         graph = _build_sample_graph()
@@ -66,18 +73,26 @@ class TestGraphStages12:
 
         # Filesystem path
         fs_results, fs_pipeline = find_consumers(
-            target_path, REPO_ROOT, "NAMESPACE_ERROR_skip",
-            None, None, disable_multiprocessing=True,
+            target_path,
+            REPO_ROOT,
+            "NAMESPACE_ERROR_skip",
+            None,
+            None,
+            disable_multiprocessing=True,
         )
-        fs_names = {r['consumer_name'] for r in fs_results}
+        fs_names = {r["consumer_name"] for r in fs_results}
 
         # Graph path
         graph_results, graph_pipeline = find_consumers(
-            target_path, REPO_ROOT, "NAMESPACE_ERROR_skip",
-            None, None, disable_multiprocessing=True,
+            target_path,
+            REPO_ROOT,
+            "NAMESPACE_ERROR_skip",
+            None,
+            None,
+            disable_multiprocessing=True,
             graph=graph,
         )
-        graph_names = {r['consumer_name'] for r in graph_results}
+        graph_names = {r["consumer_name"] for r in graph_results}
 
         assert graph_names == fs_names
 
@@ -88,7 +103,7 @@ class TestGraphStages12:
         # Graph path should only return A
         result = _lookup_consumers_from_graph(graph, Path("/fake/B/B.csproj"))
         assert result is not None
-        names = {d['consumer_name'] for d in result.values()}
+        names = {d["consumer_name"] for d in result.values()}
         assert "A" in names
         assert "C" not in names
 
@@ -97,8 +112,11 @@ class TestGraphStages12:
         graph = _make_graph_with_edges()
         # Use unreliable namespace to skip stage 3 filtering
         _, pipeline = find_consumers(
-            Path("/fake/B/B.csproj"), Path("/fake"),
-            "NAMESPACE_ERROR_skip", None, None,
+            Path("/fake/B/B.csproj"),
+            Path("/fake"),
+            "NAMESPACE_ERROR_skip",
+            None,
+            None,
             graph=graph,
         )
         assert len(pipeline.stages) >= 2
@@ -114,7 +132,9 @@ class TestGraphStages12:
         results, pipeline = find_consumers(
             (REPO_ROOT / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj").resolve(),
             REPO_ROOT,
-            "NAMESPACE_ERROR_skip", None, None,
+            "NAMESPACE_ERROR_skip",
+            None,
+            None,
             disable_multiprocessing=True,
         )
         # All stages should be filesystem-sourced
@@ -133,7 +153,7 @@ class TestGraphStages12:
         # Stale node is returned by graph (it exists as a node) but won't have valid files
         # The key thing is no crash
         assert len(result) == 1
-        assert "Stale" in {d['consumer_name'] for d in result.values()}
+        assert "Stale" in {d["consumer_name"] for d in result.values()}
 
     def test_target_not_in_graph_falls_back_to_filesystem(self):
         """When target is not a node in the graph, fall back to filesystem."""
@@ -142,8 +162,11 @@ class TestGraphStages12:
 
         # Graph doesn't have GalaxyWorks.Data, so should fall back
         results, pipeline = find_consumers(
-            target_path, REPO_ROOT,
-            "NAMESPACE_ERROR_skip", None, None,
+            target_path,
+            REPO_ROOT,
+            "NAMESPACE_ERROR_skip",
+            None,
+            None,
             disable_multiprocessing=True,
             graph=graph,
         )
@@ -161,15 +184,21 @@ class TestGraphStages12:
 
         # With a real namespace, stage 3 filters further
         results_ns, pipeline_ns = find_consumers(
-            target_path, REPO_ROOT,
-            "GalaxyWorks.Data", None, None,
+            target_path,
+            REPO_ROOT,
+            "GalaxyWorks.Data",
+            None,
+            None,
             disable_multiprocessing=True,
             graph=graph,
         )
         # With unreliable namespace, all direct consumers pass through
         results_all, pipeline_all = find_consumers(
-            target_path, REPO_ROOT,
-            "NAMESPACE_ERROR_skip", None, None,
+            target_path,
+            REPO_ROOT,
+            "NAMESPACE_ERROR_skip",
+            None,
+            None,
             disable_multiprocessing=True,
             graph=graph,
         )
@@ -181,18 +210,21 @@ class TestGraphStages12:
 # TestGraphNamespaceBypass
 # ===========================================================================
 
-class TestGraphNamespaceBypass:
 
+class TestGraphNamespaceBypass:
     def test_graph_path_with_unreliable_namespace(self):
         """Graph path + unreliable namespace returns all direct consumers unfiltered."""
         graph = _make_graph_with_edges()
         results, pipeline = find_consumers(
-            Path("/fake/B/B.csproj"), Path("/fake"),
-            "NAMESPACE_ERROR_test", None, None,
+            Path("/fake/B/B.csproj"),
+            Path("/fake"),
+            "NAMESPACE_ERROR_test",
+            None,
+            None,
             graph=graph,
         )
         # A is the only project_reference consumer of B
-        names = {r['consumer_name'] for r in results}
+        names = {r["consumer_name"] for r in results}
         assert "A" in names
 
 
@@ -200,8 +232,8 @@ class TestGraphNamespaceBypass:
 # TestImpactAnalyzerGraph
 # ===========================================================================
 
-class TestImpactAnalyzerGraph:
 
+class TestImpactAnalyzerGraph:
     def test_impact_passes_graph_to_find_consumers(self):
         """_analyze_single_target passes graph kwarg through to find_consumers."""
         from scatter.analyzers.impact_analyzer import _analyze_single_target
@@ -223,10 +255,16 @@ class TestImpactAnalyzerGraph:
 
         with patch("scatter.analyzers.impact_analyzer.find_consumers", side_effect=spy_find):
             _analyze_single_target(
-                target=target, search_scope=REPO_ROOT,
-                max_depth=1, pipeline_map={}, solution_file_cache=[],
-                max_workers=1, chunk_size=50, disable_multiprocessing=True,
-                cs_analysis_chunk_size=50, csproj_analysis_chunk_size=25,
+                target=target,
+                search_scope=REPO_ROOT,
+                max_depth=1,
+                pipeline_map={},
+                solution_file_cache=[],
+                max_workers=1,
+                chunk_size=50,
+                disable_multiprocessing=True,
+                cs_analysis_chunk_size=50,
+                csproj_analysis_chunk_size=25,
                 graph=sentinel,
             )
         assert captured_kwargs.get("graph") is sentinel
@@ -240,19 +278,27 @@ class TestImpactAnalyzerGraph:
         def spy_find(*args, **kwargs):
             captured_calls.append(kwargs)
             from scatter.core.models import FilterPipeline
-            return [], FilterPipeline(search_scope=".", total_projects_scanned=0, total_files_scanned=0)
 
-        consumer_data = [{
-            'consumer_path': REPO_ROOT / "MyDotNetApp" / "MyDotNetApp.csproj",
-            'consumer_name': "MyDotNetApp",
-            'relevant_files': [],
-        }]
+            return [], FilterPipeline(
+                search_scope=".", total_projects_scanned=0, total_files_scanned=0
+            )
+
+        consumer_data = [
+            {
+                "consumer_path": REPO_ROOT / "MyDotNetApp" / "MyDotNetApp.csproj",
+                "consumer_name": "MyDotNetApp",
+                "relevant_files": [],
+            }
+        ]
         sentinel = object()
 
         with patch("scatter.analyzers.impact_analyzer.find_consumers", side_effect=spy_find):
             trace_transitive_impact(
-                direct_consumers=consumer_data, search_scope=REPO_ROOT,
-                max_depth=1, graph=sentinel, disable_multiprocessing=True,
+                direct_consumers=consumer_data,
+                search_scope=REPO_ROOT,
+                max_depth=1,
+                graph=sentinel,
+                disable_multiprocessing=True,
             )
 
         # At least one transitive find_consumers call should have graph
@@ -278,10 +324,16 @@ class TestImpactAnalyzerGraph:
 
         with patch("scatter.analyzers.impact_analyzer.find_consumers", side_effect=spy_find):
             _analyze_single_target(
-                target=target, search_scope=REPO_ROOT,
-                max_depth=1, pipeline_map={}, solution_file_cache=[],
-                max_workers=1, chunk_size=50, disable_multiprocessing=True,
-                cs_analysis_chunk_size=50, csproj_analysis_chunk_size=25,
+                target=target,
+                search_scope=REPO_ROOT,
+                max_depth=1,
+                pipeline_map={},
+                solution_file_cache=[],
+                max_workers=1,
+                chunk_size=50,
+                disable_multiprocessing=True,
+                cs_analysis_chunk_size=50,
+                csproj_analysis_chunk_size=25,
             )
         assert captured_kwargs.get("graph") is None
 
@@ -290,8 +342,8 @@ class TestImpactAnalyzerGraph:
 # TestFilterStageSource
 # ===========================================================================
 
-class TestFilterStageSource:
 
+class TestFilterStageSource:
     def test_filter_stage_default_source(self):
         stage = FilterStage(name="test", input_count=10, output_count=5)
         assert stage.source == "filesystem"

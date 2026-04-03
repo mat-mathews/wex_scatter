@@ -1,4 +1,5 @@
 """Unit tests for find_enclosing_type_name() in type_scanner."""
+
 from scatter.scanners.type_scanner import find_enclosing_type_name
 
 
@@ -32,13 +33,7 @@ class TestBasicEnclosingTypes:
 
 class TestNestedTypes:
     def test_inner_class_returned_for_inner_match(self):
-        code = (
-            "public class Outer {\n"
-            "    public class Inner {\n"
-            "        var x = 1;\n"
-            "    }\n"
-            "}\n"
-        )
+        code = "public class Outer {\n    public class Inner {\n        var x = 1;\n    }\n}\n"
         idx = code.index("var x")
         assert find_enclosing_type_name(code, idx) == "Inner"
 
@@ -84,14 +79,7 @@ class TestEdgeCases:
         assert find_enclosing_type_name(code, idx) is None
 
     def test_multiple_types_returns_second_for_later_match(self):
-        code = (
-            "public class First {\n"
-            "    int a = 1;\n"
-            "}\n"
-            "public class Second {\n"
-            "    int b = 2;\n"
-            "}\n"
-        )
+        code = "public class First {\n    int a = 1;\n}\npublic class Second {\n    int b = 2;\n}\n"
         idx = code.index("int b")
         assert find_enclosing_type_name(code, idx) == "Second"
 

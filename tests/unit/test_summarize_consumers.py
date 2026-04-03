@@ -1,4 +1,5 @@
 """Tests for _summarize_consumer_files wiring in __main__.py."""
+
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -13,26 +14,28 @@ from scatter.core.models import ConsumerResult
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_consumer(name: str, files: list[Path], base: Path = Path('/repo')) -> dict:
+
+def _make_consumer(name: str, files: list[Path], base: Path = Path("/repo")) -> dict:
     return {
-        'consumer_name': name,
-        'consumer_path': base / name / f'{name}.csproj',
-        'relevant_files': files,
+        "consumer_name": name,
+        "consumer_path": base / name / f"{name}.csproj",
+        "relevant_files": files,
     }
 
 
-def _make_result(consumer_name: str, consumer_path: Path = None,
-                 search_scope: Path = Path('/repo')) -> ConsumerResult:
+def _make_result(
+    consumer_name: str, consumer_path: Path = None, search_scope: Path = Path("/repo")
+) -> ConsumerResult:
     if consumer_path is None:
-        consumer_path = search_scope / consumer_name / f'{consumer_name}.csproj'
+        consumer_path = search_scope / consumer_name / f"{consumer_name}.csproj"
     try:
         rel = consumer_path.relative_to(search_scope).as_posix()
     except ValueError:
         rel = consumer_path.as_posix()
     return ConsumerResult(
-        target_project_name='Target',
-        target_project_path='Target/Target.csproj',
-        triggering_type='SomeClass',
+        target_project_name="Target",
+        target_project_path="Target/Target.csproj",
+        triggering_type="SomeClass",
         consumer_project_name=consumer_name,
         consumer_project_path=rel,
     )
@@ -133,8 +136,10 @@ class TestSummarizeConsumerFiles:
         cs_file.write_text("class Svc {}")
 
         consumers = [_make_consumer("B", [cs_file], base=tmp_path)]
-        results = [_make_result("OldConsumer", search_scope=tmp_path),
-                   _make_result("B", search_scope=tmp_path)]
+        results = [
+            _make_result("OldConsumer", search_scope=tmp_path),
+            _make_result("B", search_scope=tmp_path),
+        ]
         provider = _mock_provider(response="Svc summary.")
 
         _summarize_consumer_files(consumers, results, provider, tmp_path, 1)
@@ -158,21 +163,25 @@ class TestSummarizeConsumerFiles:
         path_b = dir_b / "Worker.csproj"
 
         consumers = [
-            {'consumer_name': 'Worker', 'consumer_path': path_a, 'relevant_files': [file_a]},
-            {'consumer_name': 'Worker', 'consumer_path': path_b, 'relevant_files': [file_b]},
+            {"consumer_name": "Worker", "consumer_path": path_a, "relevant_files": [file_a]},
+            {"consumer_name": "Worker", "consumer_path": path_b, "relevant_files": [file_b]},
         ]
 
         rel_a = path_a.relative_to(tmp_path).as_posix()
         rel_b = path_b.relative_to(tmp_path).as_posix()
         results = [
             ConsumerResult(
-                target_project_name='T', target_project_path='T/T.csproj',
-                triggering_type='SomeClass', consumer_project_name='Worker',
+                target_project_name="T",
+                target_project_path="T/T.csproj",
+                triggering_type="SomeClass",
+                consumer_project_name="Worker",
                 consumer_project_path=rel_a,
             ),
             ConsumerResult(
-                target_project_name='T', target_project_path='T/T.csproj',
-                triggering_type='SomeClass', consumer_project_name='Worker',
+                target_project_name="T",
+                target_project_path="T/T.csproj",
+                triggering_type="SomeClass",
+                consumer_project_name="Worker",
                 consumer_project_path=rel_b,
             ),
         ]
