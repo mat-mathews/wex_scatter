@@ -261,7 +261,7 @@ def _compute_composite(
 
     if not weighted:
         return 0.0
-    return max(weighted)
+    return float(max(weighted))
 
 
 def _collect_factors(
