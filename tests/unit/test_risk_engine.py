@@ -22,7 +22,6 @@ from scatter.core.risk_models import (
     RiskDimension,
     RiskLevel,
     RiskProfile,
-    _ZERO_DIMENSION,
     composite_to_risk_level,
     PR_RISK_CONTEXT,
     SOW_RISK_CONTEXT,
