@@ -1460,7 +1460,7 @@
 <h2 id="1-console-default">1. Console (default)<a class="headerlink" href="#1-console-default" title="Permanent link">&para;</a></h2>
 <p>When you just want to see what's going on. No flags, no files, no ceremony.</p>
 <div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>examples/pipeline_to_app_mapping.csv
 </code></pre></div>
 <div class="highlight"><pre><span></span><code>Search scope: /code/myrepo (scanned 142 projects, 3,891 files)
 Filter: 142 → 8 project refs[graph] → 5 namespace → 3 class match
@@ -1613,19 +1613,17 @@ scatter<span class="w"> </span>--graph<span class="w"> </span>--search-scope<spa
 <h2 id="6-pipelines">6. Pipelines<a class="headerlink" href="#6-pipelines" title="Permanent link">&para;</a></h2>
 <p>One pipeline name per line, sorted alphabetically. Built for deployment scripts and shell pipelines (the other kind).</p>
 <div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>examples/pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output-format<span class="w"> </span>pipelines
 </code></pre></div>
-<div class="highlight"><pre><span></span><code>galaxy-consumer-ci
-galaxy-consumer2-ci
-portal-batch-ci
+<div class="highlight"><pre><span></span><code>galaxyworks-portal-az-cd
 </code></pre></div>
-<p>Three lines, three pipelines that need to deploy. That's the entire output.</p>
+<p>One line per pipeline, sorted and deduplicated. That's the entire output. Try it yourself — the example CSV at <code>examples/pipeline_to_app_mapping.csv</code> works with the sample projects out of the box.</p>
 <p>Requires <code>--pipeline-csv</code> to map consumer projects to pipeline names. Without it, the output will be empty. Scatter warns you about this, but won't stop you.</p>
 <p>Not supported in <code>--graph</code> mode. Graph analysis is about architecture, not deployments.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Feed directly into a deployment script</span>
 scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>examples/pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output-format<span class="w"> </span>pipelines<span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>-I<span class="w"> </span><span class="o">{}</span><span class="w"> </span>./trigger-pipeline.sh<span class="w"> </span><span class="o">{}</span>
 </code></pre></div>
 <hr />

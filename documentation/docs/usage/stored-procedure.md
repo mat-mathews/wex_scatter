@@ -83,12 +83,13 @@ CSV is the lingua franca of cross-team communication. Hand this to your DBA and 
 ## With Pipeline Mapping
 
 ```bash
+# Runnable against the sample projects
 scatter --stored-procedure "dbo.sp_InsertPortalConfiguration" \
-  --search-scope . --pipeline-csv build/pipeline_map.csv \
+  --search-scope . --pipeline-csv examples/pipeline_to_app_mapping.csv \
   --output-format csv --output-file sproc_impact.csv
 ```
 
-When combined with `--pipeline-csv`, each consumer row includes the CI/CD pipeline name. This answers the deployment question: "if we change this sproc, which pipelines need to be redeployed, and in what order?"
+When combined with `--pipeline-csv`, each consumer row includes the CI/CD pipeline name. This answers the deployment question: "if we change this sproc, which pipelines need to be redeployed, and in what order?" The repo includes an example CSV at `examples/pipeline_to_app_mapping.csv` that works with the sample projects.
 
 ## Output Formats
 

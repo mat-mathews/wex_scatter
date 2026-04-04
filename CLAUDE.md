@@ -27,6 +27,9 @@ python scatter.py --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-sco
 # Stored procedure analysis (find consumers via database dependencies)
 python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .
 
+# With pipeline mapping (uses the included example CSV)
+python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . --pipeline-csv examples/pipeline_to_app_mapping.csv
+
 # Advanced analysis with AI summarization
 python scatter.py --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope . --summarize-consumers --google-api-key YOUR_API_KEY --output-format json --output-file analysis_results.json
 ```
