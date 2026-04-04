@@ -2,9 +2,36 @@
 
 import logging
 import re
-from typing import Optional, Set
+from typing import List, Optional, Set, Tuple
 
 from scatter.core.models import DELEGATE_DECLARATION_PATTERN, TYPE_DECLARATION_PATTERN
+
+
+def extract_type_declarations_with_kind(content: str) -> List[Tuple[str, str]]:
+    """Extract (type_name, kind) pairs from C# content.
+
+    Returns: [("PortalDataService", "class"), ("IDataAccessor", "interface"), ...]
+    """
+    results: List[Tuple[str, str]] = []
+    seen: Set[str] = set()
+    try:
+        for match in TYPE_DECLARATION_PATTERN.finditer(content):
+            kind = match.group("keyword")
+            type_name_full = match.group("type_name").strip()
+            type_name_base = re.sub(r"<.*", "", type_name_full).strip()
+            type_name_base = type_name_base.split(",")[0].strip()
+            if type_name_base and type_name_base not in seen:
+                seen.add(type_name_base)
+                results.append((type_name_base, kind))
+
+        for match in DELEGATE_DECLARATION_PATTERN.finditer(content):
+            type_name = match.group(1).strip()
+            if type_name and type_name not in seen:
+                seen.add(type_name)
+                results.append((type_name, "delegate"))
+    except Exception as e:
+        logging.warning(f"Regex error during type extraction with kind: {e}")
+    return results
 
 
 def extract_type_names_from_content(content: str) -> Set[str]:
@@ -15,7 +42,11 @@ def extract_type_names_from_content(content: str) -> Set[str]:
     try:
         for pattern in (TYPE_DECLARATION_PATTERN, DELEGATE_DECLARATION_PATTERN):
             for match in pattern.finditer(content):
-                type_name_full = match.group(1).strip()
+                # Use named group for TYPE_DECLARATION_PATTERN, positional for DELEGATE
+                try:
+                    type_name_full = match.group("type_name").strip()
+                except IndexError:
+                    type_name_full = match.group(1).strip()
                 type_name_base = re.sub(r"<.*", "", type_name_full).strip()
                 type_name_base = type_name_base.split(",")[0].strip()
                 if type_name_base:

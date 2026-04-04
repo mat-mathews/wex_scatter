@@ -9,6 +9,7 @@ from scatter.core.models import (
     EnrichedConsumer,
     FilterPipeline,
     ImpactReport,
+    PRRiskReport,
     STAGE_DISCOVERY,
     STAGE_INPUT_LABELS,
 )
@@ -250,3 +251,62 @@ def print_impact_report(report: ImpactReport) -> None:
     if report.impact_narrative:
         print("\n--- Impact Summary ---")
         print(report.impact_narrative)
+
+
+def print_pr_risk_report(report: PRRiskReport) -> None:
+    """Print PR risk analysis report to console."""
+    level = report.risk_level
+    score = report.aggregate.composite_score
+    level_str = level.value
+
+    print(f"\n{'=' * 60}")
+    print(f"  PR Risk: {level_str} ({score:.2f})")
+    print(f"{'=' * 60}")
+    print(f"  Branch: {report.branch_name} (vs {report.base_branch})")
+
+    n_types = len(report.changed_types)
+    n_projects = len(report.profiles)
+    print(f"  Changed: {n_types} type(s) across {n_projects} project(s)")
+
+    if not report.graph_available:
+        print("  Note: Graph not available — partial scoring only.")
+        for w in report.warnings:
+            print(f"  {w}")
+
+    # Changed types table
+    if report.changed_types:
+        print(f"\n  {'Type':<30} {'Kind':<12} {'Change':<10} Project")
+        print(f"  {'-' * 30} {'-' * 12} {'-' * 10} {'-' * 20}")
+        for ct in report.changed_types:
+            print(f"  {ct.name:<30} {ct.kind:<12} {ct.change_kind:<10} {ct.owning_project}")
+
+    # Dimension table
+    if report.graph_available:
+        print(f"\n  {'Dimension':<25} {'Score':>7} {'Severity':<10}")
+        print(f"  {'-' * 25} {'-' * 7} {'-' * 10}")
+        for dim in report.aggregate.dimensions:
+            if not dim.data_available:
+                print(f"  {dim.label:<25} {'N/A':>7} {'—':<10}")
+            else:
+                print(f"  {dim.label:<25} {dim.score:>7.2f} {dim.severity:<10}")
+    else:
+        cs = report.aggregate.change_surface
+        if cs.data_available:
+            print(f"\n  Change surface: {cs.score:.2f} ({cs.severity})")
+
+    # Risk factors
+    if report.risk_factors:
+        print("\n  Risk Factors:")
+        for f in report.risk_factors:
+            print(f"    • {f}")
+
+    # Consumer summary
+    if report.unique_consumers:
+        print(
+            f"\n  Consumers: {report.total_direct_consumers} direct, "
+            f"{report.total_transitive_consumers} transitive "
+            f"({len(report.unique_consumers)} unique)"
+        )
+
+    print(f"\n  Completed in {report.duration_ms}ms")
+    print()

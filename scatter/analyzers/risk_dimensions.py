@@ -8,11 +8,16 @@ Scoring: piecewise linear interpolation between thresholds (Decision #2, Devon).
 Missing data: returns data_available=False (Decision #7, Fatima).
 """
 
-from typing import Dict, List, Optional, Set
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Dict, List, Optional, Set
 
 from scatter.analyzers.coupling_analyzer import CycleGroup, ProjectMetrics
 from scatter.core.graph import DependencyGraph
 from scatter.core.risk_models import RiskDimension, score_to_severity
+
+if TYPE_CHECKING:
+    from scatter.core.models import ChangedType
 
 
 # --- Interpolation helper ---
@@ -472,4 +477,95 @@ def score_domain_boundary(
             "teams_crossed": teams_crossed,
             "team_names": sorted(team_names),
         },
+    )
+
+
+# --- 7. Change Surface ---
+
+
+def score_change_surface(
+    changed_types: List[ChangedType],
+    target_project: str,
+) -> RiskDimension:
+    """Score change surface risk based on the kinds of type changes in a PR.
+
+    Filters to types matching target_project. Scoring (take max across categories):
+      Deletions: 0.7 + 0.1 per extra, cap 1.0
+      Interface/abstract modifications: 0.5 + 0.1 per extra, cap 0.8
+      Class modifications: 0.3 + 0.05 per extra, cap 0.6
+      Only additions: 0.1
+      No matching types: 0.0
+    """
+    name = "change_surface"
+    label = "Change surface"
+
+    matching = [ct for ct in changed_types if ct.owning_project == target_project]
+
+    if not matching:
+        return RiskDimension(
+            name=name,
+            label=label,
+            score=0.0,
+            severity="low",
+            factors=[],
+            raw_metrics={"total_changes": 0},
+            data_available=True,
+        )
+
+    deletions = [ct for ct in matching if ct.change_kind == "deleted"]
+    iface_mods = [
+        ct
+        for ct in matching
+        if ct.change_kind == "modified" and ct.kind in ("interface", "abstract")
+    ]
+    class_mods = [
+        ct
+        for ct in matching
+        if ct.change_kind == "modified" and ct.kind not in ("interface", "abstract")
+    ]
+    additions = [ct for ct in matching if ct.change_kind == "added"]
+
+    scores: List[float] = []
+    factors: List[str] = []
+
+    if deletions:
+        s = min(1.0, 0.7 + 0.1 * (len(deletions) - 1))
+        scores.append(s)
+        names = ", ".join(ct.name for ct in deletions[:3])
+        suffix = f" (+{len(deletions) - 3} more)" if len(deletions) > 3 else ""
+        factors.append(f"{len(deletions)} type(s) deleted: {names}{suffix}")
+
+    if iface_mods:
+        s = min(0.8, 0.5 + 0.1 * (len(iface_mods) - 1))
+        scores.append(s)
+        names = ", ".join(ct.name for ct in iface_mods[:3])
+        factors.append(f"{len(iface_mods)} interface/abstract type(s) modified: {names}")
+
+    if class_mods:
+        s = min(0.6, 0.3 + 0.05 * (len(class_mods) - 1))
+        scores.append(s)
+        names = ", ".join(ct.name for ct in class_mods[:3])
+        factors.append(f"{len(class_mods)} type(s) modified: {names}")
+
+    if additions:
+        scores.append(0.1)
+        names = ", ".join(ct.name for ct in additions[:3])
+        factors.append(f"{len(additions)} type(s) added: {names}")
+
+    score = max(scores) if scores else 0.0
+
+    return RiskDimension(
+        name=name,
+        label=label,
+        score=round(score, 3),
+        severity=score_to_severity(score),
+        factors=factors,
+        raw_metrics={
+            "total_changes": len(matching),
+            "deletions": len(deletions),
+            "interface_modifications": len(iface_mods),
+            "class_modifications": len(class_mods),
+            "additions": len(additions),
+        },
+        data_available=True,
     )

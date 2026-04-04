@@ -9,6 +9,7 @@ from scatter.analyzers.coupling_analyzer import CycleGroup, ProjectMetrics
 from scatter.analyzers.health_analyzer import HealthDashboard
 from scatter.core.graph import DependencyGraph
 from scatter.core.models import FilterPipeline, ImpactReport
+from scatter.reports._formatting import md_table as _md_table
 from scatter.reports.console_reporter import render_tree
 from scatter.reports.graph_reporter import generate_mermaid
 
@@ -16,11 +17,6 @@ from scatter.reports.graph_reporter import generate_mermaid
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
-
-
-def _escape_cell(value: str) -> str:
-    """Sanitize a value for use inside a markdown table cell."""
-    return str(value).replace("|", "\\|").replace("\n", " ").strip()
 
 
 def _fmt_metadata(metadata: Optional[Dict]) -> str:
@@ -55,17 +51,6 @@ def _write_file(content: str, output_file_path: Path) -> None:
         logging.info(f"Successfully wrote markdown report to: {output_file_path}")
     except Exception as e:
         logging.error(f"Failed to write markdown report: {e}")
-
-
-def _md_table(headers: List[str], rows: List[List[str]]) -> str:
-    """Build a markdown table from headers and rows. All values escaped."""
-    header_line = "| " + " | ".join(_escape_cell(h) for h in headers) + " |"
-    separator = "| " + " | ".join("---" for _ in headers) + " |"
-    lines = [header_line, separator]
-    for row in rows:
-        padded = list(row) + [""] * (len(headers) - len(row))
-        lines.append("| " + " | ".join(_escape_cell(str(v)) for v in padded) + " |")
-    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------

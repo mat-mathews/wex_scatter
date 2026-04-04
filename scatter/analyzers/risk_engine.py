@@ -1,9 +1,14 @@
 """Unified risk engine for Scatter.
 
-Public API — three functions:
-  compute_risk_profile()  — score a single target
-  aggregate_risk()        — aggregate across multiple targets
-  format_risk_factors()   — extract sorted human-readable factors
+Public API — four functions:
+  compute_risk_profile()       — score a single target
+  aggregate_risk()             — aggregate across multiple targets
+  format_risk_factors()        — extract sorted human-readable factors
+  recompute_profile_composite() — recompute after injecting a dimension
+
+Helper functions (also public — used by pr_risk_analyzer):
+  compute_composite()   — weighted-max across dimensions
+  collect_factors()     — deduplicated, sorted risk factors
 
 Pure functions. Data in, score out. No I/O (Decision: Devon).
 Structured logging at DEBUG/INFO (Decision #5, Marcus).
@@ -95,11 +100,11 @@ def compute_risk_profile(
 
     # Composite score: weighted max (not average)
     dimensions = [structural, instability, cycle, database, blast_radius, domain, change_surface]
-    composite = _compute_composite(dimensions, context)
+    composite = compute_composite(dimensions, context)
     risk_level = composite_to_risk_level(composite, context)
 
     # Collect and sort risk factors
-    all_factors = _collect_factors(dimensions, context)
+    all_factors = collect_factors(dimensions, context)
 
     # Shared sprocs from database dimension
     shared_sprocs = database.raw_metrics.get("shared_sproc_names", [])
@@ -206,7 +211,7 @@ def aggregate_risk(
     risk_level = composite_to_risk_level(composite, context)
 
     # Collect unique risk factors across all profiles, sorted by weight * score
-    all_factors = _collect_factors(list(agg_dims.values()), context)
+    all_factors = collect_factors(list(agg_dims.values()), context)
 
     # Consumer totals (sum, not deduplicated — see docstring)
     total_transitive = 0
@@ -252,10 +257,25 @@ def format_risk_factors(
     return profile_or_aggregate.risk_factors[:top_n]
 
 
-# --- Internal helpers ---
+def recompute_profile_composite(
+    profile: RiskProfile,
+    context: RiskContext,
+) -> None:
+    """Recompute composite score and risk factors after injecting a dimension.
+
+    Mutates profile in place. Use after replacing a dimension (e.g. injecting
+    change_surface computed by the PR analyzer).
+    """
+    composite = compute_composite(profile.dimensions, context)
+    profile.composite_score = round(composite, 3)
+    profile.risk_level = composite_to_risk_level(composite, context)
+    profile.risk_factors = collect_factors(profile.dimensions, context)
 
 
-def _compute_composite(
+# --- Helpers (public — used by pr_risk_analyzer) ---
+
+
+def compute_composite(
     dimensions: List[RiskDimension],
     context: RiskContext,
 ) -> float:
@@ -276,7 +296,7 @@ def _compute_composite(
     return float(max(weighted))
 
 
-def _collect_factors(
+def collect_factors(
     dimensions: List[RiskDimension],
     context: RiskContext,
     top_n: int = 5,

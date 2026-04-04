@@ -21,6 +21,7 @@ from scatter.modes import (
     run_git_mode,
     run_graph_mode,
     run_impact_mode,
+    run_pr_risk_mode,
     run_sproc_mode,
     run_target_mode,
 )
@@ -64,7 +65,10 @@ def main():
 
     # Mode dispatch
     if args.branch_name is not None:
-        run_git_mode(args, ctx, start_time)
+        if getattr(args, "pr_risk", False):
+            run_pr_risk_mode(args, ctx, start_time)
+        else:
+            run_git_mode(args, ctx, start_time)
     elif args.target_project is not None:
         run_target_mode(args, ctx, start_time)
     elif args.stored_procedure is not None:

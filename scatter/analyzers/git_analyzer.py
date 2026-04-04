@@ -4,7 +4,7 @@ import logging
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, cast
 
 try:
     import git
@@ -12,6 +12,9 @@ except ImportError:
     print("Error: GitPython library not found.")
     print("Please install it using: pip install GitPython")
     sys.exit(1)
+
+from scatter.core.models import ChangeKind, ChangedType, TypeKind
+from scatter.scanners.type_scanner import extract_type_declarations_with_kind
 
 
 def find_project_file(
@@ -257,3 +260,176 @@ def get_diff_for_file(
     except Exception as e:
         logging.warning(f"Could not get diff for {file_path}: {e}")
         return None
+
+
+def _read_blob_content(commit: git.Commit, path: str) -> Optional[str]:
+    """Read file content from a git tree object (not disk). Returns None if not found."""
+    try:
+        blob = commit.tree / path
+        raw: bytes = blob.data_stream.read()
+        return raw.decode("utf-8", errors="ignore")
+    except (KeyError, TypeError):
+        return None
+
+
+def _diff_type_sets(
+    base_types: List[Tuple[str, str]],
+    feature_types: List[Tuple[str, str]],
+) -> List[Tuple[str, str, str]]:
+    """Compare two type sets and produce (name, kind, change_kind) triples.
+
+    base_types/feature_types: list of (name, kind) tuples.
+    Returns: list of (name, kind, change_kind) where change_kind is added/deleted/modified.
+
+    Known limitation: types present in both sets are marked "modified" even if
+    only whitespace or comments changed. We compare type *names*, not bodies.
+    A future improvement could hash type bodies to distinguish real modifications
+    from no-ops.
+    """
+    base_map = {name: kind for name, kind in base_types}
+    feature_map = {name: kind for name, kind in feature_types}
+
+    results: List[Tuple[str, str, str]] = []
+
+    # Types in feature but not base → added
+    for name, kind in feature_types:
+        if name not in base_map:
+            results.append((name, kind, "added"))
+
+    # Types in base but not feature → deleted
+    for name, kind in base_types:
+        if name not in feature_map:
+            results.append((name, kind, "deleted"))
+
+    # Types in both → modified (body may have changed)
+    for name, kind in feature_types:
+        if name in base_map:
+            # Use feature kind (might have changed from class to record, etc.)
+            results.append((name, kind, "modified"))
+
+    return results
+
+
+def extract_pr_changed_types(
+    repo_path: str,
+    feature_branch: str,
+    base_branch: str = "main",
+) -> List[ChangedType]:
+    """Extract ChangedType list from git diff between branches.
+
+    Reads file content from git tree objects (not disk). Per changed .cs file:
+      D: read base tree → all types "deleted"
+      A: read feature tree → all types "added"
+      M: read both, diff type sets → "added"/"deleted"/"modified"
+      R: read both (using a_path/b_path), diff type sets, use b_path for project
+    """
+    try:
+        repo = git.Repo(repo_path, search_parent_directories=True)
+    except (git.InvalidGitRepositoryError, git.NoSuchPathError) as e:
+        raise ValueError(f"Not a valid Git repository: {repo_path}") from e
+
+    # Resolve branches
+    try:
+        if base_branch not in repo.heads:
+            raise ValueError(f"Branch '{base_branch}' not found in repository.")
+        if feature_branch not in repo.heads:
+            raise ValueError(f"Branch '{feature_branch}' not found in repository.")
+    except ValueError:
+        raise
+
+    base_commit = repo.heads[base_branch].commit
+    feature_commit = repo.heads[feature_branch].commit
+
+    # Find merge base
+    merge_bases = repo.merge_base(base_commit, feature_commit)
+    if not merge_bases:
+        raise ValueError(
+            f"No common ancestor between '{feature_branch}' and '{base_branch}'. "
+            f"Are they in the same repository?"
+        )
+    merge_base_commit = merge_bases[0]
+
+    diff_index = merge_base_commit.diff(feature_commit)
+    changed_types: List[ChangedType] = []
+
+    for diff_item in diff_index:
+        # Determine which paths to work with
+        a_path = diff_item.a_path  # base side
+        b_path = diff_item.b_path  # feature side
+        change_type = diff_item.change_type
+
+        # Only process .cs files
+        relevant_path = b_path or a_path
+        if not relevant_path or not relevant_path.lower().endswith(".cs"):
+            continue
+
+        # At this point, at least one path is non-None (guarded by relevant_path check).
+        # For D: a_path is set. For A/M/R: b_path is set.
+        assert a_path is not None or b_path is not None
+
+        # Determine the path to use for project lookup
+        # For renames, use b_path (destination). For deletes, use a_path.
+        project_lookup_path: str = (b_path if change_type != "D" else a_path) or relevant_path
+        project_lookup_commit = feature_commit if change_type != "D" else merge_base_commit
+
+        # Find owning project
+        owning_project_path = find_project_file(repo, project_lookup_commit, project_lookup_path)
+        if not owning_project_path:
+            logging.debug(f"No .csproj found for {relevant_path}, skipping")
+            continue
+
+        owning_project = Path(owning_project_path).stem
+
+        if change_type == "D" and a_path:
+            # Deleted file — all types are deleted
+            content = _read_blob_content(merge_base_commit, a_path)
+            if content:
+                for name, kind in extract_type_declarations_with_kind(content):
+                    changed_types.append(
+                        ChangedType(
+                            name=name,
+                            kind=cast(TypeKind, kind),
+                            change_kind="deleted",
+                            owning_project=owning_project,
+                            owning_project_path=owning_project_path,
+                            file_path=a_path,
+                        )
+                    )
+
+        elif change_type == "A" and b_path:
+            # Added file — all types are added
+            content = _read_blob_content(feature_commit, b_path)
+            if content:
+                for name, kind in extract_type_declarations_with_kind(content):
+                    changed_types.append(
+                        ChangedType(
+                            name=name,
+                            kind=cast(TypeKind, kind),
+                            change_kind="added",
+                            owning_project=owning_project,
+                            owning_project_path=owning_project_path,
+                            file_path=b_path,
+                        )
+                    )
+
+        elif change_type in ("M", "R") and a_path and b_path:
+            # Modified or renamed — diff type sets
+            base_content = _read_blob_content(merge_base_commit, a_path)
+            feat_content = _read_blob_content(feature_commit, b_path)
+
+            base_types = extract_type_declarations_with_kind(base_content) if base_content else []
+            feat_types = extract_type_declarations_with_kind(feat_content) if feat_content else []
+
+            for name, kind, ck in _diff_type_sets(base_types, feat_types):
+                changed_types.append(
+                    ChangedType(
+                        name=name,
+                        kind=cast(TypeKind, kind),
+                        change_kind=cast(ChangeKind, ck),
+                        owning_project=owning_project,
+                        owning_project_path=owning_project_path,
+                        file_path=b_path,
+                    )
+                )
+
+    return changed_types
