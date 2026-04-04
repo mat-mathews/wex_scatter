@@ -70,7 +70,9 @@ class TestFunctionalBackwardCompat:
         repo.mkdir()
 
         # Create git repo with initial commit
-        subprocess.run(["git", "init"], cwd=repo, capture_output=True, check=True)
+        subprocess.run(
+            ["git", "init", "-b", "main"], cwd=repo, capture_output=True, check=True
+        )
         subprocess.run(
             ["git", "config", "user.name", "Test"], cwd=repo, capture_output=True, check=True
         )

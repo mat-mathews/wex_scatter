@@ -99,6 +99,8 @@ jobs:
       - name: Smoke test — PR risk analysis
         run: |
           # Create a temp branch with a .cs change
+          # Ensure we have a local 'main' ref for scatter to diff against
+          git branch -f main HEAD 2>/dev/null || true
           git checkout -b smoke/pr-risk-test
           mkdir -p SmokeProject
           echo '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>' > SmokeProject/SmokeProject.csproj
