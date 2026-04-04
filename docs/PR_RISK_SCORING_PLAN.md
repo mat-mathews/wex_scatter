@@ -460,7 +460,7 @@ them. One comment, always current, always in the same place. That's the contract
 
 ## Implementation Plan
 
-### Phase 1: Core Risk Engine + PR Mode (2 weeks)
+### Phase 1: Core Risk Engine + PR Mode (2 weeks) — ✅ SHIPPED (2026-04-03, PR #21)
 
 **Goal**: `scatter --pr-risk` produces a `PRRiskReport` to JSON/markdown — runnable
 locally and in CI, same output either way.
@@ -538,7 +538,7 @@ locally and in CI, same output either way.
 | Graph cache required (no filesystem fallback) | Performance budget is 90s; cold filesystem scan won't make it for large repos |
 | Same output locally and in CI | Engineers preview exactly what the bot will say before pushing |
 
-### Phase 2: GitHub Actions Integration (1–2 weeks)
+### Phase 2: GitHub Actions Integration (1–2 weeks) — ✅ SHIPPED (2026-04-04, PR #22)
 
 **Goal**: Scatter runs automatically on every PR and posts a risk comment. Zero
 configuration for consuming teams — they drop the workflow file in their repo, done.
@@ -676,57 +676,155 @@ we'll never get it back in. Advisory only. Always.
 
 ### Phase 3: Prediction Logging (1 week)
 
-**Goal**: Log every PR risk assessment as a prediction record.
+**Goal**: Log every PR risk assessment as a prediction record. Start collecting data
+from day one — you can't calibrate retroactively.
 
-This is the data collection phase — no analysis yet, just logging. You can't calibrate
-without data, and you can't collect data retroactively. Start logging on day one of
-GitHub Actions rollout. Even if nobody looks at the data for six months, it's there when
-you need it.
+This is Sam's "20 lines" principle: append a JSON line on every `--pr-risk` run. No
+webhooks, no dashboards, no infrastructure. Collect data first, argue about where it
+goes later.
+
+#### Key Design Decisions (from team brainstorm 2026-04-04)
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 1 | **Scatter owns the data** — JSONL file, not embedded in PR comments | Mat: "embedding central intelligence in a vendorific surface" is a liability. If WEX moves off GitHub, prediction history shouldn't go with it. The JSONL is portable, greppable, and lives on infrastructure we control. |
+| 2 | **Same schema regardless of destination** | Fatima: local file, workflow artifact, future webhook — same JSON shape. No migration problem when we add centralized collection later. |
+| 3 | **Prediction and outcome are separate concerns** | Marcus: the prediction is easy (scatter has the data). The outcome is hard (did this PR actually cause a problem?). Phase 3 logs predictions. Phase 4 adds outcomes. Don't conflate them. |
+| 4 | **No full report in the record** | Devon: the record is metadata *about* a prediction, not the prediction itself. Keeps JSONL small, aggregation queries fast. Full reports are separate artifacts. |
+| 5 | **Schema version field from day one** | Kai: lets us evolve without breaking old records. |
+| 6 | **Nullable outcome fields** | Outcome starts null, gets filled in by Phase 4 calibration. The schema anticipates it so we don't need a migration. |
 
 #### Deliverables
 
-**3.1 Risk prediction log**
-
-Every PR risk comment generates a prediction record:
+**3.1 Prediction record schema**
 
 ```python
 @dataclass
 class RiskPrediction:
-    pr_number: int
-    timestamp: datetime
-    branch_name: str
-    risk_level: RiskLevel
-    direct_consumers: int
-    transitive_consumers: int
-    changed_types: list[str]
-    risk_factors: list[str]
-    cycle_involvement: bool
-    max_coupling_score: float
+    """A single PR risk prediction — one record per --pr-risk run."""
+
+    # Schema
+    schema_version: int = 1
+
+    # Identity — SHAs are permanent, branch names aren't
+    timestamp: str                   # ISO 8601
+    repo: str                        # "org/repo" or local path
+    pr_number: Optional[int]         # None for local CLI runs
+    branch: str
+    base_branch: str
+    head_sha: str
+    base_sha: str
+    scatter_version: str
+
+    # Prediction
+    composite_score: float
+    risk_level: str                  # "GREEN", "YELLOW", "RED"
+    dimensions: dict[str, float]     # {"change_surface": 0.3, "blast_radius": 0.5, ...}
+    dimension_data_available: dict[str, bool]  # which scores are real vs zero-because-no-data
+    changed_type_count: int
+    direct_consumer_count: int
+    transitive_consumer_count: int
+    graph_available: bool
+    risk_factors: list[str]          # top 3 factors as strings
+    duration_ms: int
+
+    # Outcome — null until Phase 4 annotates
+    outcome: Optional[str] = None    # "clean", "hotfix", "revert", "incident"
+    outcome_signals: Optional[dict] = None
+    merge_sha: Optional[str] = None
 ```
 
-Stored as append-only JSONL (one line per PR) in a configurable location. No database
-needed — this is a log, not a query engine. You can `grep` it. That's the point.
+**Why `head_sha` and `base_sha`?** (Devon) Branches get deleted; SHAs are permanent.
+The join key for calibration is `repo + head_sha`, not `repo + branch`.
 
-**3.2 Log retention strategy**
+**Why `dimension_data_available`?** (Devon) A 0.0 cycle score means different things
+depending on whether the graph was available. Without this flag, calibration can't
+distinguish "predicted no cycles" from "couldn't check for cycles."
 
-At 1 PR per day, each line is ~500 bytes. A year of data is ~180KB — small enough
-that rotation is not a year-one concern. When it becomes one:
+**Why `risk_factors` limited to top 3?** (Devon) Qualitative context without bloating
+the record. If you need all factors, read the full report.
 
-- Default location: `.scatter/predictions/pr_risk.jsonl`
-- No automatic rotation in Phase 3 — file stays small for typical repos
+**3.2 Prediction writer** (`scatter/store/prediction_log.py`)
+
+~30 lines. Append-only JSONL writer.
+
+```python
+def log_prediction(report: PRRiskReport, path: Path) -> None:
+    """Append a prediction record to the JSONL log."""
+    record = _build_record(report)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(record, default=str) + "\n")
+```
+
+- Default location: `.scatter/predictions.jsonl`
+- Called automatically at the end of `run_pr_risk_mode` (after report output)
+- `--no-prediction-log` flag to disable (for testing or dry runs)
+- Log a warning if file exceeds 10MB (~20K predictions)
+
+**3.3 Wire into `--pr-risk` mode**
+
+After the report is written/printed, call `log_prediction()`. One line in
+`scatter/modes/pr_risk.py`. The prediction log is a side effect of analysis,
+not a separate command.
+
+**3.4 `scatter --predictions` reader**
+
+Minimal reader for inspecting the log:
+
+```bash
+# Show last 10 predictions
+scatter --predictions .scatter/predictions.jsonl --tail 10
+
+# Show only RED predictions
+scatter --predictions .scatter/predictions.jsonl --level RED
+
+# Summary stats
+scatter --predictions .scatter/predictions.jsonl --summary
+```
+
+This is the seed of the Phase 4 calibration command. Keep it simple — `jq` could do
+most of this, but a built-in command means teams don't need to learn `jq`.
+
+**3.5 GitHub Actions: upload as workflow artifact**
+
+In the `scatter-pr-risk.yml` workflow, after analysis:
+
+```yaml
+- name: Upload prediction log
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: scatter-predictions
+    path: .scatter/predictions.jsonl
+    retention-days: 90
+```
+
+Artifacts persist for 90 days (Fatima). Not the long-term answer, but captures data
+from CI runs without requiring `contents: write` permission. The JSONL file itself is
+the portable record — artifacts are just a convenient transport.
+
+**3.6 Tests**
+- Unit test: `RiskPrediction` serialization round-trip (write JSONL → read back → compare)
+- Unit test: `_build_record` populates all fields from a `PRRiskReport`
+- Unit test: `dimension_data_available` correctly reflects graph availability
+- Integration test: run `--pr-risk` → verify `.scatter/predictions.jsonl` exists with valid record
+- Unit test: `--no-prediction-log` suppresses logging
+- Unit test: 10MB warning threshold (mock file size)
+
+**3.7 Log retention**
+
+At ~500 bytes per record, a year of daily PRs is ~180KB. Rotation is not a year-one
+concern. When it becomes one:
+
 - If file exceeds 10MB (~20K PRs), log a warning suggesting manual archival
-- Phase 4 calibration reads the full log, so rotation must preserve calibration data
-- Future: `scatter --prediction-archive` to move entries older than N days to a
-  dated archive file (e.g., `pr_risk_2026.jsonl`)
-
-**3.3 Tests**
-- Unit test: prediction record serialization to/from JSONL
-- Integration test: run PR analysis → verify prediction logged
-- Unit test: large file warning threshold (mock 10MB file)
+- Phase 4 calibration reads the full log, so rotation must preserve data
+- Future: `scatter --prediction-archive` to move old entries to dated files
 
 ### Phase 4: Calibration and Trust (2+ weeks, deferred until prediction data exists)
 
-**Goal**: Track prediction accuracy over time so the signal earns trust.
+**Goal**: Prove the signal is worth reading. Track prediction accuracy, annotate
+outcomes, compute precision/recall, and tune thresholds.
 
 This is the phase that separates a toy from a tool. Phases 1–3 produce a signal and log
 it. Phase 4 proves the signal is worth reading. Without this phase, we're the boy who
@@ -735,53 +833,113 @@ every RED after it.
 
 **This phase is deferred** until we have enough prediction data to calibrate against.
 No point building an accuracy dashboard with zero data points. Ship Phases 1–3, let the
-log accumulate for a quarter, then come back here.
+log accumulate for a quarter, then come back here. Minimum: ~50 RED predictions for
+statistical significance (Marcus).
+
+#### Three Things Needed for Calibration (Marcus)
+
+1. **The prediction** — score, level, dimensions (from Phase 3 JSONL)
+2. **The outcome** — did this PR actually cause a problem?
+3. **The join key** — `repo + head_sha` (not branch name — branches get deleted)
+
+The prediction is easy. The outcome is the hard part.
 
 #### Deliverables
 
-**4.1 Outcome tracking** (manual initially)
+**4.1 Automated outcome signals** (no human annotation)
 
-After a PR merges, track whether anything actually broke:
+Nobody's going to manually annotate 200 PRs. Use automated signals (Marcus):
 
-- Did any downstream build fail within 48 hours?
-- Was a hotfix PR opened referencing the same types?
-- Was the PR reverted?
+| Signal | How to detect | Quality |
+|--------|--------------|---------|
+| Hotfix commit within 48h of merge | `git log --after` on the merge commit's files | Good |
+| Revert of the merge commit | `git log --grep="Revert"` + parent SHA matching | Very good |
+| CI failure on the merge commit | GitHub API check runs | Moderate (flaky tests) |
+| Incident ticket linked to PR | Jira/Linear API if available | Best (requires integration) |
 
-Start manual: review the log quarterly, annotate outcomes. Yes, this is tedious.
-It's also how you build a ground truth dataset with fewer than 100 data points.
+**4.2 `scatter --calibrate` command**
 
-**4.2 Accuracy dashboard**
+Not a dashboard. A CLI command that reads predictions, cross-references git for
+outcomes, and prints metrics (Marcus):
 
-Quarterly report:
-- True positives: RED predictions where something broke
-- False positives: RED predictions where nothing broke (the "cry wolf" rate)
-- True negatives: GREEN predictions where nothing broke
-- False negatives: GREEN predictions where something broke (the dangerous ones)
+```bash
+scatter --calibrate .scatter/predictions.jsonl
+```
 
-> "The false negative rate is the number that matters. False positives annoy people.
-> False negatives hurt people. Track both, but optimize for false negatives first."
+```
+Scatter Calibration Report
+==========================
+Predictions: 142 (87 GREEN, 43 YELLOW, 12 RED)
+Outcomes annotated: 98/142 (69%)
 
-Exactly right. A false positive means someone spent 5 minutes reading a comment that
-didn't matter. A false negative means someone merged a breaking change because we told
-them it was fine. One of those is embarrassing. The other is a production incident.
+Precision at RED:  8/12 (67%)  — target: >60%
+Recall at RED:     8/11 (73%)  — target: >80%
+False positive rate (RED): 33%
+False negative rate:        3%
 
-**4.3 Threshold tuning**
+Score distribution: 61% GREEN, 30% YELLOW, 9% RED
+  (healthy range: ~70/25/5)
 
-Use the prediction log to adjust thresholds:
+Recommendation: RED threshold slightly too aggressive.
+  Consider raising from 0.7 → 0.75 in .scatter.yaml.
+```
+
+Something you paste into a quarterly review. Not a webapp.
+
+**4.3 Outcome annotator**
+
+A command or GitHub Action that walks merged PRs and fills in the `outcome` and
+`merge_sha` fields in the JSONL:
+
+```bash
+scatter --annotate-outcomes .scatter/predictions.jsonl
+```
+
+For each prediction with `outcome: null`:
+1. Check if `head_sha` was merged (via `git log` or GitHub API)
+2. If merged, check for hotfix/revert signals in the 48h window after merge
+3. Write `outcome` and `outcome_signals` back into the record
+
+**4.4 KPIs for leadership** (Devon)
+
+The metric that matters to leadership isn't precision or recall. It's behavioral:
+
+- **"What % of RED-scored PRs received additional review before merge?"** — measures
+  whether the tool changes how people work
+- **Time-to-merge for RED vs GREEN PRs** — did RED PRs get more scrutiny?
+- **Review comment count on RED vs GREEN** — proxy for "did the team discuss it?"
+- **Score distribution trending** — are we always saying GREEN? (useless) Is RED
+  increasing over time? (codebase is getting riskier, or thresholds need tuning)
+
+**4.5 Threshold tuning**
+
+Use the calibration report to adjust thresholds:
 - If false positive rate > 30%: raise RED thresholds (too sensitive)
 - If false negative rate > 5%: lower RED thresholds (not sensitive enough)
 - Per-repo tuning: different repos have different coupling profiles
 
 This is where `.scatter.yaml` per-repo config pays off — each team tunes their own
-sensitivity based on their own history. A core library with naturally high fan-in needs
-different thresholds than a leaf web app. That's not a bug in the model. That's topology.
+sensitivity based on their own history.
 
-**4.4 Automated outcome tracking (own scope — not bundled with calibration)**
+#### Future: Centralized Collection (Phase 5, not scoped)
 
-GitHub webhook that listens for build failures, correlates with recent merges, and
-auto-annotates the prediction log. This is its own initiative with its own infrastructure
-requirements (webhook endpoint, build failure parsing, correlation logic). Don't bundle
-it with threshold tuning — they have different dependencies and different risk profiles.
+When Mat wants division-wide trend lines across dozens of repos, add a webhook
+option (Fatima):
+
+```bash
+scatter --prediction-webhook https://internal.wex.com/scatter/ingest
+```
+
+Same JSONL record, different destination. One config line. The backend can be
+anything WEX already has for internal telemetry — a Lambda writing to S3, a
+simple Flask app writing to SQLite, a shared bucket with path conventions like
+`s3://scatter-predictions/{org}/{repo}/{year}/{month}.jsonl`.
+
+The schema is already destination-agnostic (Phase 3, Decision #2). Moving from
+local file to centralized collection is a writer change, not a schema change.
+
+Not scoped here because it requires infrastructure decisions that depend on what
+WEX already has. But the prediction record format is ready for it.
 
 ---
 
@@ -883,15 +1041,32 @@ catch in Phase 3 and adjust for) than to flag a safe change as dangerous. People
 | `tests/unit/test_pr_risk_analyzer.py` | Create | PR report assembly, threshold edges, deleted-type detection |
 | `tests/unit/test_pr_comment_reporter.py` | Create | Golden-file snapshot tests for markdown output |
 
-### PR Risk Phase 2 (GitHub Actions)
+### PR Risk Phase 2 (GitHub Actions) — ✅ SHIPPED (2026-04-04, PR #22)
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `.github/workflows/scatter-pr-risk.yml` | Create | GitHub Actions workflow |
+| `tools/github-action/scatter-pr-risk.yml` | Created | GitHub Actions workflow template |
+| `tools/github-action/README.md` | Modified | Restructured for both workflows |
+| `scatter/cli_parser.py` | Modified | Added `--collapsible` flag |
+| `scatter/modes/pr_risk.py` | Modified | Wired `--collapsible` to markdown reporter |
+| `.github/workflows/ci.yml` | Modified | YAML validation, smoke tests, backward compat |
+| `tests/unit/test_backward_compat.py` | Created | Parser flags, dispatch, functional compat test |
+| `tests/golden/pr_risk_green_collapsible.md` | Created | Golden file for collapsible output |
 
 ### PR Risk Phase 3 (Prediction logging)
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `scatter/store/prediction_log.py` | Create | Append-only JSONL prediction storage |
-| `.scatter.yaml` (example) | Modify | Add `risk:` and `prediction_log:` config sections |
+| `scatter/core/models.py` | Modify | Add `RiskPrediction` dataclass |
+| `scatter/store/prediction_log.py` | Create | Append-only JSONL writer + reader |
+| `scatter/modes/pr_risk.py` | Modify | Call `log_prediction()` after report output |
+| `scatter/cli_parser.py` | Modify | Add `--no-prediction-log`, `--predictions` flags |
+| `tests/unit/test_prediction_log.py` | Create | Serialization, round-trip, integration, warning |
+
+### PR Risk Phase 4 (Calibration)
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `scatter/store/prediction_log.py` | Modify | Add outcome annotator, calibration reader |
+| `scatter/modes/calibrate.py` | Create | `--calibrate` and `--annotate-outcomes` mode handlers |
+| `tests/unit/test_calibration.py` | Create | Outcome detection, precision/recall computation |
