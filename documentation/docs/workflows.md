@@ -50,6 +50,20 @@ The `--enable-hybrid-git` flag uses AI to identify precisely which types were af
 
 Pipe to clipboard, paste into the PR description. Reviewer sees the blast radius before they read a single line of code.
 
+**Get a risk score instead of the consumer table:**
+
+```bash
+scatter --branch-name feature/add-caching \
+  --repo-path /code/myrepo \
+  --search-scope /code/myrepo \
+  --pr-risk --graph-metrics --collapsible \
+  --output-format markdown | pbcopy
+```
+
+The `--pr-risk` flag switches from consumer tables to a risk report: GREEN/YELLOW/RED with a composite score across 6 dimensions (change surface, blast radius, coupling, cycles, instability, domain boundaries). The `--collapsible` flag wraps detail sections in `<details>` tags — compact in a PR comment, expandable when you need the full picture.
+
+To automate this on every PR, copy the [GitHub Action template](reference/github-action.md) into your repo. Zero config required.
+
 ### What to Look For
 
 - **Unexpected consumers.** You changed `GalaxyWorks.Data` and somehow `BillingReportGenerator` showed up? That's the conversation you need to have before merge, not after deploy.
@@ -73,26 +87,25 @@ Pipe to clipboard, paste into the PR description. Reviewer sees the blast radius
 
 ### Steps
 
-**From a branch -- what pipelines does my change affect?**
+**Which pipelines does my change affect?**
+
+Try it now against the sample projects:
 
 ```bash
-scatter --branch-name feature/portal-tenant-isolation \
-  --repo-path /code/myrepo \
-  --search-scope /code/myrepo \
-  --pipeline-csv pipeline_to_app_mapping.csv \
+# Runnable — uses the included example CSV and sample .NET projects
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . \
+  --pipeline-csv examples/pipeline_to_app_mapping.csv \
   --output-format pipelines
 ```
 
 ```
-galaxyworks-api-ci
-galaxyworks-batch-ci
-galaxyworks-webportal-ci
-portal-consumer-ci
+galaxyworks-portal-az-cd
 ```
 
-Four lines, four pipelines. Copy-paste into the DevOps ticket. Done.
+One line, one pipeline. Copy-paste into the DevOps ticket. Done.
 
-Note: `--branch-name` requires the branch to still exist (not yet merged and deleted). Run this before merge, or use `--target-project` for changes that have already landed on `main`.
+In a real repo with hundreds of projects and solutions, this list gets longer. The point is the same: scatter tells you exactly which pipelines to include in the release.
 
 **Same command, different entry points:**
 
@@ -105,15 +118,27 @@ Every analysis mode supports `--pipeline-csv` and `--output-format pipelines`. P
 | Stored procedure | `--stored-procedure` | Database migration — sproc rename, new parameter, deprecation |
 | Work request | `--sow` | Sprint planning — scope the deployment before writing code |
 
-Just swap the mode flag. The rest of the command is the same: add `--pipeline-csv pipeline_to_app_mapping.csv --output-format pipelines`.
+Just swap the mode flag. The rest of the command is the same: add `--pipeline-csv <your-mapping.csv> --output-format pipelines`.
 
-**Get the full consumer report with pipelines for the ticket attachment:**
+**From a branch (requires the branch to exist in your repo):**
 
 ```bash
 scatter --branch-name feature/portal-tenant-isolation \
   --repo-path /code/myrepo \
   --search-scope /code/myrepo \
   --pipeline-csv pipeline_to_app_mapping.csv \
+  --output-format pipelines
+```
+
+`--branch-name` requires the branch to still exist (not yet merged and deleted). Run this before merge, or use `--target-project` for changes that have already landed on `main`.
+
+**Get the full consumer report with pipelines for the ticket attachment:**
+
+```bash
+# Runnable against sample projects
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . \
+  --pipeline-csv examples/pipeline_to_app_mapping.csv \
   --output-format csv --output-file release-pipelines.csv
 ```
 
@@ -122,10 +147,9 @@ The CSV includes one row per consumer with key columns: `ConsumerProjectName`, `
 **Feed directly into a deployment script:**
 
 ```bash
-scatter --branch-name feature/portal-tenant-isolation \
-  --repo-path /code/myrepo \
-  --search-scope /code/myrepo \
-  --pipeline-csv pipeline_to_app_mapping.csv \
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . \
+  --pipeline-csv examples/pipeline_to_app_mapping.csv \
   --output-format pipelines | xargs -I {} ./trigger-pipeline.sh {}
 ```
 
@@ -134,6 +158,7 @@ The `pipelines` output format is designed for this -- one name per line, sorted 
 **Combine pipeline lists from multiple branches for the team's monthly release:**
 
 ```bash
+# Replace with your actual branches and repo path
 for branch in feature/portal-isolation feature/billing-fix feature/cache-update; do
   scatter --branch-name $branch \
     --repo-path /code/myrepo \

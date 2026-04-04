@@ -87,7 +87,7 @@ scatter \
   --branch-name feature/data-migration \
   --repo-path /path/to/repo \
   --search-scope /path/to/services \
-  --pipeline-csv build/pipeline_map.csv \
+  --pipeline-csv pipeline_to_app_mapping.csv \
   --output-format json \
   --output-file reports/analysis.json
 ```
@@ -96,6 +96,43 @@ This combines everything: git analysis, pipeline name resolution (maps consumer 
 
 Output formats (json, csv, markdown) work the same as in target project mode. See [Output Formats](../output-formats.md) for details.
 
+## PR Risk Scoring
+
+Instead of the consumer table, get a risk score for the branch's changes:
+
+```bash
+scatter \
+  --branch-name feature/refactor-data \
+  --pr-risk \
+  --repo-path . --search-scope .
+```
+
+```
+============================================================
+  PR Risk Analysis: feature/refactor-data
+============================================================
+  Risk Level: RED (0.80)
+
+  2 type(s) changed across 1 project(s). 5 direct consumer(s) affected.
+
+  Dimension               Score  Severity
+  ---------------------- ------ ----------
+  Change surface           0.70  high
+  Cycle entanglement       0.80  critical
+```
+
+Add `--graph-metrics` for full 6-dimension scoring (blast radius, coupling, instability, domain boundaries). Add `--collapsible` with `--output-format markdown` for compact PR comments with expandable `<details>` sections.
+
+```bash
+# Markdown for PR comments
+scatter --branch-name feature/refactor-data --pr-risk \
+  --repo-path . --search-scope . \
+  --graph-metrics --collapsible \
+  --output-format markdown | pbcopy
+```
+
+The [GitHub Action template](../reference/github-action.md) automates this on every PR.
+
 ## Git-Specific Flags
 
 | Flag | Default | Description |
@@ -103,6 +140,8 @@ Output formats (json, csv, markdown) work the same as in target project mode. Se
 | `-r`, `--repo-path` | `.` | Path to the git repository |
 | `-b`, `--base-branch` | `main` | Branch to compare against |
 | `--enable-hybrid-git` | off | Use Gemini for precise type extraction |
+| `--pr-risk` | off | Output risk analysis instead of consumer table |
+| `--collapsible` | off | Wrap detail sections in `<details>` tags (markdown only) |
 
 When `--search-scope` is omitted, the repo path doubles as the search scope. Specify `--search-scope` separately when you want to analyze changes in one repo but search for consumers across a broader directory.
 

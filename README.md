@@ -52,7 +52,8 @@ Point it at a `.csproj`, a branch, a stored procedure, or a plain-English work r
 - **Graph-derived risk engine** — 6-dimension risk profiles (structural coupling, instability, cycles, database coupling, blast radius, domain boundaries) with weighted-max composite scoring
 - **AI-powered impact analysis** — describe a change in plain English, get affected projects, graph-derived risk ratings, and effort estimates
 - **Six output formats** — console, JSON, CSV, markdown, Mermaid diagrams, and a pipe-friendly pipeline list
-- **CI-ready** — GitHub Action template for automatic PR impact comments
+- **PR risk scoring** — `--pr-risk` mode scores changes across 6 dimensions (change surface, blast radius, coupling, cycles, instability, domain boundaries), outputs GREEN/YELLOW/RED with composite score
+- **CI-ready** — GitHub Action templates for automatic PR impact and risk comments
 
 ---
 
@@ -126,6 +127,18 @@ $ scatter --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .
 
 Stored procedure callers are invisible in project references — scatter finds them by scanning source.
 
+### Map consumers to CI/CD pipelines
+
+```bash
+$ scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+    --search-scope . --pipeline-csv examples/pipeline_to_app_mapping.csv \
+    --output-format pipelines
+
+galaxyworks-portal-az-cd
+```
+
+The repo ships with an example CSV at `examples/pipeline_to_app_mapping.csv`. Pipeline mapping works via solution stem — the CSV's `Application Name` column matches against `.sln` file stems (e.g., `GalaxyWorks` from `GalaxyWorks.sln`). Every output format includes pipeline names when a mapping is provided.
+
 ### Check a branch's blast radius
 
 ```bash
@@ -133,6 +146,25 @@ $ scatter --branch-name feature/new-widget --repo-path .
 ```
 
 Extracts type declarations from changed `.cs` files, maps them to projects, finds consumers. Compares against `main` by default (override with `--base-branch`). Add `--enable-hybrid-git` for LLM-enhanced diff analysis that filters to only the types whose body actually changed.
+
+### Score a PR's risk
+
+```bash
+$ scatter --branch-name feature/refactor-data --pr-risk --search-scope .
+
+## Scatter Risk: 🚨 RED (0.80)
+
+2 type(s) changed across 1 project(s). 5 direct consumer(s) affected.
+
+### Risk Dimensions
+
+| Dimension | Score | Severity |
+| --- | --- | --- |
+| Change surface | 0.70 | high |
+| Cycle entanglement | 0.80 | critical |
+```
+
+Add `--collapsible` for `<details>`-wrapped sections (ideal for PR comments). Add `--graph-metrics` for full 6-dimension scoring. The [GitHub Action template](tools/github-action/scatter-pr-risk.yml) automates this on every PR.
 
 ### Describe a change, get a risk report
 
@@ -246,9 +278,9 @@ Scatter sends project names, type declarations, and dependency structure to the 
 
 ## Roadmap
 
-**Next** — PR risk scoring (GitHub Action posts risk comment on every PR), SOW scoping (effort estimates with confidence bands)
+**Next** — Prediction logging (track risk scores over time for calibration), SOW scoping (effort estimates with confidence bands)
 
-**Recently shipped** — Risk engine wired into impact analysis: `--sow` mode now produces graph-derived risk ratings (deterministic, reproducible) with AI escalation. Graph sets the floor, AI can escalate to "Critical" but never downgrade. 6-dimension profiles (structural coupling, instability, cycles, database coupling, blast radius, domain boundaries) with weighted-max composite scoring.
+**Recently shipped** — PR risk scoring: `--pr-risk` mode scores changes across 6 dimensions with GREEN/YELLOW/RED composite. GitHub Action template (`scatter-pr-risk.yml`) posts risk comments on every PR with graph caching and collapsible detail sections. Risk engine wired into impact analysis with graph-derived ratings and AI escalation.
 
 **Planned** — Risk engine CLI flags (`--risk-context`, `--risk-details`), CI/CD exit codes (`--fail-on cycles`, `--fail-on risk:high`), baselines & diff reports
 

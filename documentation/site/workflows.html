@@ -1877,6 +1877,15 @@
 </code></pre></div>
 <p>The <code>--enable-hybrid-git</code> flag uses AI to identify precisely which types were affected in each changed file, rather than flagging every type declaration. More accurate, slower, costs API calls. Worth it for files with many types.</p>
 <p>Pipe to clipboard, paste into the PR description. Reviewer sees the blast radius before they read a single line of code.</p>
+<p><strong>Get a risk score instead of the consumer table:</strong></p>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/add-caching<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo-path<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pr-risk<span class="w"> </span>--graph-metrics<span class="w"> </span>--collapsible<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>markdown<span class="w"> </span><span class="p">|</span><span class="w"> </span>pbcopy
+</code></pre></div>
+<p>The <code>--pr-risk</code> flag switches from consumer tables to a risk report: GREEN/YELLOW/RED with a composite score across 6 dimensions (change surface, blast radius, coupling, cycles, instability, domain boundaries). The <code>--collapsible</code> flag wraps detail sections in <code>&lt;details&gt;</code> tags — compact in a PR comment, expandable when you need the full picture.</p>
+<p>To automate this on every PR, copy the <a href="reference/github-action.html">GitHub Action template</a> into your repo. Zero config required.</p>
 <h3 id="what-to-look-for">What to Look For<a class="headerlink" href="#what-to-look-for" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Unexpected consumers.</strong> You changed <code>GalaxyWorks.Data</code> and somehow <code>BillingReportGenerator</code> showed up? That's the conversation you need to have before merge, not after deploy.</li>
@@ -1894,20 +1903,18 @@
 <p><strong>Why:</strong> The DevOps team needs an exact list of pipelines to run on release night. Not "probably these five." Not "everything just in case." The actual pipelines affected by what you changed. Getting this wrong means either a broken release (missed a pipeline) or a 4-hour deployment window that should have been 45 minutes (ran everything).</p>
 <p><strong>The pipeline list is only as complete as your <code>pipeline_to_app_mapping.csv</code>.</strong> If a consumer project has no entry in the mapping file, it won't appear in the pipeline output. Keep the mapping current. Without <code>--pipeline-csv</code>, the <code>pipelines</code> output format produces empty output and consumer results won't include pipeline names.</p>
 <h3 id="steps_1">Steps<a class="headerlink" href="#steps_1" title="Permanent link">&para;</a></h3>
-<p><strong>From a branch -- what pipelines does my change affect?</strong></p>
-<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/portal-tenant-isolation<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--repo-path<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
+<p><strong>Which pipelines does my change affect?</strong></p>
+<p>Try it now against the sample projects:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Runnable — uses the included example CSV and sample .NET projects</span>
+scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pipeline-csv<span class="w"> </span>examples/pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output-format<span class="w"> </span>pipelines
 </code></pre></div>
-<div class="highlight"><pre><span></span><code>galaxyworks-api-ci
-galaxyworks-batch-ci
-galaxyworks-webportal-ci
-portal-consumer-ci
+<div class="highlight"><pre><span></span><code>galaxyworks-portal-az-cd
 </code></pre></div>
-<p>Four lines, four pipelines. Copy-paste into the DevOps ticket. Done.</p>
-<p>Note: <code>--branch-name</code> requires the branch to still exist (not yet merged and deleted). Run this before merge, or use <code>--target-project</code> for changes that have already landed on <code>main</code>.</p>
+<p>One line, one pipeline. Copy-paste into the DevOps ticket. Done.</p>
+<p>In a real repo with hundreds of projects and solutions, this list gets longer. The point is the same: scatter tells you exactly which pipelines to include in the release.</p>
 <p><strong>Same command, different entry points:</strong></p>
 <p>Every analysis mode supports <code>--pipeline-csv</code> and <code>--output-format pipelines</code>. Pick the entry point that matches your situation:</p>
 <table>
@@ -1941,25 +1948,33 @@ portal-consumer-ci
 </tr>
 </tbody>
 </table>
-<p>Just swap the mode flag. The rest of the command is the same: add <code>--pipeline-csv pipeline_to_app_mapping.csv --output-format pipelines</code>.</p>
-<p><strong>Get the full consumer report with pipelines for the ticket attachment:</strong></p>
+<p>Just swap the mode flag. The rest of the command is the same: add <code>--pipeline-csv &lt;your-mapping.csv&gt; --output-format pipelines</code>.</p>
+<p><strong>From a branch (requires the branch to exist in your repo):</strong></p>
 <div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/portal-tenant-isolation<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--repo-path<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>pipelines
+</code></pre></div>
+<p><code>--branch-name</code> requires the branch to still exist (not yet merged and deleted). Run this before merge, or use <code>--target-project</code> for changes that have already landed on <code>main</code>.</p>
+<p><strong>Get the full consumer report with pipelines for the ticket attachment:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Runnable against sample projects</span>
+scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pipeline-csv<span class="w"> </span>examples/pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output-format<span class="w"> </span>csv<span class="w"> </span>--output-file<span class="w"> </span>release-pipelines.csv
 </code></pre></div>
 <p>The CSV includes one row per consumer with key columns: <code>ConsumerProjectName</code>, <code>PipelineName</code>, <code>TargetProjectName</code>, <code>TriggeringType</code>, and (when graph enrichment is available) <code>CouplingScore</code>, <code>FanIn</code>, <code>FanOut</code>, <code>Instability</code>, <code>InCycle</code>. Attach it to the DevOps ticket as backup evidence for the pipeline list.</p>
 <p><strong>Feed directly into a deployment script:</strong></p>
-<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/portal-tenant-isolation<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--repo-path<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pipeline-csv<span class="w"> </span>examples/pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output-format<span class="w"> </span>pipelines<span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>-I<span class="w"> </span><span class="o">{}</span><span class="w"> </span>./trigger-pipeline.sh<span class="w"> </span><span class="o">{}</span>
 </code></pre></div>
 <p>The <code>pipelines</code> output format is designed for this -- one name per line, sorted alphabetically, deduplicated. The output is unordered by deployment priority — if your pipelines need to run in a specific sequence (e.g., data migration before API), that sequencing is still a human decision. Pipe the list into whatever your deployment tooling expects.</p>
 <p><strong>Combine pipeline lists from multiple branches for the team's monthly release:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span>branch<span class="w"> </span><span class="k">in</span><span class="w"> </span>feature/portal-isolation<span class="w"> </span>feature/billing-fix<span class="w"> </span>feature/cache-update<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Replace with your actual branches and repo path</span>
+<span class="k">for</span><span class="w"> </span>branch<span class="w"> </span><span class="k">in</span><span class="w"> </span>feature/portal-isolation<span class="w"> </span>feature/billing-fix<span class="w"> </span>feature/cache-update<span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">  </span>scatter<span class="w"> </span>--branch-name<span class="w"> </span><span class="nv">$branch</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--repo-path<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--search-scope<span class="w"> </span>/code/myrepo<span class="w"> </span><span class="se">\</span>

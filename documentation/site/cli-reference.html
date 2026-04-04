@@ -1579,7 +1579,7 @@
 <tr>
 <td><code>--pipeline-csv PATH</code></td>
 <td>None</td>
-<td>Path to CSV mapping project names to pipeline names</td>
+<td>Path to CSV mapping solution names to pipeline names (see <code>examples/pipeline_to_app_mapping.csv</code>)</td>
 </tr>
 <tr>
 <td><code>--app-config-path PATH</code></td>
@@ -1623,6 +1623,16 @@
 <td><code>--enable-hybrid-git</code></td>
 <td>false</td>
 <td>Use AI-enhanced diff analysis for more precise symbol extraction. Only flags types whose body/signature actually changed, not every type in the file. Requires a Gemini API key.</td>
+</tr>
+<tr>
+<td><code>--pr-risk</code></td>
+<td>false</td>
+<td>Output PR risk analysis instead of consumer table. Scores changes across 6 dimensions, outputs GREEN/YELLOW/RED with composite score. Supports <code>console</code>, <code>json</code>, and <code>markdown</code> output formats.</td>
+</tr>
+<tr>
+<td><code>--collapsible</code></td>
+<td>false</td>
+<td>Wrap detail sections in collapsible <code>&lt;details&gt;</code> tags. Only affects <code>--pr-risk --output-format markdown</code>. Ideal for PR comments where you want a compact summary with expandable details.</td>
 </tr>
 </tbody>
 </table>
