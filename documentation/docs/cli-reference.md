@@ -36,7 +36,7 @@ These work with any mode (unless noted).
 | `--rebuild-graph` | false | Force full graph rebuild, ignoring cache |
 | `--include-graph-topology` | false | Include raw graph nodes/edges in JSON output. Omitted by default to keep file size down. |
 | `--include-db` | false | Include database dependency scanning (sprocs, EF models, direct SQL) in `--graph` mode |
-| `--pipeline-csv PATH` | None | Path to CSV mapping project names to pipeline names |
+| `--pipeline-csv PATH` | None | Path to CSV mapping solution names to pipeline names (see `examples/pipeline_to_app_mapping.csv`) |
 | `--app-config-path PATH` | None | Path to app-config repo for batch job name resolution |
 | `--target-namespace NS` | Auto-derived | Override namespace detection for the target project |
 | `-v`, `--verbose` | false | Enable DEBUG-level logging. Shows every step of the analysis pipeline. |
@@ -50,6 +50,8 @@ Only relevant with `--branch-name`.
 | `-r`, `--repo-path PATH` | `.` (current directory) | Path to the Git repository |
 | `-b`, `--base-branch NAME` | `main` | Base branch to compare against for diff extraction |
 | `--enable-hybrid-git` | false | Use AI-enhanced diff analysis for more precise symbol extraction. Only flags types whose body/signature actually changed, not every type in the file. Requires a Gemini API key. |
+| `--pr-risk` | false | Output PR risk analysis instead of consumer table. Scores changes across 6 dimensions, outputs GREEN/YELLOW/RED with composite score. Supports `console`, `json`, and `markdown` output formats. |
+| `--collapsible` | false | Wrap detail sections in collapsible `<details>` tags. Only affects `--pr-risk --output-format markdown`. Ideal for PR comments where you want a compact summary with expandable details. |
 
 ## Stored Procedure Options
 

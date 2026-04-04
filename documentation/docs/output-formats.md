@@ -10,7 +10,7 @@ When you just want to see what's going on. No flags, no files, no ceremony.
 
 ```bash
 scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . --pipeline-csv pipeline_to_app_mapping.csv
+  --search-scope . --pipeline-csv examples/pipeline_to_app_mapping.csv
 ```
 
 ```
@@ -214,17 +214,15 @@ One pipeline name per line, sorted alphabetically. Built for deployment scripts 
 
 ```bash
 scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . --pipeline-csv pipeline_to_app_mapping.csv \
+  --search-scope . --pipeline-csv examples/pipeline_to_app_mapping.csv \
   --output-format pipelines
 ```
 
 ```
-galaxy-consumer-ci
-galaxy-consumer2-ci
-portal-batch-ci
+galaxyworks-portal-az-cd
 ```
 
-Three lines, three pipelines that need to deploy. That's the entire output.
+One line per pipeline, sorted and deduplicated. That's the entire output. Try it yourself — the example CSV at `examples/pipeline_to_app_mapping.csv` works with the sample projects out of the box.
 
 Requires `--pipeline-csv` to map consumer projects to pipeline names. Without it, the output will be empty. Scatter warns you about this, but won't stop you.
 
@@ -233,7 +231,7 @@ Not supported in `--graph` mode. Graph analysis is about architecture, not deplo
 ```bash
 # Feed directly into a deployment script
 scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . --pipeline-csv pipeline_to_app_mapping.csv \
+  --search-scope . --pipeline-csv examples/pipeline_to_app_mapping.csv \
   --output-format pipelines | xargs -I {} ./trigger-pipeline.sh {}
 ```
 

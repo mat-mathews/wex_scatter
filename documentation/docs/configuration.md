@@ -150,11 +150,14 @@ db:
 Map consumer projects to their CI/CD pipelines using `--pipeline-csv`:
 
 ```bash
-scatter --target-project ./MyLib/MyLib.csproj --search-scope . \
-  --pipeline-csv build/pipeline_to_app_mapping.csv
+# Try it with the included example CSV
+scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --pipeline-csv examples/pipeline_to_app_mapping.csv
 ```
 
-The CSV needs two columns: `Application Name` and `Pipeline Name`. Scatter matches discovered consumer project names against the Application Name column and includes pipeline information in the output.
+The CSV needs two columns: `Application Name` and `Pipeline Name`. Scatter matches consumer projects against the `Application Name` column via **solution stem lookup** — it takes each consumer's `.sln` file, strips the extension (e.g., `GalaxyWorks.sln` → `GalaxyWorks`), and looks that up in the CSV. Pipeline names then appear in every output format.
+
+The repo includes a working example at `examples/pipeline_to_app_mapping.csv` that maps the sample projects. Use it as a template for your own mapping file.
 
 ## Multiprocessing Tuning
 

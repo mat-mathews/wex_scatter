@@ -589,6 +589,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pr-risk-scoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PR Risk Scoring
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#git-specific-flags" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1405,6 +1416,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pr-risk-scoring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PR Risk Scoring
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#git-specific-flags" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1522,12 +1544,39 @@ Analysis complete. 6 consumer(s) found across 2 target(s).
 <span class="w">  </span>--branch-name<span class="w"> </span>feature/data-migration<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--repo-path<span class="w"> </span>/path/to/repo<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--search-scope<span class="w"> </span>/path/to/services<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--pipeline-csv<span class="w"> </span>build/pipeline_map.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pipeline-csv<span class="w"> </span>pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output-format<span class="w"> </span>json<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output-file<span class="w"> </span>reports/analysis.json
 </code></pre></div>
 <p>This combines everything: git analysis, pipeline name resolution (maps consumer project names to their CI/CD pipeline names via CSV), and JSON output. The JSON report includes pipeline names alongside each consumer, so you know which builds to watch after merging.</p>
 <p>Output formats (json, csv, markdown) work the same as in target project mode. See <a href="../output-formats.html">Output Formats</a> for details.</p>
+<h2 id="pr-risk-scoring">PR Risk Scoring<a class="headerlink" href="#pr-risk-scoring" title="Permanent link">&para;</a></h2>
+<p>Instead of the consumer table, get a risk score for the branch's changes:</p>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--branch-name<span class="w"> </span>feature/refactor-data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pr-risk<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo-path<span class="w"> </span>.<span class="w"> </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>============================================================
+  PR Risk Analysis: feature/refactor-data
+============================================================
+  Risk Level: RED (0.80)
+
+  2 type(s) changed across 1 project(s). 5 direct consumer(s) affected.
+
+  Dimension               Score  Severity
+  ---------------------- ------ ----------
+  Change surface           0.70  high
+  Cycle entanglement       0.80  critical
+</code></pre></div>
+<p>Add <code>--graph-metrics</code> for full 6-dimension scoring (blast radius, coupling, instability, domain boundaries). Add <code>--collapsible</code> with <code>--output-format markdown</code> for compact PR comments with expandable <code>&lt;details&gt;</code> sections.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Markdown for PR comments</span>
+scatter<span class="w"> </span>--branch-name<span class="w"> </span>feature/refactor-data<span class="w"> </span>--pr-risk<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repo-path<span class="w"> </span>.<span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--graph-metrics<span class="w"> </span>--collapsible<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>markdown<span class="w"> </span><span class="p">|</span><span class="w"> </span>pbcopy
+</code></pre></div>
+<p>The <a href="../reference/github-action.html">GitHub Action template</a> automates this on every PR.</p>
 <h2 id="git-specific-flags">Git-Specific Flags<a class="headerlink" href="#git-specific-flags" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1552,6 +1601,16 @@ Analysis complete. 6 consumer(s) found across 2 target(s).
 <td><code>--enable-hybrid-git</code></td>
 <td>off</td>
 <td>Use Gemini for precise type extraction</td>
+</tr>
+<tr>
+<td><code>--pr-risk</code></td>
+<td>off</td>
+<td>Output risk analysis instead of consumer table</td>
+</tr>
+<tr>
+<td><code>--collapsible</code></td>
+<td>off</td>
+<td>Wrap detail sections in <code>&lt;details&gt;</code> tags (markdown only)</td>
 </tr>
 </tbody>
 </table>

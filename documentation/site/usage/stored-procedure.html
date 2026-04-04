@@ -1511,11 +1511,12 @@ Analysis complete. 7 consumer(s) found across 2 target(s).
 </code></pre></div>
 <p>CSV is the lingua franca of cross-team communication. Hand this to your DBA and they can see exactly which applications need coordination before modifying the sproc.</p>
 <h2 id="with-pipeline-mapping">With Pipeline Mapping<a class="headerlink" href="#with-pipeline-mapping" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>build/pipeline_map.csv<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Runnable against the sample projects</span>
+scatter<span class="w"> </span>--stored-procedure<span class="w"> </span><span class="s2">&quot;dbo.sp_InsertPortalConfiguration&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>examples/pipeline_to_app_mapping.csv<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output-format<span class="w"> </span>csv<span class="w"> </span>--output-file<span class="w"> </span>sproc_impact.csv
 </code></pre></div>
-<p>When combined with <code>--pipeline-csv</code>, each consumer row includes the CI/CD pipeline name. This answers the deployment question: "if we change this sproc, which pipelines need to be redeployed, and in what order?"</p>
+<p>When combined with <code>--pipeline-csv</code>, each consumer row includes the CI/CD pipeline name. This answers the deployment question: "if we change this sproc, which pipelines need to be redeployed, and in what order?" The repo includes an example CSV at <code>examples/pipeline_to_app_mapping.csv</code> that works with the sample projects.</p>
 <h2 id="output-formats">Output Formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h2>
 <p>JSON, CSV, and Markdown all work the same as in other modes. The JSON output includes the triggering info formatted as <code>PortalDataService (via Sproc: dbo.sp_InsertPortalConfiguration)</code> so you can trace the full chain programmatically. See <a href="../output-formats.html">Output Formats</a> for detailed structure.</p>
 <hr />

@@ -1813,10 +1813,12 @@
 </code></pre></div>
 <h2 id="pipeline-mapping">Pipeline Mapping<a class="headerlink" href="#pipeline-mapping" title="Permanent link">&para;</a></h2>
 <p>Map consumer projects to their CI/CD pipelines using <code>--pipeline-csv</code>:</p>
-<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span>--target-project<span class="w"> </span>./MyLib/MyLib.csproj<span class="w"> </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--pipeline-csv<span class="w"> </span>build/pipeline_to_app_mapping.csv
+<div class="highlight"><pre><span></span><code><span class="c1"># Try it with the included example CSV</span>
+scatter<span class="w"> </span>--target-project<span class="w"> </span>./GalaxyWorks.Data/GalaxyWorks.Data.csproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span>--pipeline-csv<span class="w"> </span>examples/pipeline_to_app_mapping.csv
 </code></pre></div>
-<p>The CSV needs two columns: <code>Application Name</code> and <code>Pipeline Name</code>. Scatter matches discovered consumer project names against the Application Name column and includes pipeline information in the output.</p>
+<p>The CSV needs two columns: <code>Application Name</code> and <code>Pipeline Name</code>. Scatter matches consumer projects against the <code>Application Name</code> column via <strong>solution stem lookup</strong> — it takes each consumer's <code>.sln</code> file, strips the extension (e.g., <code>GalaxyWorks.sln</code> → <code>GalaxyWorks</code>), and looks that up in the CSV. Pipeline names then appear in every output format.</p>
+<p>The repo includes a working example at <code>examples/pipeline_to_app_mapping.csv</code> that maps the sample projects. Use it as a template for your own mapping file.</p>
 <h2 id="multiprocessing-tuning">Multiprocessing Tuning<a class="headerlink" href="#multiprocessing-tuning" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
