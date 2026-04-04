@@ -196,6 +196,10 @@ class TestBuildPrRiskMarkdown:
         assert "<details>" in md
         assert "<summary>" in md
 
+    def test_green_collapsible_snapshot(self):
+        md = build_pr_risk_markdown(_green_report(), collapsible=True)
+        _assert_golden(md, "pr_risk_green_collapsible.md")
+
     def test_green_has_low_score(self):
         md = build_pr_risk_markdown(_green_report())
         assert "GREEN" in md

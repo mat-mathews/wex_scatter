@@ -46,7 +46,7 @@ def run_pr_risk_mode(args, ctx: ModeContext, start_time: float) -> None:
     elif args.output_format == "markdown":
         from scatter.reports.pr_comment_reporter import build_pr_risk_markdown
 
-        md = build_pr_risk_markdown(report, collapsible=False)
+        md = build_pr_risk_markdown(report, collapsible=getattr(args, "collapsible", False))
         if args.output_file:
             output_path = Path(args.output_file)
             output_path.parent.mkdir(parents=True, exist_ok=True)

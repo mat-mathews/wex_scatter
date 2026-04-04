@@ -2182,12 +2182,20 @@ PHASE 1: Core PR Risk Mode ✅ COMPLETED (2026-04-03)
 - [x] Full suite: 1204 tests pass, 0 regressions. Ruff lint clean, mypy clean.
 Note: PRRiskConfig with .scatter.yaml overrides deferred — using PR_RISK_CONTEXT from risk_models.py
 
-PHASE 2: GitHub Actions Integration (1-2 weeks)
+PHASE 2: GitHub Actions Integration ✅ COMPLETED (2026-04-04)
 ----------------------------------------------------------------------
-- [ ] Create .github/workflows/scatter-pr-risk.yml
-- [ ] Graph cache strategy: content-keyed (csproj hash), not branch-keyed
-- [ ] Failure modes: continue-on-error, fallback comment on crash, exit 0 always
-- [ ] Backward compat regression test for --sow (PR mode doesn't break existing modes)
+- [x] Add --collapsible CLI flag wired through to build_pr_risk_markdown
+- [x] Create tools/github-action/scatter-pr-risk.yml workflow template
+      Graph cache (csproj hash + restore-keys), wall-clock timing, collapsible output,
+      three-way output (success/failure/silent), fallback error comment with logs link,
+      continue-on-error on cache step, separate <!-- scatter-pr-risk --> comment tag
+- [x] Graph cache strategy: content-keyed (csproj hash), not branch-keyed
+- [x] Failure modes: continue-on-error, fallback comment on crash, exit 0 always
+- [x] Backward compat tests: parser flags, mode dispatch, functional run_git_analysis test
+- [x] Golden file test for collapsible green report
+- [x] CI: YAML validation step, git config for smoke tests, PR risk + collapsible smoke tests
+- [x] CI: backward compat smoke test (--branch-name without --pr-risk produces all_results)
+- [x] Updated tools/github-action/README.md for both workflows
 
 PHASE 3: Prediction Logging (1 week)
 ----------------------------------------------------------------------

@@ -39,6 +39,8 @@ jobs:
         run: uv run ruff check scatter/
       - name: Ruff format
         run: uv run ruff format --check scatter/
+      - name: Validate workflow YAML
+        run: python -c "import yaml; yaml.safe_load(open('tools/github-action/scatter-pr-risk.yml'))"
 
   type-check:
     runs-on: ubuntu-latest
@@ -89,4 +91,58 @@ jobs:
           d = json.load(open('/tmp/graph-smoke.json'))
           assert isinstance(d, dict), 'Graph output should be a dict'
           assert d.get('node_count', 0) > 0 or d.get('projects', 0) > 0 or len(d) > 0, 'Empty graph'
+          "
+      - name: Configure git for smoke tests
+        run: |
+          git config user.name "CI Smoke Test"
+          git config user.email "ci@test.local"
+      - name: Smoke test — PR risk analysis
+        run: |
+          # Create a temp branch with a .cs change
+          # Ensure we have a local 'main' ref for scatter to diff against
+          git branch -f main HEAD 2>/dev/null || true
+          git checkout -b smoke/pr-risk-test
+          mkdir -p SmokeProject
+          echo '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>' > SmokeProject/SmokeProject.csproj
+          echo 'namespace SmokeProject; public class SmokeWidget { }' > SmokeProject/SmokeWidget.cs
+          git add SmokeProject/
+          git commit -m "smoke: add SmokeWidget"
+          # Run PR risk in markdown mode
+          uv run scatter \
+            --pr-risk \
+            --branch-name smoke/pr-risk-test \
+            --base-branch main \
+            --repo-path . --search-scope . \
+            --output-format markdown \
+            --output-file /tmp/pr-risk-smoke.md
+          python -c "
+          content = open('/tmp/pr-risk-smoke.md').read()
+          assert '## Scatter Risk:' in content, 'Missing risk header'
+          assert 'GREEN' in content or 'YELLOW' in content or 'RED' in content, 'Missing risk level'
+          "
+          # Test --collapsible runs without error (golden file tests verify <details> tags)
+          uv run scatter \
+            --pr-risk --collapsible \
+            --branch-name smoke/pr-risk-test \
+            --base-branch main \
+            --repo-path . --search-scope . \
+            --output-format markdown \
+            --output-file /tmp/pr-risk-collapsible.md
+          python -c "
+          content = open('/tmp/pr-risk-collapsible.md').read()
+          assert '## Scatter Risk:' in content, 'Missing risk header'
+          "
+          git checkout -
+      - name: Smoke test — backward compat (branch mode without --pr-risk)
+        run: |
+          uv run scatter \
+            --branch-name smoke/pr-risk-test \
+            --base-branch main \
+            --search-scope . \
+            --output-format json \
+            --output-file /tmp/branch-compat-smoke.json
+          python -c "
+          import json
+          d = json.load(open('/tmp/branch-compat-smoke.json'))
+          assert 'all_results' in d, 'Missing all_results key — consumer table format expected'
           "

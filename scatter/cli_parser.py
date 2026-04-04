@@ -116,6 +116,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=False,
         help="Output PR risk analysis instead of consumer table. Requires --branch-name.",
     )
+    git_group.add_argument(
+        "--collapsible",
+        action="store_true",
+        default=False,
+        help="Wrap detail sections in collapsible <details> tags. Only affects --pr-risk --output-format markdown.",
+    )
 
     common_group = parser.add_argument_group("Common Options")
     common_group.add_argument(
