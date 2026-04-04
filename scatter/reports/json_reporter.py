@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from scatter.core.models import FilterPipeline, ImpactReport
+from scatter.core.models import FilterPipeline, ImpactReport, PRRiskReport
 from scatter.core.tree import build_adjacency, CONFIDENCE_LABEL_RANK
 
 
@@ -129,3 +129,76 @@ def write_impact_json_report(
         logging.info(f"Successfully wrote impact JSON report to: {output_file_path}")
     except Exception as e:
         logging.error(f"Failed to write impact JSON report: {e}")
+
+
+def write_pr_risk_json_report(
+    report: PRRiskReport, output_file_path: Path, metadata: Optional[Dict] = None
+) -> None:
+    """Write PR risk report as JSON to file."""
+    logging.info(f"Writing PR risk report to JSON: {output_file_path}")
+
+    report_dict: Dict[str, Any] = {}
+    if metadata is not None:
+        report_dict["metadata"] = metadata
+
+    report_dict["branch_name"] = report.branch_name
+    report_dict["base_branch"] = report.base_branch
+    report_dict["risk_level"] = report.risk_level.value
+    report_dict["composite_score"] = report.aggregate.composite_score
+    report_dict["graph_available"] = report.graph_available
+    report_dict["duration_ms"] = report.duration_ms
+
+    # Changed types
+    report_dict["changed_types"] = [
+        {
+            "name": ct.name,
+            "kind": ct.kind,
+            "change_kind": ct.change_kind,
+            "owning_project": ct.owning_project,
+            "owning_project_path": ct.owning_project_path,
+            "file_path": ct.file_path,
+        }
+        for ct in report.changed_types
+    ]
+
+    # Dimensions
+    report_dict["dimensions"] = {
+        dim.name: {
+            "label": dim.label,
+            "score": dim.score,
+            "severity": dim.severity,
+            "data_available": dim.data_available,
+            "factors": dim.factors,
+            "raw_metrics": dim.raw_metrics,
+        }
+        for dim in report.aggregate.dimensions
+    }
+
+    # Profiles
+    report_dict["profiles"] = [
+        {
+            "target_name": p.target_name,
+            "composite_score": p.composite_score,
+            "risk_level": p.risk_level.value,
+            "consumer_count": p.consumer_count,
+            "transitive_consumer_count": p.transitive_consumer_count,
+        }
+        for p in report.profiles
+    ]
+
+    # Consumer summary
+    report_dict["total_direct_consumers"] = report.total_direct_consumers
+    report_dict["total_transitive_consumers"] = report.total_transitive_consumers
+    report_dict["unique_consumers"] = report.unique_consumers
+
+    # Risk factors and warnings
+    report_dict["risk_factors"] = report.risk_factors
+    report_dict["warnings"] = report.warnings
+
+    try:
+        output_file_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_file_path, "w", encoding="utf-8") as jsonfile:
+            json.dump(report_dict, jsonfile, indent=4, default=_path_serializer)
+        logging.info(f"Successfully wrote PR risk JSON report to: {output_file_path}")
+    except Exception as e:
+        logging.error(f"Failed to write PR risk JSON report: {e}")

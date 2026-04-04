@@ -22,13 +22,12 @@ from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.analyzers.coupling_analyzer import CycleGroup, ProjectMetrics
 from scatter.analyzers.domain_analyzer import Cluster
 from scatter.analyzers.health_analyzer import HealthDashboard, Observation
+from scatter.reports._formatting import escape_cell as _escape_cell, md_table as _md_table
 from scatter.reports.markdown_reporter import (
     _build_risk_highlights,
     _column_legend,
-    _escape_cell,
     _fmt_metadata,
     _fmt_pipeline,
-    _md_table,
     build_markdown,
     build_impact_markdown,
     build_graph_markdown,

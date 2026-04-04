@@ -1,10 +1,15 @@
 """Shared constants and compiled patterns for Scatter."""
 
+from __future__ import annotations
+
 import re
 import multiprocessing
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, TypedDict
+from typing import TYPE_CHECKING, Dict, List, Literal, Optional, TypedDict
+
+if TYPE_CHECKING:
+    from scatter.core.risk_models import AggregateRisk, RiskProfile
 
 # multiprocessing configuration
 DEFAULT_MAX_WORKERS = min(32, (multiprocessing.cpu_count() or 1) + 4)
@@ -15,8 +20,8 @@ MULTIPROCESSING_ENABLED = True
 TYPE_DECLARATION_PATTERN = re.compile(
     r"^\s*(?:public|internal|private|protected)?\s*"  # Optional access modifier
     r"(?:static\s+|abstract\s+|sealed\s+|partial\s+|record\s+|readonly\s+|ref\s+)*"  # Optional keywords (incl. record as modifier for 'record class'/'record struct')
-    r"(?:class|struct|interface|enum|record)\s+"  # Type keyword (incl. standalone 'record')
-    r"([A-Za-z_][A-Za-z0-9_<>,\s]*?)"  # Capture type name (non-greedy) - handles generics roughly
+    r"(?P<keyword>class|struct|interface|enum|record)\s+"  # Type keyword (incl. standalone 'record')
+    r"(?P<type_name>[A-Za-z_][A-Za-z0-9_<>,\s]*?)"  # Capture type name (non-greedy) - handles generics roughly
     r"\s*(?::|{|where|<|\(|;)",  # Look for inheritance colon, opening brace, where clause, generics, positional params, or semicolon
     re.MULTILINE,
 )
@@ -230,3 +235,48 @@ class FilterPipeline:
             STAGE_CLASS: self.class_filter,
             STAGE_METHOD: self.method_filter,
         }.get(stage_name)
+
+
+# --- PR Risk data models ---
+
+
+TypeKind = Literal["class", "interface", "struct", "enum", "record", "delegate"]
+ChangeKind = Literal["added", "modified", "deleted"]
+
+
+@dataclass
+class ChangedType:
+    """A C# type affected by a PR."""
+
+    name: str  # "PortalDataService"
+    kind: TypeKind
+    change_kind: ChangeKind
+    owning_project: str  # csproj stem
+    owning_project_path: str  # relative csproj path
+    file_path: str  # relative .cs file path
+
+
+@dataclass
+class PRRiskReport:
+    """Complete PR risk analysis report."""
+
+    branch_name: str
+    base_branch: str
+    changed_types: List[ChangedType]
+    aggregate: "AggregateRisk"
+    profiles: List["RiskProfile"]
+    total_direct_consumers: int = 0
+    total_transitive_consumers: int = 0
+    unique_consumers: List[str] = field(default_factory=list)
+    graph_available: bool = True
+    warnings: List[str] = field(default_factory=list)
+    duration_ms: int = 0
+
+    @property
+    def risk_level(self):
+        """Delegate to aggregate's risk_level."""
+        return self.aggregate.risk_level
+
+    @property
+    def risk_factors(self) -> List[str]:
+        return self.aggregate.risk_factors

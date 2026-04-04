@@ -302,19 +302,34 @@ class TestSOWConsoleRegression:
 class TestRiskEngineDoesNotAffectSOW:
     """Prove risk engine Phase 1 is purely additive — no existing imports broken."""
 
-    def test_models_module_has_no_risk_imports(self):
-        """scatter.core.models must not import from risk_models.
+    def test_models_module_has_no_runtime_risk_imports(self):
+        """scatter.core.models must not import risk_models at runtime.
 
         Risk engine Phase 1 added risk_models.py as a *separate* module.
-        If models.py starts importing from risk_models, it could break
-        existing importers.
+        TYPE_CHECKING imports are allowed (for type annotations on PRRiskReport),
+        but runtime imports would create circular dependencies.
         """
         import inspect
         import scatter.core.models as models_mod
 
         source = inspect.getsource(models_mod)
-        assert "from scatter.core.risk_models" not in source
-        assert "import scatter.core.risk_models" not in source
+        # Strip TYPE_CHECKING block — those imports are fine (not runtime)
+        lines = source.splitlines()
+        filtered = []
+        in_type_checking = False
+        for line in lines:
+            if line.strip() == "if TYPE_CHECKING:":
+                in_type_checking = True
+                continue
+            if in_type_checking:
+                if line and not line[0].isspace():
+                    in_type_checking = False
+                else:
+                    continue
+            filtered.append(line)
+        runtime_source = "\n".join(filtered)
+        assert "from scatter.core.risk_models" not in runtime_source
+        assert "import scatter.core.risk_models" not in runtime_source
 
     def test_impact_analyzer_imports_risk_engine(self):
         """scatter.analyzers.impact_analyzer imports risk engine (Phase 2 shipped).

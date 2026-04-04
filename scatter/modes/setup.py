@@ -76,6 +76,9 @@ def validate_mode_and_format(args, parser) -> None:
             "--output-format pipelines was requested without --pipeline-csv; output will be empty."
         )
 
+    if getattr(args, "pr_risk", False) and args.branch_name is None:
+        parser.error("--pr-risk requires --branch-name.")
+
     if args.method_name and not args.class_name:
         logging.warning("Ignoring --method-name because --class-name was not provided.")
         args.method_name = None
