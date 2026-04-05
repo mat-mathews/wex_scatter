@@ -2197,11 +2197,14 @@ PHASE 2: GitHub Actions Integration ✅ COMPLETED (2026-04-04)
 - [x] CI: backward compat smoke test (--branch-name without --pr-risk produces all_results)
 - [x] Updated tools/github-action/README.md for both workflows
 
-PHASE 3: Prediction Logging (1 week)
+PHASE 3: Prediction Logging (1 week) ✅ COMPLETED
 ----------------------------------------------------------------------
-- [ ] Add RiskPrediction dataclass
-- [ ] Implement append-only JSONL prediction log
-- [ ] Log every PR risk comment as a prediction record
+- [x] resolve_branch_shas() helper in git_analyzer.py (NamedTuple, never raises, shallow-clone safe)
+- [x] scatter/store/prediction_log.py — build_prediction_record() + append_prediction() (never raises)
+- [x] --no-prediction-log CLI flag in cli_parser.py
+- [x] Wire prediction logging into run_pr_risk_mode() (after output dispatch)
+- [x] SCATTER_PR_NUMBER env var in GitHub Action workflow
+- [x] 9 tests: unit (build_prediction_record, append_prediction) + integration (real git repo)
 
 [D] PHASE 4: Calibration (2+ weeks) — DEFERRED until prediction data exists
 ----------------------------------------------------------------------

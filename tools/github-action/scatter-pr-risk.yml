@@ -123,6 +123,7 @@ jobs:
           fi
         env:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          SCATTER_PR_NUMBER: ${{ github.event.number }}
 
       - name: Comment on PR — risk report
         if: steps.analyze.outputs.has_report == 'true'
