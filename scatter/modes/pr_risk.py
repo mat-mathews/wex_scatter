@@ -59,3 +59,21 @@ def run_pr_risk_mode(args, ctx: ModeContext, start_time: float) -> None:
         from scatter.reports.console_reporter import print_pr_risk_report
 
         print_pr_risk_report(report)
+
+    # Prediction logging (after output dispatch)
+    if not getattr(args, "no_prediction_log", False):
+        from scatter.analyzers.git_analyzer import resolve_branch_shas
+        from scatter.store.prediction_log import append_prediction, build_prediction_record
+
+        shas = resolve_branch_shas(str(ctx.repo_path), args.branch_name, args.base_branch)
+        record = build_prediction_record(
+            report,
+            head_sha=shas.head_sha,
+            base_sha=shas.base_sha,
+            repo_id=shas.repo_id,
+        )
+        append_prediction(record, ctx.repo_path)
+
+    # GitHub Action passes PR number via env var (Marcus #1):
+    #   env:
+    #     SCATTER_PR_NUMBER: ${{ github.event.number }}

@@ -4,7 +4,7 @@ import logging
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, cast
+from typing import Dict, List, NamedTuple, Optional, Tuple, cast
 
 try:
     import git
@@ -15,6 +15,36 @@ except ImportError:
 
 from scatter.core.models import ChangeKind, ChangedType, TypeKind
 from scatter.scanners.type_scanner import extract_type_declarations_with_kind
+
+
+class BranchSHAs(NamedTuple):
+    head_sha: Optional[str]
+    base_sha: Optional[str]
+    repo_id: str
+
+
+def resolve_branch_shas(repo_path: str, feature_branch: str, base_branch: str) -> BranchSHAs:
+    """Resolve head/base SHAs and repo identity. Best-effort, never raises.
+
+    Shallow-clone safe: the broad except catches partial/corrupt repos where
+    repo.heads may raise unexpectedly. This is intentional — prediction logging
+    must not break the main flow. (Fatima #3)
+    """
+    head_sha = base_sha = None
+    repo_id = repo_path
+    try:
+        repo = git.Repo(repo_path, search_parent_directories=True)
+        if feature_branch in repo.heads:
+            head_sha = repo.heads[feature_branch].commit.hexsha
+        if base_branch in repo.heads:
+            base_sha = repo.heads[base_branch].commit.hexsha
+        try:
+            repo_id = repo.remotes.origin.url
+        except (AttributeError, ValueError):
+            repo_id = str(Path(repo_path).resolve())
+    except Exception:
+        logging.debug("Could not resolve branch SHAs", exc_info=True)
+    return BranchSHAs(head_sha=head_sha, base_sha=base_sha, repo_id=repo_id)
 
 
 def find_project_file(

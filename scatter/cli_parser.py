@@ -122,6 +122,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=False,
         help="Wrap detail sections in collapsible <details> tags. Only affects --pr-risk --output-format markdown.",
     )
+    git_group.add_argument(
+        "--no-prediction-log",
+        action="store_true",
+        default=False,
+        help="Disable writing prediction records to .scatter/predictions.jsonl after --pr-risk analysis.",
+    )
 
     common_group = parser.add_argument_group("Common Options")
     common_group.add_argument(
