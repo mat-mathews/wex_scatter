@@ -213,6 +213,69 @@ Direct Consumers: 6 | Transitive: 0
 
 Every section is computed from real dependency data. The AI interprets and explains — it doesn't invent dependencies.
 
+## Score a PR's risk
+
+If you're reviewing a PR, you want to know: how far does the blast radius reach?
+
+```bash
+uv run scatter \
+  --branch-name feature/refactor-data \
+  --pr-risk \
+  --search-scope .
+```
+
+```
+============================================================
+  PR Risk: RED (0.80)
+============================================================
+  Branch: feature/refactor-data (vs main)
+  Changed: 2 type(s) across 1 project(s)
+
+  Dimension                     Score  Severity
+  ───────────────────────────── ─────  ──────────
+  Structural coupling            0.65  high
+  Database coupling              0.72  high
+  Blast radius                   0.80  critical
+  Change surface                 0.70  high
+
+  Risk Factors:
+    • 7 direct consumers affected
+    • shared sproc used by 3 projects
+    • stable core project — many dependents
+```
+
+The score is deterministic — same branch produces the same number. No AI needed. The [GitHub Action template](reference/github-action.md) posts this as a PR comment automatically.
+
+See [PR Risk Scoring](usage/pr-risk.md) for output formats and CI setup.
+
+## Scope a work request
+
+After impact analysis tells you *what's affected*, scoping tells you *how long it'll take*:
+
+```bash
+uv run scatter \
+  --sow "Add tenant isolation to the portal configuration system" \
+  --search-scope . \
+  --scope-estimate
+```
+
+```
+=== Effort Estimate (MODERATE confidence, ±30%) ===
+  Category               Base     Min     Max  Notes
+  ────────────────────── ─────── ─────── ───────  ──────────────────────────────
+  investigation            1.0     0.7     1.3  2 target(s); no cycles
+  implementation           4.0     2.8     5.2  4 direct; 2 depth-1
+  testing                  3.0     2.1     3.9  4 direct consumer(s); 1 shared sproc(s)
+  integration_risk         0.5     0.4     0.7  1 shared sproc(s)
+  database_migration       1.0     0.7     1.3  1 shared sproc(s)
+  ────────────────────── ─────── ─────── ───────  ──────────────────────────────
+  TOTAL                    9.5     6.7    12.4  (1.3–2.5 dev-weeks)
+```
+
+Every number comes from the dependency graph — consumer counts, shared stored procedures, cycle membership, domain clusters. The confidence band widens when the SOW is vague or risk is high. This is a starting point for a scoping conversation, not a commitment.
+
+See [SOW Scoping](usage/scoping.md) for the full breakdown.
+
 ## All five modes
 
 | Mode | What it does | Needs AI? |

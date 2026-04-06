@@ -130,6 +130,8 @@ class TestSOWJsonRegression:
             "overall_risk",
             "ambiguity_level",
             "avg_target_confidence",
+            "risk_profiles",
+            "aggregate_risk",
         }
         assert set(report_dict.keys()) == expected_keys
 

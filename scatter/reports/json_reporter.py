@@ -131,6 +131,94 @@ def write_impact_json_report(
         logging.error(f"Failed to write impact JSON report: {e}")
 
 
+def write_scoping_json_report(
+    report, output_file_path: Path, metadata: Optional[Dict] = None
+) -> None:
+    """Write scoping report as JSON to file."""
+    logging.info(f"Writing scoping report to JSON: {output_file_path}")
+
+    report_dict: Dict[str, Any] = {}
+    if metadata is not None:
+        report_dict["metadata"] = metadata
+
+    # Scoping section
+    report_dict["scoping"] = {
+        "effort": {
+            "categories": [
+                {
+                    "name": c.name,
+                    "base_days": c.base_days,
+                    "multiplier": c.multiplier,
+                    "min_days": c.min_days,
+                    "max_days": c.max_days,
+                    "factors": c.factors,
+                }
+                for c in report.effort.categories
+            ],
+            "total_base_days": report.effort.total_base_days,
+            "total_min_days": report.effort.total_min_days,
+            "total_max_days": report.effort.total_max_days,
+        },
+        "confidence": {
+            "level": report.confidence.level.value,
+            "band_pct": report.confidence.band_pct,
+            "composite_score": report.confidence.composite_score,
+            "ambiguity_level": report.confidence.ambiguity_level,
+            "was_widened": report.confidence.was_widened,
+        },
+        "database_impact": {
+            "shared_sprocs": [
+                {
+                    "sproc_name": sg.sproc_name,
+                    "projects": sg.projects,
+                    "project_count": sg.project_count,
+                }
+                for sg in report.database_impact.shared_sprocs
+            ],
+            "total_shared_sprocs": report.database_impact.total_shared_sprocs,
+            "migration_complexity": report.database_impact.migration_complexity,
+            "migration_factors": report.database_impact.migration_factors,
+            "estimated_migration_days": report.database_impact.estimated_migration_days,
+        },
+        "warnings": report.warnings,
+        "duration_ms": report.duration_ms,
+    }
+
+    # AI adjustment (if present)
+    if report.ai_effort_adjustment:
+        report_dict["scoping"]["ai_adjustment"] = {
+            "narrative": report.ai_effort_adjustment,
+            "min_days": report.ai_effort_min_days,
+            "max_days": report.ai_effort_max_days,
+        }
+
+    # Aggregate risk
+    if report.aggregate_risk:
+        report_dict["scoping"]["aggregate_risk"] = {
+            "composite_score": report.aggregate_risk.composite_score,
+            "risk_level": report.aggregate_risk.risk_level.value,
+            "risk_factors": report.aggregate_risk.risk_factors,
+        }
+
+    # Impact report section (reuse existing serialization)
+    impact_dict = asdict(report.impact_report)
+    # Remove risk_profiles and aggregate_risk from impact section (they're in scoping)
+    impact_dict.pop("risk_profiles", None)
+    impact_dict.pop("aggregate_risk", None)
+    for target_dict in impact_dict.get("targets", []):
+        consumers_list = target_dict.get("consumers", [])
+        target_dict["propagation_tree"] = _build_propagation_tree(consumers_list)
+    report_dict["impact_report"] = impact_dict
+
+    try:
+        output_file_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_file_path, "w", encoding="utf-8") as jsonfile:
+            json.dump(report_dict, jsonfile, indent=4, default=_path_serializer)
+        logging.info(f"Successfully wrote scoping JSON report to: {output_file_path}")
+    except Exception as e:
+        logging.error(f"Failed to write scoping JSON report: {e}")
+
+
 def write_pr_risk_json_report(
     report: PRRiskReport, output_file_path: Path, metadata: Optional[Dict] = None
 ) -> None:

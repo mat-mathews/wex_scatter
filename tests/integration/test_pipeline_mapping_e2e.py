@@ -64,9 +64,12 @@ class TestPipelineConsoleOutput:
     def test_galaxy_data_runs_with_pipeline_csv(self):
         """Scatter should accept --pipeline-csv without error."""
         r = run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
-            "--pipeline-csv", str(PIPELINE_CSV),
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--pipeline-csv",
+            str(PIPELINE_CSV),
         )
         # Console output includes solution name (pipeline resolves via solution)
         assert "GalaxyWorks.sln" in r.stdout
@@ -74,9 +77,12 @@ class TestPipelineConsoleOutput:
     def test_mydotnet_runs_with_pipeline_csv(self):
         """MyDotNetApp.Consumer is also in GalaxyWorks.sln."""
         r = run_scatter(
-            "--target-project", str(MYDOTNET_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
-            "--pipeline-csv", str(PIPELINE_CSV),
+            "--target-project",
+            str(MYDOTNET_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--pipeline-csv",
+            str(PIPELINE_CSV),
         )
         assert "MyDotNetApp.Consumer" in r.stdout
 
@@ -93,11 +99,16 @@ class TestPipelineJsonOutput:
     def test_json_has_pipeline_names(self, tmp_path):
         out = tmp_path / "result.json"
         run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
-            "--pipeline-csv", str(PIPELINE_CSV),
-            "--output-format", "json",
-            "--output-file", str(out),
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--pipeline-csv",
+            str(PIPELINE_CSV),
+            "--output-format",
+            "json",
+            "--output-file",
+            str(out),
         )
         data = json.loads(out.read_text())
         results = data.get("all_results", [])
@@ -110,11 +121,16 @@ class TestPipelineJsonOutput:
     def test_json_pipeline_summary(self, tmp_path):
         out = tmp_path / "result.json"
         run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
-            "--pipeline-csv", str(PIPELINE_CSV),
-            "--output-format", "json",
-            "--output-file", str(out),
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--pipeline-csv",
+            str(PIPELINE_CSV),
+            "--output-format",
+            "json",
+            "--output-file",
+            str(out),
         )
         data = json.loads(out.read_text())
         summary = data.get("pipeline_summary", [])
@@ -133,11 +149,16 @@ class TestPipelineCsvOutput:
     def test_csv_has_pipeline_column_and_values(self, tmp_path):
         out = tmp_path / "result.csv"
         run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
-            "--pipeline-csv", str(PIPELINE_CSV),
-            "--output-format", "csv",
-            "--output-file", str(out),
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--pipeline-csv",
+            str(PIPELINE_CSV),
+            "--output-format",
+            "csv",
+            "--output-file",
+            str(out),
         )
         content = out.read_text()
         assert EXPECTED_PIPELINE in content.lower()
@@ -155,11 +176,16 @@ class TestPipelineMarkdownOutput:
     def test_markdown_has_pipeline_values(self, tmp_path):
         out = tmp_path / "result.md"
         run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
-            "--pipeline-csv", str(PIPELINE_CSV),
-            "--output-format", "markdown",
-            "--output-file", str(out),
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--pipeline-csv",
+            str(PIPELINE_CSV),
+            "--output-format",
+            "markdown",
+            "--output-file",
+            str(out),
         )
         content = out.read_text()
         assert "Pipeline" in content
@@ -178,11 +204,16 @@ class TestPipelinesOutputFormat:
     def test_pipelines_format_returns_names(self, tmp_path):
         out = tmp_path / "pipelines.txt"
         run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
-            "--pipeline-csv", str(PIPELINE_CSV),
-            "--output-format", "pipelines",
-            "--output-file", str(out),
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--pipeline-csv",
+            str(PIPELINE_CSV),
+            "--output-format",
+            "pipelines",
+            "--output-file",
+            str(out),
         )
         content = out.read_text().strip()
         lines = [l for l in content.split("\n") if l.strip()]
@@ -192,11 +223,16 @@ class TestPipelinesOutputFormat:
     def test_pipelines_format_no_duplicates(self, tmp_path):
         out = tmp_path / "pipelines.txt"
         run_scatter(
-            "--target-project", str(GALAXY_CSPROJ),
-            "--search-scope", str(REPO_ROOT),
-            "--pipeline-csv", str(PIPELINE_CSV),
-            "--output-format", "pipelines",
-            "--output-file", str(out),
+            "--target-project",
+            str(GALAXY_CSPROJ),
+            "--search-scope",
+            str(REPO_ROOT),
+            "--pipeline-csv",
+            str(PIPELINE_CSV),
+            "--output-format",
+            "pipelines",
+            "--output-file",
+            str(out),
         )
         content = out.read_text().strip()
         lines = [l.strip() for l in content.split("\n") if l.strip()]
@@ -215,11 +251,16 @@ class TestPipelineWithSprocMode:
     def test_sproc_json_has_pipeline_names(self, tmp_path):
         out = tmp_path / "sproc.json"
         run_scatter(
-            "--stored-procedure", "dbo.sp_InsertPortalConfiguration",
-            "--search-scope", str(REPO_ROOT),
-            "--pipeline-csv", str(PIPELINE_CSV),
-            "--output-format", "json",
-            "--output-file", str(out),
+            "--stored-procedure",
+            "dbo.sp_InsertPortalConfiguration",
+            "--search-scope",
+            str(REPO_ROOT),
+            "--pipeline-csv",
+            str(PIPELINE_CSV),
+            "--output-format",
+            "json",
+            "--output-file",
+            str(out),
         )
         data = json.loads(out.read_text())
         results = data.get("all_results", [])
@@ -230,11 +271,16 @@ class TestPipelineWithSprocMode:
     def test_sproc_pipelines_format(self, tmp_path):
         out = tmp_path / "pipelines.txt"
         run_scatter(
-            "--stored-procedure", "dbo.sp_InsertPortalConfiguration",
-            "--search-scope", str(REPO_ROOT),
-            "--pipeline-csv", str(PIPELINE_CSV),
-            "--output-format", "pipelines",
-            "--output-file", str(out),
+            "--stored-procedure",
+            "dbo.sp_InsertPortalConfiguration",
+            "--search-scope",
+            str(REPO_ROOT),
+            "--pipeline-csv",
+            str(PIPELINE_CSV),
+            "--output-format",
+            "pipelines",
+            "--output-file",
+            str(out),
         )
         content = out.read_text().strip()
         assert EXPECTED_PIPELINE in content

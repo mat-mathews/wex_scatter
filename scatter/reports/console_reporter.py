@@ -253,6 +253,72 @@ def print_impact_report(report: ImpactReport) -> None:
         print(report.impact_narrative)
 
 
+def print_scoping_report(report) -> None:
+    """Print formatted scoping effort estimate to console."""
+    confidence = report.confidence
+    effort = report.effort
+
+    print(
+        f"\n=== Effort Estimate ({confidence.level.value} confidence, \u00b1{confidence.band_pct:.0%}) ==="
+    )
+
+    # Category table
+    name_w = 22
+    h = "\u2500"
+    print(f"  {'Category':<{name_w}} {'Base':>7} {'Min':>7} {'Max':>7}  Notes")
+    print(f"  {h * name_w} {h * 7} {h * 7} {h * 7}  {h * 30}")
+
+    for cat in effort.categories:
+        notes = "; ".join(cat.factors) if cat.factors else ""
+        print(
+            f"  {cat.name:<{name_w}} {cat.base_days:>7.1f} {cat.min_days:>7.1f} {cat.max_days:>7.1f}  {notes}"
+        )
+
+    print(f"  {h * name_w} {h * 7} {h * 7} {h * 7}  {h * 30}")
+
+    # Total + dev-weeks
+    min_weeks = effort.total_min_days / 5.0
+    max_weeks = effort.total_max_days / 5.0
+    print(
+        f"  {'TOTAL':<{name_w}} {effort.total_base_days:>7.1f} {effort.total_min_days:>7.1f} "
+        f"{effort.total_max_days:>7.1f}  ({min_weeks:.1f}\u2013{max_weeks:.1f} dev-weeks)"
+    )
+
+    # Database impact
+    db = report.database_impact
+    if db.total_shared_sprocs > 0:
+        print(
+            f"\nDatabase: {db.total_shared_sprocs} shared sproc(s), "
+            f"migration complexity: {db.migration_complexity}"
+        )
+
+    # Risk summary
+    if report.aggregate_risk:
+        agg = report.aggregate_risk
+        total_direct = sum(ti.total_direct for ti in report.impact_report.targets)
+        total_transitive = sum(ti.total_transitive for ti in report.impact_report.targets)
+        print(
+            f"Risk: {agg.risk_level.value} (composite {agg.composite_score:.2f}) "
+            f"\u2014 {total_direct} direct, {total_transitive} transitive consumer(s)"
+        )
+
+    # AI adjustment
+    if report.ai_effort_adjustment:
+        min_d = report.ai_effort_min_days or 0
+        max_d = report.ai_effort_max_days or 0
+        print(
+            f'\n[AI Adjustment: {min_d:.0f}\u2013{max_d:.0f} dev-days \u2014 "{report.ai_effort_adjustment}"]'
+        )
+
+    # Warnings
+    for w in report.warnings:
+        print(f"  Warning: {w}")
+
+    # Delegate to impact report details
+    print()
+    print_impact_report(report.impact_report)
+
+
 def print_pr_risk_report(report: PRRiskReport) -> None:
     """Print PR risk analysis report to console."""
     level = report.risk_level

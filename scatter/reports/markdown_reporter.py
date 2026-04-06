@@ -477,6 +477,116 @@ def _build_next_steps(
     return steps
 
 
+def build_scoping_markdown(
+    report,
+    metadata: Optional[Dict] = None,
+) -> str:
+    """Build markdown string for scoping effort estimate report."""
+    parts: List[str] = ["# Scoping Effort Estimate\n"]
+
+    confidence = report.confidence
+    effort = report.effort
+
+    # Work request
+    sow = report.impact_report.sow_text
+    sow_display = sow[:200] + "..." if len(sow) > 200 else sow
+    parts.append(f"**Work Request:** {sow_display}\n")
+
+    # Confidence summary
+    parts.append(
+        f"**Confidence:** {confidence.level.value} (\u00b1{confidence.band_pct:.0%})"
+        + (" (widened due to vague targets)" if confidence.was_widened else "")
+        + "\n"
+    )
+
+    # Effort table
+    parts.append("## Effort Breakdown\n")
+    headers = ["Category", "Base Days", "Min Days", "Max Days", "Notes"]
+    rows: List[List[str]] = []
+    for cat in effort.categories:
+        rows.append(
+            [
+                cat.name,
+                f"{cat.base_days:.1f}",
+                f"{cat.min_days:.1f}",
+                f"{cat.max_days:.1f}",
+                "; ".join(cat.factors),
+            ]
+        )
+    min_weeks = effort.total_min_days / 5.0
+    max_weeks = effort.total_max_days / 5.0
+    rows.append(
+        [
+            "**TOTAL**",
+            f"**{effort.total_base_days:.1f}**",
+            f"**{effort.total_min_days:.1f}**",
+            f"**{effort.total_max_days:.1f}**",
+            f"{min_weeks:.1f}\u2013{max_weeks:.1f} dev-weeks",
+        ]
+    )
+    parts.append(_md_table(headers, rows))
+    parts.append("")
+
+    # Database impact
+    db = report.database_impact
+    if db.total_shared_sprocs > 0:
+        parts.append("## Database Impact\n")
+        parts.append(
+            f"**{db.total_shared_sprocs}** shared stored procedure(s), "
+            f"migration complexity: **{db.migration_complexity}**\n"
+        )
+        if db.shared_sprocs:
+            sp_headers = ["Stored Procedure", "Shared By", "Project Count"]
+            sp_rows = [
+                [sg.sproc_name, ", ".join(sg.projects), str(sg.project_count)]
+                for sg in db.shared_sprocs
+            ]
+            parts.append(_md_table(sp_headers, sp_rows))
+            parts.append("")
+
+    # Risk summary
+    if report.aggregate_risk:
+        agg = report.aggregate_risk
+        parts.append("## Risk Summary\n")
+        parts.append(f"**{agg.risk_level.value}** (composite {agg.composite_score:.2f})\n")
+        if agg.risk_factors:
+            for f in agg.risk_factors:
+                parts.append(f"- {f}")
+            parts.append("")
+
+    # AI adjustment
+    if report.ai_effort_adjustment:
+        parts.append("## AI Adjustment\n")
+        min_d = report.ai_effort_min_days or 0
+        max_d = report.ai_effort_max_days or 0
+        parts.append(
+            f"**{min_d:.0f}\u2013{max_d:.0f} dev-days** \u2014 {report.ai_effort_adjustment}\n"
+        )
+
+    # Warnings
+    if report.warnings:
+        parts.append("## Warnings\n")
+        for w in report.warnings:
+            parts.append(f"- {w}")
+        parts.append("")
+
+    # Embedded impact details
+    parts.append("---\n")
+    parts.append(build_impact_markdown(report.impact_report, metadata=metadata))
+
+    return "\n".join(parts)
+
+
+def write_scoping_markdown_report(
+    report,
+    output_file_path: Path,
+    metadata: Optional[Dict] = None,
+) -> None:
+    """Write scoping effort estimate as markdown to file."""
+    content = build_scoping_markdown(report, metadata=metadata)
+    _write_file(content, output_file_path)
+
+
 def write_impact_markdown_report(
     report: ImpactReport,
     output_file_path: Path,

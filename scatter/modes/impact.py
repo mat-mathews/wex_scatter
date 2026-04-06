@@ -60,6 +60,18 @@ def run_impact_mode(args, ctx: ModeContext, start_time: float) -> None:
     apply_impact_graph_enrichment(impact_report, ctx)
     graph_enriched = ctx.graph_enriched
 
+    # Scoping analysis (Decision #8 — extends --sow mode, not a new mode)
+    if getattr(args, "scope_estimate", False):
+        try:
+            from scatter.analyzers.scoping_analyzer import run_scoping_analysis
+
+            scoping_report = run_scoping_analysis(impact_report, ctx.graph_ctx, ctx.ai_provider)
+            _dispatch_scoping_output(scoping_report, args, ctx, start_time, graph_enriched)
+            return
+        except Exception:
+            # Fatima #13: scoping failure falls back to impact report
+            logging.warning("Scoping analysis failed, falling back to impact report", exc_info=True)
+
     # Output impact report
     if args.output_format == "json":
         output_path = _require_output_file(args, "JSON")
@@ -118,3 +130,40 @@ def run_impact_mode(args, ctx: ModeContext, start_time: float) -> None:
         print(
             f"\nAnalysis complete. {consumer_count} consumer(s) found across {target_count} target(s).\n"
         )
+
+
+def _dispatch_scoping_output(scoping_report, args, ctx, start_time, graph_enriched):
+    """Route scoping report to the appropriate output format."""
+    metadata = _build_metadata(args, ctx.search_scope, start_time, graph_enriched=graph_enriched)
+
+    if args.output_format == "json":
+        from scatter.reports.json_reporter import write_scoping_json_report
+
+        output_path = _require_output_file(args, "JSON")
+        write_scoping_json_report(scoping_report, output_path, metadata=metadata)
+    elif args.output_format == "csv":
+        from scatter.reports.csv_reporter import write_scoping_csv_report
+
+        output_path = _require_output_file(args, "CSV")
+        write_scoping_csv_report(scoping_report, output_path)
+    elif args.output_format == "markdown":
+        from scatter.reports.markdown_reporter import (
+            build_scoping_markdown,
+            write_scoping_markdown_report,
+        )
+
+        if args.output_file:
+            write_scoping_markdown_report(scoping_report, Path(args.output_file), metadata=metadata)
+        else:
+            print(build_scoping_markdown(scoping_report, metadata=metadata))
+    else:
+        from scatter.reports.console_reporter import print_scoping_report
+
+        print_scoping_report(scoping_report)
+
+    consumer_count = sum(len(ti.consumers) for ti in scoping_report.impact_report.targets)
+    target_count = len(scoping_report.impact_report.targets)
+    print(
+        f"\nScoping complete. {consumer_count} consumer(s) across {target_count} target(s). "
+        f"Estimated {scoping_report.effort.total_min_days:.1f}-{scoping_report.effort.total_max_days:.1f} dev-days.\n"
+    )

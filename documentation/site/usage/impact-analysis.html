@@ -14,7 +14,7 @@
         <link rel="prev" href="stored-procedure.html">
       
       
-        <link rel="next" href="dependency-graph.html">
+        <link rel="next" href="scoping.html">
       
       
         
@@ -677,10 +677,88 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#effort-estimation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Effort Estimation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#risk-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Risk Model
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="scoping.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SOW Scoping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="pr-risk.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PR Risk Scoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -834,34 +912,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../testing.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Testing
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -933,6 +983,34 @@
     
   
     Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="risk-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Risk Engine
   
 
     
@@ -1129,6 +1207,34 @@
     
   
     Type Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
   
 
     
@@ -1459,6 +1565,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#effort-estimation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Effort Estimation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#risk-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Risk Model
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1527,7 +1655,7 @@ Analysis complete. 6 consumer(s) found across 1 target(s).
 <h2 id="reading-the-report">Reading the Report<a class="headerlink" href="#reading-the-report" title="Permanent link">&para;</a></h2>
 <p><strong>Overall Risk and Complexity</strong> appear at the top. Complexity is always an AI estimate of effort. Risk uses a two-layer model:</p>
 <ol>
-<li><strong>Graph-derived risk</strong> (deterministic) — when a dependency graph is available, the risk engine scores each target across 6 dimensions: structural coupling, instability, cycle entanglement, database coupling, blast radius, and domain boundaries. This produces a reproducible rating — same input, same score, no AI variance.</li>
+<li><strong>Graph-derived risk</strong> (deterministic) — when a dependency graph is available, the risk engine scores each target across 7 dimensions: structural coupling, instability, cycle entanglement, database coupling, blast radius, domain boundaries, and change surface. This produces a reproducible rating — same input, same score, no AI variance.</li>
 <li><strong>AI enrichment</strong> (escalation-only) — AI can raise a rating (e.g. "High" to "Critical") when it detects business context the graph can't see, but it can never lower a graph-derived rating. Without a graph, AI provides the primary risk rating directly.</li>
 </ol>
 <p>Overall risk is the worst-case across all targets.</p>
@@ -1615,6 +1743,19 @@ Evidence: Project contains PortalDataService which handles portal configuration 
 <span class="w">  </span>--output-format<span class="w"> </span>markdown
 </code></pre></div>
 <p>See <a href="../output-formats.html">Output Formats</a> for detailed structure of each format.</p>
+<h2 id="effort-estimation">Effort Estimation<a class="headerlink" href="#effort-estimation" title="Permanent link">&para;</a></h2>
+<p>Add <code>--scope-estimate</code> to get a structured effort breakdown on top of the impact report:</p>
+<div class="highlight"><pre><span></span><code>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sow<span class="w"> </span><span class="s2">&quot;Add tenant isolation to the portal configuration system&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scope-estimate<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--graph-metrics
+</code></pre></div>
+<p>This adds an effort table with five categories (investigation, implementation, testing, integration risk, database migration), confidence bands, and database impact assessment. The numbers are graph-derived — no AI involved in the base estimate.</p>
+<p>See <a href="scoping.html">SOW Scoping</a> for the full breakdown of categories, heuristics, and confidence levels.</p>
+<h2 id="risk-model">Risk Model<a class="headerlink" href="#risk-model" title="Permanent link">&para;</a></h2>
+<p>Impact analysis uses the same 7-dimension risk engine as PR risk scoring. When a dependency graph is available, each target gets a deterministic risk profile across structural coupling, instability, cycles, database coupling, blast radius, domain boundaries, and change surface. AI can escalate but never lower graph-derived ratings.</p>
+<p>See <a href="risk-engine.html">Risk Engine</a> for the full model.</p>
 <hr />
 <div class="admonition info">
 <p class="admonition-title">How this works</p>

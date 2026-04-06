@@ -38,14 +38,16 @@ nav:
           - Git Branch: usage/git-branch.md
           - Stored Procedure: usage/stored-procedure.md
           - Impact Analysis: usage/impact-analysis.md
+          - SOW Scoping: usage/scoping.md
+          - PR Risk Scoring: usage/pr-risk.md
           - Dependency Graph: usage/dependency-graph.md
       - Output Formats: output-formats.md
       - AI Features: ai-features.md
       - Configuration: configuration.md
       - CLI Reference: cli-reference.md
-      - Testing: testing.md
   - Technical Reference:
       - Architecture Overview: reference/architecture.md
+      - Risk Engine: usage/risk-engine.md
       - Graph Engine: reference/graph-engine.md
       - Incremental Updates: reference/incremental-updates.md
       - Coupling & Cycle Detection: reference/coupling-and-cycles.md
@@ -53,6 +55,7 @@ nav:
       - Consumer Detection Pipeline: reference/consumer-pipeline.md
       - Codebase Index: reference/codebase-index.md
       - Type Extraction: reference/type-extraction.md
+      - Testing: testing.md
       - Test Architecture: reference/test-architecture.md
       - Benchmarks: reference/benchmarks.md
       - Sample Projects: reference/sample-projects.md

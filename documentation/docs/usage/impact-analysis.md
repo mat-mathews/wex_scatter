@@ -60,7 +60,7 @@ That's a lot of information from a one-line description. Let's break down what y
 
 **Overall Risk and Complexity** appear at the top. Complexity is always an AI estimate of effort. Risk uses a two-layer model:
 
-1. **Graph-derived risk** (deterministic) — when a dependency graph is available, the risk engine scores each target across 6 dimensions: structural coupling, instability, cycle entanglement, database coupling, blast radius, and domain boundaries. This produces a reproducible rating — same input, same score, no AI variance.
+1. **Graph-derived risk** (deterministic) — when a dependency graph is available, the risk engine scores each target across 7 dimensions: structural coupling, instability, cycle entanglement, database coupling, blast radius, domain boundaries, and change surface. This produces a reproducible rating — same input, same score, no AI variance.
 2. **AI enrichment** (escalation-only) — AI can raise a rating (e.g. "High" to "Critical") when it detects business context the graph can't see, but it can never lower a graph-derived rating. Without a graph, AI provides the primary risk rating directly.
 
 Overall risk is the worst-case across all targets.
@@ -192,6 +192,28 @@ scatter \
 ```
 
 See [Output Formats](../output-formats.md) for detailed structure of each format.
+
+## Effort Estimation
+
+Add `--scope-estimate` to get a structured effort breakdown on top of the impact report:
+
+```bash
+scatter \
+  --sow "Add tenant isolation to the portal configuration system" \
+  --search-scope . \
+  --scope-estimate \
+  --graph-metrics
+```
+
+This adds an effort table with five categories (investigation, implementation, testing, integration risk, database migration), confidence bands, and database impact assessment. The numbers are graph-derived — no AI involved in the base estimate.
+
+See [SOW Scoping](scoping.md) for the full breakdown of categories, heuristics, and confidence levels.
+
+## Risk Model
+
+Impact analysis uses the same 7-dimension risk engine as PR risk scoring. When a dependency graph is available, each target gets a deterministic risk profile across structural coupling, instability, cycles, database coupling, blast radius, domain boundaries, and change surface. AI can escalate but never lower graph-derived ratings.
+
+See [Risk Engine](risk-engine.md) for the full model.
 
 ---
 
