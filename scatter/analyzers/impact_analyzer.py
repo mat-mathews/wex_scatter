@@ -301,6 +301,8 @@ def run_impact_analysis(
     if risk_profiles:
         agg = aggregate_risk(risk_profiles, SOW_RISK_CONTEXT)
         report.overall_risk = _risk_level_to_label(agg.risk_level)
+        report.risk_profiles = risk_profiles  # Decision #10
+        report.aggregate_risk = agg  # Decision #10
     else:
         report.overall_risk = _derive_overall_risk_from_consumers(report)
 

@@ -14,7 +14,7 @@
         <link rel="prev" href="configuration.html">
       
       
-        <link rel="next" href="testing.html">
+        <link rel="next" href="reference/architecture.html">
       
       
         
@@ -558,6 +558,62 @@
   
   
     <li class="md-nav__item">
+      <a href="usage/scoping.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SOW Scoping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/pr-risk.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PR Risk Scoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="usage/dependency-graph.html" class="md-nav__link">
         
   
@@ -823,34 +879,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="testing.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Testing
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -922,6 +950,34 @@
     
   
     Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/risk-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Risk Engine
   
 
     
@@ -1118,6 +1174,34 @@
     
   
     Type Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="testing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
   
 
     
@@ -1552,6 +1636,11 @@
 <td>Minimum confidence threshold for SOW-extracted targets. Targets below this are excluded with a log message.</td>
 </tr>
 <tr>
+<td><code>--scope-estimate</code></td>
+<td>false</td>
+<td>Generate structured effort estimate with confidence bands. Requires <code>--sow</code> or <code>--sow-file</code>. Adds an effort breakdown table (investigation, implementation, testing, integration risk, database migration) with min/max ranges. See <a href="usage/scoping.html">SOW Scoping</a>.</td>
+</tr>
+<tr>
 <td><code>--dump-index</code></td>
 <td>false</td>
 <td>Build the dependency graph, print the codebase index to stdout, and exit. Requires <code>--search-scope</code>. Useful for inspecting what the LLM sees during <code>--sow</code> mode.</td>
@@ -1633,6 +1722,11 @@
 <td><code>--collapsible</code></td>
 <td>false</td>
 <td>Wrap detail sections in collapsible <code>&lt;details&gt;</code> tags. Only affects <code>--pr-risk --output-format markdown</code>. Ideal for PR comments where you want a compact summary with expandable details.</td>
+</tr>
+<tr>
+<td><code>--no-prediction-log</code></td>
+<td>false</td>
+<td>Disable writing prediction records to <code>.scatter/predictions.jsonl</code> after <code>--pr-risk</code> analysis.</td>
 </tr>
 </tbody>
 </table>

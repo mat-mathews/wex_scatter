@@ -31,6 +31,7 @@ These work with any mode (unless noted).
 | `--parser-mode MODE` | `regex` | Parser mode: `regex` (default) or `hybrid`. Hybrid uses tree-sitter AST to filter false positives in comments and string literals during class/method filtering (stages 4-5). Requires `tree-sitter` and `tree-sitter-c-sharp` (`uv sync --extra ast`). Falls back to regex if not installed. |
 | `--max-depth N` | 2 | Maximum transitive tracing depth for impact analysis |
 | `--sow-min-confidence N` | 0.3 | Minimum confidence threshold for SOW-extracted targets. Targets below this are excluded with a log message. |
+| `--scope-estimate` | false | Generate structured effort estimate with confidence bands. Requires `--sow` or `--sow-file`. Adds an effort breakdown table (investigation, implementation, testing, integration risk, database migration) with min/max ranges. See [SOW Scoping](usage/scoping.md). |
 | `--dump-index` | false | Build the dependency graph, print the codebase index to stdout, and exit. Requires `--search-scope`. Useful for inspecting what the LLM sees during `--sow` mode. |
 | `--no-graph` | false | Skip all graph operations (build, load, enrichment) |
 | `--rebuild-graph` | false | Force full graph rebuild, ignoring cache |
@@ -52,6 +53,7 @@ Only relevant with `--branch-name`.
 | `--enable-hybrid-git` | false | Use AI-enhanced diff analysis for more precise symbol extraction. Only flags types whose body/signature actually changed, not every type in the file. Requires a Gemini API key. |
 | `--pr-risk` | false | Output PR risk analysis instead of consumer table. Scores changes across 6 dimensions, outputs GREEN/YELLOW/RED with composite score. Supports `console`, `json`, and `markdown` output formats. |
 | `--collapsible` | false | Wrap detail sections in collapsible `<details>` tags. Only affects `--pr-risk --output-format markdown`. Ideal for PR comments where you want a compact summary with expandable details. |
+| `--no-prediction-log` | false | Disable writing prediction records to `.scatter/predictions.jsonl` after `--pr-risk` analysis. |
 
 ## Stored Procedure Options
 

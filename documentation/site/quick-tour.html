@@ -489,6 +489,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#score-a-prs-risk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Score a PR's risk
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-a-work-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope a work request
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#all-five-modes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -715,6 +737,62 @@
   
   
     <li class="md-nav__item">
+      <a href="usage/scoping.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SOW Scoping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/pr-risk.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PR Risk Scoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="usage/dependency-graph.html" class="md-nav__link">
         
   
@@ -856,34 +934,6 @@
 
               
             
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="testing.html" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Testing
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
           </ul>
         </nav>
       
@@ -955,6 +1005,34 @@
     
   
     Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/risk-engine.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Risk Engine
   
 
     
@@ -1151,6 +1229,34 @@
     
   
     Type Extraction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="testing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
   
 
     
@@ -1482,6 +1588,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#score-a-prs-risk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Score a PR's risk
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scope-a-work-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope a work request
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#all-five-modes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1689,6 +1817,53 @@ Direct Consumers: 6 | Transitive: 0
 <span class="k">-</span><span class="w"> </span>Blast radius suggests staged rollout may reduce risk
 </code></pre></div>
 <p>Every section is computed from real dependency data. The AI interprets and explains — it doesn't invent dependencies.</p>
+<h2 id="score-a-prs-risk">Score a PR's risk<a class="headerlink" href="#score-a-prs-risk" title="Permanent link">&para;</a></h2>
+<p>If you're reviewing a PR, you want to know: how far does the blast radius reach?</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--branch-name<span class="w"> </span>feature/refactor-data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--pr-risk<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>============================================================
+  PR Risk: RED (0.80)
+============================================================
+  Branch: feature/refactor-data (vs main)
+  Changed: 2 type(s) across 1 project(s)
+
+  Dimension                     Score  Severity
+  ───────────────────────────── ─────  ──────────
+  Structural coupling            0.65  high
+  Database coupling              0.72  high
+  Blast radius                   0.80  critical
+  Change surface                 0.70  high
+
+  Risk Factors:
+    • 7 direct consumers affected
+    • shared sproc used by 3 projects
+    • stable core project — many dependents
+</code></pre></div>
+<p>The score is deterministic — same branch produces the same number. No AI needed. The <a href="reference/github-action.html">GitHub Action template</a> posts this as a PR comment automatically.</p>
+<p>See <a href="usage/pr-risk.html">PR Risk Scoring</a> for output formats and CI setup.</p>
+<h2 id="scope-a-work-request">Scope a work request<a class="headerlink" href="#scope-a-work-request" title="Permanent link">&para;</a></h2>
+<p>After impact analysis tells you <em>what's affected</em>, scoping tells you <em>how long it'll take</em>:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>scatter<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sow<span class="w"> </span><span class="s2">&quot;Add tenant isolation to the portal configuration system&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--search-scope<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scope-estimate
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>=== Effort Estimate (MODERATE confidence, ±30%) ===
+  Category               Base     Min     Max  Notes
+  ────────────────────── ─────── ─────── ───────  ──────────────────────────────
+  investigation            1.0     0.7     1.3  2 target(s); no cycles
+  implementation           4.0     2.8     5.2  4 direct; 2 depth-1
+  testing                  3.0     2.1     3.9  4 direct consumer(s); 1 shared sproc(s)
+  integration_risk         0.5     0.4     0.7  1 shared sproc(s)
+  database_migration       1.0     0.7     1.3  1 shared sproc(s)
+  ────────────────────── ─────── ─────── ───────  ──────────────────────────────
+  TOTAL                    9.5     6.7    12.4  (1.3–2.5 dev-weeks)
+</code></pre></div>
+<p>Every number comes from the dependency graph — consumer counts, shared stored procedures, cycle membership, domain clusters. The confidence band widens when the SOW is vague or risk is high. This is a starting point for a scoping conversation, not a commitment.</p>
+<p>See <a href="usage/scoping.html">SOW Scoping</a> for the full breakdown.</p>
 <h2 id="all-five-modes">All five modes<a class="headerlink" href="#all-five-modes" title="Permanent link">&para;</a></h2>
 <table>
 <thead>

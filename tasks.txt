@@ -2226,20 +2226,23 @@ Ref: docs/SOW_SCOPING_PLAN.md
 Dependencies: Risk Engine Phase 1-3
 ============================================================================
 
-PHASE 1: Structured Effort Estimation (2 weeks)
+PHASE 1: Structured Effort Estimation ✅ COMPLETED (2026-04-05)
 ----------------------------------------------------------------------
-- [ ] Add ScopingReport, EffortBreakdown, ConfidenceBand, DatabaseImpact to models.py
-- [ ] Create effort_estimator.py: graph-derived base costs + risk-driven multipliers
-      NOTE: Multipliers start at 1.0 (no effect) until calibration data exists
-- [ ] Create db_impact_analyzer.py: sproc grouping, migration complexity levels
-- [ ] Create effort_adjustment.py AI task (optional overlay, clearly labeled)
-- [ ] Compute confidence bands from risk engine composite score
-- [ ] Add --scope-estimate flag to --sow mode
-- [ ] Scoping reporters: console table, JSON, markdown, CSV (for finance)
-- [ ] Risk categories for planning: use reporter formatting, not a SOWRiskCategories dataclass
-      Planning implications: AI-generated from dimension data, not hardcoded templates
-- [ ] Unit tests: heuristic calculations, multiplier edge cases, DB impact
-- [ ] SOW performance budget: measure and enforce wall-clock targets
+- [x] Add ScopingReport, EffortBreakdown, ConfidenceBand, DatabaseImpact to scoping_models.py
+- [x] Store risk_profiles + AggregateRisk on ImpactReport (Decision #10)
+- [x] Create effort_estimator.py: graph-derived base costs + sublinear heuristics (Marcus #11)
+      NOTE: Multipliers start at 1.0 (no effect) until calibration data exists (Decision #7)
+- [x] Create db_impact_analyzer.py: sproc grouping, migration complexity levels
+- [x] Create effort_adjustment.py AI task (optional overlay, clearly labeled, Decision #5)
+- [x] Create scoping_analyzer.py orchestrator (find_clusters() called once, Devon #14)
+- [x] Compute confidence bands from risk engine composite score (Decision #3)
+- [x] Add --scope-estimate flag to --sow mode (Decision #8)
+- [x] Scoping reporters: console table, JSON, markdown, CSV (for finance, Decision #2)
+- [x] Risk categories for planning: use reporter formatting, not a SOWRiskCategories dataclass (Decision #6)
+- [x] Scoping wrapped in try/except — impact report still ships on failure (Fatima #13)
+- [x] Warnings list for degradation visibility (Fatima #12)
+- [x] Unit tests: 44 new tests (effort heuristics, DB impact, scoping integration)
+- [x] SOW performance budget: test_scoping_completes_under_1s asserts <1000ms
 
 PHASE 2: Team Mapping + Risk-Driven Multipliers (1-2 weeks)
 ----------------------------------------------------------------------
@@ -2274,5 +2277,10 @@ CROSS-CUTTING TASKS
 
 - [ ] AI prompt security review for all new risk/effort prompts
 - [ ] JSON output versioning (schema version header for risk data)
-- [ ] Update docs site with risk engine, PR risk, and SOW scoping pages
+- [x] Update docs site with risk engine, PR risk, and SOW scoping pages (2026-04-05)
+      New: usage/risk-engine.md, usage/pr-risk.md, usage/scoping.md
+      Updated: impact-analysis.md, cli-reference.md, quick-tour.md, README.md
+      Reorganized nav: Risk Engine + Testing moved to Technical Reference
+      Team review: 8 issues identified and fixed (dimension count consistency,
+      degradation docs, GH Action cache note, CSE acronym, determinism footnote)
 - [ ] Update PRODUCT_DEFINITION.md with risk roadmap summary

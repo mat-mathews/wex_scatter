@@ -71,6 +71,57 @@ def write_csv_report(
         logging.error(f"Failed to write output CSV file: {e}")
 
 
+def write_scoping_csv_report(report, output_file_path: Path) -> None:
+    """Write scoping effort estimate as CSV. Columns match finance budget lines (Decision #2)."""
+    logging.info(f"Writing scoping report to CSV: {output_file_path}")
+    fieldnames = ["Category", "Base Days", "Multiplier", "Min Days", "Max Days", "Factors"]
+
+    rows = []
+    for cat in report.effort.categories:
+        rows.append(
+            {
+                "Category": cat.name,
+                "Base Days": f"{cat.base_days:.2f}",
+                "Multiplier": f"{cat.multiplier:.2f}",
+                "Min Days": f"{cat.min_days:.2f}",
+                "Max Days": f"{cat.max_days:.2f}",
+                "Factors": "; ".join(cat.factors),
+            }
+        )
+    # TOTAL row
+    rows.append(
+        {
+            "Category": "TOTAL",
+            "Base Days": f"{report.effort.total_base_days:.2f}",
+            "Multiplier": "",
+            "Min Days": f"{report.effort.total_min_days:.2f}",
+            "Max Days": f"{report.effort.total_max_days:.2f}",
+            "Factors": "",
+        }
+    )
+
+    try:
+        output_file_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_file_path, "w", newline="", encoding="utf-8") as csvfile:
+            # Header comment with confidence info
+            conf = report.confidence
+            csvfile.write(
+                f"# Confidence: {conf.level.value} (+-{conf.band_pct:.0%}), "
+                f"composite score: {conf.composite_score:.2f}\n"
+            )
+            if report.database_impact.total_shared_sprocs > 0:
+                csvfile.write(
+                    f"# Database: {report.database_impact.total_shared_sprocs} shared sproc(s), "
+                    f"migration complexity: {report.database_impact.migration_complexity}\n"
+                )
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+        logging.info(f"Successfully wrote scoping CSV report to: {output_file_path}")
+    except Exception as e:
+        logging.error(f"Failed to write scoping CSV report: {e}")
+
+
 def write_impact_csv_report(
     report: ImpactReport, output_file_path: Path, graph_metrics_requested: bool = False
 ) -> None:

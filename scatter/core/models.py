@@ -157,6 +157,9 @@ class ImpactReport:
     overall_risk: Optional[str] = None
     ambiguity_level: Optional[str] = None  # "clear" | "moderate" | "vague"
     avg_target_confidence: Optional[float] = None
+    # Stored by impact_analyzer so scoping doesn't recompute (Decision #10).
+    risk_profiles: List["RiskProfile"] = field(default_factory=list)
+    aggregate_risk: Optional["AggregateRisk"] = None
 
 
 # --- Filter pipeline visibility models ---

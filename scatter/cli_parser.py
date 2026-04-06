@@ -185,6 +185,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Minimum confidence threshold for SOW-extracted targets (default: 0.3).",
     )
     common_group.add_argument(
+        "--scope-estimate",
+        action="store_true",
+        default=False,
+        help="Generate structured effort estimate with confidence bands. Requires --sow or --sow-file.",
+    )
+    common_group.add_argument(
         "--dump-index",
         action="store_true",
         help="Build dependency graph, print codebase index to stdout, and exit. Requires --search-scope.",
