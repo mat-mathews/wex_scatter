@@ -79,7 +79,7 @@ Overall risk is the worst-case across all targets.
 
 ```bash
 scatter \
-  --sow-file docs/sample_sow.txt \
+  --sow-file examples/sample_sow.md \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY
 ```
@@ -133,7 +133,7 @@ Evidence: Project contains PortalDataService which handles portal configuration 
 
 ```bash
 scatter \
-  --sow-file docs/sample_sow.md \
+  --sow-file examples/sample_sow.md \
   --search-scope . \
   --google-api-key $GOOGLE_API_KEY \
   --sow-min-confidence 0.5
