@@ -100,6 +100,7 @@ def dispatch_legacy_output(
     search_scope: Optional[Path],
     start_time: float,
     graph_enriched: bool,
+    pipeline_map: Optional[Dict[str, str]] = None,
 ) -> None:
     """Route legacy mode results (git/target/sproc) to the chosen reporter.
 
@@ -109,6 +110,12 @@ def dispatch_legacy_output(
     forwarded to ``_build_metadata`` (everything except ``_REDACTED_CLI_KEYS``).
     """
     logging.info("\n--- Consolidating and reporting results ---")
+
+    # Apply pipeline mapping to results when provided
+    if pipeline_map:
+        for r in all_results:
+            if r.pipeline_name is None:
+                r.pipeline_name = pipeline_map.get(r.consumer_project_name, "") or None
     if not all_results:
         logging.info(
             "Overall analysis complete. No consuming relationships matching the criteria were found."
