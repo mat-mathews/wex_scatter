@@ -1,6 +1,6 @@
 Scatter - Implementation Tasks
-Based on Product Definition v2.0 (updated 2026-03-04)
-Reference: docs/PRODUCT_DEFINITION.md
+Live strategic summary: docs/ROADMAP.md
+Historical product definition: docs/prototyping_specs/PRODUCT_DEFINITION.md
 
 ============================================================================
 INITIATIVE 1: MULTIPROCESSING OVERHAUL ✅ PHASES 1-4 COMPLETED (Performance Focus)
@@ -595,7 +595,7 @@ FILES CHANGED (10 modified, 2 new):
             scatter/__main__.py, test_graph_cache.py
 
 TRANSPARENT GRAPH ACCELERATION ✅ ALL PHASES COMPLETED
-Ref: docs/ADR_TRANSPARENT_GRAPH.md
+Ref: docs/ADR.md (ADR-022)
 
 Phase A — Auto graph loading ✅ COMPLETED
 - [x] Load graph cache automatically on every run (no flag needed)
@@ -1073,12 +1073,12 @@ Target: GitHub Actions runs tests, linting, and type checking on every push/PR.
 - [x] Developer experience scripts:
       - tools/setup.sh: one-time bootstrap (python check, uv check, deps, git config, skills)
       - tools/check.sh: local CI mirror (--quick for lint-only ~2s)
-- [ ] Badge in README for CI status
+- [x] Badge in README for CI status
 - [ ] Create conftest.py with shared fixtures (deferred — not blocking)
 
-PHASE 4: DOCKER SUPPORT (MEDIUM PRIORITY)
+PHASE 4: DOCKER SUPPORT ✅ COMPLETED
 Target: `docker build -t scatter .` and run against mounted repos.
-- [ ] Create Dockerfile:
+- [x] Create Dockerfile:
       - Multi-stage build (builder + runtime)
       - Based on python:3.12-slim
       - Install uv in builder stage (COPY --from=ghcr.io/astral-sh/uv:latest)
@@ -1086,15 +1086,15 @@ Target: `docker build -t scatter .` and run against mounted repos.
       - Default entrypoint: scatter (via uv run or direct venv path)
       - Mount point for repo-under-analysis at /workspace
       - Git installed in runtime image (needed for git analysis + cache invalidation)
-- [ ] Create .dockerignore (exclude .git, __pycache__, .venv, test data, benchmarks, docs)
+- [x] Create .dockerignore (exclude .git, __pycache__, .venv, test data, benchmarks, docs)
 - [ ] Verify: docker run -v /path/to/repo:/workspace scatter --target-project ... works
-- [ ] Add Docker usage example to README
+- [x] Add Docker usage example to README
 
 PHASE 5: INITIATIVE 8 TESTING ✅ COMPLETED (2026-03-25)
 - [x] Integration test: `scatter` CLI entry point invoked via subprocess (30 e2e tests)
 - [x] Integration test: each command module independently callable (all 6 modes tested)
 - [x] Test: `uv run scatter --version` works after fresh `uv sync`
-- [ ] Test: Docker build succeeds (can be manual or CI) — blocked on Phase 4
+- [x] Test: Docker build succeeds (can be manual or CI) — Dockerfile shipped, builds verified locally
 
 ============================================================================
 INITIATIVE 11: SOW DIFFERENTIATOR (v2.1 — HIGH PRIORITY)
@@ -1171,7 +1171,7 @@ HIGH IMPACT (evaluator will notice, affects credibility):
 - [ ] Worked example in docs: walk through a real SOW → impact report,
       explain each section (Initiative 11 Phase 3, line ~1142)
       Evaluators need a guided path, not just --help.
-- [ ] Docker support (Initiative 8 Phase 4, line ~1081)
+- [x] Docker support (Initiative 8 Phase 4, line ~1081) — shipped
       Evaluator without Python/uv installed hits a wall at step 1.
 
 MEDIUM IMPACT (polish, evaluator may notice):
@@ -1353,7 +1353,7 @@ RECOMMENDED EXECUTION ORDER (reprioritized 2026-03-13):
       Ref: docs/INCREMENTAL_GRAPH_PLAN.md. 49 tests.
 
   TIER 1.75: TRANSPARENT GRAPH ✅ ALL PHASES COMPLETE (makes graph the default fast path)
-  Ref: docs/ADR_TRANSPARENT_GRAPH.md
+  Ref: docs/ADR.md (ADR-022)
   15. Phase A — Auto graph loading ✅ DONE
       Auto-load graph when cache exists (no --graph-metrics flag needed).
       Add --no-graph escape hatch. "graph_enriched" metadata field. 15 tests.
@@ -1513,10 +1513,11 @@ Priority: Address during or immediately after feature/decompose-main
 
 PHASE 1: Type Safety & API Surface (HIGH PRIORITY — highest leverage)
 ----------------------------------------------------------------------
-- [ ] Create ConsumerResult dataclass to replace Dict[str, Union[str, Dict, List[str]]]
+- [x] Create ConsumerResult dataclass to replace Dict[str, Union[str, Dict, List[str]]]
       Replace all string-key dict construction in v1_bridge._process_consumer_summaries_and_append_results
       Update all 7 reporters to consume the typed dataclass instead of dict key lookups
-- [ ] Fix lowercase `any` type hints in parallel.py (lines 295, 381-385) → typing.Any
+      (defined in scatter/core/models.py, used by all reporters + cli + graph_enrichment)
+- [x] Fix lowercase `any` type hints in parallel.py (lines 295, 381-385) → typing.Any
 - [ ] Add __contains__ method to DependencyGraph (or has_node(name) -> bool)
       Replace all graph._nodes direct access in graph_builder.py (6 callsites)
 - [ ] Extract hardcoded "cdh-batchprocesses-az-cd" from v1_bridge.py into config
@@ -1533,20 +1534,24 @@ PHASE 2: CLI Subcommands (HIGH PRIORITY — enables independent mode testing)
 
 PHASE 3: Graph Builder Performance (MEDIUM PRIORITY)
 ----------------------------------------------------------------------
-- [ ] Eliminate double file read: cache extracted identifiers (dict[Path, set[str]])
+- [x] Eliminate double file read: cache extracted identifiers (dict[Path, set[str]])
       during step 4, reuse in step 5c type_usage edge construction
-- [ ] Drop indent=2 from graph cache JSON serialization (graph_cache.py save_graph)
+      (graph_builder.py _extract_file_data() returns _FileExtraction in single pass)
+- [x] Drop indent=2 from graph cache JSON serialization (graph_cache.py save_graph)
+      (now uses separators=(",", ":") compact format)
 - [ ] Evaluate compact serialization (msgpack or non-indented JSON) for large graphs
 - [ ] Fix parallel file discovery overlapping directory dedup — filter child dirs
       before chunking instead of deduping results after
 
 PHASE 4: Test Infrastructure (MEDIUM PRIORITY — refactoring safety net)
 ----------------------------------------------------------------------
-- [ ] Add end-to-end CLI tests: invoke main() with real args against sample .NET
+- [x] Add end-to-end CLI tests: invoke main() with real args against sample .NET
       projects, capture stdout/stderr, assert output format correctness
+      (tests/integration/test_cli_e2e.py — 30 e2e tests covering all modes/formats)
 - [ ] Add equivalence test: graph builder and consumer analyzer produce same consumer
       set for known inputs (shared fixture validates no drift)
-- [ ] Move test files into tests/ directory (tests/unit/, tests/integration/)
+- [x] Move test files into tests/ directory (tests/unit/, tests/integration/)
+      (46 files in tests/unit/, 13 in tests/integration/, none at repo root)
 - [ ] Wire benchmark suite into CI as a non-blocking performance regression check
 
 PHASE 5: AI Call Safety ✅ COMPLETED (2026-03-26)
@@ -1705,7 +1710,7 @@ PHASE 4: WIRE INTO THE PIPELINE (~0.5 day)
       Mode group changed to required=False; validated in __main__.py
 - [x] Wire --dump-index and --sow-min-confidence into cli_parser.py and __main__.py
 - [ ] End-to-end test: domain-language SOW against sample projects, verify targets
-      (requires live Gemini API — tested manually with docs/sample_sow.md)
+      (requires live Gemini API — tested manually with examples/sample_sow.md)
 - [ ] End-to-end test: explicit-name SOW still works (regression)
       (requires live Gemini API)
 - [x] --dump-index verified: all 11 sample projects appear with types/sprocs
@@ -2272,6 +2277,97 @@ PHASE 3: Calibration Store (2-3 weeks)
 - [ ] Per-category actuals tracking (investigation, implementation, testing)
 
 ============================================================================
+INITIATIVE: STORED PROCEDURE INVENTORY (HIGH PRIORITY for WEX monolith)
+Goal: Automatically discover every sproc referenced from C# without database
+      access. Expose {sproc -> projects} as graph edges so SOW/PR risk can
+      reason about hidden database coupling in a sproc-heavy codebase.
+Ref: docs/SPROC_DISCOVERY_BRAINSTORM.md, docs/SOW_SIGNAL_ANALYSIS.md
+Why: Real WEX CSE analysis (FID1010HD, FID460HD) shows current Scatter misses
+     50%+ of blast radius because sproc coupling is invisible. Sproc inventory
+     is the highest-leverage SOW improvement on the WEX codebase.
+============================================================================
+
+PHASE 1: TIER 1 SIGNALS (highest confidence, lowest effort)
+----------------------------------------------------------------------
+- [ ] .sql file catalog scanner: regex CREATE/ALTER PROCEDURE in *.sql files
+      Builds ground-truth catalog of defined sprocs in repo
+- [ ] EXEC/EXECUTE string-literal extractor in *.cs files
+      Handles bracketed names ([dbo].[usp_X]), schema-qualified names
+- [ ] CommandType.StoredProcedure window scanner
+      Method-scoped window (not line-by-line) — paired with CommandText
+      Dapper variant: first positional arg when commandType: StoredProcedure
+- [ ] EF migration CREATE PROCEDURE extraction
+      Same regex applied to migrationBuilder.Sql() string literals
+- [ ] Sproc inventory data model: SprocReference, SprocCatalog
+      {sproc_name: [{project, file, line, signal_type, confidence}]}
+- [ ] Wire sproc edges into DependencyGraph (sproc_shared edges already exist —
+      reuse infrastructure from Initiative 5 Phase 4)
+- [ ] Cross-reference C# references against .sql catalog
+      Surface: defined-but-unreferenced (dead or external consumer),
+      referenced-but-undefined (defined elsewhere)
+- [ ] Coverage metric: "X of Y known sprocs found in C# code"
+- [ ] Tests: each signal type, sample WEX-style fixtures, schema-qualified names
+
+PHASE 2: TIER 2 SIGNALS (gateway detection, EF patterns)
+----------------------------------------------------------------------
+- [ ] Two-pass gateway detection
+      Pass 1: find files containing CommandType.StoredProcedure
+      Pass 2: identify wrapper methods (string param = sproc name),
+              find call sites, extract string args at each callsite
+      Critical for codebases with shared data-access layer
+- [ ] EF6 MapToStoredProcedures fluent config: extract HasName() args
+- [ ] EF Core FromSqlRaw / ExecuteSqlRaw / ExecuteSqlInterpolated extraction
+      Detect EXEC prefix or bare sproc-name patterns
+- [ ] Constant class heuristics: scan classes matching *Sproc*, *Procedure*,
+      *SqlConstants*, *DataAccess*Constants* for const string / static readonly
+- [ ] Tests: gateway detection on synthetic wrapped data layer
+
+PHASE 3: TIER 3 SIGNALS (edge cases)
+----------------------------------------------------------------------
+- [ ] Custom attribute detection ([StoredProcedure("..")])
+- [ ] Config file scanning (appsettings.json, web.config, custom XML)
+      Filter by keys containing proc/sproc/procedure
+- [ ] Driven by coverage gap measured after Phase 1+2 ships
+
+PHASE 4: SCATTER INTEGRATION
+----------------------------------------------------------------------
+- [ ] New --sproc-inventory mode: dump full sproc map (every sproc, every
+      project that references it, ref count, sorted by sharing degree)
+- [ ] --graph mode: add sproc edges + "shared by N projects" observations
+- [ ] --target-project mode: show sprocs the target exposes + which consumers
+      call them
+- [ ] --sow mode: match SOW operation keywords against sproc names + their
+      containing classes (the missing bridge from business language to code)
+- [ ] PR risk: flag database coupling dimension when changed file references
+      shared sprocs
+- [ ] Run against WEX monolith, measure coverage vs. .sql catalog ground truth
+      Use coverage gap to prioritize Phase 2 strategies
+
+NOT IN SCOPE (deferred):
+- Database connection / live introspection — file-based only
+- Sproc body analysis (table-level coupling) — names + references only
+- Cross-database sproc graph (e.g., linked servers) — single DB per repo
+
+============================================================================
+INITIATIVE: MULTI-REPO FEDERATED GRAPH (EXPLORATORY — DEFERRED)
+Goal: Cross-repo blast radius analysis for the post-monolith world.
+Ref: docs/prototyping_specs/MULTI_REPO_BRAINSTORM.md
+Trigger: Wait until at least one part of the WEX codebase has been split
+         into a separate repo. Premature otherwise.
+============================================================================
+
+- [ ] Concrete implementation plan (currently brainstorm only)
+- [ ] Multi-root scanning (multiple repo paths in a single run)
+- [ ] Contract-based edge discovery: HTTP routes, message queue topics,
+      shared NuGet packages — replaces ProjectReference edges that no
+      longer span repos
+- [ ] Cross-repo graph federation (merged graph from per-repo subgraphs,
+      contract edges as the bridge layer)
+- [ ] Per-repo cache strategy + cross-repo invalidation rules
+- [ ] SOW analysis across federated graph (extends Initiative 11 focused
+      index to multi-repo scope)
+
+============================================================================
 CROSS-CUTTING TASKS
 ============================================================================
 
@@ -2283,4 +2379,6 @@ CROSS-CUTTING TASKS
       Reorganized nav: Risk Engine + Testing moved to Technical Reference
       Team review: 8 issues identified and fixed (dimension count consistency,
       degradation docs, GH Action cache note, CSE acronym, determinism footnote)
-- [ ] Update PRODUCT_DEFINITION.md with risk roadmap summary
+- [x] Update PRODUCT_DEFINITION.md with risk roadmap summary
+      2026-04-07: PRODUCT_DEFINITION.md archived to prototyping_specs/ — outdated
+      Feb 2026 vision doc, superseded by ROADMAP.md as the live strategic summary
