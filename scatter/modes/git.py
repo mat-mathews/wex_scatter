@@ -28,4 +28,5 @@ def run_git_mode(args, ctx: ModeContext, start_time: float) -> None:
         ctx.search_scope,
         start_time,
         result.graph_enriched,
+        pipeline_map=ctx.pipeline_map,
     )

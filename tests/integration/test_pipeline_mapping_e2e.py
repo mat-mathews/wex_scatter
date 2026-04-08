@@ -4,10 +4,9 @@ Runs scatter as a subprocess with the example pipeline_to_app_mapping.csv
 from examples/ against the sample .NET projects. Verifies that pipeline
 names flow through to console, JSON, CSV, markdown, and pipelines output.
 
-Pipeline mapping works via solution stem lookup: the CSV "Application Name"
-column matches against the .sln file stem (e.g., "GalaxyWorks" from
-"GalaxyWorks.sln"). All sample projects belong to GalaxyWorks.sln, so
-they all resolve to the same pipeline.
+Pipeline mapping works via project name lookup: the CSV "Application Name"
+column matches against consumer project names (e.g., "GalaxyWorks.WebPortal").
+The example CSV maps 5 of the sample projects to pipelines.
 
 No mocks. No monkeypatching. Real files, real analysis, real output.
 """
@@ -24,6 +23,13 @@ GALAXY_CSPROJ = REPO_ROOT / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
 MYDOTNET_CSPROJ = REPO_ROOT / "MyDotNetApp" / "MyDotNetApp.csproj"
 PIPELINE_CSV = REPO_ROOT / "examples" / "pipeline_to_app_mapping.csv"
 EXPECTED_PIPELINE = "galaxyworks-portal-az-cd"
+EXPECTED_PIPELINES = {
+    "galaxyworks-portal-az-cd",
+    "galaxyworks-batch-az-cd",
+    "galaxyworks-api-az-cd",
+    "galaxyworks-notifications-az-cd",
+    "galaxyworks-devtools-az-cd",
+}
 
 
 def run_scatter(*args: str, expect_fail: bool = False) -> subprocess.CompletedProcess:
@@ -116,7 +122,7 @@ class TestPipelineJsonOutput:
 
         pipelines = [r.get("PipelineName") for r in results if r.get("PipelineName")]
         assert len(pipelines) > 0, "No pipeline names found in JSON results"
-        assert all(p == EXPECTED_PIPELINE for p in pipelines)
+        assert all(p in EXPECTED_PIPELINES for p in pipelines)
 
     def test_json_pipeline_summary(self, tmp_path):
         out = tmp_path / "result.json"
@@ -266,7 +272,7 @@ class TestPipelineWithSprocMode:
         results = data.get("all_results", [])
         pipelines = [r.get("PipelineName") for r in results if r.get("PipelineName")]
         assert len(pipelines) > 0, "Sproc mode: no pipeline names in JSON"
-        assert all(p == EXPECTED_PIPELINE for p in pipelines)
+        assert all(p in EXPECTED_PIPELINES for p in pipelines)
 
     def test_sproc_pipelines_format(self, tmp_path):
         out = tmp_path / "pipelines.txt"
