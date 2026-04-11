@@ -1,7 +1,6 @@
 """Tests for Phase B: graph-accelerated consumer lookup in find_consumers()."""
 
 from pathlib import Path
-from typing import Dict, List, Optional, Union
 from unittest.mock import patch
 
 import pytest
@@ -9,7 +8,6 @@ import pytest
 from scatter.analyzers.consumer_analyzer import (
     find_consumers,
     _lookup_consumers_from_graph,
-    _discover_consumers_from_filesystem,
 )
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.core.models import (
@@ -240,7 +238,6 @@ class TestImpactAnalyzerGraph:
         from scatter.core.models import AnalysisTarget
 
         captured_kwargs = {}
-        original_find = find_consumers
 
         def spy_find(*args, **kwargs):
             captured_kwargs.update(kwargs)

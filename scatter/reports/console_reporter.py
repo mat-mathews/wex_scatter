@@ -126,6 +126,14 @@ def print_console_report(
 
         print()
 
+    # Pipeline footer — shown when any result has a resolved pipeline
+    all_pipelines = sorted(set(r.pipeline_name for r in all_results if r.pipeline_name))
+    if all_pipelines:
+        print(f"  Pipelines affected: {len(all_pipelines)}")
+        for p in all_pipelines:
+            print(f"    {p}")
+        print()
+
     print(
         f"Analysis complete. {len(all_results)} consumer(s) found across {len(groups)} target(s)."
     )

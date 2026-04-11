@@ -1,9 +1,8 @@
 """Tests for mode handler functions in scatter.modes (graph, impact, target, git, sproc, dump_index)."""
 
-import logging
 from argparse import Namespace
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -155,7 +154,7 @@ class TestRunGraphMode:
         args = _fake_args(graph=True, output_format="csv", output_file=str(out))
         ctx = _graph_mode_ctx(make_mode_context)
         with patch("scatter.reports.graph_reporter.write_graph_csv_report") as mock_csv:
-            mocks = self._run(args, ctx)
+            self._run(args, ctx)
             mock_csv.assert_called_once()
 
     def test_mermaid_output_to_stdout(self, make_mode_context):

@@ -1,9 +1,6 @@
 """Tests for Initiative 6 Phase 4: Markdown Output Format."""
 
-import sys
-from io import StringIO
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -26,8 +23,6 @@ from scatter.reports._formatting import escape_cell as _escape_cell, md_table as
 from scatter.reports.markdown_reporter import (
     _build_risk_highlights,
     _column_legend,
-    _fmt_metadata,
-    _fmt_pipeline,
     build_markdown,
     build_impact_markdown,
     build_graph_markdown,

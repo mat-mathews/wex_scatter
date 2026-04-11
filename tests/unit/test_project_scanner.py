@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-import pytest
 
 from scatter.scanners.project_scanner import (
     derive_namespace,

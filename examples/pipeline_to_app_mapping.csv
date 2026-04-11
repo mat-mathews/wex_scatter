@@ -1,2 +1,6 @@
 "Pipeline Name","Application Artifact","Application Name"
-"galaxyworks-portal-az-cd","web_GalaxyWorks","GalaxyWorks"
+"galaxyworks-portal-az-cd","web_GalaxyWorks","GalaxyWorks.WebPortal"
+"galaxyworks-batch-az-cd","batch_GalaxyWorks","GalaxyWorks.BatchProcessor"
+"galaxyworks-api-az-cd","api_GalaxyWorks","GalaxyWorks.Api"
+"galaxyworks-notifications-az-cd","svc_GalaxyWorksNotify","GalaxyWorks.Notifications"
+"galaxyworks-devtools-az-cd","tool_GalaxyWorksDevTools","GalaxyWorks.DevTools"

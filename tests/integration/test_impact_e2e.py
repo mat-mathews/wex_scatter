@@ -10,17 +10,15 @@ Projects, Next Steps) as defined in docs/SOW_DIFFERENTIATOR_PLAN.md.
 
 import csv
 import json
-from io import StringIO
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
-from scatter.ai.base import AITaskType, AnalysisResult
+from scatter.ai.base import AITaskType
 from scatter.analyzers.impact_analyzer import run_impact_analysis
 from scatter.core.models import (
     CONFIDENCE_HIGH,
-    CONFIDENCE_LOW,
     CONFIDENCE_MEDIUM,
     AnalysisTarget,
     EnrichedConsumer,
@@ -31,7 +29,6 @@ from scatter.reports.console_reporter import print_impact_report
 from scatter.reports.csv_reporter import write_impact_csv_report
 from scatter.reports.json_reporter import write_impact_json_report
 from scatter.reports.markdown_reporter import build_impact_markdown
-from scatter.reports.pipeline_reporter import extract_impact_pipeline_names
 
 
 # =============================================================================

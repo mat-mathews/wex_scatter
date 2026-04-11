@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from scatter.analyzers.coupling_analyzer import CycleGroup, ProjectMetrics
+from scatter.analyzers.coupling_analyzer import CycleGroup
 from scatter.analyzers.risk_engine import (
     aggregate_risk,
     compute_risk_profile,

@@ -6,7 +6,7 @@ Covers: piecewise linear interpolation (Decision #2), data availability
 
 import pytest
 
-from scatter.analyzers.coupling_analyzer import CycleGroup, ProjectMetrics
+from scatter.analyzers.coupling_analyzer import CycleGroup
 from scatter.analyzers.risk_dimensions import (
     _interpolate,
     score_blast_radius,

@@ -14,7 +14,6 @@ from contextlib import redirect_stdout
 from dataclasses import asdict
 from pathlib import Path
 
-import pytest
 
 from scatter.core.models import (
     AnalysisTarget,

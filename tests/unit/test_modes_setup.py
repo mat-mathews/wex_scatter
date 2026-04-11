@@ -1,10 +1,8 @@
 """Tests for scatter.modes.setup — shared setup helpers."""
 
-import csv
 import logging
 from argparse import Namespace
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest

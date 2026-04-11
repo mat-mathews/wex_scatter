@@ -24,7 +24,6 @@ from scatter.core.models import (
     AnalysisTarget,
     TargetImpact,
     ImpactReport,
-    CONFIDENCE_HIGH,
 )
 
 

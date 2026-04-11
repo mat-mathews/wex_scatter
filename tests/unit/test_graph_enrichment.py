@@ -1,25 +1,19 @@
 """Tests for graph metrics enrichment in legacy and impact modes."""
 
 import argparse
-import csv
 import json
 import logging
 import subprocess
 import sys
-from io import StringIO
 from pathlib import Path
-from typing import Dict, List
 from unittest.mock import patch as mock_patch
 
-import pytest
 
 from scatter.cli import _ensure_graph_context
 
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.core.models import ConsumerResult, EnrichedConsumer
 from scatter.analyzers.coupling_analyzer import (
-    CycleGroup,
-    ProjectMetrics,
     compute_all_metrics,
     detect_cycles,
 )
@@ -30,7 +24,7 @@ from scatter.analyzers.graph_enrichment import (
 )
 from scatter.reports.json_reporter import prepare_detailed_results
 from scatter.reports.csv_reporter import write_csv_report
-from scatter.reports.markdown_reporter import build_markdown, build_impact_markdown
+from scatter.reports.markdown_reporter import build_markdown
 from scatter.reports.console_reporter import print_console_report
 
 
@@ -342,7 +336,6 @@ class TestAutoGraphLoading:
 class TestBuildMetadataGraphEnriched:
     def test_graph_enriched_true(self):
         from scatter.cli import _build_metadata
-        import argparse
 
         args = argparse.Namespace(verbose=False, output_format="json")
         metadata = _build_metadata(args, Path("/fake"), 0.0, graph_enriched=True)
@@ -350,7 +343,6 @@ class TestBuildMetadataGraphEnriched:
 
     def test_graph_enriched_false(self):
         from scatter.cli import _build_metadata
-        import argparse
 
         args = argparse.Namespace(verbose=False, output_format="json")
         metadata = _build_metadata(args, Path("/fake"), 0.0, graph_enriched=False)
@@ -358,7 +350,6 @@ class TestBuildMetadataGraphEnriched:
 
     def test_graph_enriched_default(self):
         from scatter.cli import _build_metadata
-        import argparse
 
         args = argparse.Namespace(verbose=False, output_format="json")
         metadata = _build_metadata(args, Path("/fake"), 0.0)

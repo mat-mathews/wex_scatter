@@ -7,17 +7,15 @@ derivation, backward compatibility. Decisions #11–18, #20.
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from scatter.analyzers.impact_analyzer import (
-    RISK_ORDER,
     _derive_overall_risk_from_consumers,
     _risk_level_to_label,
     run_impact_analysis,
 )
 from scatter.core.graph import DependencyGraph, ProjectNode
 from scatter.core.models import EnrichedConsumer, ImpactReport, TargetImpact, AnalysisTarget
-from scatter.core.risk_models import RiskLevel, SOW_RISK_CONTEXT
+from scatter.core.risk_models import RiskLevel
 from tests.conftest import make_metrics
 
 

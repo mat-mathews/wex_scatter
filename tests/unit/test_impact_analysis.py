@@ -1520,7 +1520,7 @@ class TestBlastRadiusTreeView:
         write_impact_csv_report(report, output)
         with open(output, newline="") as f:
             reader = csv.DictReader(f)
-            rows = list(reader)
+            list(reader)
         assert "PropagationParent" in reader.fieldnames
 
     def test_csv_propagation_parent_values(self, tmp_path):

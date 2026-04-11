@@ -3,7 +3,6 @@
 from pathlib import Path
 from textwrap import dedent
 
-import pytest
 
 from scatter.scanners.db_scanner import (
     DbDependency,
@@ -15,7 +14,7 @@ from scatter.scanners.db_scanner import (
     build_db_dependency_matrix,
     add_db_edges_to_graph,
 )
-from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
+from scatter.core.graph import DependencyGraph, ProjectNode
 from scatter.config import DbConfig, ScatterConfig, load_config
 
 REPO_ROOT = Path(__file__).parent.parent.parent
