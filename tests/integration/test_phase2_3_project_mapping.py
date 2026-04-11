@@ -10,7 +10,7 @@ import unittest
 import tempfile
 import shutil
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import sys
 import os
 

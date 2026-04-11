@@ -1,7 +1,6 @@
 """Tests for Hybrid Git Analysis (Initiative 2) — LLM-enhanced diff analysis."""
 
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from scatter import (
     get_affected_symbols_from_diff,
     get_diff_for_file,

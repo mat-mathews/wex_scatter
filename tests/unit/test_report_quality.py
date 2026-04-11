@@ -4,11 +4,9 @@ import argparse
 import csv
 import io
 import json
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 
 from scatter.reports.json_reporter import (
     prepare_detailed_results,

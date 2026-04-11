@@ -2,19 +2,16 @@
 
 import pytest
 from pathlib import Path
-from typing import List, Tuple
+from typing import List
 
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.analyzers.domain_analyzer import (
-    Cluster,
     find_clusters,
-    score_extraction_feasibility,
     _derive_cluster_name,
-    _label_propagation,
     _compute_solution_alignment,
     LABEL_PROPAGATION_THRESHOLD,
 )
-from scatter.analyzers.coupling_analyzer import CycleGroup, detect_cycles
+from scatter.analyzers.coupling_analyzer import CycleGroup
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 

@@ -7,7 +7,6 @@ Set UPDATE_GOLDEN=1 to regenerate golden files:
 import os
 from pathlib import Path
 
-import pytest
 
 from scatter.core.models import ChangedType, PRRiskReport
 from scatter.core.risk_models import (

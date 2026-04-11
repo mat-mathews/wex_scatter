@@ -6,11 +6,8 @@ import pytest
 
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.analyzers.coupling_analyzer import (
-    DEFAULT_COUPLING_WEIGHTS,
-    DEFAULT_CYCLE_EDGE_TYPES,
     CycleGroup,
     ProjectMetrics,
-    SolutionMetrics,
     compute_all_metrics,
     compute_solution_metrics,
     detect_cycles,

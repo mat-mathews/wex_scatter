@@ -367,20 +367,16 @@ class TestCLIArgParsing:
     def test_graph_mode_parses(self):
         """--graph flag is recognized and mutually exclusive with other modes."""
         import argparse
-        from scatter.__main__ import main
 
         # We can't call main() directly without side effects, so test arg parsing
         # by importing the parser setup. Instead, verify via a subprocess-like approach.
-        import sys
         from unittest.mock import patch as mock_patch
 
         # Verify --graph sets is_graph_mode
         test_args = ["scatter", "--graph", "--search-scope", "."]
         with mock_patch("sys.argv", test_args):
-            from scatter.__main__ import main
 
             # We just need to verify arg parsing works — not full execution
-            import scatter.__main__ as main_mod
 
             parser = argparse.ArgumentParser()
             mode_group = parser.add_mutually_exclusive_group(required=True)

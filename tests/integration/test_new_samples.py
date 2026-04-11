@@ -11,7 +11,6 @@ from pathlib import Path
 
 import pytest
 
-from scatter.core.models import TYPE_DECLARATION_PATTERN
 from scatter.scanners.type_scanner import extract_type_names_from_content
 from scatter.scanners.project_scanner import (
     derive_namespace,

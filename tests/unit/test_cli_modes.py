@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from scatter.cli import (
-    ModeContext,
     ModeResult,
     _apply_graph_enrichment,
     run_git_analysis,
@@ -51,7 +50,7 @@ class TestRunTargetAnalysis:
         ctx = make_mode_context()
         target = Path("/tmp/scope/Foo/Foo.csproj")
 
-        result = run_target_analysis(ctx, target)
+        run_target_analysis(ctx, target)
 
         mock_bridge.assert_called_once()
         call_kwargs = mock_bridge.call_args
@@ -155,7 +154,7 @@ class TestRunSprocAnalysis:
         mock_fc.return_value = ([], MagicMock())
 
         ctx = make_mode_context(class_name="ClassA")
-        result = run_sproc_analysis(ctx, "dbo.sp_Test", None)
+        run_sproc_analysis(ctx, "dbo.sp_Test", None)
 
         # find_consumers should only be called for ClassA, not ClassB
         assert mock_fc.call_count == 1
@@ -205,7 +204,7 @@ class TestRunGitAnalysis:
         mock_fc.return_value = ([consumer], MagicMock())
 
         ctx = make_mode_context(search_scope=tmp_path)
-        result = run_git_analysis(
+        run_git_analysis(
             ctx,
             tmp_path,
             "feature/x",
@@ -235,7 +234,7 @@ class TestRunGitAnalysis:
         mock_fc.return_value = ([], MagicMock())
 
         ctx = make_mode_context(search_scope=tmp_path, class_name="Foo")
-        result = run_git_analysis(
+        run_git_analysis(
             ctx,
             tmp_path,
             "feature/x",

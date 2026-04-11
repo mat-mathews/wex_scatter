@@ -4,14 +4,12 @@ import logging
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
 
 from scatter.compat.v1_bridge import (
     find_solutions_for_project,
     map_batch_jobs_from_config_repo,
     _process_consumer_summaries_and_append_results,
 )
-from scatter.core.models import ConsumerResult
 
 
 # ---------------------------------------------------------------------------

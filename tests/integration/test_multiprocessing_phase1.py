@@ -6,7 +6,6 @@ Tests the target project analysis functionality using the mock .NET projects.
 
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 import sys
 import os
 

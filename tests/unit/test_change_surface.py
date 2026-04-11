@@ -1,6 +1,5 @@
 """Tests for score_change_surface() dimension scorer."""
 
-import pytest
 
 from scatter.analyzers.risk_dimensions import score_change_surface
 from scatter.core.models import ChangedType

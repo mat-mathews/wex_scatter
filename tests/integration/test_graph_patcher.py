@@ -1,18 +1,11 @@
 """Tests for incremental graph updates (graph_patcher + cache v2 + edge removal)."""
 
-import hashlib
 import json
-import shutil
-from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
-from unittest.mock import patch
 
-import pytest
 
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.store.graph_cache import (
-    CACHE_VERSION,
     FileFacts,
     ProjectFacts,
     compute_content_hash,
@@ -21,13 +14,10 @@ from scatter.store.graph_cache import (
     save_graph,
 )
 from scatter.store.graph_patcher import (
-    PatchResult,
     extract_file_facts,
     extract_project_facts,
     get_changed_files,
     patch_graph,
-    _build_namespace_to_project,
-    _build_type_to_projects,
 )
 
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -612,7 +602,7 @@ class TestPatchContentHashEarlyCutoff:
 
         # "Change" a file that git reports but content is actually the same
         cs_rel = "ProjectA/ProjectAService.cs"
-        original_facts = ff[cs_rel]
+        ff[cs_rel]
 
         result = patch_graph(graph, ff, pf, [cs_rel], scope)
 
