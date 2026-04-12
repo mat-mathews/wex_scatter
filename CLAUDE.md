@@ -100,7 +100,7 @@ The tool is designed as a "proof-of-concept utility" for assessing blast radius 
 
 ## Team Personas
 
-Full persona definitions live in **[docs/PERSONAS.md](docs/PERSONAS.md)**. Read that file when asked to review, critique, or discuss code "as the team" or as any individual persona.
+Full persona definitions live in **[PERSONAS.md](PERSONAS.md)**. Read that file when asked to review, critique, or discuss code "as the team" or as any individual persona.
 
 ### Quick Reference
 

@@ -1,3 +1,0 @@
-TargetProjectName,TargetProjectPath,TriggeringType,ConsumerProjectName,ConsumerProjectPath,PipelineName,ConsumerFileSummaries
-GalaxyWorks.Data,GalaxyWorks.Data/GalaxyWorks.Data.csproj,PortalDataService (found via Sproc: dbo.sp_InsertPortalConfiguration),MyGalaryConsumerApp,MyGalaxyConsumerApp/MyGalaryConsumerApp.csproj,,{}
-GalaxyWorks.Data,GalaxyWorks.Data/GalaxyWorks.Data.csproj,PortalDataService (found via Sproc: dbo.sp_InsertPortalConfiguration),MyGalaryConsumerApp2,MyGalaxyConsumerApp2/MyGalaryConsumerApp2.csproj,,{}

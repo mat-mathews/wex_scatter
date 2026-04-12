@@ -56,6 +56,12 @@ venv.bak/
 # Scatter graph cache
 .scatter/
 
+# Personal working files
+tasks.txt
+
+# Built mkdocs site
+documentation/site/
+
 # mypy
 .mypy_cache/
 .dmypy.json
