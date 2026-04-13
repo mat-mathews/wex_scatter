@@ -66,6 +66,9 @@ documentation/site/
 .mypy_cache/
 .dmypy.json
 
+# ruff
+.ruff_cache/
+
 # Temporary test data
 temp_test_data/
 
