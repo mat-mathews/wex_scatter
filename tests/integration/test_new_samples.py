@@ -18,6 +18,7 @@ from scatter.scanners.project_scanner import (
 )
 
 REPO_ROOT = Path(__file__).parent.parent.parent
+SAMPLES = REPO_ROOT / "samples"
 
 
 # ===========================================================================
@@ -72,7 +73,7 @@ class TestRecordDeclarations:
 
         All record variants are now detected.
         """
-        records_file = REPO_ROOT / "GalaxyWorks.Common" / "Models" / "Records.cs"
+        records_file = SAMPLES / "GalaxyWorks.Common" / "Models" / "Records.cs"
         if not records_file.exists():
             pytest.skip("Sample project not available")
         content = records_file.read_text(encoding="utf-8")
@@ -131,7 +132,7 @@ class TestCommonTypeNames:
 
     def test_common_names_extracted(self):
         """All common-name types should be extractable from CommonNames.cs."""
-        common_file = REPO_ROOT / "GalaxyWorks.Common" / "Models" / "CommonNames.cs"
+        common_file = SAMPLES / "GalaxyWorks.Common" / "Models" / "CommonNames.cs"
         if not common_file.exists():
             pytest.skip("Sample project not available")
         content = common_file.read_text(encoding="utf-8")
@@ -181,7 +182,7 @@ class TestMultiTargeting:
 
     def test_multi_target_csproj_parsing(self):
         """parse_csproj_all_references should extract framework from TargetFrameworks."""
-        csproj = REPO_ROOT / "GalaxyWorks.Common" / "GalaxyWorks.Common.csproj"
+        csproj = SAMPLES / "GalaxyWorks.Common" / "GalaxyWorks.Common.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         result = parse_csproj_all_references(csproj)
@@ -199,7 +200,7 @@ class TestMultiTargeting:
 
     def test_multi_target_namespace_derivation(self):
         """derive_namespace should still work with multi-targeted projects."""
-        csproj = REPO_ROOT / "GalaxyWorks.Common" / "GalaxyWorks.Common.csproj"
+        csproj = SAMPLES / "GalaxyWorks.Common" / "GalaxyWorks.Common.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         ns = derive_namespace(csproj)
@@ -207,7 +208,7 @@ class TestMultiTargeting:
 
     def test_multi_target_project_references(self):
         """Multi-targeted project should still have its ProjectReferences parsed."""
-        csproj = REPO_ROOT / "GalaxyWorks.Common" / "GalaxyWorks.Common.csproj"
+        csproj = SAMPLES / "GalaxyWorks.Common" / "GalaxyWorks.Common.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         result = parse_csproj_all_references(csproj)
@@ -217,7 +218,7 @@ class TestMultiTargeting:
 
     def test_multi_target_project_style(self):
         """Multi-targeted SDK project should be detected as 'sdk' style."""
-        csproj = REPO_ROOT / "GalaxyWorks.Common" / "GalaxyWorks.Common.csproj"
+        csproj = SAMPLES / "GalaxyWorks.Common" / "GalaxyWorks.Common.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         result = parse_csproj_all_references(csproj)
@@ -253,14 +254,14 @@ class TestGlobalUsings:
 
     def test_global_usings_file_exists(self):
         """Verify GlobalUsings.cs files exist in the right projects."""
-        api_global = REPO_ROOT / "GalaxyWorks.Api" / "GlobalUsings.cs"
-        consumer_global = REPO_ROOT / "MyGalaxyConsumerApp" / "GlobalUsings.cs"
+        api_global = SAMPLES / "GalaxyWorks.Api" / "GlobalUsings.cs"
+        consumer_global = SAMPLES / "MyGalaxyConsumerApp" / "GlobalUsings.cs"
         assert api_global.exists()
         assert consumer_global.exists()
 
     def test_global_usings_file_content(self):
         """Global usings files should contain the expected namespaces."""
-        api_global = REPO_ROOT / "GalaxyWorks.Api" / "GlobalUsings.cs"
+        api_global = SAMPLES / "GalaxyWorks.Api" / "GlobalUsings.cs"
         if not api_global.exists():
             pytest.skip("Sample project not available")
         content = api_global.read_text(encoding="utf-8")
@@ -273,7 +274,7 @@ class TestGlobalUsings:
         This is the test case: Scatter's namespace filter would miss this file
         because the using statement is in GlobalUsings.cs, not in this file.
         """
-        consumer_file = REPO_ROOT / "MyGalaxyConsumerApp" / "OrderConsumer.cs"
+        consumer_file = SAMPLES / "MyGalaxyConsumerApp" / "OrderConsumer.cs"
         if not consumer_file.exists():
             pytest.skip("Sample project not available")
         content = consumer_file.read_text(encoding="utf-8")
@@ -326,7 +327,7 @@ public class MyController
 
     def test_alias_in_sample_file(self):
         """PortalApiController.cs uses both alias and static imports."""
-        controller = REPO_ROOT / "GalaxyWorks.Api" / "Controllers" / "PortalApiController.cs"
+        controller = SAMPLES / "GalaxyWorks.Api" / "Controllers" / "PortalApiController.cs"
         if not controller.exists():
             pytest.skip("Sample project not available")
         content = controller.read_text(encoding="utf-8")
@@ -342,7 +343,7 @@ class TestExtensionMethods:
 
     def test_extension_class_extracted(self):
         """StringExtensions class should be extractable from the source."""
-        ext_file = REPO_ROOT / "GalaxyWorks.Common" / "Extensions" / "StringExtensions.cs"
+        ext_file = SAMPLES / "GalaxyWorks.Common" / "Extensions" / "StringExtensions.cs"
         if not ext_file.exists():
             pytest.skip("Sample project not available")
         content = ext_file.read_text(encoding="utf-8")
@@ -367,12 +368,12 @@ class TestSolutionFile:
     """Verify .sln solution file exists and is well-formed."""
 
     def test_sln_file_exists(self):
-        sln = REPO_ROOT / "GalaxyWorks.sln"
+        sln = SAMPLES / "GalaxyWorks.sln"
         assert sln.exists()
 
     def test_sln_contains_all_projects(self):
         """Solution file should reference all Galaxy and consumer projects."""
-        sln = REPO_ROOT / "GalaxyWorks.sln"
+        sln = SAMPLES / "GalaxyWorks.sln"
         if not sln.exists():
             pytest.skip("Solution file not available")
         content = sln.read_text(encoding="utf-8")
@@ -393,7 +394,7 @@ class TestSolutionFile:
 
     def test_sln_format_version(self):
         """Solution file should have valid format version header."""
-        sln = REPO_ROOT / "GalaxyWorks.sln"
+        sln = SAMPLES / "GalaxyWorks.sln"
         if not sln.exists():
             pytest.skip("Solution file not available")
         content = sln.read_text(encoding="utf-8")
@@ -409,7 +410,7 @@ class TestTestProjectDetection:
 
     def test_test_project_parsed(self):
         """Data.Tests .csproj should be parseable with correct metadata."""
-        csproj = REPO_ROOT / "GalaxyWorks.Data.Tests" / "GalaxyWorks.Data.Tests.csproj"
+        csproj = SAMPLES / "GalaxyWorks.Data.Tests" / "GalaxyWorks.Data.Tests.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         result = parse_csproj_all_references(csproj)
@@ -419,7 +420,7 @@ class TestTestProjectDetection:
 
     def test_test_project_references(self):
         """Test project should reference GalaxyWorks.Data and GalaxyWorks.Common."""
-        csproj = REPO_ROOT / "GalaxyWorks.Data.Tests" / "GalaxyWorks.Data.Tests.csproj"
+        csproj = SAMPLES / "GalaxyWorks.Data.Tests" / "GalaxyWorks.Data.Tests.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         result = parse_csproj_all_references(csproj)
@@ -432,7 +433,7 @@ class TestTestProjectDetection:
 
     def test_package_references_not_in_project_references(self):
         """PackageReferences (xUnit, etc.) should NOT appear as ProjectReferences."""
-        csproj = REPO_ROOT / "GalaxyWorks.Data.Tests" / "GalaxyWorks.Data.Tests.csproj"
+        csproj = SAMPLES / "GalaxyWorks.Data.Tests" / "GalaxyWorks.Data.Tests.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         result = parse_csproj_all_references(csproj)
@@ -443,7 +444,7 @@ class TestTestProjectDetection:
 
     def test_test_project_type_extraction(self):
         """Type declarations in test files should be extractable."""
-        test_file = REPO_ROOT / "GalaxyWorks.Data.Tests" / "PortalDataServiceTests.cs"
+        test_file = SAMPLES / "GalaxyWorks.Data.Tests" / "PortalDataServiceTests.cs"
         if not test_file.exists():
             pytest.skip("Sample project not available")
         content = test_file.read_text(encoding="utf-8")
@@ -459,7 +460,7 @@ class TestPackageReferences:
 
     def test_api_project_separates_references(self):
         """Api project has both PackageReference and ProjectReference — only ProjectReferences returned."""
-        csproj = REPO_ROOT / "GalaxyWorks.Api" / "GalaxyWorks.Api.csproj"
+        csproj = SAMPLES / "GalaxyWorks.Api" / "GalaxyWorks.Api.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         result = parse_csproj_all_references(csproj)
@@ -474,7 +475,7 @@ class TestPackageReferences:
 
     def test_common_project_separates_references(self):
         """Common project has PackageReference (Logging) alongside ProjectReference."""
-        csproj = REPO_ROOT / "GalaxyWorks.Common" / "GalaxyWorks.Common.csproj"
+        csproj = SAMPLES / "GalaxyWorks.Common" / "GalaxyWorks.Common.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         result = parse_csproj_all_references(csproj)
@@ -495,7 +496,7 @@ class TestInternalsVisibleTo:
 
     def test_common_project_has_internals_visible_to(self):
         """GalaxyWorks.Common should have InternalsVisibleTo for Data.Tests."""
-        csproj = REPO_ROOT / "GalaxyWorks.Common" / "GalaxyWorks.Common.csproj"
+        csproj = SAMPLES / "GalaxyWorks.Common" / "GalaxyWorks.Common.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         content = csproj.read_text(encoding="utf-8")
@@ -504,7 +505,7 @@ class TestInternalsVisibleTo:
 
     def test_internal_types_exist(self):
         """Internal types should be defined in Common for cross-project access."""
-        internal_file = REPO_ROOT / "GalaxyWorks.Common" / "Models" / "InternalTypes.cs"
+        internal_file = SAMPLES / "GalaxyWorks.Common" / "Models" / "InternalTypes.cs"
         if not internal_file.exists():
             pytest.skip("Sample project not available")
         content = internal_file.read_text(encoding="utf-8")
@@ -538,7 +539,7 @@ class TestConditionalCompilation:
     def test_conditional_compilation_in_sample(self):
         """ServiceCollectionExtensions.cs should have #if preprocessor directives."""
         ext_file = (
-            REPO_ROOT / "GalaxyWorks.Common" / "Extensions" / "ServiceCollectionExtensions.cs"
+            SAMPLES / "GalaxyWorks.Common" / "Extensions" / "ServiceCollectionExtensions.cs"
         )
         if not ext_file.exists():
             pytest.skip("Sample project not available")
@@ -569,7 +570,7 @@ class TestEventDelegatePatterns:
 
     def test_event_types_extracted(self):
         """Event-related types should be extractable."""
-        events_file = REPO_ROOT / "GalaxyWorks.Common" / "Events" / "DomainEvents.cs"
+        events_file = SAMPLES / "GalaxyWorks.Common" / "Events" / "DomainEvents.cs"
         if not events_file.exists():
             pytest.skip("Sample project not available")
         content = events_file.read_text(encoding="utf-8")
@@ -593,7 +594,7 @@ class TestAspNetCorePatterns:
 
     def test_api_project_is_web_sdk(self):
         """GalaxyWorks.Api should use Microsoft.NET.Sdk.Web."""
-        csproj = REPO_ROOT / "GalaxyWorks.Api" / "GalaxyWorks.Api.csproj"
+        csproj = SAMPLES / "GalaxyWorks.Api" / "GalaxyWorks.Api.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         content = csproj.read_text(encoding="utf-8")
@@ -601,7 +602,7 @@ class TestAspNetCorePatterns:
 
     def test_controller_types_extracted(self):
         """ControllerBase-derived controllers should be extractable."""
-        controller_file = REPO_ROOT / "GalaxyWorks.Api" / "Controllers" / "PortalApiController.cs"
+        controller_file = SAMPLES / "GalaxyWorks.Api" / "Controllers" / "PortalApiController.cs"
         if not controller_file.exists():
             pytest.skip("Sample project not available")
         content = controller_file.read_text(encoding="utf-8")
@@ -610,7 +611,7 @@ class TestAspNetCorePatterns:
 
     def test_minimal_api_has_no_extractable_types(self):
         """Program.cs with minimal APIs has no class declarations — Scatter can't trace it."""
-        program_file = REPO_ROOT / "GalaxyWorks.Api" / "Program.cs"
+        program_file = SAMPLES / "GalaxyWorks.Api" / "Program.cs"
         if not program_file.exists():
             pytest.skip("Sample project not available")
         content = program_file.read_text(encoding="utf-8")
@@ -630,7 +631,7 @@ class TestGraphIntegrationWithNewProjects:
         from scatter.analyzers.graph_builder import build_dependency_graph
 
         return build_dependency_graph(
-            REPO_ROOT,
+            SAMPLES,
             disable_multiprocessing=True,
             exclude_patterns=["*/bin/*", "*/obj/*", "*/temp_test_data/*"],
         )

@@ -14,6 +14,7 @@ from scatter.analyzers.domain_analyzer import (
 from scatter.analyzers.coupling_analyzer import CycleGroup
 
 REPO_ROOT = Path(__file__).parent.parent.parent
+SAMPLES = REPO_ROOT / "samples"
 
 
 def _make_node(name: str, **kwargs) -> ProjectNode:

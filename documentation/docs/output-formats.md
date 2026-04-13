@@ -9,7 +9,7 @@ Scatter speaks six output languages. Each exists because someone had a real need
 When you just want to see what's going on. No flags, no files, no ceremony.
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --pipeline-csv examples/pipeline_to_app_mapping.csv
 ```
 
@@ -46,7 +46,7 @@ High coupling score on a project you depend on is one you do not want to surpris
 Structured data for programmatic consumption -- ticket automation, dashboards, diffing between runs.
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --output-format json --output-file report.json
 ```
 
@@ -109,7 +109,7 @@ A few things worth knowing:
 One row per consumer. For Excel, pivot tables, and people who think in spreadsheets.
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --output-format csv --output-file report.csv
 ```
 
@@ -137,7 +137,7 @@ Paste-ready for PRs, Jira tickets, Confluence pages, ADO work items. Designed fo
 Unlike CSV and JSON, Markdown does **not** require `--output-file`. Without it, Scatter prints to stdout. This is intentional -- pipe it straight to clipboard:
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --output-format markdown | pbcopy
 ```
 
@@ -213,7 +213,7 @@ scatter --graph --search-scope . --output-format mermaid --output-file deps.mmd
 One pipeline name per line, sorted alphabetically. Built for deployment scripts and shell pipelines (the other kind).
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --pipeline-csv examples/pipeline_to_app_mapping.csv \
   --output-format pipelines
 ```
@@ -230,7 +230,7 @@ Not supported in `--graph` mode. Graph analysis is about architecture, not deplo
 
 ```bash
 # Feed directly into a deployment script
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --pipeline-csv examples/pipeline_to_app_mapping.csv \
   --output-format pipelines | xargs -I {} ./trigger-pipeline.sh {}
 ```

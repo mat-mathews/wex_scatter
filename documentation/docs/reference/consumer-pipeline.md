@@ -225,7 +225,7 @@ This means Scatter never crashes due to multiprocessing issues -- it just gets s
 A complete target-project analysis with all stages:
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
         --search-scope /path/to/monorepo \
         --class-name PortalDataService \
         --method-name GetPortalConfig

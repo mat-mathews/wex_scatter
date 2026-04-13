@@ -54,7 +54,7 @@ if ! $QUICK; then
 
     # --- Smoke tests (mirrors .github/workflows/ci.yml smoke job) ---
     run_step "smoke: target-project" uv run scatter \
-        --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+        --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
         --search-scope . \
         --output-format json \
         --output-file /tmp/scatter-smoke-target.json
@@ -136,7 +136,7 @@ print('  branch-compat: all_results key present')
     # --- AI smoke test (requires GOOGLE_API_KEY, skipped in CI) ---
     if [ -n "$GOOGLE_API_KEY" ]; then
         run_step "smoke: ai summarization" uv run scatter \
-            --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+            --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
             --search-scope . \
             --summarize-consumers \
             --max-ai-calls 3 \

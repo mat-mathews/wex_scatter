@@ -3,7 +3,7 @@
 You changed a class. Which projects could break?
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
 ```
 
 ```

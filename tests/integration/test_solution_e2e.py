@@ -12,6 +12,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).parent.parent.parent
+SAMPLES = REPO_ROOT / "samples"
 
 
 def _run_scatter(*args, **kwargs):
@@ -109,7 +110,7 @@ class TestTargetModeSolutions:
         out = tmp_path / "consumers.json"
         rc, _, _ = _run_scatter(
             "--target-project",
-            "./GalaxyWorks.Data/GalaxyWorks.Data.csproj",
+            "./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj",
             "--search-scope",
             ".",
             "--output-format",
@@ -152,7 +153,7 @@ class TestBackwardCompat:
         """--no-graph skips graph loading, solutions still discovered."""
         rc, stdout, _ = _run_scatter(
             "--target-project",
-            "./GalaxyWorks.Data/GalaxyWorks.Data.csproj",
+            "./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj",
             "--search-scope",
             ".",
             "--no-graph",

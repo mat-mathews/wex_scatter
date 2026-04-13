@@ -197,11 +197,11 @@ python tools/benchmark_graph_build.py /tmp/bench --mode stages --runs 3 --warmup
 
 ```bash
 # Sequential
-time scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+time scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
     --search-scope . --disable-multiprocessing
 
 # Parallel (default)
-time scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+time scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
     --search-scope .
 ```
 

@@ -52,7 +52,7 @@ The repo ships with 11 sample .NET projects. Use them to verify Scatter works en
 ### GalaxyWorks.Data should have 6 consumers
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
 ```
 
 Look for: `6 consumer(s)` in the output.
@@ -60,7 +60,7 @@ Look for: `6 consumer(s)` in the output.
 ### MyDotNetApp should have 1 consumer
 
 ```bash
-scatter --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .
+scatter --target-project ./samples/MyDotNetApp/MyDotNetApp.csproj --search-scope .
 ```
 
 Look for: `1 consumer(s)`.
@@ -68,7 +68,7 @@ Look for: `1 consumer(s)`.
 ### MyDotNetApp2.Exclude should have 0 consumers
 
 ```bash
-scatter --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .
+scatter --target-project ./samples/MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .
 ```
 
 Look for: `0 consumer(s)`. This one is intentionally isolated -- it validates that Scatter doesn't report false positives.
@@ -96,7 +96,7 @@ These require a `$GOOGLE_API_KEY` environment variable. If you don't have one, t
 ### Summarization
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . \
   --summarize-consumers --google-api-key $GOOGLE_API_KEY
 ```
 

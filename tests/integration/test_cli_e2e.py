@@ -15,10 +15,11 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).parent.parent.parent
-GALAXY_CSPROJ = REPO_ROOT / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
-WEBPORTAL_CSPROJ = REPO_ROOT / "GalaxyWorks.WebPortal" / "GalaxyWorks.WebPortal.csproj"
-MYDOTNET_CSPROJ = REPO_ROOT / "MyDotNetApp" / "MyDotNetApp.csproj"
-EXCLUDE_CSPROJ = REPO_ROOT / "MyDotNetApp2.Exclude" / "MyDotNetApp2.Exclude.csproj"
+SAMPLES = REPO_ROOT / "samples"
+GALAXY_CSPROJ = SAMPLES / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
+WEBPORTAL_CSPROJ = SAMPLES / "GalaxyWorks.WebPortal" / "GalaxyWorks.WebPortal.csproj"
+MYDOTNET_CSPROJ = SAMPLES / "MyDotNetApp" / "MyDotNetApp.csproj"
+EXCLUDE_CSPROJ = SAMPLES / "MyDotNetApp2.Exclude" / "MyDotNetApp2.Exclude.csproj"
 
 
 def run_scatter(*args: str, expect_fail: bool = False) -> subprocess.CompletedProcess:

@@ -19,8 +19,9 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).parent.parent.parent
-GALAXY_CSPROJ = REPO_ROOT / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
-MYDOTNET_CSPROJ = REPO_ROOT / "MyDotNetApp" / "MyDotNetApp.csproj"
+SAMPLES = REPO_ROOT / "samples"
+GALAXY_CSPROJ = SAMPLES / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
+MYDOTNET_CSPROJ = SAMPLES / "MyDotNetApp" / "MyDotNetApp.csproj"
 PIPELINE_CSV = REPO_ROOT / "examples" / "pipeline_to_app_mapping.csv"
 EXPECTED_PIPELINE = "galaxyworks-portal-az-cd"
 EXPECTED_PIPELINES = {

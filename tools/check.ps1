@@ -54,7 +54,7 @@ if (-not $Quick) {
 
     Run-Step "smoke: target-project" {
         uv run scatter `
-            --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj `
+            --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj `
             --search-scope . `
             --output-format json `
             --output-file $smokeTarget
@@ -89,7 +89,7 @@ print(f'  target: {len(results)} consumers, graph: {g.get("node_count", len(g))}
 
         Run-Step "smoke: ai summarization" {
             uv run scatter `
-                --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj `
+                --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj `
                 --search-scope . `
                 --summarize-consumers `
                 --max-ai-calls 3 `

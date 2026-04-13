@@ -7,7 +7,7 @@ Point Scatter at a `.csproj` file. It finds every project that references it, co
 ## Basic Example
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
 ```
 
 ```
@@ -41,7 +41,7 @@ Six consumers is manageable. But GalaxyWorks.Data exports a lot of types, and ma
 ### Filter by Class
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --class-name PortalDataService
 ```
 
@@ -54,7 +54,7 @@ All 6 consumers reference `PortalDataService` -- it's the main type in GalaxyWor
 ### Filter by Method
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --class-name PortalDataService \
   --method-name StorePortalConfigurationAsync
 ```
@@ -72,7 +72,7 @@ Note: `--method-name` requires `--class-name`. Pass `--method-name` alone and Sc
 ### Mid-Tier Library (1 Consumer)
 
 ```bash
-scatter --target-project ./GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj --search-scope .
+scatter --target-project ./samples/GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj --search-scope .
 ```
 
 WebPortal sits in the middle of the dependency chain. Only GalaxyWorks.BatchProcessor references it. One consumer -- small blast radius, straightforward coordination.
@@ -80,7 +80,7 @@ WebPortal sits in the middle of the dependency chain. Only GalaxyWorks.BatchProc
 ### Leaf Project (1 Consumer)
 
 ```bash
-scatter --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .
+scatter --target-project ./samples/MyDotNetApp/MyDotNetApp.csproj --search-scope .
 ```
 
 MyDotNetApp has a single consumer: MyDotNetApp.Consumer. Leaf projects are the easy ones. Change it, update the one consumer, move on.
@@ -88,7 +88,7 @@ MyDotNetApp has a single consumer: MyDotNetApp.Consumer. Leaf projects are the e
 ### Standalone Project (0 Consumers)
 
 ```bash
-scatter --target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .
+scatter --target-project ./samples/MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .
 ```
 
 Nobody references this project. Zero consumers. If you expected consumers and see zero, check whether the consuming code uses NuGet packages instead of `<ProjectReference>` entries -- Scatter only tracks project references, not package references.
@@ -96,7 +96,7 @@ Nobody references this project. Zero consumers. If you expected consumers and se
 ## Override Namespace
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --target-namespace Company.Product.OldStuff
 ```
 
@@ -105,7 +105,7 @@ Scatter normally derives the namespace from `<RootNamespace>` in the target's `.
 ## AI Summaries
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --summarize-consumers --google-api-key $GOOGLE_API_KEY
 ```
 
@@ -116,21 +116,21 @@ For each consumer, Scatter sends its relevant `.cs` files to Gemini and gets bac
 **JSON** -- for downstream tooling:
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --output-format json --output-file reports/target_analysis.json
 ```
 
 **CSV** -- for the teammates who live in spreadsheets:
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --output-format csv --output-file reports/target_analysis.csv
 ```
 
 **Markdown** -- for pasting into a PR or wiki:
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --output-format markdown --output-file reports/target_analysis.md
 ```
 

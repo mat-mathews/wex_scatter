@@ -68,7 +68,7 @@ jobs:
       - name: Smoke test — target project analysis
         run: |
           uv run scatter \
-            --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+            --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
             --search-scope . \
             --output-format json \
             --output-file /tmp/target-smoke.json

@@ -21,7 +21,7 @@ class TestMultiprocessingPhase1(unittest.TestCase):
     def setUp(self):
         """Set up test environment before each test."""
         # Use the actual mock projects in the repository
-        self.test_root = Path(__file__).parent.parent.parent.resolve()
+        self.test_root = Path(__file__).parent.parent.parent.resolve() / "samples"
         self.galaxy_works_project = self.test_root / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
         self.consumer1_project = (
             self.test_root / "MyGalaxyConsumerApp" / "MyGalaryConsumerApp.csproj"
@@ -149,7 +149,7 @@ class TestTargetSymbolSearch(unittest.TestCase):
 
     def setUp(self):
         """Set up test environment before each test."""
-        self.test_root = Path(__file__).parent.parent.parent.resolve()
+        self.test_root = Path(__file__).parent.parent.parent.resolve() / "samples"
         self.galaxy_works_project = self.test_root / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
 
     def test_find_consumers_with_specific_method_parallel(self):
@@ -231,7 +231,7 @@ class TestBackwardsCompatibility(unittest.TestCase):
 
     def setUp(self):
         """Set up test environment before each test."""
-        self.test_root = Path(__file__).parent.parent.parent.resolve()
+        self.test_root = Path(__file__).parent.parent.parent.resolve() / "samples"
         self.galaxy_works_project = self.test_root / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
 
     def test_find_consumers_default_params(self):

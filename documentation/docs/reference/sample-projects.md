@@ -74,11 +74,11 @@ These are the ground-truth results you should see when running Scatter against t
 
 | Scenario | Command | Expected |
 |----------|---------|----------|
-| GalaxyWorks.Data consumers | `--target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .` | 6 consumers: WebPortal, BatchProcessor, Common, Api, Data.Tests, MyGalaxyConsumerApp, MyGalaxyConsumerApp2 (7 with transitive) |
-| GalaxyWorks.Data + class filter | `--target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . --class-name PortalDataService` | 8 consumers (regex) or 6 consumers (hybrid — DevTools and Api filtered as false positives) |
-| GalaxyWorks.WebPortal consumers | `--target-project ./GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj --search-scope .` | 1 consumer: BatchProcessor |
-| MyDotNetApp consumers | `--target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .` | 1 consumer: MyDotNetApp.Consumer |
-| MyDotNetApp2.Exclude consumers | `--target-project ./MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .` | 0 consumers |
+| GalaxyWorks.Data consumers | `--target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .` | 6 consumers: WebPortal, BatchProcessor, Common, Api, Data.Tests, MyGalaxyConsumerApp, MyGalaxyConsumerApp2 (7 with transitive) |
+| GalaxyWorks.Data + class filter | `--target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . --class-name PortalDataService` | 8 consumers (regex) or 6 consumers (hybrid — DevTools and Api filtered as false positives) |
+| GalaxyWorks.WebPortal consumers | `--target-project ./samples/GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj --search-scope .` | 1 consumer: BatchProcessor |
+| MyDotNetApp consumers | `--target-project ./samples/MyDotNetApp/MyDotNetApp.csproj --search-scope .` | 1 consumer: MyDotNetApp.Consumer |
+| MyDotNetApp2.Exclude consumers | `--target-project ./samples/MyDotNetApp2.Exclude/MyDotNetApp2.Exclude.csproj --search-scope .` | 0 consumers |
 | Sproc analysis | `--stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .` | Finds PortalDataService in GalaxyWorks.Data, then its consumers |
 | Graph mode | `--graph --search-scope .` | 13 projects, multiple connected components, 0 cycles |
 

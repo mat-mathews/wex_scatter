@@ -96,7 +96,7 @@ This is most useful when you have dozens of consumers and need to triage which o
 ### Example
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
     --search-scope . \
     --class-name PortalDataService \
     --summarize-consumers \

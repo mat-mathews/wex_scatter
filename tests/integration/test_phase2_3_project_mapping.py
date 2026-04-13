@@ -161,7 +161,7 @@ class TestMapCsToProjectsParallel(unittest.TestCase):
     """Tests for the map_cs_to_projects_parallel orchestrator."""
 
     def setUp(self):
-        self.test_root = Path(__file__).parent.parent.parent.resolve()
+        self.test_root = Path(__file__).parent.parent.parent.resolve() / "samples"
         # Gather some real .cs files from the repo
         self.cs_files = list((self.test_root / "GalaxyWorks.Data").rglob("*.cs"))
         # Ensure we have files to test with
@@ -290,7 +290,7 @@ class TestSprocMappingIntegration(unittest.TestCase):
     """Integration tests for the modified find_cs_files_referencing_sproc()."""
 
     def setUp(self):
-        self.test_root = Path(__file__).parent.parent.parent.resolve()
+        self.test_root = Path(__file__).parent.parent.parent.resolve() / "samples"
 
     def test_sproc_parallel_vs_sequential_identical_results(self):
         """Sproc analysis returns identical results in parallel vs sequential mode."""

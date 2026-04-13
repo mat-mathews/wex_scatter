@@ -15,11 +15,11 @@ cd wex_scatter
 docker build -t scatter .
 ```
 
-The repo ships with 13 sample .NET projects. Analyze `GalaxyWorks.Data` to see what depends on it and which pipelines are involved:
+The repo ships with 13 sample .NET projects in the `samples/` directory. Analyze `GalaxyWorks.Data` to see what depends on it and which pipelines are involved:
 
 ```bash
 docker run -v $(pwd):/workspace scatter \
-    --target-project /workspace/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+    --target-project /workspace/samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
     --search-scope /workspace \
     --pipeline-csv /workspace/examples/pipeline_to_app_mapping.csv
 ```

@@ -70,7 +70,7 @@ case "$MODE" in
     smoke)
         echo -e "\n${BOLD}Smoke tests${RESET}\n"
         run_step "target-project analysis" uv run scatter \
-            --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+            --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
             --search-scope . \
             --output-format json \
             --output-file /tmp/scatter-smoke-target.json
@@ -119,7 +119,7 @@ print(f'  {d.get(\"node_count\", len(d))} nodes')
         run_step "integration tests" uv run pytest tests/integration -q
 
         run_step "smoke: target-project" uv run scatter \
-            --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+            --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
             --search-scope . --output-format json --output-file /tmp/scatter-smoke-target.json
 
         run_step "smoke: graph" uv run scatter \

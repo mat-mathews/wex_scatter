@@ -53,7 +53,7 @@ run_test "graph json output" \
 # scatter-consumers: target project consumers
 echo "scatter-consumers:"
 run_test "consumers json output" \
-    python -m scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . --output-format json --output-file "$OUTFILE"
+    python -m scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . --output-format json --output-file "$OUTFILE"
 
 # scatter-sproc: stored procedure consumers
 echo "scatter-sproc:"

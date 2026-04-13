@@ -93,7 +93,7 @@ Try it now against the sample projects:
 
 ```bash
 # Runnable — uses the included example CSV and sample .NET projects
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . \
   --pipeline-csv examples/pipeline_to_app_mapping.csv \
   --output-format pipelines
@@ -136,7 +136,7 @@ scatter --branch-name feature/portal-tenant-isolation \
 
 ```bash
 # Runnable against sample projects
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . \
   --pipeline-csv examples/pipeline_to_app_mapping.csv \
   --output-format csv --output-file release-pipelines.csv
@@ -147,7 +147,7 @@ The CSV includes one row per consumer with key columns: `ConsumerProjectName`, `
 **Feed directly into a deployment script:**
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . \
   --pipeline-csv examples/pipeline_to_app_mapping.csv \
   --output-format pipelines | xargs -I {} ./trigger-pipeline.sh {}
@@ -380,7 +380,7 @@ scatter --graph --search-scope /code/myrepo --rebuild-graph
 **Broad scan -- who references this project at all?**
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope /code/myrepo
 ```
 
@@ -389,7 +389,7 @@ The filter chain in the output shows the funnel: total projects -> those with a 
 **Narrow to a specific class:**
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope /code/myrepo \
   --class-name PortalDataService
 ```
@@ -399,7 +399,7 @@ Now you see only consumers that actually reference `PortalDataService`, not just
 **Narrow further to a specific method:**
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope /code/myrepo \
   --class-name PortalDataService \
   --method-name GetConfiguration
@@ -410,7 +410,7 @@ Down to the exact call sites. If you're deprecating `GetConfiguration()`, these 
 **Add AI summaries to understand the usage patterns:**
 
 ```bash
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope /code/myrepo \
   --class-name PortalDataService \
   --summarize-consumers \

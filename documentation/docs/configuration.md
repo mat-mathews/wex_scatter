@@ -151,7 +151,7 @@ Map consumer projects to their CI/CD pipelines using `--pipeline-csv`:
 
 ```bash
 # Try it with the included example CSV
-scatter --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --pipeline-csv examples/pipeline_to_app_mapping.csv
 ```
 

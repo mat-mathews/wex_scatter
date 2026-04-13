@@ -10,8 +10,8 @@ import pytest
 
 from scatter.config import AnalysisConfig
 
-# Sample projects live at the repo root
-SEARCH_SCOPE = Path(__file__).resolve().parents[2]
+# Sample projects live in samples/
+SEARCH_SCOPE = Path(__file__).resolve().parents[2] / "samples"
 
 
 def _find_consumers_for_mode(parser_mode: str):

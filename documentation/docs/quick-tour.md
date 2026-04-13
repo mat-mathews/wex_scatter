@@ -12,7 +12,7 @@ After [installing](getting-started.md), run this from the scatter repo root:
 
 ```bash
 uv run scatter \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope .
 ```
 
@@ -61,7 +61,7 @@ Maybe you only touched `PortalDataService`, not the whole project:
 
 ```bash
 uv run scatter \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . \
   --class-name PortalDataService
 ```
@@ -74,7 +74,7 @@ The regex match in step 2 catches mentions of `PortalDataService` in comments an
 
 ```bash
 uv run scatter \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . \
   --class-name PortalDataService \
   --parser-mode hybrid
@@ -140,7 +140,7 @@ Meanwhile, Scatter quietly built a dependency graph and cached it to disk. On yo
 
 ```bash
 uv run scatter \
-  --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . \
   --output-format markdown
 ```

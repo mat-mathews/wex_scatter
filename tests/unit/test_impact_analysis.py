@@ -866,7 +866,7 @@ class TestQuickStartTargetProjectExamples:
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        self.test_root = Path(__file__).parent.parent.parent.resolve()
+        self.test_root = Path(__file__).parent.parent.parent.resolve() / "samples"
 
     def test_webportal_as_target(self):
         """README: --target-project GalaxyWorks.WebPortal → consumer includes BatchProcessor."""
@@ -930,7 +930,7 @@ class TestQuickStartSprocExamples:
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        self.test_root = Path(__file__).parent.parent.parent.resolve()
+        self.test_root = Path(__file__).parent.parent.parent.resolve() / "samples"
 
     def test_sproc_get_portal_configuration_details(self):
         """README: --stored-procedure 'dbo.sp_GetPortalConfigurationDetails'."""
@@ -986,7 +986,7 @@ class TestQuickStartOutputFormatExamples:
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        self.test_root = Path(__file__).parent.parent.parent.resolve()
+        self.test_root = Path(__file__).parent.parent.parent.resolve() / "samples"
         self.galaxy_csproj = self.test_root / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
 
     def test_json_output_with_target_project(self, tmp_path):
@@ -1068,7 +1068,7 @@ class TestQuickStartAIExamples:
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        self.test_root = Path(__file__).parent.parent.parent.resolve()
+        self.test_root = Path(__file__).parent.parent.parent.resolve() / "samples"
 
     def test_target_project_consumers_have_relevant_files(self):
         """Target project consumers include relevant_files for summarization."""

@@ -29,7 +29,7 @@ The examples below use scatter's own sample projects. Mount the repo at `/worksp
     docker run `
       -v "${PWD}:/workspace" `
       -v scatter-cache:/workspace/.scatter `
-      scatter --target-project /workspace/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace
+      scatter --target-project /workspace/samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace
 
     # Analyze a stored procedure
     docker run `
@@ -57,7 +57,7 @@ The examples below use scatter's own sample projects. Mount the repo at `/worksp
     docker run \
       -v $(pwd):/workspace \
       -v scatter-cache:/workspace/.scatter \
-      scatter --target-project /workspace/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace
+      scatter --target-project /workspace/samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace
 
     # Analyze a stored procedure
     docker run \
@@ -90,7 +90,7 @@ The Docker image includes tree-sitter, so `--parser-mode hybrid` works out of th
     docker run `
       -v "${PWD}:/workspace" `
       -v scatter-cache:/workspace/.scatter `
-      scatter --target-project /workspace/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace `
+      scatter --target-project /workspace/samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace `
         --class-name PortalDataService --parser-mode hybrid
     ```
 
@@ -100,7 +100,7 @@ The Docker image includes tree-sitter, so `--parser-mode hybrid` works out of th
     docker run \
       -v $(pwd):/workspace \
       -v scatter-cache:/workspace/.scatter \
-      scatter --target-project /workspace/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace \
+      scatter --target-project /workspace/samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace \
         --class-name PortalDataService --parser-mode hybrid
     ```
 
@@ -176,7 +176,7 @@ To write JSON, CSV, or markdown reports to your host machine, mount an output di
     docker run `
       -v "${PWD}:/workspace" `
       -v C:/scatter-out:/output `
-      scatter --target-project /workspace/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace `
+      scatter --target-project /workspace/samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace `
         --output-format json --output-file /output/report.json
     ```
 
@@ -188,7 +188,7 @@ To write JSON, CSV, or markdown reports to your host machine, mount an output di
     docker run \
       -v $(pwd):/workspace \
       -v /tmp/scatter-out:/output \
-      scatter --target-project /workspace/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace \
+      scatter --target-project /workspace/samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope /workspace \
         --output-format json --output-file /output/report.json
     ```
 

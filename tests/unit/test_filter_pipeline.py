@@ -141,7 +141,7 @@ class TestFindConsumersReturnsPipeline(unittest.TestCase):
     """Test that find_consumers returns a (results, FilterPipeline) tuple."""
 
     def setUp(self):
-        self.test_root = Path(__file__).parent.parent.parent.resolve()
+        self.test_root = Path(__file__).parent.parent.parent.resolve() / "samples"
         self.galaxy_works_project = self.test_root / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
         self.exclude_project = (
             self.test_root / "MyDotNetApp2.Exclude" / "MyDotNetApp2.Exclude.csproj"

@@ -22,16 +22,16 @@ pip install .
 python scatter.py --branch-name feature/new-widget --repo-path .
 
 # Target project analysis (find consumers of specific project)
-python scatter.py --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope .
+python scatter.py --target-project ./samples/MyDotNetApp/MyDotNetApp.csproj --search-scope .
 
 # Stored procedure analysis (find consumers via database dependencies)
 python scatter.py --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .
 
 # With pipeline mapping (uses the included example CSV)
-python scatter.py --target-project ./GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . --pipeline-csv examples/pipeline_to_app_mapping.csv
+python scatter.py --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope . --pipeline-csv examples/pipeline_to_app_mapping.csv
 
 # Advanced analysis with AI summarization
-python scatter.py --target-project ./MyDotNetApp/MyDotNetApp.csproj --search-scope . --summarize-consumers --google-api-key YOUR_API_KEY --output-format json --output-file analysis_results.json
+python scatter.py --target-project ./samples/MyDotNetApp/MyDotNetApp.csproj --search-scope . --summarize-consumers --google-api-key YOUR_API_KEY --output-format json --output-file analysis_results.json
 ```
 
 ### Pipeline Artifact Parsing
@@ -46,10 +46,10 @@ python parse_pipeline_artifacts.py <search_directory> -o pipeline_to_app_mapping
 dotnet build
 
 # Run a specific project
-dotnet run --project MyDotNetApp/MyDotNetApp.csproj
+dotnet run --project samples/MyDotNetApp/MyDotNetApp.csproj
 
 # Build specific project
-dotnet build GalaxyWorks.Data/GalaxyWorks.Data.csproj
+dotnet build samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj
 ```
 
 ## High-Level Architecture
@@ -67,12 +67,12 @@ The tool uses regex pattern matching to identify C# type declarations (`class`, 
 - Class/method usage (text-based search with optional filters)
 
 ### Sample .NET Projects Structure
-The repository contains several example .NET 8 projects demonstrating the analysis:
+The `samples/` directory contains example .NET 8 projects demonstrating the analysis:
 
-- **`GalaxyWorks.Data/`**: Core data access library with `PortalDataService` class that calls stored procedures
-- **`MyDotNetApp/`**: Basic .NET console application
-- **`MyDotNetApp.Consumer/`**: Consumer application demonstrating dependencies
-- **`MyGalaxyConsumerApp/` & `MyGalaxyConsumerApp2/`**: Example consumer applications that reference `GalaxyWorks.Data`
+- **`samples/GalaxyWorks.Data/`**: Core data access library with `PortalDataService` class that calls stored procedures
+- **`samples/MyDotNetApp/`**: Basic .NET console application
+- **`samples/MyDotNetApp.Consumer/`**: Consumer application demonstrating dependencies
+- **`samples/MyGalaxyConsumerApp/` & `samples/MyGalaxyConsumerApp2/`**: Example consumer applications that reference `GalaxyWorks.Data`
 
 ### Pipeline Integration
 - **`parse_pipeline_artifacts.py`**: Utility for extracting application artifact mappings from Azure DevOps YAML pipeline files

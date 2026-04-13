@@ -23,7 +23,4 @@ TESTING_GUIDE.md
 !README.md
 
 # .NET sample projects (not needed for the scatter tool itself)
-GalaxyWorks.*/
-MyDotNetApp*/
-MyGalaxy*/
-*.sln
+samples/

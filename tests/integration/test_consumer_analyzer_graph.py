@@ -17,6 +17,7 @@ from scatter.core.models import (
 )
 
 REPO_ROOT = Path(__file__).parent.parent.parent
+SAMPLES = REPO_ROOT / "samples"
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +129,7 @@ class TestGraphStages12:
     def test_filesystem_path_unchanged_without_graph(self):
         """Without graph param, stages use filesystem source."""
         results, pipeline = find_consumers(
-            (REPO_ROOT / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj").resolve(),
+            (SAMPLES / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj").resolve(),
             REPO_ROOT,
             "NAMESPACE_ERROR_skip",
             None,
@@ -156,7 +157,7 @@ class TestGraphStages12:
     def test_target_not_in_graph_falls_back_to_filesystem(self):
         """When target is not a node in the graph, fall back to filesystem."""
         graph = _make_graph_with_edges()  # has A, B, C — no "Unknown"
-        target_path = (REPO_ROOT / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj").resolve()
+        target_path = (SAMPLES / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj").resolve()
 
         # Graph doesn't have GalaxyWorks.Data, so should fall back
         results, pipeline = find_consumers(
@@ -246,7 +247,7 @@ class TestImpactAnalyzerGraph:
         target = AnalysisTarget(
             target_type="project",
             name="GalaxyWorks.Data",
-            csproj_path=REPO_ROOT / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj",
+            csproj_path=SAMPLES / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj",
         )
         sentinel = object()
 
@@ -282,7 +283,7 @@ class TestImpactAnalyzerGraph:
 
         consumer_data = [
             {
-                "consumer_path": REPO_ROOT / "MyDotNetApp" / "MyDotNetApp.csproj",
+                "consumer_path": SAMPLES / "MyDotNetApp" / "MyDotNetApp.csproj",
                 "consumer_name": "MyDotNetApp",
                 "relevant_files": [],
             }
@@ -316,7 +317,7 @@ class TestImpactAnalyzerGraph:
         target = AnalysisTarget(
             target_type="project",
             name="GalaxyWorks.Data",
-            csproj_path=REPO_ROOT / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj",
+            csproj_path=SAMPLES / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj",
         )
 
         with patch("scatter.analyzers.impact_analyzer.find_consumers", side_effect=spy_find):

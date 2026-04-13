@@ -17,6 +17,7 @@ from scatter.scanners.project_scanner import parse_csproj_all_references
 # Helpers
 # ---------------------------------------------------------------------------
 REPO_ROOT = Path(__file__).parent.parent.parent
+SAMPLES = REPO_ROOT / "samples"
 
 
 def _make_node(name: str, **kwargs) -> ProjectNode:
@@ -77,7 +78,7 @@ class TestProjectNode:
         assert node.sproc_references == []
 
     def test_node_from_sample_project(self):
-        csproj = REPO_ROOT / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
+        csproj = SAMPLES / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         node = ProjectNode(path=csproj, name="GalaxyWorks.Data")
@@ -297,7 +298,7 @@ class TestDependencyGraph:
 # ===========================================================================
 class TestParseCsprojAllReferences:
     def test_sdk_style_project(self):
-        csproj = REPO_ROOT / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
+        csproj = SAMPLES / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         result = parse_csproj_all_references(csproj)
@@ -309,7 +310,7 @@ class TestParseCsprojAllReferences:
 
     def test_framework_style_project(self):
         """MyDotNetApp.csproj is missing <Project Sdk=...> wrapper."""
-        csproj = REPO_ROOT / "MyDotNetApp" / "MyDotNetApp.csproj"
+        csproj = SAMPLES / "MyDotNetApp" / "MyDotNetApp.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         result = parse_csproj_all_references(csproj)
@@ -320,7 +321,7 @@ class TestParseCsprojAllReferences:
         assert result["output_type"] == "Exe"
 
     def test_project_with_references(self):
-        csproj = REPO_ROOT / "MyDotNetApp.Consumer" / "MyDotNetApp.Consumer.csproj"
+        csproj = SAMPLES / "MyDotNetApp.Consumer" / "MyDotNetApp.Consumer.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         result = parse_csproj_all_references(csproj)
@@ -331,7 +332,7 @@ class TestParseCsprojAllReferences:
 
     def test_multiple_references(self):
         """Test against consumer apps that reference GalaxyWorks.Data and GalaxyWorks.Common."""
-        csproj = REPO_ROOT / "MyGalaxyConsumerApp" / "MyGalaryConsumerApp.csproj"
+        csproj = SAMPLES / "MyGalaxyConsumerApp" / "MyGalaryConsumerApp.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         result = parse_csproj_all_references(csproj)
@@ -346,7 +347,7 @@ class TestParseCsprojAllReferences:
         assert result is None
 
     def test_no_references(self):
-        csproj = REPO_ROOT / "MyDotNetApp2.Exclude" / "MyDotNetApp2.Exclude.csproj"
+        csproj = SAMPLES / "MyDotNetApp2.Exclude" / "MyDotNetApp2.Exclude.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         result = parse_csproj_all_references(csproj)
@@ -415,7 +416,7 @@ class TestGraphBuilder:
         from scatter.analyzers.graph_builder import build_dependency_graph
 
         return build_dependency_graph(
-            REPO_ROOT,
+            SAMPLES,
             disable_multiprocessing=True,
             exclude_patterns=["*/bin/*", "*/obj/*", "*/temp_test_data/*"],
         )
