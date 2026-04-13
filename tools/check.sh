@@ -77,6 +77,62 @@ assert g.get('node_count', 0) > 0 or g.get('projects', 0) > 0 or len(g) > 0, 'Em
 print(f'  target: {len(results)} consumers, graph: {g.get(\"node_count\", len(g))} nodes')
 "
 
+    run_step "lint: validate workflow YAML" python -c "
+import yaml; yaml.safe_load(open('tools/github-action/scatter-pr-risk.yml'))
+"
+
+    # --- PR risk smoke (mirrors CI: creates temp branch, runs --pr-risk) ---
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    SMOKE_BRANCH="smoke/local-check-$$"
+
+    git checkout -b "$SMOKE_BRANCH" --quiet 2>/dev/null
+    mkdir -p SmokeProject
+    echo '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>' > SmokeProject/SmokeProject.csproj
+    echo 'namespace SmokeProject; public class SmokeWidget { }' > SmokeProject/SmokeWidget.cs
+    git add SmokeProject/ && git commit -m "smoke: add SmokeWidget" --quiet 2>/dev/null
+
+    run_step "smoke: pr-risk markdown" uv run scatter \
+        --pr-risk \
+        --branch-name "$SMOKE_BRANCH" \
+        --base-branch "$CURRENT_BRANCH" \
+        --repo-path . --search-scope . \
+        --output-format markdown \
+        --output-file /tmp/scatter-smoke-pr-risk.md
+
+    run_step "smoke: pr-risk validate" python -c "
+content = open('/tmp/scatter-smoke-pr-risk.md').read()
+assert '## Scatter Risk:' in content, 'Missing risk header'
+assert 'GREEN' in content or 'YELLOW' in content or 'RED' in content, 'Missing risk level'
+print(f'  pr-risk: {len(content)} chars')
+"
+
+    run_step "smoke: pr-risk collapsible" uv run scatter \
+        --pr-risk --collapsible \
+        --branch-name "$SMOKE_BRANCH" \
+        --base-branch "$CURRENT_BRANCH" \
+        --repo-path . --search-scope . \
+        --output-format markdown \
+        --output-file /tmp/scatter-smoke-pr-risk-collapsible.md
+
+    run_step "smoke: branch backward-compat" uv run scatter \
+        --branch-name "$SMOKE_BRANCH" \
+        --base-branch "$CURRENT_BRANCH" \
+        --search-scope . \
+        --output-format json \
+        --output-file /tmp/scatter-smoke-branch-compat.json
+
+    run_step "smoke: branch-compat validate" python -c "
+import json
+d = json.load(open('/tmp/scatter-smoke-branch-compat.json'))
+assert 'all_results' in d, 'Missing all_results key — consumer table format expected'
+print('  branch-compat: all_results key present')
+"
+
+    # Clean up smoke branch
+    git checkout "$CURRENT_BRANCH" --quiet 2>/dev/null
+    git branch -D "$SMOKE_BRANCH" --quiet 2>/dev/null
+    rm -rf SmokeProject
+
     # --- AI smoke test (requires GOOGLE_API_KEY, skipped in CI) ---
     if [ -n "$GOOGLE_API_KEY" ]; then
         run_step "smoke: ai summarization" uv run scatter \
