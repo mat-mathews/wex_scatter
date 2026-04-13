@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import patch as mock_patch
 
 
-from scatter.cli import _ensure_graph_context
+from scatter.analysis import _ensure_graph_context
 
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.core.models import ConsumerResult, EnrichedConsumer
@@ -335,21 +335,21 @@ class TestAutoGraphLoading:
 
 class TestBuildMetadataGraphEnriched:
     def test_graph_enriched_true(self):
-        from scatter.cli import _build_metadata
+        from scatter.output import _build_metadata
 
         args = argparse.Namespace(verbose=False, output_format="json")
         metadata = _build_metadata(args, Path("/fake"), 0.0, graph_enriched=True)
         assert metadata["graph_enriched"] is True
 
     def test_graph_enriched_false(self):
-        from scatter.cli import _build_metadata
+        from scatter.output import _build_metadata
 
         args = argparse.Namespace(verbose=False, output_format="json")
         metadata = _build_metadata(args, Path("/fake"), 0.0, graph_enriched=False)
         assert metadata["graph_enriched"] is False
 
     def test_graph_enriched_default(self):
-        from scatter.cli import _build_metadata
+        from scatter.output import _build_metadata
 
         args = argparse.Namespace(verbose=False, output_format="json")
         metadata = _build_metadata(args, Path("/fake"), 0.0)

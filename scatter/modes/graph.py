@@ -3,7 +3,8 @@
 import logging
 from pathlib import Path
 
-from scatter.cli import ModeContext, _build_metadata, _require_output_file
+from scatter.analysis import ModeContext
+from scatter.output import _build_metadata, _require_output_file
 from scatter.modes.setup import populate_graph_solutions
 
 

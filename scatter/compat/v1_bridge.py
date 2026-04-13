@@ -93,7 +93,7 @@ def map_batch_jobs_from_config_repo(app_config_path: Path) -> Dict[str, List[str
     return batch_job_map
 
 
-def _process_consumer_summaries_and_append_results(
+def _build_consumer_results(
     target_project_name: str,
     target_project_rel_path_str: str,
     triggering_info: str,

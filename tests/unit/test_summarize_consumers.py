@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 
-from scatter.cli import _summarize_consumer_files
+from scatter.analysis import _summarize_consumer_files
 from scatter.ai.base import AITaskType, AnalysisResult
 from scatter.core.models import ConsumerResult
 

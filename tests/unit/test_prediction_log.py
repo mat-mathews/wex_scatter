@@ -241,7 +241,7 @@ class TestIntegration:
 
     def test_pr_risk_mode_writes_prediction(self, git_repo):
         """run_pr_risk_mode creates .scatter/predictions.jsonl with valid JSON."""
-        from scatter.cli import ModeContext
+        from scatter.analysis import ModeContext
         from scatter.config import ScatterConfig
         from scatter.modes.pr_risk import run_pr_risk_mode
 
@@ -280,7 +280,7 @@ class TestIntegration:
 
     def test_no_prediction_log_flag_skips_write(self, git_repo):
         """--no-prediction-log prevents predictions.jsonl from being created."""
-        from scatter.cli import ModeContext
+        from scatter.analysis import ModeContext
         from scatter.config import ScatterConfig
         from scatter.modes.pr_risk import run_pr_risk_mode
 

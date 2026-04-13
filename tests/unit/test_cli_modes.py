@@ -1,11 +1,11 @@
-"""Smoke tests for mode handlers in scatter.cli."""
+"""Smoke tests for mode handlers in scatter.analysis."""
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from scatter.cli import (
+from scatter.analysis import (
     ModeResult,
     _apply_graph_enrichment,
     run_git_analysis,
@@ -36,7 +36,7 @@ class TestRunTargetAnalysis:
         assert result.all_results == []
         assert result.filter_pipeline is None
 
-    @patch("scatter.compat.v1_bridge._process_consumer_summaries_and_append_results")
+    @patch("scatter.compat.v1_bridge._build_consumer_results")
     @patch("scatter.analyzers.consumer_analyzer.find_consumers")
     @patch("scatter.scanners.project_scanner.derive_namespace", return_value="Foo.Ns")
     def test_calls_v1_bridge_on_consumers(self, mock_ns, mock_fc, mock_bridge, make_mode_context):
@@ -80,7 +80,7 @@ class TestRunTargetAnalysis:
         with pytest.raises(ValueError, match="Could not derive target namespace"):
             run_target_analysis(ctx, target)
 
-    @patch("scatter.compat.v1_bridge._process_consumer_summaries_and_append_results")
+    @patch("scatter.compat.v1_bridge._build_consumer_results")
     @patch("scatter.analyzers.consumer_analyzer.find_consumers")
     @patch("scatter.scanners.project_scanner.derive_namespace", return_value="Foo.Ns")
     def test_trigger_level_with_class_and_method(
@@ -102,7 +102,7 @@ class TestRunTargetAnalysis:
 
 
 class TestRunSprocAnalysis:
-    @patch("scatter.compat.v1_bridge._process_consumer_summaries_and_append_results")
+    @patch("scatter.compat.v1_bridge._build_consumer_results")
     @patch("scatter.analyzers.consumer_analyzer.find_consumers")
     @patch("scatter.scanners.project_scanner.derive_namespace", return_value="GW.Data")
     @patch("scatter.scanners.sproc_scanner.find_cs_files_referencing_sproc")
@@ -139,7 +139,7 @@ class TestRunSprocAnalysis:
         assert result.all_results == []
         assert result.filter_pipeline is None
 
-    @patch("scatter.compat.v1_bridge._process_consumer_summaries_and_append_results")
+    @patch("scatter.compat.v1_bridge._build_consumer_results")
     @patch("scatter.analyzers.consumer_analyzer.find_consumers")
     @patch("scatter.scanners.project_scanner.derive_namespace", return_value="GW.Data")
     @patch("scatter.scanners.sproc_scanner.find_cs_files_referencing_sproc")
@@ -177,7 +177,7 @@ class TestRunGitAnalysis:
         assert isinstance(result, ModeResult)
         assert result.all_results == []
 
-    @patch("scatter.compat.v1_bridge._process_consumer_summaries_and_append_results")
+    @patch("scatter.compat.v1_bridge._build_consumer_results")
     @patch("scatter.analyzers.consumer_analyzer.find_consumers")
     @patch("scatter.scanners.project_scanner.derive_namespace", return_value="MyApp")
     @patch("scatter.analyzers.git_analyzer.analyze_branch_changes")

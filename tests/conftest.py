@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from scatter.analyzers.coupling_analyzer import ProjectMetrics
-from scatter.cli import ModeContext
+from scatter.analysis import ModeContext
 from scatter.core.models import ConsumerResult
 
 

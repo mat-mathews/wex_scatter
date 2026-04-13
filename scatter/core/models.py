@@ -68,7 +68,7 @@ class RawConsumerDict(TypedDict):
 class ConsumerResult:
     """A consuming relationship between a target project and a consumer project.
 
-    Constructed by v1_bridge._process_consumer_summaries_and_append_results().
+    Constructed by v1_bridge._build_consumer_results().
     Graph enrichment fields are set by graph_enrichment.enrich_legacy_results().
     """
 

@@ -3,7 +3,8 @@
 import logging
 import sys
 
-from scatter.cli import ModeContext, dispatch_legacy_output, run_git_analysis
+from scatter.analysis import ModeContext, run_git_analysis
+from scatter.output import dispatch_legacy_output
 
 
 def run_git_mode(args, ctx: ModeContext, start_time: float) -> None:

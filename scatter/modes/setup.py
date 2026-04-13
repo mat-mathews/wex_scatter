@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from scatter.cli import ModeContext
+from scatter.analysis import ModeContext
 from scatter.cli_parser import _build_cli_overrides
 from scatter.config import ScatterConfig, load_config
 from scatter.scanners.solution_scanner import (

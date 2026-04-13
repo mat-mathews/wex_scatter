@@ -4,7 +4,8 @@ import logging
 import sys
 from pathlib import Path
 
-from scatter.cli import ModeContext, dispatch_legacy_output, run_target_analysis
+from scatter.analysis import ModeContext, run_target_analysis
+from scatter.output import dispatch_legacy_output
 
 
 def run_target_mode(args, ctx: ModeContext, start_time: float) -> None:

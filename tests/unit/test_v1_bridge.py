@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 from scatter.compat.v1_bridge import (
     find_solutions_for_project,
     map_batch_jobs_from_config_repo,
-    _process_consumer_summaries_and_append_results,
+    _build_consumer_results,
 )
 
 
@@ -109,7 +109,7 @@ class TestMapBatchJobsFromConfigRepo:
 
 
 # ---------------------------------------------------------------------------
-# _process_consumer_summaries_and_append_results
+# _build_consumer_results
 # ---------------------------------------------------------------------------
 
 
@@ -117,7 +117,7 @@ class TestProcessConsumerSummaries:
     def test_empty_consumers_logs_and_returns(self, caplog):
         results = []
         with caplog.at_level(logging.INFO):
-            _process_consumer_summaries_and_append_results(
+            _build_consumer_results(
                 target_project_name="Foo",
                 target_project_rel_path_str="Foo/Foo.csproj",
                 triggering_info="SomeClass",
@@ -138,7 +138,7 @@ class TestProcessConsumerSummaries:
             "relevant_files": [],
         }
         results = []
-        _process_consumer_summaries_and_append_results(
+        _build_consumer_results(
             target_project_name="Foo",
             target_project_rel_path_str="Foo/Foo.csproj",
             triggering_info="SomeClass",
@@ -164,7 +164,7 @@ class TestProcessConsumerSummaries:
         solution_index = {"Bar": [si]}
 
         results = []
-        _process_consumer_summaries_and_append_results(
+        _build_consumer_results(
             target_project_name="Foo",
             target_project_rel_path_str="Foo/Foo.csproj",
             triggering_info="SomeClass",
@@ -190,7 +190,7 @@ class TestProcessConsumerSummaries:
         solution_index = {"job-alpha": [si]}
 
         results = []
-        _process_consumer_summaries_and_append_results(
+        _build_consumer_results(
             target_project_name="Foo",
             target_project_rel_path_str="Foo/Foo.csproj",
             triggering_info="SomeClass",
@@ -216,7 +216,7 @@ class TestProcessConsumerSummaries:
         solution_index = {"job-unknown": [si]}
 
         results = []
-        _process_consumer_summaries_and_append_results(
+        _build_consumer_results(
             target_project_name="Foo",
             target_project_rel_path_str="Foo/Foo.csproj",
             triggering_info="SomeClass",
@@ -238,7 +238,7 @@ class TestProcessConsumerSummaries:
             "relevant_files": [],
         }
         results = []
-        _process_consumer_summaries_and_append_results(
+        _build_consumer_results(
             target_project_name="Foo",
             target_project_rel_path_str="Foo/Foo.csproj",
             triggering_info="SomeClass",

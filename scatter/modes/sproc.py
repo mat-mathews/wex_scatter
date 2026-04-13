@@ -1,6 +1,7 @@
 """Stored procedure analysis mode handler."""
 
-from scatter.cli import ModeContext, dispatch_legacy_output, run_sproc_analysis
+from scatter.analysis import ModeContext, run_sproc_analysis
+from scatter.output import dispatch_legacy_output
 
 
 def run_sproc_mode(args, ctx: ModeContext, start_time: float) -> None:

@@ -4,12 +4,8 @@ import logging
 import sys
 from pathlib import Path
 
-from scatter.cli import (
-    ModeContext,
-    apply_impact_graph_enrichment,
-    _build_metadata,
-    _require_output_file,
-)
+from scatter.analysis import ModeContext, apply_impact_graph_enrichment
+from scatter.output import _build_metadata, _require_output_file
 
 
 def run_impact_mode(args, ctx: ModeContext, start_time: float) -> None:

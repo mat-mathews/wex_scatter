@@ -1,4 +1,4 @@
-"""Smoke tests for scatter.cli.dispatch_legacy_output."""
+"""Smoke tests for scatter.output.dispatch_legacy_output."""
 
 import types
 from pathlib import Path
@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from scatter.cli import dispatch_legacy_output, _build_metadata, _require_output_file
+from scatter.output import dispatch_legacy_output, _build_metadata, _require_output_file
 from scatter.core.models import ConsumerResult
 
 
@@ -65,15 +65,15 @@ def _cr(**overrides):
 
 
 class TestDispatchLegacyOutput:
-    @patch("scatter.cli.print_console_report")
+    @patch("scatter.output.print_console_report")
     def test_console_format(self, mock_console):
         args = _fake_args(output_format="console")
         results = [_cr()]
         dispatch_legacy_output(results, None, args, Path("/tmp"), 0.0, False)
         mock_console.assert_called_once()
 
-    @patch("scatter.cli.write_json_report")
-    @patch("scatter.cli.prepare_detailed_results")
+    @patch("scatter.output.write_json_report")
+    @patch("scatter.output.prepare_detailed_results")
     def test_json_format(self, mock_prepare, mock_write, tmp_path):
         out = tmp_path / "out.json"
         args = _fake_args(output_format="json", output_file=str(out))
@@ -81,8 +81,8 @@ class TestDispatchLegacyOutput:
         dispatch_legacy_output([], None, args, Path("/tmp"), 0.0, False)
         mock_write.assert_called_once()
 
-    @patch("scatter.cli.write_csv_report")
-    @patch("scatter.cli.prepare_detailed_results")
+    @patch("scatter.output.write_csv_report")
+    @patch("scatter.output.prepare_detailed_results")
     def test_csv_format(self, mock_prepare, mock_write, tmp_path):
         out = tmp_path / "out.csv"
         args = _fake_args(output_format="csv", output_file=str(out))
@@ -93,11 +93,11 @@ class TestDispatchLegacyOutput:
     def test_empty_results_no_crash(self):
         args = _fake_args(output_format="console")
         # Should not raise
-        with patch("scatter.cli.print_console_report"):
+        with patch("scatter.output.print_console_report"):
             dispatch_legacy_output([], None, args, Path("/tmp"), 0.0, False)
 
     @patch("scatter.reports.markdown_reporter.write_markdown_report")
-    @patch("scatter.cli.prepare_detailed_results")
+    @patch("scatter.output.prepare_detailed_results")
     def test_markdown_format_to_file(self, mock_prepare, mock_write, tmp_path):
         out = tmp_path / "out.md"
         args = _fake_args(output_format="markdown", output_file=str(out))
@@ -106,7 +106,7 @@ class TestDispatchLegacyOutput:
         mock_write.assert_called_once()
 
     @patch("scatter.reports.markdown_reporter.build_markdown", return_value="# Report")
-    @patch("scatter.cli.prepare_detailed_results")
+    @patch("scatter.output.prepare_detailed_results")
     def test_markdown_format_to_stdout(self, mock_prepare, mock_md, capsys):
         args = _fake_args(output_format="markdown", output_file=None)
         mock_prepare.return_value = []
@@ -140,7 +140,7 @@ class TestDispatchLegacyOutput:
             _cr(target_project_name="B", consumer_project_name="Z"),
             _cr(target_project_name="A", consumer_project_name="Y"),
         ]
-        with patch("scatter.cli.print_console_report"):
+        with patch("scatter.output.print_console_report"):
             dispatch_legacy_output(results, None, args, Path("/tmp"), 0.0, False)
         assert results[0].target_project_name == "A"
         assert results[1].target_project_name == "B"

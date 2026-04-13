@@ -60,7 +60,7 @@ from scatter.analyzers.git_analyzer import (
 from scatter.compat.v1_bridge import (
     find_solutions_for_project,
     map_batch_jobs_from_config_repo,
-    _process_consumer_summaries_and_append_results,
+    _build_consumer_results,
 )
 
 # AI — backward-compatible wrappers in _legacy, canonical code in ai/providers/

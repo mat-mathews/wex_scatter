@@ -60,6 +60,27 @@ class TestModeDispatch:
         assert args.pr_risk is True
 
 
+class TestCliShimReexports:
+    """Verify scatter.cli re-exports public API from analysis.py and output.py."""
+
+    def test_analysis_symbols(self):
+        from scatter.cli import ModeContext, ModeResult, run_git_analysis
+        from scatter.cli import run_target_analysis, run_sproc_analysis
+        from scatter.cli import apply_impact_graph_enrichment
+
+        assert ModeContext is not None
+        assert ModeResult is not None
+        assert callable(run_git_analysis)
+        assert callable(run_target_analysis)
+        assert callable(run_sproc_analysis)
+        assert callable(apply_impact_graph_enrichment)
+
+    def test_output_symbols(self):
+        from scatter.cli import dispatch_legacy_output
+
+        assert callable(dispatch_legacy_output)
+
+
 class TestFunctionalBackwardCompat:
     """Functional test with a real tmp_path git repo."""
 

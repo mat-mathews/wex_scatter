@@ -4,7 +4,8 @@ import logging
 import sys
 from pathlib import Path
 
-from scatter.cli import ModeContext, _build_metadata, _require_output_file
+from scatter.analysis import ModeContext
+from scatter.output import _build_metadata, _require_output_file
 
 _SUPPORTED_FORMATS = {"console", "json", "markdown"}
 
