@@ -82,56 +82,81 @@ import yaml; yaml.safe_load(open('tools/github-action/scatter-pr-risk.yml'))
 "
 
     # --- PR risk smoke (mirrors CI: creates temp branch, runs --pr-risk) ---
+    # Smoke tests commit to a throwaway branch. If the working tree has
+    # uncommitted changes, they'd ride along into the smoke commit and vanish
+    # when the branch is deleted — silent data loss. Refuse up front.
     CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     SMOKE_BRANCH="smoke/local-check-$$"
 
-    git checkout -b "$SMOKE_BRANCH" --quiet 2>/dev/null
-    mkdir -p SmokeProject
-    echo '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>' > SmokeProject/SmokeProject.csproj
-    echo 'namespace SmokeProject; public class SmokeWidget { }' > SmokeProject/SmokeWidget.cs
-    git add SmokeProject/ && git commit -m "smoke: add SmokeWidget" --quiet 2>/dev/null
+    if ! git diff-index --quiet HEAD -- || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+        echo -e "${DIM}--- smoke: pr-risk (skipped — working tree not clean) ---${RESET}"
+        echo "    commit or stash changes before running PR risk smoke tests"
+        RESULTS+=("${RED}FAIL${RESET}  smoke: pr-risk (uncommitted changes — aborted to prevent data loss)")
+        FAILED=1
+    else
+        # Guarantee cleanup even if a step fails mid-run. Without this, a crash
+        # between branch creation and cleanup strands the user on the smoke branch.
+        cleanup_smoke_branch() {
+            git checkout "$CURRENT_BRANCH" --quiet || \
+                echo -e "${RED}WARNING: could not return to $CURRENT_BRANCH (still on $(git rev-parse --abbrev-ref HEAD))${RESET}" >&2
+            git branch -D "$SMOKE_BRANCH" --quiet 2>/dev/null || true
+            rm -rf SmokeProject
+        }
+        trap cleanup_smoke_branch EXIT
 
-    run_step "smoke: pr-risk markdown" uv run scatter \
-        --pr-risk \
-        --branch-name "$SMOKE_BRANCH" \
-        --base-branch "$CURRENT_BRANCH" \
-        --repo-path . --search-scope . \
-        --output-format markdown \
-        --output-file /tmp/scatter-smoke-pr-risk.md
+        if ! git checkout -b "$SMOKE_BRANCH" --quiet; then
+            echo -e "${RED}Failed to create smoke branch $SMOKE_BRANCH${RESET}" >&2
+            exit 1
+        fi
+        mkdir -p SmokeProject
+        echo '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>' > SmokeProject/SmokeProject.csproj
+        echo 'namespace SmokeProject; public class SmokeWidget { }' > SmokeProject/SmokeWidget.cs
+        if ! (git add SmokeProject/ && git commit -m "smoke: add SmokeWidget" --quiet); then
+            echo -e "${RED}Failed to commit smoke project${RESET}" >&2
+            exit 1
+        fi
 
-    run_step "smoke: pr-risk validate" python -c "
+        run_step "smoke: pr-risk markdown" uv run scatter \
+            --pr-risk \
+            --branch-name "$SMOKE_BRANCH" \
+            --base-branch "$CURRENT_BRANCH" \
+            --repo-path . --search-scope . \
+            --output-format markdown \
+            --output-file /tmp/scatter-smoke-pr-risk.md
+
+        run_step "smoke: pr-risk validate" python -c "
 content = open('/tmp/scatter-smoke-pr-risk.md').read()
 assert '## Scatter Risk:' in content, 'Missing risk header'
 assert 'GREEN' in content or 'YELLOW' in content or 'RED' in content, 'Missing risk level'
 print(f'  pr-risk: {len(content)} chars')
 "
 
-    run_step "smoke: pr-risk collapsible" uv run scatter \
-        --pr-risk --collapsible \
-        --branch-name "$SMOKE_BRANCH" \
-        --base-branch "$CURRENT_BRANCH" \
-        --repo-path . --search-scope . \
-        --output-format markdown \
-        --output-file /tmp/scatter-smoke-pr-risk-collapsible.md
+        run_step "smoke: pr-risk collapsible" uv run scatter \
+            --pr-risk --collapsible \
+            --branch-name "$SMOKE_BRANCH" \
+            --base-branch "$CURRENT_BRANCH" \
+            --repo-path . --search-scope . \
+            --output-format markdown \
+            --output-file /tmp/scatter-smoke-pr-risk-collapsible.md
 
-    run_step "smoke: branch backward-compat" uv run scatter \
-        --branch-name "$SMOKE_BRANCH" \
-        --base-branch "$CURRENT_BRANCH" \
-        --search-scope . \
-        --output-format json \
-        --output-file /tmp/scatter-smoke-branch-compat.json
+        run_step "smoke: branch backward-compat" uv run scatter \
+            --branch-name "$SMOKE_BRANCH" \
+            --base-branch "$CURRENT_BRANCH" \
+            --search-scope . \
+            --output-format json \
+            --output-file /tmp/scatter-smoke-branch-compat.json
 
-    run_step "smoke: branch-compat validate" python -c "
+        run_step "smoke: branch-compat validate" python -c "
 import json
 d = json.load(open('/tmp/scatter-smoke-branch-compat.json'))
 assert 'all_results' in d, 'Missing all_results key — consumer table format expected'
 print('  branch-compat: all_results key present')
 "
 
-    # Clean up smoke branch
-    git checkout "$CURRENT_BRANCH" --quiet 2>/dev/null
-    git branch -D "$SMOKE_BRANCH" --quiet 2>/dev/null
-    rm -rf SmokeProject
+        # Explicit cleanup — trap still fires on exit as a safety net
+        cleanup_smoke_branch
+        trap - EXIT
+    fi
 
     # --- AI smoke test (requires GOOGLE_API_KEY, skipped in CI) ---
     if [ -n "$GOOGLE_API_KEY" ]; then
