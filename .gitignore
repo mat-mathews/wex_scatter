@@ -59,8 +59,12 @@ venv.bak/
 # Personal working files
 tasks.txt
 
+# Claude Code local state (skills live under tools/claude-skills/ and are
+# symlinked here by tools/setup-claude-skills.sh; local settings stay out of git)
+.claude/
+
 # Built mkdocs site
-documentation/site/
+docs_site/site/
 
 # mypy
 .mypy_cache/

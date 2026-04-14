@@ -125,7 +125,7 @@ graph:
   auto_build: true
 ```
 
-See [Configuration docs](../../documentation/docs/configuration.md) for all options.
+See [Configuration docs](../../docs_site/docs/configuration.md) for all options.
 
 ### Path Filters
 

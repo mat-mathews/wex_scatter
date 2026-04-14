@@ -69,11 +69,11 @@ docker run -v $(pwd):/workspace scatter \
 
 ## Other workflows
 
-- **PR risk scoring** — score a branch before merge across coupling, blast radius, and database dimensions. GREEN/YELLOW/RED composite with a [GitHub Action template](tools/github-action/scatter-pr-risk.yml) for automated PR comments. See [PR Risk Scoring](documentation/docs/usage/pr-risk.md).
+- **PR risk scoring** — score a branch before merge across coupling, blast radius, and database dimensions. GREEN/YELLOW/RED composite with a [GitHub Action template](tools/github-action/scatter-pr-risk.yml) for automated PR comments. See [PR Risk Scoring](docs_site/docs/usage/pr-risk.md).
 
-- **Impact analysis / SOW scoping** — analyze a plain-English work request, find affected targets and consumers, and generate a first-pass effort estimate. Requires `GOOGLE_API_KEY` for AI-assisted steps. Core analysis does not require an API key. See [Impact Analysis](documentation/docs/usage/impact-analysis.md).
+- **Impact analysis / SOW scoping** — analyze a plain-English work request, find affected targets and consumers, and generate a first-pass effort estimate. Requires `GOOGLE_API_KEY` for AI-assisted steps. Core analysis does not require an API key. See [Impact Analysis](docs_site/docs/usage/impact-analysis.md).
 
-- **Dependency graph** — full project graph with coupling scores, cycle detection, and domain clustering. See [Dependency Graph](documentation/docs/usage/dependency-graph.md).
+- **Dependency graph** — full project graph with coupling scores, cycle detection, and domain clustering. See [Dependency Graph](docs_site/docs/usage/dependency-graph.md).
 
 ---
 
@@ -87,21 +87,21 @@ On first run it builds a dependency graph and caches it. Subsequent runs patch i
 
 ## Documentation
 
-- [Quick Tour](documentation/docs/quick-tour.md) — guided walkthrough
-- [Target Project](documentation/docs/usage/target-project.md) — find all consumers of a project
-- [Git Branch](documentation/docs/usage/git-branch.md) — blast radius of a feature branch
-- [Stored Procedure](documentation/docs/usage/stored-procedure.md) — trace sproc callers
-- [PR Risk Scoring](documentation/docs/usage/pr-risk.md) — risk-score every pull request
-- [Dependency Graph](documentation/docs/usage/dependency-graph.md) — architecture health check
-- [Docker](documentation/docs/usage/docker.md) — container usage and caching
-- [Output Formats](documentation/docs/output-formats.md) — JSON, CSV, markdown, Mermaid, pipelines
-- [Configuration](documentation/docs/configuration.md) — YAML config, env vars, CLI flags
-- [CLI Reference](documentation/docs/cli-reference.md) — every flag and option
-- [Architecture](documentation/docs/reference/architecture.md) — system design and data flow
+- [Quick Tour](docs_site/docs/quick-tour.md) — guided walkthrough
+- [Target Project](docs_site/docs/usage/target-project.md) — find all consumers of a project
+- [Git Branch](docs_site/docs/usage/git-branch.md) — blast radius of a feature branch
+- [Stored Procedure](docs_site/docs/usage/stored-procedure.md) — trace sproc callers
+- [PR Risk Scoring](docs_site/docs/usage/pr-risk.md) — risk-score every pull request
+- [Dependency Graph](docs_site/docs/usage/dependency-graph.md) — architecture health check
+- [Docker](docs_site/docs/usage/docker.md) — container usage and caching
+- [Output Formats](docs_site/docs/output-formats.md) — JSON, CSV, markdown, Mermaid, pipelines
+- [Configuration](docs_site/docs/configuration.md) — YAML config, env vars, CLI flags
+- [CLI Reference](docs_site/docs/cli-reference.md) — every flag and option
+- [Architecture](docs_site/docs/reference/architecture.md) — system design and data flow
 - [ADRs](docs/ADR.md) — architecture decision records
 
 ---
 
 ## License
 
-Internal tooling. See repository for details.
+Proprietary — for internal WEX use only. See [LICENSE](LICENSE) for terms.

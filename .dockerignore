@@ -12,7 +12,7 @@ benchmark_results/
 tests/
 
 # Documentation source (site is not needed in the image)
-documentation/
+docs_site/
 docs/
 
 # Development files

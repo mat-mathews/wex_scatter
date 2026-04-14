@@ -1,0 +1,30 @@
+PROPRIETARY LICENSE
+
+Copyright (c) 2026 WEX Inc. All rights reserved.
+
+This software and its source code (the "Software") are the proprietary and
+confidential property of WEX Inc. and are provided solely for internal use by
+WEX Inc. and its authorized employees, contractors, and affiliates.
+
+RESTRICTIONS
+
+You may not, without the prior written consent of WEX Inc.:
+
+  1. Copy, reproduce, modify, or create derivative works of the Software, in
+     whole or in part, for any purpose other than authorized internal use.
+  2. Distribute, publish, sublicense, sell, rent, lease, or otherwise transfer
+     the Software, in whole or in part, to any third party.
+  3. Reverse engineer, decompile, or disassemble the Software, except to the
+     extent such activity is expressly permitted by applicable law.
+  4. Remove, alter, or obscure any proprietary notices, labels, or marks on or
+     in the Software.
+
+NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL WEX
+INC. BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE
+USE OF OR INABILITY TO USE THE SOFTWARE.
+
+All rights not expressly granted herein are reserved by WEX Inc.
