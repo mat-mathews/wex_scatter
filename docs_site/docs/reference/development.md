@@ -84,6 +84,41 @@ If `check.sh` passes locally, CI will pass. No drift between local and CI.
 
 ---
 
+## Documentation Site
+
+The docs site lives in `docs_site/` and is built with [mkdocs](https://www.mkdocs.org/) + the [Material](https://squidfunk.github.io/mkdocs-material/) theme. The dependencies are declared separately from the main project in `docs_site/requirements-docs.txt`.
+
+### Via Docker (no Python install required)
+
+The official `squidfunk/mkdocs-material` image has everything needed:
+
+```bash
+# Build the static site into docs_site/site/
+docker run --rm -v "$(pwd)":/docs -w /docs squidfunk/mkdocs-material \
+    build -f docs_site/mkdocs.yml
+
+# Or serve it live at http://localhost:8000 with auto-reload
+docker run --rm -it -p 8000:8000 -v "$(pwd)":/docs -w /docs squidfunk/mkdocs-material \
+    serve -f docs_site/mkdocs.yml -a 0.0.0.0:8000
+```
+
+Works identically on macOS, Linux, and Windows (Git Bash).
+
+### Via uv
+
+If you already have Python and uv:
+
+```bash
+uv run --with-requirements docs_site/requirements-docs.txt \
+    mkdocs serve -f docs_site/mkdocs.yml
+```
+
+The `--with-requirements` flag installs the docs deps into an ephemeral uv-managed environment — no pollution of your project `.venv`.
+
+The built `site/` directory is gitignored, so rebuilding in-tree is safe.
+
+---
+
 ## Linting: ruff
 
 [Ruff](https://docs.astral.sh/ruff/) handles both linting and formatting. Configuration lives in `pyproject.toml` under `[tool.ruff]`.

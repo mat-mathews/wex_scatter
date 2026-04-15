@@ -15,6 +15,27 @@ cd wex_scatter
 docker build -t scatter .
 ```
 
+### Building the docs
+
+The documentation site lives in `docs_site/` as mkdocs source. To build or serve it without installing Python dependencies locally, run mkdocs through the official Docker image:
+
+```bash
+# Build the static site into docs_site/site/
+docker run --rm -v "$(pwd)":/docs -w /docs squidfunk/mkdocs-material \
+    build -f docs_site/mkdocs.yml
+
+# Or serve it live at http://localhost:8000
+docker run --rm -it -p 8000:8000 -v "$(pwd)":/docs -w /docs squidfunk/mkdocs-material \
+    serve -f docs_site/mkdocs.yml -a 0.0.0.0:8000
+```
+
+If you have Python and [uv](https://docs.astral.sh/uv/) installed, you can skip Docker:
+
+```bash
+uv run --with-requirements docs_site/requirements-docs.txt \
+    mkdocs serve -f docs_site/mkdocs.yml
+```
+
 The repo ships with 13 sample .NET projects in the `samples/` directory. Analyze `GalaxyWorks.Data` to see what depends on it and which pipelines are involved:
 
 ```bash
