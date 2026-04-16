@@ -1,0 +1,13 @@
+{
+  "HostResources": {
+    "AppName": "WexHealth.Apps.Web.EmployerPortal",
+    "RollingFileSize": "100000000", //100MB
+    "Serilog": {
+      "Using": [
+        //ASP.NET WebForms (SerilogWeb.Classic)
+        //"SerilogWeb.Classic"
+      ]
+    }
+  },
+  "Scope": "{AppName}"
+}

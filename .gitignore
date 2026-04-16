@@ -66,6 +66,9 @@ tasks.txt
 # Built mkdocs site
 docs_site/site/
 
+# Spike artifacts — output of tools/spike/*.py scripts, never committed
+spike_output/
+
 # mypy
 .mypy_cache/
 .dmypy.json

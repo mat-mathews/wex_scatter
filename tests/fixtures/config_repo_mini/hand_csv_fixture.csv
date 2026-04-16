@@ -1,0 +1,4 @@
+"Pipeline Name","Application Artifact","Application Name"
+"cdh-pattern-a-az-cd","web_PatternA","WexHealth.Apps.Web.EmployerPortal"
+"cdh-navpipe-nav1-az-cd","svc_NavPipe","Lighthouse1.NavPipe.Service"
+"cdh-legacyonly-az-cd","legacy_artifact","WexHealth.LegacyOnly"
