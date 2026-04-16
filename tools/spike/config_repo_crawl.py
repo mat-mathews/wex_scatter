@@ -51,8 +51,20 @@ SKIP_DIRS = {
     ".vs",
 }
 ENV_SKIP = {"App_Data", "PostDeployTests"}
-KNOWN_PREFIXES = ("wexhealth.", "wex.", "lighthouse1.", "lh1.")
+KNOWN_PREFIXES = (
+    "wexhealth.",
+    "wex.",
+    "lighthouse1.",
+    "lh1.",
+    # Added after Run 1 — 27 unknown-prefix families, these cover the top 5 (33+ pipelines)
+    "taskhost.",
+    "rdcpoint.",
+    "smartcommute.",
+    "dbi.",
+    "lh1ondemand.",
+)
 DEFAULT_ENVIRONMENT = "production"
+DEFAULT_L2_THRESHOLD = 0.5
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -180,9 +192,18 @@ def redactor(secret: Optional[bytes]) -> Callable[[Optional[str]], Optional[str]
 # ---------------------------------------------------------------------------
 
 
+_TEMPLATE_LITERAL_RE = re.compile(r"^\{[A-Za-z]+\}$")
+
+
 def extract_app_name(content: str) -> Optional[str]:
     m = _APP_NAME_RE.search(content)
-    return m.group(1) if m else None
+    if not m:
+        return None
+    value = m.group(1)
+    # Reject template placeholders like {AppName} that haven't been substituted
+    if _TEMPLATE_LITERAL_RE.match(value):
+        return None
+    return value
 
 
 def extract_assembly_from_webconfig(env_dir: Path) -> Optional[str]:
@@ -424,7 +445,9 @@ def _build_name_index(rows: list[CrawlRow]) -> list[tuple[str, str]]:
     return indexed
 
 
-def find_within_repo_ambiguities(rows: list[CrawlRow]) -> list[Ambiguity]:
+def find_within_repo_ambiguities(
+    rows: list[CrawlRow], l2_threshold: float = DEFAULT_L2_THRESHOLD
+) -> list[Ambiguity]:
     indexed = _build_name_index(rows)
     ambig: list[Ambiguity] = []
     for r in rows:
@@ -444,7 +467,8 @@ def find_within_repo_ambiguities(rows: list[CrawlRow]) -> list[Ambiguity]:
             {
                 p
                 for p, n in indexed
-                if p != r.pipeline_name and jaccard(probe_tokens, tokens(normalize(n))) >= 0.5
+                if p != r.pipeline_name
+                and jaccard(probe_tokens, tokens(normalize(n))) >= l2_threshold
             }
         )
         if len(l2) >= 2:
@@ -512,7 +536,9 @@ def audit_edge_cases(rows: list[CrawlRow], repo_path: Path, environment: str) ->
 # ---------------------------------------------------------------------------
 
 
-def simulate_source_match(rows: list[CrawlRow], stems: list[str]) -> list[StemResult]:
+def simulate_source_match(
+    rows: list[CrawlRow], stems: list[str], l2_threshold: float = DEFAULT_L2_THRESHOLD
+) -> list[StemResult]:
     indexed = _build_name_index(rows)
     results: list[StemResult] = []
     for stem in stems:
@@ -524,7 +550,9 @@ def simulate_source_match(rows: list[CrawlRow], stems: list[str]) -> list[StemRe
         if l1:
             results.append(StemResult(stem, "L1", l1))
             continue
-        l2 = sorted({p for p, n in indexed if jaccard(probe_tokens, tokens(normalize(n))) >= 0.5})
+        l2 = sorted(
+            {p for p, n in indexed if jaccard(probe_tokens, tokens(normalize(n))) >= l2_threshold}
+        )
         if l2:
             results.append(StemResult(stem, "L2", l2))
             continue
@@ -740,11 +768,13 @@ def write_ambiguity_report(
     path: Path,
     p_label: str,
     rd: Optional[Callable],
+    l2_threshold: float = DEFAULT_L2_THRESHOLD,
 ) -> None:
     lines = [
         "# Matcher Cascade — Ambiguity & Collision Analysis",
         "",
         f"**Population:** {p_label}",
+        f"**L2 Jaccard threshold:** {l2_threshold}",
         "",
         "## Within-repo collisions",
         f"Total probes with ambiguity: **{len(ambiguities)}**",
@@ -928,6 +958,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--source-stems", type=Path, default=None)
     p.add_argument("--prev-snapshot", type=Path, default=None)
     p.add_argument("--redact", action="store_true")
+    p.add_argument(
+        "--l2-threshold",
+        type=float,
+        default=DEFAULT_L2_THRESHOLD,
+        help=f"Jaccard threshold for L2 cascade level (default {DEFAULT_L2_THRESHOLD}). "
+        "Try 0.6 or 0.7 to tighten after observing false positives at 0.5.",
+    )
     p.add_argument("--environment", default=DEFAULT_ENVIRONMENT)
     return p.parse_args()
 
@@ -951,6 +988,10 @@ def main() -> int:
             return 2
         rd = redactor(secret.encode("utf-8"))
 
+    l2_thresh = args.l2_threshold
+    if l2_thresh != DEFAULT_L2_THRESHOLD:
+        print(f"  L2 Jaccard threshold: {l2_thresh} (default is {DEFAULT_L2_THRESHOLD})")
+
     print(f"Crawling {args.app_config_path} (environment={args.environment}) ...")
     rows = crawl(args.app_config_path, args.environment)
     print(f"  {len(rows)} rows")
@@ -967,8 +1008,8 @@ def main() -> int:
         f"csv-only={len(diff.csv_only)}"
     )
 
-    ambiguities = find_within_repo_ambiguities(rows)
-    print(f"  {len(ambiguities)} within-repo ambiguities")
+    ambiguities = find_within_repo_ambiguities(rows, l2_threshold=l2_thresh)
+    print(f"  {len(ambiguities)} within-repo ambiguities (L2 threshold={l2_thresh})")
 
     edge = audit_edge_cases(rows, args.app_config_path, args.environment)
 
@@ -982,7 +1023,7 @@ def main() -> int:
             for s in args.source_stems.read_text(encoding="utf-8").splitlines()
             if s.strip()
         ]
-        stem_results = simulate_source_match(rows, stems)
+        stem_results = simulate_source_match(rows, stems, l2_threshold=l2_thresh)
         print(f"  {len(stems)} source stems simulated")
 
     temporal: Optional[TemporalDiff] = None
@@ -1003,7 +1044,9 @@ def main() -> int:
     write_raw_csv(rows, out / "01_raw_crawl.csv", rd)
     write_pattern_taxonomy(rows, nav_groups, out / "02_pattern_taxonomy.md", rd)
     write_csv_diff(diff, out / "03_csv_diff.md", rd)
-    write_ambiguity_report(ambiguities, stem_results, out / "04_ambiguity_report.md", p_label, rd)
+    write_ambiguity_report(
+        ambiguities, stem_results, out / "04_ambiguity_report.md", p_label, rd, l2_thresh
+    )
     write_edge_cases(edge, len(rows), out / "05_edge_cases.md", rd)
     if temporal:
         write_temporal_diff(temporal, out / "06_temporal_diff.md")
