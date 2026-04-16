@@ -62,6 +62,13 @@ The spike produces five artifacts, all written to `spike_output/` (gitignored):
 | `04_ambiguity_report.md` | Markdown | Cases where matcher cascade would produce multiple candidates or low confidence |
 | `05_edge_cases.md` | Markdown | Observed occurrences of `//` comments, `{AppName}` placeholders, new prefixes, unusual structures |
 
+When the optional inputs below are supplied, two additional artifacts are produced:
+
+| Artifact | Triggered by | Purpose |
+|---|---|---|
+| `06_temporal_diff.md` | `--prev-snapshot <path>` | Diff of today's crawl vs. a prior crawl — stability signal for Path 2 |
+| `07_source_project_match.md` | `--source-stems <path>` | Cascade simulation against real `.csproj` stems from the WEX source tree |
+
 All artifacts are plain text — reviewable in a PR, grep-able, diffable across spike runs.
 
 ---
@@ -78,10 +85,18 @@ All artifacts are plain text — reviewable in a PR, grep-able, diffable across 
 python tools/spike/config_repo_crawl.py \
     --app-config-path /path/to/health-benefits-app-config \
     --hand-csv examples/pipeline_to_app_mapping.csv \
-    --output-dir spike_output/
+    --output-dir spike_output/ \
+    [--source-stems source_project_stems.txt] \
+    [--prev-snapshot spike_output_previous/01_raw_crawl.csv] \
+    [--redact]
 ```
 
-**Single file, ~250 LOC target.** If it grows past 400 LOC, that's a sign the spike is becoming the real thing and should be redirected.
+Optional flags:
+- `--source-stems`: newline-delimited list of `.csproj` stem names from WEX source repos (the real inputs a runtime matcher would receive). Enables the P-intersect cascade simulation — the numbers that actually bear on the Path 1 vs Path 2 decision.
+- `--prev-snapshot`: path to an earlier `01_raw_crawl.csv` from a prior run. Enables the temporal stability diff required for Path 2 viability.
+- `--redact`: enable HMAC redaction of names for external sharing (see §8.3). Default off — outputs are internal only.
+
+**Single file, ~300 LOC target.** If it grows past 450 LOC, that's a sign the spike is becoming the real thing and should be redirected.
 
 **Structure (top-to-bottom):**
 
@@ -103,25 +118,42 @@ KNOWN_PREFIXES = ("wexhealth.", "wex.", "lighthouse1.", "lh1.")
 #    - extract_assembly_from_execonfig(env_dir) -> str | None
 #    - collect_pipeline_signals(pipeline_dir) -> list[CrawlRow]
 
-# 3. Analysis (80 lines)
+# 3. Analysis (130 lines)
 #    - detect_nav_groups(rows) -> list[NavGroup]
+#    - cluster_pipeline_prefixes(rows) -> dict[str, list[str]]
 #    - diff_against_hand_csv(rows, csv_path) -> DiffReport
 #    - find_ambiguities(rows) -> list[Ambiguity]
 #    - audit_edge_cases(rows, raw_content_cache) -> EdgeCaseReport
+#    - simulate_against_source_stems(rows, stems) -> SourceMatchReport  # optional
+#    - temporal_diff(rows, prev_rows) -> TemporalDiffReport             # optional
 
-# 4. Report writers (40 lines)
+# 4. Report writers (60 lines)
 #    - write_raw_csv(rows, path)
 #    - write_pattern_taxonomy_md(rows, path)
 #    - write_csv_diff_md(diff, path)
 #    - write_ambiguity_md(ambig, path)
 #    - write_edge_cases_md(audit, path)
+#    - write_temporal_diff_md(diff, path)              # optional
+#    - write_source_match_md(match_report, path)       # optional
 
-# 5. main() + argparse (20 lines)
+# 5. main() + argparse (30 lines)
 ```
 
 ---
 
 ## 5. Algorithm Detail
+
+### 5.0 Population and denominators — stated explicitly
+
+Every rate and count in the reports is anchored to one of three populations. Reports must label which is in use:
+
+| Population | Definition | Typical use |
+|---|---|---|
+| **P-all** | All pipeline directories crawled (expected ~370) | Pattern distribution, edge-case rates |
+| **P-resolvable** | Pipelines that produced at least one signal (host.json, web.config DLL, or exe.config) | Collision analysis among deployed pipelines |
+| **P-intersect** | Subset of P-resolvable whose AppName/assembly appears in `--source-stems` (when provided) | Runtime matcher decision — the only population whose numbers actually bear on whether scatter will resolve real source projects correctly |
+
+Without `--source-stems`, matcher quality measures are reported against **P-resolvable** with an explicit caveat in the report header: *"collision analysis, not match-quality analysis."* A Path 1 vs Path 2 decision made without P-intersect data is being made on a proxy — acceptable as a tentative call but flagged as such.
 
 ### 5.1 Walk and classify
 
@@ -183,6 +215,7 @@ The script tracks but does not act on:
 - Org prefix seen in any extracted name that is NOT in `KNOWN_PREFIXES` — emit to `05_edge_cases.md`
 - host.json files that fail the `_APP_NAME_RE` regex entirely (surface these as "malformed" — we need to see why)
 - Case variations: if any pipeline has both `web.config` and `Web.Config`, or host.json with both `AppName` and `appName`
+- **Pipeline name family clustering**: strip known CI suffixes (`-az-cd`, `-az-cicd`, `-cicd`, `-cd`, `-mws`) and tokenize the remaining prefix. Cluster pipelines by their leading token family (`cdh-`, `pts-`, `direct-`, `wexhealth.card-`, etc.). Report the distribution with a sample pipeline per family. On future runs, the appearance of a new or single-member prefix family is the signal that the repo grew a pattern the crawler may not yet handle — a guardrail against silently returning empty for deployments in unfamiliar territory
 
 ### 5.4 Nav group detection
 
@@ -228,9 +261,21 @@ For each row, simulate what the plan's L1/L2/L3 matcher WOULD return:
 - L2 Jaccard ≥ 0.5 against all other rows' app names — count candidates
 - L3 tail-2-tokens match against all other rows — count candidates
 
-**Key question answered:** for how many pipelines does L3 produce ≥2 candidates? Those are the silent-wrong-answer cases.
+**This within-repo simulation answers one question:** are there collisions *among deployed pipelines* that L3 cannot disambiguate?
 
-Report format (abbreviated):
+**It does NOT answer the runtime question:** does L3 correctly resolve a real `.csproj` stem from a WEX source repo to exactly one pipeline? That requires source-side inputs.
+
+When `--source-stems <file>` is provided, a second simulation runs the full cascade against each source stem and reports:
+
+- Stems resolved at L1 (exact): count and listing
+- Stems resolved at L2 (Jaccard ≥ 0.5): count, candidates, and the Jaccard score
+- Stems resolved at L3 (tail match): count, candidates
+- Stems producing multiple candidates at any level: **the silent-wrong-answer risk set**
+- Stems with zero matches: the unresolvable set
+
+This second simulation runs against the **P-intersect** population. Its numbers are the ones that drive the Path 1 vs Path 2 decision. The within-repo collision report is background context; the source-stem report is the call.
+
+Report format for the within-repo collision analysis (abbreviated):
 
 ```
 ## L3 tail-match ambiguities (20 rows)
@@ -241,6 +286,21 @@ Report format (abbreviated):
     - pts-cdb-scheduler-az-cd           AppName=WexHealth.PTS.Scheduler
   → THREE candidates; L3 cannot disambiguate
 ```
+
+### 5.7 Temporal diff (optional)
+
+When `--prev-snapshot <path>` is provided, load the earlier run's `01_raw_crawl.csv` and compute a change report:
+
+- Pipelines added (new pipeline dirs)
+- Pipelines removed (deleted pipeline dirs)
+- Pipelines whose extracted AppName changed
+- Pipelines whose extracted assembly name changed
+- Pipelines whose pattern classification changed (e.g., Pattern D → Pattern A because someone added a host.json)
+- Batch pipelines whose job list changed (additions, removals, renames)
+
+**Why this matters:** Path 2 (enriched CSV) depends on the crawler's output being stable enough that a committed CSV remains correct for months. A temporal diff across two snapshots — HEAD now and HEAD 30 days ago, or two environment branches — quantifies that assumption. Large churn in either the AppName column or the pattern column invalidates Path 2 without a regeneration cadence commitment.
+
+If `--prev-snapshot` is not provided, the report is not generated. This is an opt-in because producing two snapshots requires either waiting between runs or checking out two revs of the config repo.
 
 ---
 
@@ -347,16 +407,73 @@ how many pipelines fall through to each level on realistic input?
  nested pipeline dirs, pipelines with only `staging/`, etc.>
 ```
 
+### 6.6 `06_temporal_diff.md` (optional — triggered by `--prev-snapshot`)
+
+```markdown
+# Temporal Stability Diff
+
+**Previous snapshot:** <path, timestamp if derivable>
+**Current snapshot:** <timestamp>
+
+## Summary
+- Pipelines added: ___
+- Pipelines removed: ___
+- AppName changes: ___
+- Assembly changes: ___
+- Pattern re-classifications: ___
+- Batch job list changes: ___ (affecting ___ pipelines)
+
+## Detailed churn
+<per-pipeline diff, grouped by change type>
+
+## Path 2 viability signal
+<verdict:
+  - Total churn <5% → Path 2 viable, annual regeneration cadence
+  - 5-15% → Path 2 viable, quarterly regeneration cadence
+  - >15% → Path 2 not viable on stability grounds; runtime matcher required>
+```
+
+### 6.7 `07_source_project_match.md` (optional — triggered by `--source-stems`)
+
+```markdown
+# Source Project → Pipeline Match Simulation (P-intersect)
+
+**Source stems supplied:** ___
+**Successfully resolved (any level):** ___ (__%)
+**Unresolved:** ___ (__%)
+
+## L1 exact matches (___ of ___)
+<sample, full list linked>
+
+## L2 Jaccard matches (___ of ___)
+<table: stem | matched_app | jaccard_score | candidate_count>
+
+## L3 tail matches (___ of ___)
+<table: stem | tail_token | matched_app | candidate_count>
+
+## Ambiguous resolutions — SILENT WRONG-ANSWER RISK (___ of ___)
+<full list: stem | levels_attempted | all_candidates | why_ambiguous>
+
+## Unresolved stems (___ of ___)
+<full list: stem | best_partial_match_if_any>
+```
+
 ---
 
 ## 7. Decision Criteria
 
-After the reports are generated and reviewed, one of three paths:
+After the reports are generated and reviewed, one of three paths.
+
+### Thresholds below are initial proposals, not absolutes
+
+Revise them once the spike output shows the actual distribution. If an observed rate falls within a few points of any threshold, review adjacent path triggers before deciding — the numbers exist to structure the conversation, not to automate the decision.
+
+All rates are measured against **P-intersect** when `--source-stems` is provided, otherwise against **P-resolvable** with an explicit caveat that the decision is being made on proxy data.
 
 ### Path 1 — Build full plan as written
 
 **Triggers (all must hold):**
-- L1 exact-match rate < 85%
+- L1 exact-match rate **< 90%**
 - L2+L3 cascade usefully resolves ≥50% of non-L1 cases with ≤5% ambiguous/wrong
 - Pattern taxonomy A/B/C/D covers ≥95% of pipelines
 - ≥20 crawler-only mappings (CSV misses) — proves the crawler delivers value
@@ -365,9 +482,11 @@ After the reports are generated and reviewed, one of three paths:
 ### Path 2 — Enriched-CSV approach
 
 **Triggers:**
-- L1 exact-match rate ≥ 90%
+- L1 exact-match rate **≥ 90%**
 - L2/L3 cascade adds < 10% coverage OR has unacceptable ambiguity
-- Crawled data is stable enough that a committed CSV would stay correct for ≥ 6 months between regenerations
+- Temporal diff run (`--prev-snapshot`) shows churn < 15% with a matching regeneration cadence committed to. If `--prev-snapshot` was NOT run, Path 2 selection is conditional on running the temporal diff before shipping.
+
+**Single threshold at 90%** — no decision gap between Path 1 and Path 2. If L1 is exactly 90%, read the next triggers (cascade quality and temporal churn) to break the tie; they point to the same answer in the vast majority of cases.
 
 **Action:** commit the crawler as `tools/generate_pipeline_csv.py`, commit its output to `examples/pipeline_to_app_mapping.csv`, skip the runtime matcher entirely. Full plan §3-§5 never gets built.
 
@@ -413,10 +532,19 @@ ls spike_output/
 
 ### 8.3 Sharing the output
 
-The config repo contains WEX internal app and pipeline names. Before sharing the spike output:
+The config repo contains WEX internal app and pipeline names.
 
-- `01_raw_crawl.csv` is the only file that contains raw internal names. The `.md` reports reference names but may be redactable.
-- If the output needs review from anyone outside the team: provide a `--redact` flag that replaces identifiers with hashes while preserving structural signal (pattern counts, agreement rates, ambiguity counts). Implementation: `hashlib.sha1(name.encode()).hexdigest()[:8]`.
+**First decide whether redaction is necessary at all.** If the spike output stays inside WEX walls and reviewers already have repo access, the names are not secret and redaction is theater. In that case, skip the redaction feature entirely and mark output files "internal only" in their headers. **This is the default.**
+
+If redaction is genuinely needed (external consulting discussion, reviewers without repo access, attachment to a public issue tracker):
+
+- Do NOT use plain `sha1(name)[:8]` — at 32 bits of entropy drawn from ~500 names in predictable corporate namespaces (`WexHealth.*`, `Lighthouse1.*`, `cdh-*-az-cd`), a dictionary attack recovers most real names trivially. Deterministic hashing also preserves the relationship graph across leaks, so two separate leaks can be correlated even when neither one exposes raw names.
+- Use HMAC with a run-specific secret: `hmac.new(secret, name.encode(), 'sha256').hexdigest()[:8]`. The secret lives in `SPIKE_REDACT_SECRET` env var and rotates per run. Never commit the secret.
+- This breaks both dictionary attacks and cross-run correlation.
+- Redaction must be applied to ALL output files, not just `01_raw_crawl.csv` — the `.md` reports embed sample names from the data.
+- Document which secret was used where (separately, outside the redacted output) so reviewers can ask "what's this hash?" if needed and the answer is retrievable.
+
+**Default: no redaction, outputs marked "internal only."** Opt in with `--redact` only when genuinely needed.
 
 ### 8.4 `.gitignore` additions
 
@@ -445,10 +573,28 @@ Stating limits prevents over-reading the results:
 
 ## 10. Follow-on After Spike
 
-Whichever path is selected, the spike leaves artifacts that feed it:
+Whichever path is selected, the spike leaves artifacts that feed it.
 
-- **Path 1:** `01_raw_crawl.csv` becomes the golden fixture for `tests/integration/test_config_repo_scanner_integration.py` — real data, redacted, committed.
-- **Path 2:** The crawler gets promoted from `tools/spike/` to `tools/generate_pipeline_csv.py`, reports become CI outputs.
-- **Path 3:** Reports are attached as appendix to revised `APP_CONFIG_REPO.md v2`.
+### Path 1 — fixture readiness is a triple, not a single file
+
+The runtime matcher needs real test fixtures. The spike does not produce a complete fixture by itself — `01_raw_crawl.csv` is only the right-hand side of the match. A Path 1 fixture is the triple:
+
+1. `01_raw_crawl.csv` — crawled config-repo data (the match targets)
+2. The `--source-stems` file used by the spike — the inputs
+3. `expected_matches.csv` — a human-reviewed pairing of each stem to its correct pipeline(s)
+
+Only the complete triple is a fixture. Plan for a half-day of manual review to produce `expected_matches.csv` from the spike's `07_source_project_match.md` output.
+
+### Path 2 — cadence follows churn
+
+The crawler gets promoted from `tools/spike/` to `tools/generate_pipeline_csv.py`. Reports become CI outputs. The `06_temporal_diff.md` verdict directly sets the regeneration cadence:
+
+- Churn < 5% → regenerate annually
+- Churn 5-15% → regenerate quarterly
+- Churn ≥ 15% → stability disqualifies Path 2; reopen the Path 1 decision
+
+### Path 3 — feeds plan v2
+
+Reports are attached as appendix to a revised `APP_CONFIG_REPO.md v2`. The revision should specifically address which plan assumptions the spike falsified and what structural changes the matcher needs.
 
 In all three cases, nothing the spike produces is wasted.
