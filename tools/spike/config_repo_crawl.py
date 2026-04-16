@@ -16,6 +16,7 @@ Usage:
         [--prev-snapshot <csv>] \\
         [--redact]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -35,13 +36,9 @@ from typing import Callable, Optional
 
 _APP_NAME_RE = re.compile(r'"AppName"\s*:\s*"([^"]+)"')
 _LOWERCASE_APPNAME_RE = re.compile(r'"appName"\s*:\s*"([^"]+)"')
-_DLL_ARG_RE = re.compile(
-    r'arguments="[^"]*?([A-Za-z][A-Za-z0-9.]+)\.dll"', re.IGNORECASE
-)
+_DLL_ARG_RE = re.compile(r'arguments="[^"]*?([A-Za-z][A-Za-z0-9.]+)\.dll"', re.IGNORECASE)
 _NAV_RE = re.compile(r"^(.+?)-nav\d+(-az-cd|$)")
-_PIPELINE_SUFFIX_RE = re.compile(
-    r"-(az-cd|az-cicd|cicd|cd|mws)$", re.IGNORECASE
-)
+_PIPELINE_SUFFIX_RE = re.compile(r"-(az-cd|az-cicd|cicd|cd|mws)$", re.IGNORECASE)
 _COMMENT_LINE_RE = re.compile(r"^\s*//", re.MULTILINE)
 _APPNAME_PLACEHOLDER_RE = re.compile(r"\{AppName\}")
 _NORM_SEP_RE = re.compile(r"[-_\s]")
@@ -79,10 +76,7 @@ class CrawlRow:
 
     def best_name(self) -> Optional[str]:
         return (
-            self.host_app_name
-            or self.web_config_dll
-            or self.exe_config_stem
-            or self.heuristic_name
+            self.host_app_name or self.web_config_dll or self.exe_config_stem or self.heuristic_name
         )
 
 
@@ -294,11 +288,7 @@ def crawl(repo_path: Path, environment: str = DEFAULT_ENVIRONMENT) -> list[Crawl
             )
             continue
 
-        subdirs = [
-            d
-            for d in sorted(env_dir.iterdir())
-            if d.is_dir() and d.name not in ENV_SKIP
-        ]
+        subdirs = [d for d in sorted(env_dir.iterdir()) if d.is_dir() and d.name not in ENV_SKIP]
 
         # Pattern B: every subdir has its own host.json
         if subdirs and all((d / "wexhealth.host.json").is_file() for d in subdirs):
@@ -445,9 +435,7 @@ def find_within_repo_ambiguities(rows: list[CrawlRow]) -> list[Ambiguity]:
         probe_tokens = tokens(norm)
         probe_tail = norm.split(".")[-2:]
 
-        l1 = sorted(
-            {p for p, n in indexed if p != r.pipeline_name and normalize(n) == norm}
-        )
+        l1 = sorted({p for p, n in indexed if p != r.pipeline_name and normalize(n) == norm})
         if l1:
             ambig.append(Ambiguity(r.pipeline_name, probe, "L1", l1))
             continue
@@ -456,8 +444,7 @@ def find_within_repo_ambiguities(rows: list[CrawlRow]) -> list[Ambiguity]:
             {
                 p
                 for p, n in indexed
-                if p != r.pipeline_name
-                and jaccard(probe_tokens, tokens(normalize(n))) >= 0.5
+                if p != r.pipeline_name and jaccard(probe_tokens, tokens(normalize(n))) >= 0.5
             }
         )
         if len(l2) >= 2:
@@ -476,9 +463,7 @@ def find_within_repo_ambiguities(rows: list[CrawlRow]) -> list[Ambiguity]:
     return ambig
 
 
-def audit_edge_cases(
-    rows: list[CrawlRow], repo_path: Path, environment: str
-) -> EdgeCaseReport:
+def audit_edge_cases(rows: list[CrawlRow], repo_path: Path, environment: str) -> EdgeCaseReport:
     comments = sum(1 for r in rows if r.has_comments_in_host_json)
     placeholders = sum(1 for r in rows if r.has_appname_placeholder_near)
 
@@ -539,19 +524,11 @@ def simulate_source_match(rows: list[CrawlRow], stems: list[str]) -> list[StemRe
         if l1:
             results.append(StemResult(stem, "L1", l1))
             continue
-        l2 = sorted(
-            {
-                p
-                for p, n in indexed
-                if jaccard(probe_tokens, tokens(normalize(n))) >= 0.5
-            }
-        )
+        l2 = sorted({p for p, n in indexed if jaccard(probe_tokens, tokens(normalize(n))) >= 0.5})
         if l2:
             results.append(StemResult(stem, "L2", l2))
             continue
-        l3 = sorted(
-            {p for p, n in indexed if normalize(n).split(".")[-2:] == probe_tail}
-        )
+        l3 = sorted({p for p, n in indexed if normalize(n).split(".")[-2:] == probe_tail})
         if l3:
             results.append(StemResult(stem, "L3", l3))
             continue
@@ -819,9 +796,7 @@ def write_ambiguity_report(
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_edge_cases(
-    edge: EdgeCaseReport, total: int, path: Path, rd: Optional[Callable]
-) -> None:
+def write_edge_cases(edge: EdgeCaseReport, total: int, path: Path, rd: Optional[Callable]) -> None:
     lines = [
         "# Edge Cases",
         "",
@@ -852,7 +827,15 @@ def write_edge_cases(
     else:
         lines.append("(none)")
 
-    lines.extend(["", "## Pipeline name families (prefix clusters)", "", "| Family | Count | Sample |", "|---|---|---|"])
+    lines.extend(
+        [
+            "",
+            "## Pipeline name families (prefix clusters)",
+            "",
+            "| Family | Count | Sample |",
+            "|---|---|---|",
+        ]
+    )
     for family, members in edge.pipeline_families.items():
         lines.append(f"| `{family}` | {len(members)} | `{members[0]}` |")
 
@@ -861,9 +844,7 @@ def write_edge_cases(
 
 def write_temporal_diff(td: TemporalDiff, path: Path) -> None:
     total = td.total_pipelines_curr
-    churn = (
-        len(td.added) + len(td.removed) + len(td.app_name_changed) + len(td.pattern_changed)
-    )
+    churn = len(td.added) + len(td.removed) + len(td.app_name_changed) + len(td.pattern_changed)
     churn_pct = 100 * churn / max(1, total)
     if churn_pct < 5:
         verdict = "Path 2 viable — annual regeneration"
@@ -897,9 +878,7 @@ def write_temporal_diff(td: TemporalDiff, path: Path) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_source_match(
-    stem_results: list[StemResult], path: Path, rd: Optional[Callable]
-) -> None:
+def write_source_match(stem_results: list[StemResult], path: Path, rd: Optional[Callable]) -> None:
     counts = Counter(r.level for r in stem_results)
     total = len(stem_results)
     resolved = total - counts.get("NONE", 0)
@@ -1024,9 +1003,7 @@ def main() -> int:
     write_raw_csv(rows, out / "01_raw_crawl.csv", rd)
     write_pattern_taxonomy(rows, nav_groups, out / "02_pattern_taxonomy.md", rd)
     write_csv_diff(diff, out / "03_csv_diff.md", rd)
-    write_ambiguity_report(
-        ambiguities, stem_results, out / "04_ambiguity_report.md", p_label, rd
-    )
+    write_ambiguity_report(ambiguities, stem_results, out / "04_ambiguity_report.md", p_label, rd)
     write_edge_cases(edge, len(rows), out / "05_edge_cases.md", rd)
     if temporal:
         write_temporal_diff(temporal, out / "06_temporal_diff.md")
