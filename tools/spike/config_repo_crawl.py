@@ -64,7 +64,7 @@ KNOWN_PREFIXES = (
     "lh1ondemand.",
 )
 DEFAULT_ENVIRONMENT = "production"
-DEFAULT_L2_THRESHOLD = 0.5
+DEFAULT_L2_THRESHOLD = 0.7
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -908,7 +908,12 @@ def write_temporal_diff(td: TemporalDiff, path: Path) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_source_match(stem_results: list[StemResult], path: Path, rd: Optional[Callable]) -> None:
+def write_source_match(
+    stem_results: list[StemResult],
+    path: Path,
+    rd: Optional[Callable],
+    l2_threshold: float = DEFAULT_L2_THRESHOLD,
+) -> None:
     counts = Counter(r.level for r in stem_results)
     total = len(stem_results)
     resolved = total - counts.get("NONE", 0)
@@ -920,7 +925,7 @@ def write_source_match(stem_results: list[StemResult], path: Path, rd: Optional[
         f"**Unresolved:** {counts.get('NONE', 0)} ({_pct(counts.get('NONE', 0), total)})",
         "",
         f"- L1 exact: {counts.get('L1', 0)} ({_pct(counts.get('L1', 0), total)})",
-        f"- L2 Jaccard ≥0.5: {counts.get('L2', 0)} ({_pct(counts.get('L2', 0), total)})",
+        f"- L2 Jaccard ≥{l2_threshold}: {counts.get('L2', 0)} ({_pct(counts.get('L2', 0), total)})",
         f"- L3 tail-2 tokens: {counts.get('L3', 0)} ({_pct(counts.get('L3', 0), total)})",
         "",
     ]
@@ -1051,7 +1056,7 @@ def main() -> int:
     if temporal:
         write_temporal_diff(temporal, out / "06_temporal_diff.md")
     if stem_results:
-        write_source_match(stem_results, out / "07_source_project_match.md", rd)
+        write_source_match(stem_results, out / "07_source_project_match.md", rd, l2_thresh)
     print("Done.")
     return 0
 
