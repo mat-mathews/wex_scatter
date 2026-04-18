@@ -125,7 +125,16 @@ The built `site/` directory is gitignored, so rebuilding in-tree is safe.
 `tools/generate_pipeline_csv.py` crawls the WEX app-config repo and produces a pipeline-to-application mapping CSV. Stdlib only, no scatter imports.
 
 ```bash
-# Via Docker (no Python install required)
+# Via Docker on Git Bash / Windows (no Python install required)
+MSYS_NO_PATHCONV=1 docker run --rm \
+    -v "$(pwd)":/workspace \
+    -v /c/_/health-benefits-app-config:/config:ro \
+    python:3.12-slim \
+    python /workspace/tools/generate_pipeline_csv.py \
+        --app-config-path /config \
+        --output /workspace/examples/pipeline_to_app_mapping.csv
+
+# Via Docker on macOS / Linux
 docker run --rm \
     -v "$(pwd)":/workspace \
     -v /path/to/health-benefits-app-config:/config:ro \
@@ -134,11 +143,13 @@ docker run --rm \
         --app-config-path /config \
         --output /workspace/examples/pipeline_to_app_mapping.csv
 
-# Via uv
+# Via uv (any platform with Python)
 uv run python tools/generate_pipeline_csv.py \
     --app-config-path /path/to/health-benefits-app-config \
     --output examples/pipeline_to_app_mapping.csv
 ```
+
+`MSYS_NO_PATHCONV=1` is required on Git Bash for Windows — without it, Git Bash rewrites `/workspace/...` paths inside the container to Windows paths, causing `can't open file` errors.
 
 The generator always writes a clean, complete file — it does not merge with existing data. Manual overrides for apps the generator can't resolve belong in `examples/pipeline_manual_overrides.csv` (same schema, `source=manual`). Scatter loads both files at runtime; manual entries take precedence.
 
