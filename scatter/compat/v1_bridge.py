@@ -174,9 +174,15 @@ def _build_consumer_results(
                     )
                 )
         else:
-            logging.debug(
-                f"   No pipeline mapping found for consumer '{consumer_name_stem}' via its solutions."
-            )
+            if pipeline_map_dict:
+                logging.warning(
+                    f"Pipeline not found for '{consumer_name_stem}'"
+                    " — consider adding to pipeline_manual_overrides.csv"
+                )
+            else:
+                logging.debug(
+                    f"   No pipeline mapping found for consumer '{consumer_name_stem}' via its solutions."
+                )
             all_results_list.append(
                 ConsumerResult(
                     target_project_name=target_project_name,

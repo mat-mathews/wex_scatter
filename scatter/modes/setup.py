@@ -270,50 +270,64 @@ def load_batch_jobs(args) -> Dict[str, List[str]]:
     return batch_job_map
 
 
+def _read_one_pipeline_csv(csv_path: Path, pipeline_map: Dict[str, str], label: str) -> int:
+    """Read a single pipeline CSV into *pipeline_map*. Returns rows loaded."""
+    loaded = 0
+    try:
+        with open(csv_path, mode="r", newline="", encoding="utf-8-sig") as csvfile:
+            reader = csv.DictReader(csvfile)
+            fieldnames = set(reader.fieldnames or [])
+            # Accept both old ("Application Name") and new ("app_name") column names
+            has_old = {"Application Name", "Pipeline Name"}.issubset(fieldnames)
+            has_new = {"app_name", "pipeline_name"}.issubset(fieldnames)
+            if not has_old and not has_new:
+                logging.error(
+                    f"{label}: missing required columns (need 'Application Name'+'Pipeline Name' "
+                    f"or 'app_name'+'pipeline_name'). Found: {', '.join(fieldnames)}"
+                )
+                return 0
+            app_col = "app_name" if has_new else "Application Name"
+            pipe_col = "pipeline_name" if has_new else "Pipeline Name"
+            for row in reader:
+                app_name = row.get(app_col, "").strip()
+                pipe_name = row.get(pipe_col, "").strip()
+                if app_name and pipe_name:
+                    if app_name in pipeline_map:
+                        logging.debug(f"  {label}: overwriting '{app_name}' pipeline mapping")
+                    pipeline_map[app_name] = pipe_name
+                    loaded += 1
+    except Exception as e:
+        logging.error(f"Error loading {label} '{csv_path}': {e}")
+    return loaded
+
+
 def load_pipeline_csv(csv_path: Optional[Path]) -> Dict[str, str]:
-    """Load pipeline-to-application mapping from CSV file."""
+    """Load pipeline-to-application mapping from CSV file(s).
+
+    Reads the primary CSV from *csv_path*. If a ``pipeline_manual_overrides.csv``
+    exists in the same directory, reads it too — manual entries win on conflict.
+    """
     logging.info("\n--- Loading pipeline data ---")
     pipeline_map: Dict[str, str] = {}
-    if csv_path:
-        if not csv_path.is_file():
-            logging.warning(
-                f"Pipeline CSV file not found: {csv_path}. Proceeding without pipeline data."
-            )
-        else:
-            try:
-                with open(csv_path, mode="r", newline="", encoding="utf-8-sig") as csvfile:
-                    reader = csv.DictReader(csvfile)
-                    required_headers = {"Application Name", "Pipeline Name"}
-                    if not required_headers.issubset(reader.fieldnames or set()):
-                        missing = required_headers - set(reader.fieldnames or [])
-                        logging.error(
-                            f"Pipeline CSV missing required columns: {', '.join(missing)}. Proceeding without pipeline data."
-                        )
-                    else:
-                        loaded_count = 0
-                        duplicate_count = 0
-                        for row in reader:
-                            app_name = row.get("Application Name", "").strip()
-                            pipe_name = row.get("Pipeline Name", "").strip()
-                            if app_name and pipe_name:
-                                if app_name in pipeline_map:
-                                    duplicate_count += 1
-                                    logging.debug(
-                                        f"Duplicate application '{app_name}' in pipeline CSV. Overwriting."
-                                    )
-                                pipeline_map[app_name] = pipe_name
-                                loaded_count += 1
-                        log_msg = f"Loaded {loaded_count} pipeline mappings."
-                        if duplicate_count > 0:
-                            log_msg += f" ({duplicate_count} duplicate application names found, last entry used)."
-                        logging.info(log_msg)
-
-            except Exception as e:
-                logging.error(
-                    f"Error loading pipeline CSV '{csv_path}': {e}. Proceeding without pipeline data."
-                )
-    else:
+    if not csv_path:
         logging.info("No pipeline CSV provided.")
+        return pipeline_map
+
+    if not csv_path.is_file():
+        logging.warning(
+            f"Pipeline CSV file not found: {csv_path}. Proceeding without pipeline data."
+        )
+        return pipeline_map
+
+    loaded = _read_one_pipeline_csv(csv_path, pipeline_map, "pipeline CSV")
+    logging.info(f"Loaded {loaded} pipeline mappings from {csv_path.name}.")
+
+    # Load manual overrides from the same directory (if present)
+    overrides_path = csv_path.parent / "pipeline_manual_overrides.csv"
+    if overrides_path.is_file():
+        override_count = _read_one_pipeline_csv(overrides_path, pipeline_map, "manual overrides")
+        logging.info(f"Loaded {override_count} manual override(s) from {overrides_path.name}.")
+
     return pipeline_map
 
 
