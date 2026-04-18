@@ -83,7 +83,7 @@ To automate this on every PR, copy the [GitHub Action template](reference/github
 
 **Why:** The DevOps team needs an exact list of pipelines to run on release night. Not "probably these five." Not "everything just in case." The actual pipelines affected by what you changed. Getting this wrong means either a broken release (missed a pipeline) or a 4-hour deployment window that should have been 45 minutes (ran everything).
 
-**The pipeline list is only as complete as your `pipeline_to_app_mapping.csv`.** If a consumer project has no entry in the mapping file, it won't appear in the pipeline output. Keep the mapping current. Without `--pipeline-csv`, the `pipelines` output format produces empty output and consumer results won't include pipeline names.
+**The pipeline list is only as complete as your `pipeline_to_app_mapping.csv`.** If a consumer project has no entry in the mapping file, scatter logs a warning and the consumer won't appear in the pipeline output. Generate the CSV from your app-config repo with `tools/generate_pipeline_csv.py`, and add manual overrides to `examples/pipeline_manual_overrides.csv` for apps the generator can't resolve. Without `--pipeline-csv`, the `pipelines` output format produces empty output and consumer results won't include pipeline names.
 
 ### Steps
 
@@ -176,7 +176,7 @@ done | sort -u > release-pipelines.txt
 - **Sproc + code changes in the same release.** Database migrations deploy before application code. If your pipeline list includes both sproc-triggered and code-triggered consumers, make sure the migration is sequenced first in the release runbook.
 - **The total list across all your team's PRs.** Run Scatter for each merged branch, concatenate the pipeline lists, sort and deduplicate. That's your team's release footprint for the month.
 
-> **How this works:** The `pipelines` output format extracts pipeline names from consumer results (mapped via `--pipeline-csv`), deduplicates them, and prints one per line. The pipeline CSV maps `Application Name` to `Pipeline Name`. See [Output Formats](output-formats.md) for details and [Configuration](configuration.md) for pipeline mapping setup.
+> **How this works:** The `pipelines` output format extracts pipeline names from consumer results (mapped via `--pipeline-csv`), deduplicates them, and prints one per line. The pipeline CSV maps `app_name` to `pipeline_name` (also accepts the old column names `Application Name` and `Pipeline Name`). If a consumer has no pipeline mapping, scatter logs a warning pointing to `pipeline_manual_overrides.csv`. See [Output Formats](output-formats.md) for details and [Configuration](configuration.md) for pipeline mapping setup.
 
 ---
 

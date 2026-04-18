@@ -78,6 +78,23 @@ Analysis complete. 8 consumer(s) found across 1 target(s).
 
 Scatter narrowed 13 projects down to the 8 that actually consume GalaxyWorks.Data, ranked them by coupling, and resolved 5 CI/CD pipelines that would need to run.
 
+### Pipeline mapping
+
+The pipeline CSV maps application names to CI/CD pipeline names. Generate it from your app-config repo:
+
+```bash
+# Docker (no Python install)
+docker run --rm \
+    -v "$(pwd)":/workspace \
+    -v /path/to/app-config-repo:/config:ro \
+    python:3.12-slim \
+    python /workspace/tools/generate_pipeline_csv.py \
+        --app-config-path /config \
+        --output /workspace/examples/pipeline_to_app_mapping.csv
+```
+
+For deployed apps the generator can't resolve, add manual entries to `examples/pipeline_manual_overrides.csv` (same schema, `source=manual`). Scatter loads both files; manual entries take precedence.
+
 You can also trace stored procedures back to their consumers — coupling that's invisible in project references:
 
 ```bash

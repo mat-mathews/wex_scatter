@@ -37,7 +37,7 @@ These work with any mode (unless noted).
 | `--rebuild-graph` | false | Force full graph rebuild, ignoring cache |
 | `--include-graph-topology` | false | Include raw graph nodes/edges in JSON output. Omitted by default to keep file size down. |
 | `--include-db` | false | Include database dependency scanning (sprocs, EF models, direct SQL) in `--graph` mode |
-| `--pipeline-csv PATH` | None | Path to CSV mapping solution names to pipeline names (see `examples/pipeline_to_app_mapping.csv`) |
+| `--pipeline-csv PATH` | None | Path to CSV mapping app names to pipeline names. Accepts both new schema (`pipeline_name`, `app_name`) and old (`Pipeline Name`, `Application Name`). If a `pipeline_manual_overrides.csv` exists in the same directory, it is loaded automatically and takes precedence. See `examples/pipeline_to_app_mapping.csv`. |
 | `--app-config-path PATH` | None | Path to app-config repo for batch job name resolution |
 | `--target-namespace NS` | Auto-derived | Override namespace detection for the target project |
 | `-v`, `--verbose` | false | Enable DEBUG-level logging. Shows every step of the analysis pipeline. |

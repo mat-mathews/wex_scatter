@@ -224,7 +224,7 @@ galaxyworks-portal-az-cd
 
 One line per pipeline, sorted and deduplicated. That's the entire output. Try it yourself — the example CSV at `examples/pipeline_to_app_mapping.csv` works with the sample projects out of the box.
 
-Requires `--pipeline-csv` to map consumer projects to pipeline names. Without it, the output will be empty. Scatter warns you about this, but won't stop you.
+Requires `--pipeline-csv` to map consumer projects to pipeline names. Without it, the output will be empty. If a consumer has no mapping, scatter logs a warning suggesting you add it to `pipeline_manual_overrides.csv`.
 
 Not supported in `--graph` mode. Graph analysis is about architecture, not deployments.
 

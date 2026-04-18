@@ -155,9 +155,24 @@ scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --pipeline-csv examples/pipeline_to_app_mapping.csv
 ```
 
-The CSV needs two columns: `Application Name` and `Pipeline Name`. Scatter matches consumer projects against the `Application Name` column via **solution stem lookup** — it takes each consumer's `.sln` file, strips the extension (e.g., `GalaxyWorks.sln` → `GalaxyWorks`), and looks that up in the CSV. Pipeline names then appear in every output format.
+The CSV needs at least two columns: `pipeline_name` and `app_name`. Scatter matches consumer projects against the `app_name` column via **solution stem lookup** — it takes each consumer's `.sln` file, strips the extension (e.g., `GalaxyWorks.sln` → `GalaxyWorks`), and looks that up in the CSV. Pipeline names then appear in every output format.
 
-The repo includes a working example at `examples/pipeline_to_app_mapping.csv` that maps the sample projects. Use it as a template for your own mapping file.
+The full schema produced by `tools/generate_pipeline_csv.py` is:
+
+```
+pipeline_name,app_name,assembly_name,source
+```
+
+- `assembly_name` — the DLL name from `web.config` or `exe.config` (may differ from `app_name`; metadata, not used by scatter at runtime)
+- `source` — how the mapping was derived: `host_json`, `web_config`, `exe_config`, `heuristic`, or `manual`
+
+For backward compatibility, scatter also accepts the old column names (`Application Name` and `Pipeline Name`).
+
+### Manual overrides
+
+If `examples/pipeline_manual_overrides.csv` exists in the same directory as the pipeline CSV, scatter loads it automatically. Manual entries use the same schema with `source=manual` and take precedence over crawled entries on conflict. Use this for deployed apps the generator can't resolve from the config repo.
+
+The repo includes a working example at `examples/pipeline_to_app_mapping.csv` that maps the sample projects. For real codebases, generate the CSV from your app-config repo using `tools/generate_pipeline_csv.py` (see [Development](reference/development.md) for details).
 
 ## Multiprocessing Tuning
 

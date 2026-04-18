@@ -58,6 +58,7 @@ All developer tooling lives in `tools/`. The scripts are bash — on Windows, ru
 | `tools/setup.sh` | One-time environment bootstrap | After cloning, or when onboarding someone new |
 | `tools/check.sh` | Local CI mirror | Before pushing — catches issues before CI |
 | `tools/check.sh --quick` | Lint + format only (~2s) | While iterating on code |
+| `tools/generate_pipeline_csv.py` | Generate pipeline CSV from app-config repo | When pipelines are added/removed, or when "pipeline not found" warnings appear |
 | `tools/setup-claude-skills.sh` | Link Claude Code skills | Called by `setup.sh` automatically |
 | `tools/smoke-test-claude-skills.sh` | Validate skills work | After modifying skill definitions |
 
@@ -116,6 +117,38 @@ uv run --with-requirements docs_site/requirements-docs.txt \
 The `--with-requirements` flag installs the docs deps into an ephemeral uv-managed environment — no pollution of your project `.venv`.
 
 The built `site/` directory is gitignored, so rebuilding in-tree is safe.
+
+---
+
+## Pipeline CSV Generator
+
+`tools/generate_pipeline_csv.py` crawls the WEX app-config repo and produces a pipeline-to-application mapping CSV. Stdlib only, no scatter imports.
+
+```bash
+# Via Docker (no Python install required)
+docker run --rm \
+    -v "$(pwd)":/workspace \
+    -v /path/to/health-benefits-app-config:/config:ro \
+    python:3.12-slim \
+    python /workspace/tools/generate_pipeline_csv.py \
+        --app-config-path /config \
+        --output /workspace/examples/pipeline_to_app_mapping.csv
+
+# Via uv
+uv run python tools/generate_pipeline_csv.py \
+    --app-config-path /path/to/health-benefits-app-config \
+    --output examples/pipeline_to_app_mapping.csv
+```
+
+The generator always writes a clean, complete file — it does not merge with existing data. Manual overrides for apps the generator can't resolve belong in `examples/pipeline_manual_overrides.csv` (same schema, `source=manual`). Scatter loads both files at runtime; manual entries take precedence.
+
+### When to regenerate
+
+Regenerate when new pipelines are added to the config repo, or when scatter's "Pipeline not found" warnings start appearing for projects you know are deployed. Review the diff before committing:
+
+```bash
+git diff examples/pipeline_to_app_mapping.csv
+```
 
 ---
 
