@@ -153,6 +153,48 @@ uv run python tools/generate_pipeline_csv.py \
 
 The generator always writes a clean, complete file — it does not merge with existing data. Manual overrides for apps the generator can't resolve belong in `examples/pipeline_manual_overrides.csv` (same schema, `source=manual`). Scatter loads both files at runtime; manual entries take precedence.
 
+### Running against the monolith
+
+The OD monolith repo lives at `../OD/` relative to `wex_scatter` on the PC. To run scatter against it with the generated pipeline CSV:
+
+```bash
+# From the wex_scatter directory in Git Bash
+MSYS_NO_PATHCONV=1 docker run --rm \
+    -v "$(pwd)":/workspace \
+    -v "$(pwd)/../OD":/monolith:ro \
+    scatter \
+        --target-project /monolith/path/to/SomeProject.csproj \
+        --search-scope /monolith \
+        --pipeline-csv /workspace/examples/pipeline_to_app_mapping.csv
+```
+
+Replace `path/to/SomeProject.csproj` with the actual project path inside OD. The monolith is mounted read-only at `/monolith`, and the pipeline CSV is read from the scatter workspace.
+
+Other modes work the same way — swap `--target-project` for `--branch-name`, `--stored-procedure`, or `--sow`:
+
+```bash
+# Stored procedure analysis against the monolith
+MSYS_NO_PATHCONV=1 docker run --rm \
+    -v "$(pwd)":/workspace \
+    -v "$(pwd)/../OD":/monolith:ro \
+    scatter \
+        --stored-procedure "dbo.sp_InsertPortalConfiguration" \
+        --search-scope /monolith \
+        --pipeline-csv /workspace/examples/pipeline_to_app_mapping.csv
+
+# Branch analysis (requires the branch to exist in the OD repo)
+MSYS_NO_PATHCONV=1 docker run --rm \
+    -v "$(pwd)":/workspace \
+    -v "$(pwd)/../OD":/monolith \
+    scatter \
+        --branch-name feature/my-branch \
+        --repo-path /monolith \
+        --search-scope /monolith \
+        --pipeline-csv /workspace/examples/pipeline_to_app_mapping.csv
+```
+
+Note: branch analysis needs write access to the repo (no `:ro`) because git operations require it.
+
 ### When to regenerate
 
 Regenerate when new pipelines are added to the config repo, or when scatter's "Pipeline not found" warnings start appearing for projects you know are deployed. Review the diff before committing:
