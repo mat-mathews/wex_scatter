@@ -56,6 +56,10 @@ venv.bak/
 # Scatter graph cache
 .scatter/
 
+# Benchmarking / profiling scratch
+perf_log.txt
+walk_perf.txt
+
 # Personal working files
 tasks.txt
 

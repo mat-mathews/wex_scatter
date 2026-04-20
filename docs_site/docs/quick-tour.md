@@ -19,28 +19,30 @@ uv run scatter \
 This analyzes the sample `GalaxyWorks.Data` project and finds every project that consumes it:
 
 ```
-Search scope: /code/scatter (scanned 11 projects, 27 files)
-Filter: 11 → 7 project refs[graph] → 6 namespace
+Search scope: /code/scatter (scanned 13 projects, 35 files)
+Filter: 13 → 9 project refs[graph] → 8 namespace
 
 ============================================================
   Consumer Analysis
 ============================================================
-  Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
-  Consumers: 6
+  Target: GalaxyWorks.Data (samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+  Consumers: 8
 
   Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
   ---------------------------------------- ------- ------- ------- ------- -------------------------
   GalaxyWorks.WebPortal                       12.7       1       1    0.50 GalaxyWorks.sln
   GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
   GalaxyWorks.Api                              7.1       0       2    1.00 GalaxyWorks.sln
+  GalaxyWorks.DevTools                         4.9       0       1    1.00 GalaxyWorks.sln
   MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
   GalaxyWorks.Data.Tests                       3.5       0       2    1.00 GalaxyWorks.sln
+  GalaxyWorks.Notifications                    2.8       0       1    1.00 GalaxyWorks.sln
   MyGalaryConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
 
-Analysis complete. 6 consumer(s) found across 1 target(s).
+Analysis complete. 8 consumer(s) found across 1 target(s).
 ```
 
-**Filter line** — the analysis funnel. Started with 11 projects, narrowed to 7 that have a project reference to GalaxyWorks.Data, then to 6 that actually use its namespace. Each stage cuts aggressively so you see real consumers, not false positives.
+**Filter line** — the analysis funnel. Started with 13 projects, narrowed to 9 that have a project reference to GalaxyWorks.Data, then to 8 that actually use its namespace. Each stage cuts aggressively so you see real consumers, not false positives.
 
 **Consumer table** — every project that depends on GalaxyWorks.Data, sorted by coupling score (highest risk first). If you change `PortalDataService`, these are the projects that might break.
 
@@ -80,7 +82,7 @@ uv run scatter \
   --parser-mode hybrid
 ```
 
-On the sample projects, this drops the consumer count from 8 to 6 — two projects that only mentioned `PortalDataService` in comments or template strings are correctly filtered out.
+On the sample projects, this filters out consumers that only mention `PortalDataService` in comments or template strings.
 
 No API key needed. `--parser-mode hybrid` uses tree-sitter (a local parser), not an LLM. Requires `uv sync --extra ast` (included in Docker).
 
@@ -94,8 +96,8 @@ uv run scatter --graph --search-scope .
 ============================================================
   Dependency Graph Analysis
 ============================================================
-  Projects: 11
-  Dependencies: 31
+  Projects: 13
+  Dependencies: 35
   Solutions: 1
   Connected components: 3
   Circular dependencies: 0
@@ -103,7 +105,7 @@ uv run scatter --graph --search-scope .
   Top Coupled Projects:
   Project                                     Score   Fan-In  Fan-Out  Instab.
   ---------------------------------------- -------- -------- -------- --------
-  GalaxyWorks.Data                             22.6        7        0     0.00
+  GalaxyWorks.Data                             30.3        9        0     0.00
   GalaxyWorks.WebPortal                        12.7        1        1     0.50
   GalaxyWorks.BatchProcessor                   10.8        0        2     1.00
   GalaxyWorks.Common                           10.0        3        1     0.25
@@ -112,12 +114,12 @@ uv run scatter --graph --search-scope .
   Domain Clusters:
   Cluster                          Size   Cohesion   Coupling          Feasibility    Align
   ------------------------------ ------ ---------- ---------- -------------------- --------
-  cluster_0                           8      0.518      0.000         easy (1.000)     1.00
+  cluster_0                          10      0.367      0.000         easy (1.000)     1.00
   MyDotNetApp                         2      1.000      0.000         easy (1.000)     0.50
 
   Observations:
-    [warning] GalaxyWorks.Data: stable core (fan_in=7, instability=0.00) — change carefully
-    [warning] GalaxyWorks.Data: high coupling score (22.6) — review dependencies
+    [warning] GalaxyWorks.Data: stable core (fan_in=9, instability=0.00) — change carefully
+    [warning] GalaxyWorks.Data: high coupling score (30.3) — review dependencies
     [info] dbo.sp_InsertPortalConfiguration: shared by 3 projects — database coupling hotspot
 ```
 

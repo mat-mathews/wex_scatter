@@ -63,15 +63,17 @@ Only relevant with `--stored-procedure`.
 |------|---------|-------------|
 | `--sproc-regex-pattern PATTERN` | Built-in default | Custom Python regex to find sproc names in C# files. Use `{sproc_name_placeholder}` where the escaped sproc name should be inserted. |
 
-## AI / Summarization Options
+## AI Provider Options
 
-These require a Google API key (via `--google-api-key`, config file, or `GOOGLE_API_KEY` env var).
+AI features require a provider API key. Currently Gemini is the default; the WEX AI Platform provider is stubbed for future integration.
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--summarize-consumers` | false | Send each relevant consumer `.cs` file to Gemini for a 2-3 sentence summary |
+| `--summarize-consumers` | false | Send each relevant consumer `.cs` file to the AI provider for a 2-3 sentence summary |
 | `--google-api-key KEY` | None / env var | Google API key for Gemini |
 | `--gemini-model MODEL` | `gemini-2.0-flash` | Which Gemini model to use |
+| `--wex-api-key KEY` | None / env var | WEX AI Platform API key (stubbed — not yet operational) |
+| `--wex-model MODEL` | None | WEX AI Platform model override |
 
 ## Multiprocessing Options
 
