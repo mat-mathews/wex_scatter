@@ -133,7 +133,7 @@ Then open [http://localhost:8000](http://localhost:8000). Or browse the raw mark
 - [Configuration](docs_site/docs/configuration.md) — YAML config, env vars, CLI flags
 - [CLI Reference](docs_site/docs/cli-reference.md) — every flag and option
 - [Architecture](docs_site/docs/reference/architecture.md) — system design and data flow
-- [ADRs](docs/ADR.md) — architecture decision records
+- [Development Log](docs/ADR_DEV_LOG.md) — architecture decisions, performance work, and roadmap
 
 ---
 
