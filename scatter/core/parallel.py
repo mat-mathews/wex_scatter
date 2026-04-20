@@ -696,6 +696,22 @@ def find_files_with_pattern_parallel(
         return list(search_path.rglob(pattern))
 
 
+def extract_exclude_dirs(exclude_patterns: List[str]) -> Set[str]:
+    """Extract directory names from exclude patterns for os.walk pruning.
+
+    Converts patterns like '*/bin/*' to directory name 'bin'.
+    Handles: '*/name/*', '**/name/**', '*/name'.
+    Patterns with path separators in the name portion are ignored
+    (they describe path-specific exclusions, not directory names).
+    """
+    dirs: Set[str] = set()
+    for pat in exclude_patterns:
+        parts = pat.replace("*", "").strip("/").strip("\\")
+        if parts and "/" not in parts and "\\" not in parts:
+            dirs.add(parts)
+    return dirs
+
+
 def walk_and_collect(
     search_path: Path,
     extensions: Set[str],

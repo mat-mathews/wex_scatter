@@ -55,6 +55,7 @@ class ModeContext:
     cs_analysis_chunk_size: int = 50
     csproj_analysis_chunk_size: int = 25
     no_graph: bool = False
+    discovered_files: Optional[Dict] = None
 
 
 @dataclass

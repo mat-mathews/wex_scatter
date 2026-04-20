@@ -234,7 +234,10 @@ def setup_ai_provider(args, config):
     return ai_provider, budget
 
 
-def scan_solutions_data(search_scope: Path) -> SolutionData:
+def scan_solutions_data(
+    search_scope: Path,
+    sln_files: Optional[List[Path]] = None,
+) -> SolutionData:
     """Scan for .sln files and build solution index."""
     logging.info("\n--- Caching solution files ---")
     solution_infos: List[SolutionInfo] = []
@@ -243,7 +246,7 @@ def scan_solutions_data(search_scope: Path) -> SolutionData:
 
     logging.info(f"Scanning for .sln files within '{search_scope}'...")
     try:
-        solution_infos = scan_solutions(search_scope)
+        solution_infos = scan_solutions(search_scope, sln_files=sln_files)
         solution_index = build_project_to_solutions(solution_infos)
         solution_file_cache = [si.path for si in solution_infos]
         logging.info(f"Found {len(solution_infos)} solution files")
@@ -331,7 +334,9 @@ def load_pipeline_csv(csv_path: Optional[Path]) -> Dict[str, str]:
     return pipeline_map
 
 
-def build_graph_context_if_needed(args, config, search_scope, solution_index) -> Tuple:
+def build_graph_context_if_needed(
+    args, config, search_scope, solution_index, discovered_files=None
+) -> Tuple:
     """Build graph context from cache or on demand. Returns (graph_ctx, graph_enriched)."""
     graph_ctx = None
     graph_enriched = False
@@ -341,7 +346,8 @@ def build_graph_context_if_needed(args, config, search_scope, solution_index) ->
 
         if args.graph_metrics or cache_exists(search_scope, config.graph.cache_dir):
             graph_ctx = build_graph_context(
-                search_scope, config, args, solution_index=solution_index
+                search_scope, config, args, solution_index=solution_index,
+                discovered_files=discovered_files,
             )
             if graph_ctx:
                 graph_enriched = True
@@ -361,6 +367,7 @@ def build_mode_context(
     pipeline_map,
     graph_ctx,
     graph_enriched,
+    discovered_files=None,
 ) -> ModeContext:
     """Assemble ModeContext from resolved components."""
     return ModeContext(
@@ -384,4 +391,5 @@ def build_mode_context(
         cs_analysis_chunk_size=args.cs_analysis_chunk_size,
         csproj_analysis_chunk_size=args.csproj_analysis_chunk_size,
         no_graph=args.no_graph,
+        discovered_files=discovered_files,
     )

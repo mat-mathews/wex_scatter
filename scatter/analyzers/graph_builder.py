@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.core.models import DEFAULT_CHUNK_SIZE, DEFAULT_MAX_WORKERS
-from scatter.core.parallel import find_files_with_pattern_parallel, walk_and_collect
+from scatter.core.parallel import extract_exclude_dirs, walk_and_collect
 from scatter.scanners.project_scanner import (
     derive_namespace,
     parse_csproj_all_references,
@@ -77,6 +77,7 @@ def build_dependency_graph(
     capture_facts: bool = False,
     full_type_scan: bool = False,
     analysis_config: Optional["AnalysisConfig"] = None,
+    discovered_files: Optional[Dict[str, List[Path]]] = None,
 ):
     """Build a complete dependency graph from a codebase directory.
 
@@ -94,13 +95,21 @@ def build_dependency_graph(
     graph = DependencyGraph()
     t0 = time.monotonic()
 
-    # Step 1: Discover all .csproj and .cs files in a single walk.
-    # Prunes excluded directories (bin/, obj/, etc.) during traversal so they
-    # are never entered — critical for Docker/WSL2 volume mounts.
-    exclude_dirs = _extract_exclude_dirs(exclude_patterns)
-    discovered = walk_and_collect(search_scope, {".csproj", ".cs"}, exclude_dirs)
-    csproj_files = discovered[".csproj"]
-    cs_files = discovered[".cs"]
+    # Step 1: Discover all .csproj and .cs files.
+    # When called from __main__, files are pre-discovered in a single walk
+    # shared with solution scanning. Standalone/test callers fall back to
+    # walking here.
+    if discovered_files is not None:
+        csproj_files = discovered_files[".csproj"]
+        cs_files = discovered_files[".cs"]
+        logging.info(
+            f"Using pre-discovered files: {len(csproj_files)} .csproj, {len(cs_files)} .cs"
+        )
+    else:
+        exclude_dirs = extract_exclude_dirs(exclude_patterns)
+        discovered = walk_and_collect(search_scope, {".csproj", ".cs"}, exclude_dirs)
+        csproj_files = discovered[".csproj"]
+        cs_files = discovered[".cs"]
 
     t0a = time.monotonic()
     logging.info(
@@ -518,21 +527,6 @@ def _map_cs_to_project(
         current = parent
     return None
 
-
-def _extract_exclude_dirs(exclude_patterns: List[str]) -> Set[str]:
-    """Extract directory names from exclude patterns for os.walk pruning.
-
-    Converts patterns like '*/bin/*' to directory name 'bin'.
-    Handles: '*/name/*', '**/name/**', '*/name'.
-    Patterns with path separators in the name portion are ignored
-    (they describe path-specific exclusions, not directory names).
-    """
-    dirs: Set[str] = set()
-    for pat in exclude_patterns:
-        parts = pat.replace("*", "").strip("/").strip("\\")
-        if parts and "/" not in parts and "\\" not in parts:
-            dirs.add(parts)
-    return dirs
 
 
 def _filter_excluded(paths: List[Path], exclude_patterns: List[str]) -> List[Path]:

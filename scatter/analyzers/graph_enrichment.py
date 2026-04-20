@@ -31,7 +31,7 @@ class GraphContext:
 
 
 def build_graph_context(
-    search_scope, config, args, solution_index=None
+    search_scope, config, args, solution_index=None, discovered_files=None
 ) -> Optional["GraphContext"]:
     """Build or load a cached dependency graph and compute metrics.
 
@@ -140,6 +140,7 @@ def build_graph_context(
                 capture_facts=True,
                 full_type_scan=getattr(args, "full_type_scan", False),
                 analysis_config=config.analysis,
+                discovered_files=discovered_files,
             )
             graph, file_facts, project_facts = build_result
             # Post-process: populate solution membership

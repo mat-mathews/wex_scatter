@@ -1064,9 +1064,9 @@ class TestWalkAndCollect:
         )
 
         # New approach
-        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+        from scatter.core.parallel import extract_exclude_dirs
 
-        exclude_dirs = _extract_exclude_dirs(exclude_patterns)
+        exclude_dirs = extract_exclude_dirs(exclude_patterns)
         new = walk_and_collect(SAMPLES, {".csproj", ".cs"}, exclude_dirs)
         new_csproj = set(new[".csproj"])
         new_cs = set(new[".cs"])
@@ -1086,40 +1086,40 @@ class TestWalkAndCollect:
 # ===========================================================================
 class TestExtractExcludeDirs:
     def test_standard_patterns(self):
-        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+        from scatter.core.parallel import extract_exclude_dirs
 
-        result = _extract_exclude_dirs(["*/bin/*", "*/obj/*", "*/temp_test_data/*"])
+        result = extract_exclude_dirs(["*/bin/*", "*/obj/*", "*/temp_test_data/*"])
         assert result == {"bin", "obj", "temp_test_data"}
 
     def test_double_star_patterns(self):
-        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+        from scatter.core.parallel import extract_exclude_dirs
 
-        result = _extract_exclude_dirs(["**/bin/**", "**/obj/**"])
+        result = extract_exclude_dirs(["**/bin/**", "**/obj/**"])
         assert result == {"bin", "obj"}
 
     def test_bare_name(self):
-        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+        from scatter.core.parallel import extract_exclude_dirs
 
-        result = _extract_exclude_dirs(["bin"])
+        result = extract_exclude_dirs(["bin"])
         assert result == {"bin"}
 
     def test_trailing_only(self):
-        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+        from scatter.core.parallel import extract_exclude_dirs
 
-        result = _extract_exclude_dirs(["*/bin"])
+        result = extract_exclude_dirs(["*/bin"])
         assert result == {"bin"}
 
     def test_path_with_separator_ignored(self):
         """Patterns with path separators in the name portion are not directory names."""
-        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+        from scatter.core.parallel import extract_exclude_dirs
 
-        result = _extract_exclude_dirs(["*/some/path/*"])
+        result = extract_exclude_dirs(["*/some/path/*"])
         assert result == set()
 
     def test_empty_list(self):
-        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+        from scatter.core.parallel import extract_exclude_dirs
 
-        result = _extract_exclude_dirs([])
+        result = extract_exclude_dirs([])
         assert result == set()
 
 
@@ -1175,12 +1175,12 @@ class TestDbScannerContentCache:
         """DB scanner with content_by_path should match scanning without."""
         from scatter.analyzers.graph_builder import build_dependency_graph, _extract_file_data
         from scatter.core.parallel import walk_and_collect
-        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+        from scatter.core.parallel import extract_exclude_dirs
         from scatter.scanners.db_scanner import scan_db_dependencies
         from collections import defaultdict
 
         exclude_patterns = ["*/bin/*", "*/obj/*", "*/temp_test_data/*"]
-        exclude_dirs = _extract_exclude_dirs(exclude_patterns)
+        exclude_dirs = extract_exclude_dirs(exclude_patterns)
         discovered = walk_and_collect(SAMPLES, {".csproj", ".cs"}, exclude_dirs)
 
         # Build project_cs_map the same way graph_builder does

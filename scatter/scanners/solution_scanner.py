@@ -4,7 +4,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from scatter.core.parallel import find_files_with_pattern_parallel
 
@@ -40,7 +40,8 @@ def parse_solution_file(sln_path: Path) -> SolutionInfo:
 
     Reads the file (UTF-8 with BOM tolerance), applies regex to extract
     Project(...) lines, filters to C# type GUIDs only, resolves .csproj
-    paths against the .sln parent directory.
+    paths against the .sln parent directory using string-based normpath
+    (no filesystem stat calls).
 
     Distinguishes empty-but-valid solutions (has .sln header, zero projects)
     from unrecognized formats (no header — logs warning).
@@ -48,23 +49,25 @@ def parse_solution_file(sln_path: Path) -> SolutionInfo:
     Returns SolutionInfo with empty lists on read failure (logs warning).
     Deduplicates project entries by resolved path (logs warning on duplicates).
     """
-    sln_path = sln_path.resolve()
-    info = SolutionInfo(path=sln_path, name=sln_path.stem)
+    import os as _os
+
+    sln_norm = Path(_os.path.normpath(str(sln_path)))
+    info = SolutionInfo(path=sln_norm, name=sln_norm.stem)
 
     try:
-        content = sln_path.read_text(encoding="utf-8-sig", errors="ignore")
+        content = sln_norm.read_text(encoding="utf-8-sig", errors="ignore")
     except OSError as e:
-        logging.warning(f"Could not read solution file {sln_path.name}: {e}")
+        logging.warning(f"Could not read solution file {info.name}: {e}")
         return info
 
     if _SLN_HEADER not in content:
         logging.warning(
-            f"{sln_path.name}: does not appear to be a valid solution file "
+            f"{info.name}: does not appear to be a valid solution file "
             f"(missing '{_SLN_HEADER}' header)"
         )
         return info
 
-    sln_dir = sln_path.parent
+    sln_dir = str(sln_norm.parent)
     seen_paths: set = set()
 
     for match in _PROJECT_LINE_RE.finditer(content):
@@ -73,27 +76,32 @@ def parse_solution_file(sln_path: Path) -> SolutionInfo:
         if type_guid.upper() not in _CS_PROJECT_GUIDS:
             continue
 
-        # Normalize backslashes and resolve against .sln directory
+        # Normalize Windows backslashes, then resolve via string math
         normalized = raw_path.replace("\\", "/")
-        resolved = (sln_dir / normalized).resolve()
+        resolved_str = _os.path.normpath(_os.path.join(sln_dir, normalized))
 
-        if resolved in seen_paths:
-            logging.warning(f"{sln_path.name}: duplicate project entry '{project_name}' — skipping")
+        if resolved_str in seen_paths:
+            logging.warning(f"{info.name}: duplicate project entry '{project_name}' — skipping")
             continue
-        seen_paths.add(resolved)
+        seen_paths.add(resolved_str)
 
         info.project_entries.append(project_name)
-        info.project_paths.append(resolved)
+        info.project_paths.append(Path(resolved_str))
 
     return info
 
 
-def scan_solutions(search_scope: Path) -> List[SolutionInfo]:
+def scan_solutions(
+    search_scope: Path,
+    sln_files: Optional[List[Path]] = None,
+) -> List[SolutionInfo]:
     """Discover and parse all .sln files in the search scope.
 
-    Sorted by name for deterministic output.
+    When *sln_files* is provided (pre-discovered by the top-level walk),
+    skips its own file discovery pass. Sorted by name for deterministic output.
     """
-    sln_files = find_files_with_pattern_parallel(search_scope, "*.sln")
+    if sln_files is None:
+        sln_files = find_files_with_pattern_parallel(search_scope, "*.sln")
     solutions = [parse_solution_file(p) for p in sln_files]
     solutions.sort(key=lambda s: s.name)
     return solutions

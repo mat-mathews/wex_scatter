@@ -4,6 +4,7 @@ import logging
 import time
 
 from scatter.cli_parser import build_parser
+from scatter.core.parallel import extract_exclude_dirs, walk_and_collect
 from scatter.modes.setup import (
     setup_logging,
     validate_mode_and_format,
@@ -45,11 +46,20 @@ def main():
     paths = resolve_paths(args, parser)
     config = load_config_from_args(args, paths)
     ai_provider, ai_budget = setup_ai_provider(args, config)
-    solutions = scan_solutions_data(paths.search_scope)
+
+    # Canonical file discovery — single os.walk for all downstream phases.
+    # Collects .sln, .csproj, and .cs in one pass.  .csproj/.cs are unused
+    # when --no-graph is set, but the marginal cost of extra extensions during
+    # an already-necessary walk is near zero.
+    exclude_dirs = extract_exclude_dirs(config.exclude_patterns)
+    discovered = walk_and_collect(paths.search_scope, {".sln", ".csproj", ".cs"}, exclude_dirs)
+
+    solutions = scan_solutions_data(paths.search_scope, sln_files=discovered[".sln"])
     batch_jobs = load_batch_jobs(args)
     pipeline_map = load_pipeline_csv(paths.pipeline_csv)
     graph_ctx, graph_enriched = build_graph_context_if_needed(
-        args, config, paths.search_scope, solutions.index
+        args, config, paths.search_scope, solutions.index,
+        discovered_files=discovered,
     )
     ctx = build_mode_context(
         args,
@@ -61,6 +71,7 @@ def main():
         pipeline_map,
         graph_ctx,
         graph_enriched,
+        discovered_files=discovered,
     )
 
     # Mode dispatch

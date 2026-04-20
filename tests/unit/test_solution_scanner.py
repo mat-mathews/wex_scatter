@@ -1,6 +1,7 @@
 """Tests for scatter/scanners/solution_scanner.py"""
 
 import logging
+import os
 from pathlib import Path
 
 
@@ -76,7 +77,7 @@ class TestParseSolutionFile:
         info = parse_solution_file(sln)
 
         assert info.name == "Test"
-        assert info.path == sln.resolve()
+        assert info.path == Path(os.path.normpath(str(sln)))
         assert info.project_entries == ["Alpha", "Beta", "Gamma"]
         assert len(info.project_paths) == 3
 
@@ -110,7 +111,7 @@ class TestParseSolutionFile:
         # Alpha uses backslash path Alpha\Alpha.csproj
         alpha_path = info.project_paths[0]
         assert alpha_path.is_absolute()
-        assert alpha_path == (tmp_path / "Alpha" / "Alpha.csproj").resolve()
+        assert alpha_path == Path(os.path.normpath(str(tmp_path / "Alpha" / "Alpha.csproj")))
 
     def test_parse_forward_slash_paths_resolved(self, tmp_path):
         sln = _write_sln(tmp_path, SLN_THREE_CSHARP)
@@ -119,7 +120,7 @@ class TestParseSolutionFile:
         # Gamma uses forward slash path Gamma/Gamma.csproj
         gamma_path = info.project_paths[2]
         assert gamma_path.is_absolute()
-        assert gamma_path == (tmp_path / "Gamma" / "Gamma.csproj").resolve()
+        assert gamma_path == Path(os.path.normpath(str(tmp_path / "Gamma" / "Gamma.csproj")))
 
     def test_parse_with_bom(self, tmp_path):
         sln = tmp_path / "Bom.sln"
@@ -292,7 +293,7 @@ class TestMigration:
         result = find_solutions_for_project(csproj, solution_cache=[], solution_index=index)
 
         assert len(result) == 1
-        assert result[0] == sln.resolve()
+        assert result[0] == Path(os.path.normpath(str(sln)))
 
     def test_migration_fallback(self, tmp_path):
         """find_solutions_for_project falls back to text search without index."""

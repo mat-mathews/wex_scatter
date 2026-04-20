@@ -61,6 +61,7 @@ def run_graph_mode(args, ctx: ModeContext, start_time: float) -> None:
             sproc_prefixes=config.db.sproc_prefixes,
             full_type_scan=getattr(args, "full_type_scan", False),
             analysis_config=config.analysis,
+            discovered_files=ctx.discovered_files,
         )
         populate_graph_solutions(graph, ctx.solution_index)
         save_graph(graph, cache_path, search_scope_abs, parser_mode=config.analysis.parser_mode)
