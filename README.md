@@ -24,7 +24,7 @@ MSYS_NO_PATHCONV=1 docker run -v "$(pwd)":/workspace scatter \
     --pipeline-csv /workspace/examples/pipeline_to_app_mapping.csv
 ```
 
-> `MSYS_NO_PATHCONV=1` prevents Git Bash on Windows from rewriting `/workspace` paths. It's a no-op on macOS and Linux — safe to include everywhere.
+> `MSYS_NO_PATHCONV=1` prevents Git Bash on Windows from rewriting `/workspace` paths.
 
 ```
 Search scope: /workspace (scanned 13 projects, 35 files)
@@ -61,7 +61,7 @@ Scatter narrowed 13 projects down to the 8 that actually consume GalaxyWorks.Dat
 
 ### Pipeline mapping
 
-The pipeline CSV maps application names to CI/CD pipeline names. Generate it from your app-config repo:
+The pipeline CSV maps application names to CI/CD pipeline names. Generate it from the app-config repo:
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run --rm \
