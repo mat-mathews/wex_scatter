@@ -15,35 +15,16 @@ cd wex_scatter
 docker build -t scatter .
 ```
 
-### Building the docs
-
-The documentation site lives in `docs_site/` as mkdocs source. To build or serve it without installing Python dependencies locally, run mkdocs through the official Docker image:
-
-```bash
-# Build the static site into docs_site/site/
-docker run --rm -v "$(pwd)":/docs -w /docs squidfunk/mkdocs-material \
-    build -f docs_site/mkdocs.yml
-
-# Or serve it live at http://localhost:8000
-docker run --rm -it -p 8000:8000 -v "$(pwd)":/docs -w /docs squidfunk/mkdocs-material \
-    serve -f docs_site/mkdocs.yml -a 0.0.0.0:8000
-```
-
-If you have Python and [uv](https://docs.astral.sh/uv/) installed, you can skip Docker:
-
-```bash
-uv run --with-requirements docs_site/requirements-docs.txt \
-    mkdocs serve -f docs_site/mkdocs.yml
-```
-
 The repo ships with 13 sample .NET projects in the `samples/` directory. Analyze `GalaxyWorks.Data` to see what depends on it and which pipelines are involved:
 
 ```bash
-docker run -v $(pwd):/workspace scatter \
+MSYS_NO_PATHCONV=1 docker run -v "$(pwd)":/workspace scatter \
     --target-project /workspace/samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
     --search-scope /workspace \
     --pipeline-csv /workspace/examples/pipeline_to_app_mapping.csv
 ```
+
+> `MSYS_NO_PATHCONV=1` prevents Git Bash on Windows from rewriting `/workspace` paths. It's a no-op on macOS and Linux — safe to include everywhere.
 
 ```
 Search scope: /workspace (scanned 13 projects, 35 files)
@@ -83,8 +64,7 @@ Scatter narrowed 13 projects down to the 8 that actually consume GalaxyWorks.Dat
 The pipeline CSV maps application names to CI/CD pipeline names. Generate it from your app-config repo:
 
 ```bash
-# Docker (no Python install)
-docker run --rm \
+MSYS_NO_PATHCONV=1 docker run --rm \
     -v "$(pwd)":/workspace \
     -v /path/to/app-config-repo:/config:ro \
     python:3.12-slim \
@@ -98,7 +78,7 @@ For deployed apps the generator can't resolve, add manual entries to `examples/p
 You can also trace stored procedures back to their consumers — coupling that's invisible in project references:
 
 ```bash
-docker run -v $(pwd):/workspace scatter \
+MSYS_NO_PATHCONV=1 docker run -v "$(pwd)":/workspace scatter \
     --stored-procedure "dbo.sp_InsertPortalConfiguration" \
     --search-scope /workspace
 ```
@@ -113,6 +93,8 @@ docker run -v $(pwd):/workspace scatter \
 
 - **Dependency graph** — full project graph with coupling scores, cycle detection, and domain clustering. See [Dependency Graph](docs_site/docs/usage/dependency-graph.md).
 
+For platform-specific Docker examples (PowerShell, macOS, Git Bash), cache volumes, and output file mounts, see [Docker](docs_site/docs/usage/docker.md).
+
 ---
 
 ## How it works
@@ -124,6 +106,21 @@ On first run it builds a dependency graph and caches it. Subsequent runs patch i
 ---
 
 ## Documentation
+
+The full docs live in `docs_site/`. Serve them locally:
+
+```bash
+# Via Docker
+MSYS_NO_PATHCONV=1 docker run --rm -it -p 8000:8000 \
+    -v "$(pwd)":/docs -w /docs squidfunk/mkdocs-material \
+    serve -f docs_site/mkdocs.yml -a 0.0.0.0:8000
+
+# Or via uv (no Docker needed)
+uv run --with-requirements docs_site/requirements-docs.txt \
+    mkdocs serve -f docs_site/mkdocs.yml
+```
+
+Then open [http://localhost:8000](http://localhost:8000). Or browse the raw markdown:
 
 - [Quick Tour](docs_site/docs/quick-tour.md) — guided walkthrough
 - [Target Project](docs_site/docs/usage/target-project.md) — find all consumers of a project
