@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.core.models import DEFAULT_CHUNK_SIZE, DEFAULT_MAX_WORKERS
-from scatter.core.parallel import find_files_with_pattern_parallel
+from scatter.core.parallel import find_files_with_pattern_parallel, walk_and_collect
 from scatter.scanners.project_scanner import (
     derive_namespace,
     parse_csproj_all_references,
@@ -92,18 +92,19 @@ def build_dependency_graph(
     graph = DependencyGraph()
     t0 = time.monotonic()
 
-    # Step 1: Discover all .csproj files
-    all_csproj = find_files_with_pattern_parallel(
-        search_scope,
-        "*.csproj",
-        max_workers=max_workers,
-        chunk_size=chunk_size,
-        disable_multiprocessing=disable_multiprocessing,
-    )
+    # Step 1: Discover all .csproj and .cs files in a single walk.
+    # Prunes excluded directories (bin/, obj/, etc.) during traversal so they
+    # are never entered — critical for Docker/WSL2 volume mounts.
+    exclude_dirs = _extract_exclude_dirs(exclude_patterns)
+    discovered = walk_and_collect(search_scope, {".csproj", ".cs"}, exclude_dirs)
+    csproj_files = discovered[".csproj"]
+    cs_files = discovered[".cs"]
 
-    # Filter excluded paths
-    csproj_files = _filter_excluded(all_csproj, exclude_patterns)
-    logging.info(f"Found {len(csproj_files)} .csproj files")
+    t0a = time.monotonic()
+    logging.info(
+        f"Graph build step 1 (file discovery): {t0a - t0:.1f}s "
+        f"— {len(csproj_files)} .csproj, {len(cs_files)} .cs"
+    )
 
     # Step 2: Parse each .csproj → extract metadata
     project_metadata: Dict[str, Dict[str, Any]] = {}
@@ -126,17 +127,10 @@ def build_dependency_graph(
         }
         project_refs[project_name] = parsed["project_references"]
 
-    # Step 3: Discover .cs files and map to parent projects via reverse index
-    all_cs = find_files_with_pattern_parallel(
-        search_scope,
-        "*.cs",
-        max_workers=max_workers,
-        chunk_size=chunk_size,
-        disable_multiprocessing=disable_multiprocessing,
-    )
-    cs_files = _filter_excluded(all_cs, exclude_patterns)
-    logging.info(f"Found {len(cs_files)} .cs files")
+    t0b = time.monotonic()
+    logging.info(f"Graph build step 2 (csproj parsing): {t0b - t0a:.1f}s")
 
+    # Step 3: Map .cs files to parent projects via reverse index
     project_dir_index = _build_project_directory_index(csproj_files)
     project_cs_files: Dict[str, List[Path]] = defaultdict(list)
 
@@ -146,7 +140,7 @@ def build_dependency_graph(
             project_cs_files[mapped_name].append(cs_path)
 
     t1 = time.monotonic()
-    logging.info(f"Graph build steps 1-3 (discovery + mapping): {t1 - t0:.1f}s")
+    logging.info(f"Graph build step 3 (cs-to-project mapping): {t1 - t0b:.1f}s")
 
     # Step 4: For each project's .cs files, extract type declarations, sproc refs, namespace usages
     # Uses ThreadPoolExecutor for I/O-bound file reads (GIL released during I/O).
@@ -492,6 +486,22 @@ def _map_cs_to_project(
             return None
         current = parent
     return None
+
+
+def _extract_exclude_dirs(exclude_patterns: List[str]) -> Set[str]:
+    """Extract directory names from exclude patterns for os.walk pruning.
+
+    Converts patterns like '*/bin/*' to directory name 'bin'.
+    Handles: '*/name/*', '**/name/**', '*/name'.
+    Patterns with path separators in the name portion are ignored
+    (they describe path-specific exclusions, not directory names).
+    """
+    dirs: Set[str] = set()
+    for pat in exclude_patterns:
+        parts = pat.replace("*", "").strip("/").strip("\\")
+        if parts and "/" not in parts and "\\" not in parts:
+            dirs.add(parts)
+    return dirs
 
 
 def _filter_excluded(paths: List[Path], exclude_patterns: List[str]) -> List[Path]:

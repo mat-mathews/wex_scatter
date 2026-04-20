@@ -1,9 +1,10 @@
 """Multiprocessing infrastructure for Scatter — workers and orchestrators."""
 
 import logging
+import os
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Any, List, Optional, Tuple, Dict
+from typing import Any, List, Optional, Set, Tuple, Dict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from scatter.core.models import DEFAULT_MAX_WORKERS, DEFAULT_CHUNK_SIZE, MULTIPROCESSING_ENABLED
@@ -693,3 +694,56 @@ def find_files_with_pattern_parallel(
     except Exception as e:
         logging.warning(f"Parallel file discovery failed: {e}. Falling back to sequential.")
         return list(search_path.rglob(pattern))
+
+
+def walk_and_collect(
+    search_path: Path,
+    extensions: Set[str],
+    exclude_dirs: Optional[Set[str]] = None,
+) -> Dict[str, List[Path]]:
+    """Single-pass directory walk collecting files by extension.
+
+    Prunes excluded directories and dot-prefixed directories during traversal
+    — they are never entered, avoiding the cost of enumerating their contents.
+    This is critical for Docker volume mounts where every syscall crosses a
+    protocol bridge (e.g., WSL2 9P on Windows).
+
+    Does not follow symlinks (consistent with Path.rglob default behavior).
+    Logs and continues on permission errors rather than aborting the walk.
+    """
+    if exclude_dirs is None:
+        exclude_dirs = set()
+
+    collected: Dict[str, List[Path]] = {ext: [] for ext in extensions}
+    dirs_traversed = 0
+    dirs_pruned = 0
+    root = str(search_path)
+    ext_tuple = tuple(extensions)  # for str.endswith short-circuit
+
+    def _walk_error(err):
+        logging.debug(f"Skipping directory during walk: {err}")
+
+    for dirpath, dirnames, filenames in os.walk(root, onerror=_walk_error):
+        dirs_traversed += 1
+
+        # Prune excluded and dot-prefixed directories in-place
+        # (os.walk won't descend into removed entries)
+        original_count = len(dirnames)
+        dirnames[:] = [
+            d for d in dirnames
+            if d not in exclude_dirs and not d.startswith(".")
+        ]
+        dirs_pruned += original_count - len(dirnames)
+
+        for filename in filenames:
+            # Short-circuit: endswith(tuple) avoids splitext for non-matching files
+            if filename.endswith(ext_tuple):
+                ext = os.path.splitext(filename)[1]
+                collected[ext].append(Path(os.path.join(dirpath, filename)))
+
+    logging.info(
+        f"File discovery: walked {dirs_traversed} directories, "
+        f"pruned {dirs_pruned}, collected "
+        + ", ".join(f"{len(v)} {k}" for k, v in collected.items())
+    )
+    return collected

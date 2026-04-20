@@ -964,3 +964,160 @@ class TestScopeGate:
             if e.edge_type == "type_usage" and e.source == "ProjectA" and e.target == "ProjectB"
         ]
         assert len(type_edges) > 0
+
+
+# ===========================================================================
+# TestWalkAndCollect
+# ===========================================================================
+class TestWalkAndCollect:
+    def test_collects_by_extension(self, tmp_path):
+        from scatter.core.parallel import walk_and_collect
+
+        (tmp_path / "a.cs").write_text("class A {}")
+        (tmp_path / "b.csproj").write_text("<Project/>")
+        (tmp_path / "c.txt").write_text("ignored")
+        sub = tmp_path / "sub"
+        sub.mkdir()
+        (sub / "d.cs").write_text("class D {}")
+
+        result = walk_and_collect(tmp_path, {".cs", ".csproj"})
+        cs_names = {p.name for p in result[".cs"]}
+        csproj_names = {p.name for p in result[".csproj"]}
+        assert cs_names == {"a.cs", "d.cs"}
+        assert csproj_names == {"b.csproj"}
+
+    def test_prunes_excluded_dirs(self, tmp_path):
+        from scatter.core.parallel import walk_and_collect
+
+        # Create bin/ and obj/ with .cs files that should be excluded
+        for d in ("bin", "obj"):
+            excluded = tmp_path / d
+            excluded.mkdir()
+            (excluded / f"should_not_find.cs").write_text("class X {}")
+            deep = excluded / "Debug" / "net8.0"
+            deep.mkdir(parents=True)
+            (deep / "deep.cs").write_text("class Y {}")
+
+        # Non-excluded file
+        (tmp_path / "real.cs").write_text("class Real {}")
+
+        result = walk_and_collect(tmp_path, {".cs"}, exclude_dirs={"bin", "obj"})
+        cs_paths = result[".cs"]
+        assert len(cs_paths) == 1
+        assert cs_paths[0].name == "real.cs"
+        # Verify no path contains excluded directory names
+        for p in cs_paths:
+            assert "bin" not in p.parts
+            assert "obj" not in p.parts
+
+    def test_prunes_dot_prefixed_dirs(self, tmp_path):
+        from scatter.core.parallel import walk_and_collect
+
+        git_dir = tmp_path / ".git"
+        git_dir.mkdir()
+        (git_dir / "config.cs").write_text("not a real cs file")
+        vs_dir = tmp_path / ".vs"
+        vs_dir.mkdir()
+        (vs_dir / "settings.cs").write_text("not real either")
+        (tmp_path / "real.cs").write_text("class Real {}")
+
+        result = walk_and_collect(tmp_path, {".cs"})
+        assert len(result[".cs"]) == 1
+        assert result[".cs"][0].name == "real.cs"
+
+    def test_empty_directory(self, tmp_path):
+        from scatter.core.parallel import walk_and_collect
+
+        result = walk_and_collect(tmp_path, {".cs", ".csproj"})
+        assert result[".cs"] == []
+        assert result[".csproj"] == []
+
+    def test_permission_error_continues(self, tmp_path):
+        """Walk should log and continue on permission errors, not crash."""
+        from scatter.core.parallel import walk_and_collect
+
+        (tmp_path / "good.cs").write_text("class Good {}")
+        # Even if os.walk encounters errors, the function should return results
+        result = walk_and_collect(tmp_path, {".cs"})
+        assert len(result[".cs"]) == 1
+
+    def test_matches_old_approach_on_samples(self):
+        """walk_and_collect must produce identical file sets to the old
+        find_files_with_pattern_parallel + _filter_excluded approach."""
+        from scatter.core.parallel import walk_and_collect, find_files_with_pattern_parallel
+        from scatter.analyzers.graph_builder import _filter_excluded
+
+        exclude_patterns = ["*/bin/*", "*/obj/*", "*/temp_test_data/*"]
+
+        # Old approach
+        old_csproj = set(
+            _filter_excluded(
+                find_files_with_pattern_parallel(SAMPLES, "*.csproj", disable_multiprocessing=True),
+                exclude_patterns,
+            )
+        )
+        old_cs = set(
+            _filter_excluded(
+                find_files_with_pattern_parallel(SAMPLES, "*.cs", disable_multiprocessing=True),
+                exclude_patterns,
+            )
+        )
+
+        # New approach
+        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+
+        exclude_dirs = _extract_exclude_dirs(exclude_patterns)
+        new = walk_and_collect(SAMPLES, {".csproj", ".cs"}, exclude_dirs)
+        new_csproj = set(new[".csproj"])
+        new_cs = set(new[".cs"])
+
+        assert new_csproj == old_csproj, (
+            f"csproj diff — only in new: {new_csproj - old_csproj}, "
+            f"only in old: {old_csproj - new_csproj}"
+        )
+        assert new_cs == old_cs, (
+            f"cs diff — only in new: {new_cs - old_cs}, "
+            f"only in old: {old_cs - new_cs}"
+        )
+
+
+# ===========================================================================
+# TestExtractExcludeDirs
+# ===========================================================================
+class TestExtractExcludeDirs:
+    def test_standard_patterns(self):
+        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+
+        result = _extract_exclude_dirs(["*/bin/*", "*/obj/*", "*/temp_test_data/*"])
+        assert result == {"bin", "obj", "temp_test_data"}
+
+    def test_double_star_patterns(self):
+        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+
+        result = _extract_exclude_dirs(["**/bin/**", "**/obj/**"])
+        assert result == {"bin", "obj"}
+
+    def test_bare_name(self):
+        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+
+        result = _extract_exclude_dirs(["bin"])
+        assert result == {"bin"}
+
+    def test_trailing_only(self):
+        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+
+        result = _extract_exclude_dirs(["*/bin"])
+        assert result == {"bin"}
+
+    def test_path_with_separator_ignored(self):
+        """Patterns with path separators in the name portion are not directory names."""
+        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+
+        result = _extract_exclude_dirs(["*/some/path/*"])
+        assert result == set()
+
+    def test_empty_list(self):
+        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+
+        result = _extract_exclude_dirs([])
+        assert result == set()
