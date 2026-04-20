@@ -103,7 +103,7 @@ python tools/benchmark_graph_build.py /tmp/medium --json -o results.json
 
 | Stage | What it does |
 |-------|-------------|
-| `file_discovery` | `rglob("*.csproj")` + `rglob("*.cs")` with parallel workers |
+| `file_discovery` | Single `os.walk` pass collecting `.csproj` + `.cs` (shared with solution scanning in production) |
 | `csproj_parsing` | Parse each `.csproj` for references, namespace, framework, output type |
 | `cs_mapping` | Map `.cs` files to parent projects via reverse directory index |
 | `type_extraction` | Read every `.cs` file, extract types + sprocs + using statements + identifiers |

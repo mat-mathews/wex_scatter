@@ -440,3 +440,13 @@ Different people need different things from the same data:
 Each reporter is a standalone module. Adding a format means writing a module and a dispatch branch. Existing reporters are untouched.
 
 JSON and CSV require `--output-file` because dumping a multi-megabyte JSON payload to stdout and accidentally piping it into something is the kind of mistake you only make once. Markdown and console go to stdout by default — that's the workflow (`| pbcopy`, `| less`). Mermaid is graph-only because it produces a diagram, not a consumer list. Pipelines is all-except-graph because graph mode is about architecture, not deployments.
+
+---
+
+## ADR-031: Single-Walk File Discovery
+
+Solution scanning and graph building each walked the same 32,156-directory tree independently. On Docker/WSL2, where every syscall crosses a 9P protocol bridge, that doubled the most expensive operation in the pipeline. Solution scanning also called `Path.resolve()` on every project reference inside every .sln file — ~7,500 filesystem stat calls for pure path normalization.
+
+Combined all file discovery into a single `os.walk` in `__main__.py` that collects `.sln`, `.csproj`, and `.cs` files in one pass. Solution scanner and graph builder receive pre-discovered files via optional parameters, with standalone fallbacks for tests and scripts. Replaced `Path.resolve()` with `os.path.normpath()` in .sln parsing — same stems, zero syscalls.
+
+Result: ~682s → ~311s on the OD monolith via Docker. The full story, including what we tried and what we didn't, is in [ADR_DOCKER_PERFORMANCE.md](ADR_DOCKER_PERFORMANCE.md).

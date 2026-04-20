@@ -12,17 +12,11 @@ The builder lives in `analyzers/graph_builder.py` and follows a 6-step pipeline.
 
 ### The 6-Step Pipeline
 
-**Step 1: Discover .csproj files.** Parallel glob for `*.csproj` across the search scope. Filter out excluded paths (`*/bin/*`, `*/obj/*` by default).
+**Step 1: Discover .csproj and .cs files.** A single `os.walk` pass (`walk_and_collect`) traverses the search scope once, collecting files by extension and pruning excluded directories (`bin/`, `obj/`, dot-prefixed) during traversal so they're never entered. When called from `__main__.py`, the walk also collects `.sln` files — discovery is shared with solution scanning. When the graph builder is called standalone (tests, scripts), it falls back to its own `walk_and_collect` call.
 
 **Step 2: Parse each .csproj.** Extract `ProjectReference` includes, `TargetFramework`, `OutputType`, project style (SDK vs legacy). Derive namespace from `<RootNamespace>` element or fall back to the project name.
 
-**Step 3: Discover .cs files and build reverse directory index.** Parallel glob for `*.cs`, then map each file to its parent project. The mapping uses a directory index sorted deepest-first -- nested projects match before parent projects.
-
-```python
-# Deepest-first sorting ensures that MyApp/SubModule/SubModule.csproj
-# matches files before MyApp/MyApp.csproj does.
-index.sort(key=lambda x: -len(x[0].parts))
-```
+**Step 3: Build reverse directory index.** Map each .cs file to its parent project. The mapping uses a directory index built from .csproj locations — walk upward from each .cs file until a known project directory is found.
 
 **Step 4: Extract per-file facts.** For each project's .cs files, read the content once and extract:
 - Type declarations (via `TYPE_DECLARATION_PATTERN` regex: `class`, `struct`, `interface`, `enum`, `record`, `delegate`)
