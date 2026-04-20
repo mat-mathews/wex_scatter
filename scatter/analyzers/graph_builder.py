@@ -42,6 +42,7 @@ class _FileExtraction(NamedTuple):
     sprocs: Set[str]
     namespaces: Set[str]
     content_hash: str
+    content: str
 
 
 def _extract_file_data(cs_path: Path) -> Optional[_FileExtraction]:
@@ -61,6 +62,7 @@ def _extract_file_data(cs_path: Path) -> Optional[_FileExtraction]:
         sprocs={m.group().strip("\"'") for m in _SPROC_PATTERN.finditer(content)},
         namespaces={m.group(1) for m in _USING_PATTERN.finditer(content)},
         content_hash=compute_content_hash(content),
+        content=content,
     )
 
 
@@ -154,6 +156,7 @@ def build_dependency_graph(
     captured_file_facts: Optional[Dict] = {} if capture_facts else None
     file_identifier_cache: Dict[Path, Set[str]] = {}
     file_namespace_cache: Dict[Path, Set[str]] = {}
+    content_by_path: Dict[Path, str] = {} if include_db_dependencies else {}
 
     # Flatten project→files for dispatch
     all_file_tasks: List[Tuple[str, Path]] = [
@@ -186,6 +189,8 @@ def build_dependency_graph(
     for project_name, ext in file_extractions:
         file_identifier_cache[ext.cs_path] = ext.identifiers
         file_namespace_cache[ext.cs_path] = ext.namespaces
+        if include_db_dependencies:
+            content_by_path[ext.cs_path] = ext.content
         project_types[project_name].update(ext.types)
         project_sprocs[project_name].update(ext.sprocs)
         for ns in ext.namespaces:
@@ -367,9 +372,14 @@ def build_dependency_graph(
     if include_db_dependencies:
         from scatter.scanners.db_scanner import add_db_edges_to_graph, scan_db_dependencies
 
+        if content_by_path:
+            cache_mb = sum(len(v) for v in content_by_path.values()) / (1024 * 1024)
+            logging.info(f"Content cache: {len(content_by_path)} files, {cache_mb:.0f}MB")
+
         db_deps = scan_db_dependencies(
             search_scope,
             project_cs_map=dict(project_cs_files),
+            content_by_path=content_by_path or None,
             max_workers=max_workers,
             chunk_size=chunk_size,
             disable_multiprocessing=disable_multiprocessing,
@@ -377,8 +387,11 @@ def build_dependency_graph(
             sproc_prefixes=sproc_prefixes,
         )
         add_db_edges_to_graph(graph, db_deps)
+        del content_by_path
 
     t6 = time.monotonic()
+    if include_db_dependencies:
+        logging.info(f"Graph build step 6 (DB scanner): {t6 - t5:.1f}s")
     logging.info(
         f"Built dependency graph: {graph.node_count} nodes, {graph.edge_count} edges "
         f"(total: {t6 - t0:.1f}s)"
@@ -424,41 +437,59 @@ def _build_project_reference_edges(
     csproj_files: List[Path],
     project_metadata: Dict[str, Dict[str, Any]],
 ) -> None:
-    """Resolve ProjectReference Include paths and add edges."""
-    # Build a lookup from resolved path to project name
-    path_to_name: Dict[Path, str] = {}
+    """Resolve ProjectReference Include paths and add edges.
+
+    Uses os.path.normpath for string-based path resolution instead of
+    Path.resolve() to avoid filesystem stat calls — critical for Docker/WSL2
+    where each resolve() triggers multiple cross-bridge syscalls.
+    """
+    import os as _os
+
+    # Build lookup: normalized path string -> project name
+    path_to_name: Dict[str, str] = {}
     for csproj_path in csproj_files:
         name = csproj_path.stem
         if name in project_metadata:
-            try:
-                path_to_name[csproj_path.resolve()] = name
-            except OSError:
-                path_to_name[csproj_path] = name
+            path_to_name[_os.path.normpath(str(csproj_path))] = name
+
+    unresolved = []
 
     for source_name, ref_includes in project_refs.items():
         if source_name not in graph._nodes:
             continue
-        source_path = project_metadata[source_name]["path"]
+        source_dir = str(project_metadata[source_name]["path"].parent)
 
         for include in ref_includes:
             # Skip MSBuild property references
             if "$(" in include:
                 continue
-            try:
-                ref_abs = (source_path.parent / include).resolve(strict=False)
-                target_name = path_to_name.get(ref_abs)
-                if target_name and target_name in graph._nodes:
-                    graph.add_edge(
-                        DependencyEdge(
-                            source=source_name,
-                            target=target_name,
-                            edge_type="project_reference",
-                            weight=1.0,
-                            evidence=[include],
-                        )
+            # Normalize Windows backslashes — .csproj files authored on Windows
+            # use \ in Include paths, but os.path.normpath on Linux treats \ as
+            # a literal character, not a separator.
+            include_posix = include.replace("\\", "/")
+            ref_norm = _os.path.normpath(_os.path.join(source_dir, include_posix))
+            target_name = path_to_name.get(ref_norm)
+
+            if target_name is None:
+                unresolved.append((source_name, include))
+                continue
+
+            if target_name in graph._nodes:
+                graph.add_edge(
+                    DependencyEdge(
+                        source=source_name,
+                        target=target_name,
+                        edge_type="project_reference",
+                        weight=1.0,
+                        evidence=[include],
                     )
-            except OSError as e:
-                logging.debug(f"Could not resolve reference {include}: {e}")
+                )
+
+    if unresolved:
+        logging.warning(
+            f"Could not resolve {len(unresolved)} project reference(s) via normpath. "
+            f"First 5: {unresolved[:5]}"
+        )
 
 
 def _build_project_directory_index(

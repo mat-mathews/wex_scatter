@@ -1121,3 +1121,122 @@ class TestExtractExcludeDirs:
 
         result = _extract_exclude_dirs([])
         assert result == set()
+
+
+# ===========================================================================
+# TestProjectReferenceBackslash
+# ===========================================================================
+class TestProjectReferenceBackslash:
+    def test_backslash_include_resolved(self, tmp_path):
+        """ProjectReference Include paths using Windows backslashes should resolve."""
+        from scatter.analyzers.graph_builder import build_dependency_graph
+
+        # ProjectB: target
+        proj_b = tmp_path / "ProjectB"
+        proj_b.mkdir()
+        (proj_b / "ProjectB.csproj").write_text(
+            '<Project Sdk="Microsoft.NET.Sdk">\n'
+            "  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>\n"
+            "</Project>\n"
+        )
+        (proj_b / "Widget.cs").write_text(
+            "namespace ProjectB { public class Widget { } }\n"
+        )
+
+        # ProjectA: references ProjectB with backslash path
+        proj_a = tmp_path / "ProjectA"
+        proj_a.mkdir()
+        (proj_a / "ProjectA.csproj").write_text(
+            '<Project Sdk="Microsoft.NET.Sdk">\n'
+            "  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>\n"
+            "  <ItemGroup>\n"
+            '    <ProjectReference Include="..\\ProjectB\\ProjectB.csproj" />\n'
+            "  </ItemGroup>\n"
+            "</Project>\n"
+        )
+        (proj_a / "Consumer.cs").write_text(
+            "using ProjectB;\nnamespace ProjectA { public class Consumer { } }\n"
+        )
+
+        graph = build_dependency_graph(tmp_path, disable_multiprocessing=True)
+
+        ref_edges = [e for e in graph.all_edges if e.edge_type == "project_reference"]
+        edge_pairs = {(e.source, e.target) for e in ref_edges}
+        assert ("ProjectA", "ProjectB") in edge_pairs, (
+            f"Backslash Include should resolve. Edges: {edge_pairs}"
+        )
+
+
+# ===========================================================================
+# TestDbScannerContentCache
+# ===========================================================================
+class TestDbScannerContentCache:
+    def test_cache_produces_identical_results(self):
+        """DB scanner with content_by_path should match scanning without."""
+        from scatter.analyzers.graph_builder import build_dependency_graph, _extract_file_data
+        from scatter.core.parallel import walk_and_collect
+        from scatter.analyzers.graph_builder import _extract_exclude_dirs
+        from scatter.scanners.db_scanner import scan_db_dependencies
+        from collections import defaultdict
+
+        exclude_patterns = ["*/bin/*", "*/obj/*", "*/temp_test_data/*"]
+        exclude_dirs = _extract_exclude_dirs(exclude_patterns)
+        discovered = walk_and_collect(SAMPLES, {".csproj", ".cs"}, exclude_dirs)
+
+        # Build project_cs_map the same way graph_builder does
+        from scatter.analyzers.graph_builder import (
+            _build_project_directory_index,
+            _map_cs_to_project,
+        )
+        from scatter.scanners.project_scanner import parse_csproj_all_references
+
+        csproj_files = discovered[".csproj"]
+        cs_files = discovered[".cs"]
+        project_dir_index = _build_project_directory_index(csproj_files)
+        project_cs_files = defaultdict(list)
+        for cs_path in cs_files:
+            mapped = _map_cs_to_project(cs_path, project_dir_index)
+            if mapped:
+                project_cs_files[mapped].append(cs_path)
+
+        project_cs_map = dict(project_cs_files)
+
+        # Build content cache
+        content_by_path = {}
+        for cs_paths in project_cs_map.values():
+            for cs_path in cs_paths:
+                try:
+                    content_by_path[cs_path] = cs_path.read_text(
+                        encoding="utf-8", errors="ignore"
+                    )
+                except OSError:
+                    pass
+
+        # Run without cache
+        deps_without = scan_db_dependencies(
+            SAMPLES,
+            project_cs_map=project_cs_map,
+            disable_multiprocessing=True,
+        )
+
+        # Run with cache
+        deps_with = scan_db_dependencies(
+            SAMPLES,
+            project_cs_map=project_cs_map,
+            content_by_path=content_by_path,
+            disable_multiprocessing=True,
+        )
+
+        # Compare results — same count and same dependency objects
+        assert len(deps_with) == len(deps_without), (
+            f"Cache: {len(deps_with)} deps, no cache: {len(deps_without)} deps"
+        )
+        without_set = {
+            (d.db_object_name, d.db_object_type, d.source_project)
+            for d in deps_without
+        }
+        with_set = {
+            (d.db_object_name, d.db_object_type, d.source_project)
+            for d in deps_with
+        }
+        assert with_set == without_set

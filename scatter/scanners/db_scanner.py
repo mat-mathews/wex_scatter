@@ -245,6 +245,7 @@ class _FileIndex:
 def scan_db_dependencies(
     search_scope: Path,
     project_cs_map: Optional[Dict[str, List[Path]]] = None,
+    content_by_path: Optional[Dict[Path, str]] = None,
     max_workers: int = DEFAULT_MAX_WORKERS,
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     disable_multiprocessing: bool = False,
@@ -256,9 +257,13 @@ def scan_db_dependencies(
     If project_cs_map is provided (from graph_builder), uses it directly.
     Otherwise discovers .cs files and maps them to projects.
 
+    If content_by_path is provided, uses cached file content instead of
+    re-reading files from disk — avoids redundant I/O on Docker/WSL2.
+
     Args:
         search_scope: Root directory to scan.
         project_cs_map: Pre-built {project_name: [cs_paths]} map.
+        content_by_path: Pre-read file contents keyed by path.
         sproc_prefixes: Custom stored procedure prefixes (default: sp_, usp_).
         exclude_patterns: Glob patterns to exclude.
 
@@ -286,11 +291,14 @@ def scan_db_dependencies(
 
     for project_name, cs_paths in project_cs_map.items():
         for cs_path in cs_paths:
-            try:
-                raw_content = cs_path.read_text(encoding="utf-8", errors="ignore")
-            except OSError as e:
-                logging.debug(f"Could not read {cs_path}: {e}")
-                continue
+            if content_by_path is not None and cs_path in content_by_path:
+                raw_content = content_by_path[cs_path]
+            else:
+                try:
+                    raw_content = cs_path.read_text(encoding="utf-8", errors="ignore")
+                except OSError as e:
+                    logging.debug(f"Could not read {cs_path}: {e}")
+                    continue
 
             stripped = _strip_cs_comments(raw_content)
             file_deps = _scan_file(
