@@ -22,13 +22,9 @@ The string-based path resolution (`os.path.normpath`) replaces `Path.resolve()` 
 
 **When to revisit:** If project_reference edge counts differ between `normpath` and `resolve()` approaches on the real monolith. Compare edge counts from the old and new runs.
 
-### P3: Solution scanning still does its own filesystem walk (~7-8 min)
+### ~~P3: Solution scanning still does its own filesystem walk~~ — RESOLVED
 
-`scan_solutions()` in `solution_scanner.py:96` calls `find_files_with_pattern_parallel` for `.sln` files — a separate walk of the entire monolith tree. The graph builder's `walk_and_collect` could collect `.sln` files in the same pass, but this requires threading discovered files through `setup.py` → `graph_enrichment.py` → `graph_builder.py`.
-
-**Why deferred:** The plumbing adds coupling between solution scanning and graph building, which currently run independently in `setup.py`. Two walks is already much better than five.
-
-**When to revisit:** If total scan time needs to drop below ~10 minutes. The fix is: add `.sln` to the `walk_and_collect` extensions set, surface the results through `setup.py`, and pass pre-discovered `.sln` files into `scan_solutions()` via an optional parameter.
+Fixed. `__main__.py` now does a single `walk_and_collect` for `.sln`, `.csproj`, and `.cs`, feeding results into both solution scanning and graph building. `Path.resolve()` replaced with `os.path.normpath()` in .sln parsing. See [ADR_DOCKER_PERFORMANCE.md](ADR_DOCKER_PERFORMANCE.md).
 
 ### P4: Duplicate sproc extraction in step 4 and step 6
 
