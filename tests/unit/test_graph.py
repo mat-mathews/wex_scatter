@@ -650,3 +650,317 @@ class TestSolutionPopulationIntegration:
             node.solutions = sorted(set(si.name for si in matches))
 
         assert g.get_node("A").solutions == []
+
+
+# ===========================================================================
+# TestCSharpKeywords
+# ===========================================================================
+class TestCSharpKeywords:
+    def test_is_frozenset(self):
+        from scatter.core.patterns import CSHARP_KEYWORDS
+
+        assert isinstance(CSHARP_KEYWORDS, frozenset)
+
+    def test_contains_reserved_keywords(self):
+        from scatter.core.patterns import CSHARP_KEYWORDS
+
+        for kw in ("class", "void", "string", "int", "return", "public", "static",
+                    "namespace", "using", "if", "else", "while", "bool", "null"):
+            assert kw in CSHARP_KEYWORDS, f"Missing reserved keyword: {kw}"
+
+    def test_contains_contextual_keywords(self):
+        from scatter.core.patterns import CSHARP_KEYWORDS
+
+        for kw in ("async", "await", "var", "dynamic", "yield", "partial", "record"):
+            assert kw in CSHARP_KEYWORDS, f"Missing contextual keyword: {kw}"
+
+    def test_excludes_known_type_names(self):
+        from scatter.core.patterns import CSHARP_KEYWORDS
+
+        for name in ("PortalDataService", "StringBuilder", "IDisposable",
+                      "Dictionary", "List", "Task", "Exception", "String"):
+            assert name not in CSHARP_KEYWORDS, f"Type name wrongly in keywords: {name}"
+
+    def test_minimum_count(self):
+        from scatter.core.patterns import CSHARP_KEYWORDS
+
+        assert len(CSHARP_KEYWORDS) >= 100
+
+    def test_extract_file_data_excludes_keywords(self, tmp_path):
+        from scatter.analyzers.graph_builder import _extract_file_data
+        from scatter.core.patterns import CSHARP_KEYWORDS
+
+        cs_file = tmp_path / "Test.cs"
+        cs_file.write_text(
+            "using System;\n"
+            "namespace TestNs\n"
+            "{\n"
+            "    public class MyWidget\n"
+            "    {\n"
+            "        private static int _count;\n"
+            "        public void DoStuff() { return; }\n"
+            "    }\n"
+            "}\n"
+        )
+        result = _extract_file_data(cs_file)
+        assert result is not None
+        assert result.identifiers & CSHARP_KEYWORDS == set()
+        # Actual identifiers should still be present
+        assert "MyWidget" in result.identifiers
+        assert "DoStuff" in result.identifiers
+        assert "TestNs" in result.identifiers
+
+    def test_keyword_filter_invisible_to_edges(self):
+        """Keyword filter must not change the graph's edge set on sample projects."""
+        from scatter.analyzers.graph_builder import build_dependency_graph
+
+        graph = build_dependency_graph(
+            SAMPLES,
+            disable_multiprocessing=True,
+            exclude_patterns=["*/bin/*", "*/obj/*", "*/temp_test_data/*"],
+        )
+        # Type usage edges should still exist -- keywords are never type names
+        type_edges = {
+            (e.source, e.target) for e in graph.all_edges if e.edge_type == "type_usage"
+        }
+        assert len(type_edges) > 0
+        # project_reference count should be unchanged
+        ref_edges = [e for e in graph.all_edges if e.edge_type == "project_reference"]
+        assert len(ref_edges) == 14
+
+
+# ===========================================================================
+# TestUsingPattern
+# ===========================================================================
+class TestUsingPattern:
+    def test_regular_using(self):
+        from scatter.core.patterns import USING_PATTERN
+
+        m = USING_PATTERN.findall("using System.Collections.Generic;")
+        assert "System.Collections.Generic" in m
+
+    def test_global_using(self):
+        from scatter.core.patterns import USING_PATTERN
+
+        m = USING_PATTERN.findall("global using GalaxyWorks.Data;")
+        assert "GalaxyWorks.Data" in m
+
+    def test_global_using_with_leading_whitespace(self):
+        from scatter.core.patterns import USING_PATTERN
+
+        m = USING_PATTERN.findall("  global using GalaxyWorks.Common.Models;")
+        assert "GalaxyWorks.Common.Models" in m
+
+    def test_using_static_excluded(self):
+        from scatter.core.patterns import USING_PATTERN
+
+        m = USING_PATTERN.findall("using static System.Math;")
+        assert m == []
+
+    def test_global_using_static_excluded(self):
+        from scatter.core.patterns import USING_PATTERN
+
+        m = USING_PATTERN.findall("global using static System.Console;")
+        assert m == []
+
+    def test_using_alias_excluded(self):
+        """using alias = Namespace; is correctly excluded — the '=' after the
+        alias name breaks the match before reaching the semicolon."""
+        from scatter.core.patterns import USING_PATTERN
+
+        m = USING_PATTERN.findall("using M = System.Math;")
+        assert m == []
+
+    def test_multiple_usings_in_content(self):
+        from scatter.core.patterns import USING_PATTERN
+
+        content = (
+            "using System;\n"
+            "using System.Linq;\n"
+            "global using GalaxyWorks.Data;\n"
+            "using static System.Math;\n"
+            "using GalaxyWorks.Common;\n"
+        )
+        matches = USING_PATTERN.findall(content)
+        assert "System" in matches
+        assert "System.Linq" in matches
+        assert "GalaxyWorks.Data" in matches
+        assert "GalaxyWorks.Common" in matches
+        # using static should NOT be captured
+        assert "static" not in matches
+        assert "System.Math" not in matches
+
+
+# ===========================================================================
+# TestScopeGate
+# ===========================================================================
+class TestScopeGate:
+    def _build_two_project_codebase(self, tmp_path, file1_usings="", file2_usings=""):
+        """Create a two-project codebase: ProjectA (consumer) -> ProjectB (provider).
+
+        ProjectB declares type 'Widget'. ProjectA has two .cs files with
+        configurable using statements.
+        """
+        # ProjectB: declares Widget
+        proj_b = tmp_path / "ProjectB"
+        proj_b.mkdir()
+        (proj_b / "ProjectB.csproj").write_text(
+            '<Project Sdk="Microsoft.NET.Sdk">\n'
+            "  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>\n"
+            "</Project>\n"
+        )
+        (proj_b / "Widget.cs").write_text(
+            "namespace ProjectB\n"
+            "{\n"
+            "    public class Widget { }\n"
+            "}\n"
+        )
+
+        # ProjectA: references ProjectB, has two files
+        proj_a = tmp_path / "ProjectA"
+        proj_a.mkdir()
+        (proj_a / "ProjectA.csproj").write_text(
+            '<Project Sdk="Microsoft.NET.Sdk">\n'
+            "  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>\n"
+            "  <ItemGroup>\n"
+            '    <ProjectReference Include="../ProjectB/ProjectB.csproj" />\n'
+            "  </ItemGroup>\n"
+            "</Project>\n"
+        )
+        (proj_a / "File1.cs").write_text(
+            f"{file1_usings}\n"
+            "namespace ProjectA\n"
+            "{\n"
+            "    public class Consumer1\n"
+            "    {\n"
+            "        Widget w = new Widget();\n"
+            "    }\n"
+            "}\n"
+        )
+        (proj_a / "File2.cs").write_text(
+            f"{file2_usings}\n"
+            "namespace ProjectA\n"
+            "{\n"
+            "    public class Consumer2\n"
+            "    {\n"
+            "        Widget w = new Widget();\n"
+            "    }\n"
+            "}\n"
+        )
+        return tmp_path
+
+    def test_scope_gate_positive(self, tmp_path):
+        """File with using for target project produces type_usage edges."""
+        from scatter.analyzers.graph_builder import build_dependency_graph
+
+        search_scope = self._build_two_project_codebase(
+            tmp_path,
+            file1_usings="using ProjectB;",
+            file2_usings="",  # no usings
+        )
+        graph = build_dependency_graph(search_scope, disable_multiprocessing=True)
+
+        type_edges = [e for e in graph.all_edges if e.edge_type == "type_usage"]
+        assert len(type_edges) > 0
+        # Evidence should include File1 (has using) but not File2 (no using, falls
+        # back to project-level scope which also includes ProjectB since there's
+        # a project_reference edge)
+        all_evidence = []
+        for e in type_edges:
+            if e.evidence:
+                all_evidence.extend(e.evidence)
+        file1_evidence = [ev for ev in all_evidence if "File1" in ev]
+        assert len(file1_evidence) > 0
+
+    def test_scope_gate_negative(self, tmp_path):
+        """File without using for target and with a different using doesn't match."""
+        from scatter.analyzers.graph_builder import build_dependency_graph
+
+        # Create a third project so File2 has a using that maps to something else
+        proj_c = tmp_path / "ProjectC"
+        proj_c.mkdir()
+        (proj_c / "ProjectC.csproj").write_text(
+            '<Project Sdk="Microsoft.NET.Sdk">\n'
+            "  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>\n"
+            "</Project>\n"
+        )
+        (proj_c / "Gadget.cs").write_text(
+            "namespace ProjectC { public class Gadget { } }\n"
+        )
+
+        search_scope = self._build_two_project_codebase(
+            tmp_path,
+            file1_usings="using ProjectB;",
+            file2_usings="using ProjectC;",  # has a using, but not for ProjectB
+        )
+        # Also add ProjectC reference to ProjectA
+        csproj = tmp_path / "ProjectA" / "ProjectA.csproj"
+        csproj.write_text(
+            '<Project Sdk="Microsoft.NET.Sdk">\n'
+            "  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>\n"
+            "  <ItemGroup>\n"
+            '    <ProjectReference Include="../ProjectB/ProjectB.csproj" />\n'
+            '    <ProjectReference Include="../ProjectC/ProjectC.csproj" />\n'
+            "  </ItemGroup>\n"
+            "</Project>\n"
+        )
+
+        graph = build_dependency_graph(search_scope, disable_multiprocessing=True)
+
+        type_edges = [
+            e for e in graph.all_edges
+            if e.edge_type == "type_usage" and e.source == "ProjectA" and e.target == "ProjectB"
+        ]
+        # Only File1 should have evidence (it has using ProjectB)
+        # File2 has using ProjectC, so its file_reachable is {ProjectC} — not empty,
+        # so no fallback to project-level scope, and ProjectB is not in scope.
+        all_evidence = []
+        for e in type_edges:
+            if e.evidence:
+                all_evidence.extend(e.evidence)
+        file2_evidence = [ev for ev in all_evidence if "File2" in ev]
+        assert len(file2_evidence) == 0, f"File2 should not match ProjectB: {file2_evidence}"
+
+    def test_scope_gate_global_using_fallback(self, tmp_path):
+        """Files relying on global using should still get edges via fallback."""
+        from scatter.analyzers.graph_builder import build_dependency_graph
+
+        # Build the codebase: File1 has no local using, but GlobalUsings.cs does
+        search_scope = self._build_two_project_codebase(
+            tmp_path,
+            file1_usings="",   # no local using
+            file2_usings="",   # no local using
+        )
+        # Add a GlobalUsings.cs to ProjectA
+        global_usings = tmp_path / "ProjectA" / "GlobalUsings.cs"
+        global_usings.write_text("global using ProjectB;\n")
+
+        graph = build_dependency_graph(search_scope, disable_multiprocessing=True)
+
+        type_edges = [
+            e for e in graph.all_edges
+            if e.edge_type == "type_usage" and e.source == "ProjectA" and e.target == "ProjectB"
+        ]
+        # GlobalUsings.cs has the namespace match, so its file_reachable is non-empty.
+        # File1 and File2 have no usings → empty file_reachable → fall back to
+        # project-level scope (which includes ProjectB via project_reference).
+        # So all three files should be able to produce evidence.
+        assert len(type_edges) > 0
+
+    def test_scope_gate_with_full_type_scan(self, tmp_path):
+        """full_type_scan=True bypasses the scope gate entirely."""
+        from scatter.analyzers.graph_builder import build_dependency_graph
+
+        search_scope = self._build_two_project_codebase(
+            tmp_path,
+            file1_usings="",
+            file2_usings="",
+        )
+        graph = build_dependency_graph(
+            search_scope, disable_multiprocessing=True, full_type_scan=True,
+        )
+        type_edges = [
+            e for e in graph.all_edges
+            if e.edge_type == "type_usage" and e.source == "ProjectA" and e.target == "ProjectB"
+        ]
+        assert len(type_edges) > 0

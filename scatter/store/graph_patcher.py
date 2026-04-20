@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 from scatter.core.graph import DependencyEdge, DependencyGraph
+from scatter.core.patterns import CSHARP_KEYWORDS as _CSHARP_KEYWORDS
 from scatter.core.patterns import IDENT_PATTERN as _IDENT_PATTERN
 from scatter.core.patterns import SPROC_PATTERN as _SPROC_PATTERN
 from scatter.core.patterns import USING_PATTERN as _USING_PATTERN
@@ -368,15 +369,21 @@ def patch_graph(
                 rel for rel, ff in file_facts.items() if ff.project in affected_projects
             ]
 
+        cache_start = time.monotonic()
         file_identifier_cache: Dict[str, Set[str]] = {}
         for rel_path in cache_rel_paths:
             cs_abs = search_scope / rel_path
             try:
                 content = cs_abs.read_text(encoding="utf-8", errors="ignore")
-                file_identifier_cache[rel_path] = set(_IDENT_PATTERN.findall(content))
+                file_identifier_cache[rel_path] = set(_IDENT_PATTERN.findall(content)) - _CSHARP_KEYWORDS
             except OSError:
                 pass
+        cache_elapsed = (time.monotonic() - cache_start) * 1000
+        logging.debug(
+            f"Patcher identifier cache: {len(file_identifier_cache)} files ({cache_elapsed:.0f}ms)"
+        )
 
+        edge_start = time.monotonic()
         for project_name in affected_projects:
             if project_name not in all_project_names:
                 continue
@@ -407,6 +414,7 @@ def patch_graph(
                 search_scope,
                 project_files,
                 file_identifier_cache,
+                namespace_to_project,
             )
 
             # Rebuild sproc_shared edges
@@ -460,9 +468,14 @@ def patch_graph(
                         search_scope,
                         project_to_files.get(node.name, []),
                         file_identifier_cache,
+                        namespace_to_project,
                     )
 
         del file_identifier_cache
+        edge_elapsed = (time.monotonic() - edge_start) * 1000
+        logging.debug(
+            f"Patcher edge rebuild: {len(affected_projects)} projects ({edge_elapsed:.0f}ms)"
+        )
 
     elapsed = (time.monotonic() - start) * 1000
 
@@ -520,16 +533,14 @@ def _rebuild_type_usage_edges(
     search_scope: Path,
     project_files: List[str],
     file_identifier_cache: Optional[Dict[str, Set[str]]] = None,
+    namespace_to_project: Optional[Dict[str, str]] = None,
 ) -> None:
     """Rebuild type_usage edges from project by tokenizing its .cs files.
 
     Uses file_identifier_cache when available to avoid re-reading files.
-    Scopes type checks to reachable targets via project_reference/namespace_usage edges.
-
-    Note: reachable-set scoping is a behavioral change from the pre-Phase-2 code which
-    checked all projects. The scoped results are a strict subset — type_usage edges are
-    only meaningful between projects that already have a project_reference or
-    namespace_usage relationship.
+    Scopes type checks to reachable targets via project_reference/namespace_usage
+    edges, then further narrows using per-file using statements when
+    namespace_to_project is provided.
     """
     type_name_set = set(type_to_projects.keys())
     type_usage_evidence: Dict[str, List[str]] = defaultdict(list)
@@ -551,13 +562,30 @@ def _rebuild_type_usage_edges(
                 content = cs_abs.read_text(encoding="utf-8", errors="ignore")
             except OSError:
                 continue
-            file_identifiers = set(_IDENT_PATTERN.findall(content))
+            file_identifiers = set(_IDENT_PATTERN.findall(content)) - _CSHARP_KEYWORDS
 
         matched_types = file_identifiers & type_name_set
+        if not matched_types:
+            continue
+
+        # Per-file scope gate: narrow to projects this file imports
+        if namespace_to_project is not None:
+            facts = file_facts.get(rel_path)
+            if facts is not None and facts.namespaces_used:
+                file_reachable = {
+                    namespace_to_project[ns]
+                    for ns in facts.namespaces_used
+                    if ns in namespace_to_project
+                }
+                scope = file_reachable if file_reachable else reachable
+            else:
+                scope = reachable
+        else:
+            scope = reachable
 
         for type_name in matched_types:
             for owner in type_to_projects[type_name]:
-                if owner != project and owner in reachable and graph.get_node(owner):
+                if owner != project and owner in scope and graph.get_node(owner):
                     type_usage_evidence[owner].append(f"{rel_path}:{type_name}")
 
     for target, evidence in type_usage_evidence.items():

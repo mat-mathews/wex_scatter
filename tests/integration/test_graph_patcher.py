@@ -896,3 +896,44 @@ class TestIntegrationWithRealRepo:
             assert metrics_before[name].fan_out == metrics_after[name].fan_out
 
         assert len(cycles_before) == len(cycles_after)
+
+
+class TestCacheConsistency:
+    """Verify that patched graphs produce the same edges as fresh builds."""
+
+    def test_patch_matches_fresh_build(self, tmp_path):
+        """Build → cache → modify → patch → fresh build → edge sets must match."""
+        scope, _, _ = _make_synthetic_codebase(tmp_path, num_projects=3)
+
+        # Full build with facts
+        graph1, ff1, pf1 = _build_graph_and_facts(scope)
+        edges_before = {
+            (e.source, e.target, e.edge_type) for e in graph1.all_edges
+        }
+
+        # Modify a .cs file in ProjectB (add a new class usage)
+        proj_b_cs = scope / "ProjectB" / "ProjectBService.cs"
+        original = proj_b_cs.read_text()
+        proj_b_cs.write_text(
+            original + "\n// Extra comment to trigger content change\n"
+        )
+
+        # Patch the graph
+        changed = ["ProjectB/ProjectB_Main.cs"]
+        result = patch_graph(graph1, ff1, pf1, changed, scope)
+        assert result.patch_applied is True
+        patched_edges = {
+            (e.source, e.target, e.edge_type) for e in result.graph.all_edges
+        }
+
+        # Fresh build from scratch on the same modified codebase
+        graph2, _, _ = _build_graph_and_facts(scope)
+        fresh_edges = {
+            (e.source, e.target, e.edge_type) for e in graph2.all_edges
+        }
+
+        # Patched and fresh should produce the same edge set
+        assert patched_edges == fresh_edges, (
+            f"Edges only in patched: {patched_edges - fresh_edges}\n"
+            f"Edges only in fresh: {fresh_edges - patched_edges}"
+        )

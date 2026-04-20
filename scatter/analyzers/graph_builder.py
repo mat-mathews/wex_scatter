@@ -10,6 +10,7 @@ Single-pass O(P+F) construction:
 """
 
 import logging
+import time
 from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, Set, Tuple
@@ -24,6 +25,7 @@ from scatter.scanners.project_scanner import (
     derive_namespace,
     parse_csproj_all_references,
 )
+from scatter.core.patterns import CSHARP_KEYWORDS as _CSHARP_KEYWORDS
 from scatter.core.patterns import IDENT_PATTERN as _IDENT_PATTERN
 from scatter.core.patterns import SPROC_PATTERN as _SPROC_PATTERN
 from scatter.core.patterns import USING_PATTERN as _USING_PATTERN
@@ -49,7 +51,7 @@ def _extract_file_data(cs_path: Path) -> Optional[_FileExtraction]:
     except OSError:
         return None
 
-    identifiers = {m.group() for m in _IDENT_PATTERN.finditer(content)}
+    identifiers = {m.group() for m in _IDENT_PATTERN.finditer(content)} - _CSHARP_KEYWORDS
     types = extract_type_names_from_content(content)
 
     return _FileExtraction(
@@ -88,6 +90,7 @@ def build_dependency_graph(
         exclude_patterns = ["*/bin/*", "*/obj/*", "*/temp_test_data/*"]
 
     graph = DependencyGraph()
+    t0 = time.monotonic()
 
     # Step 1: Discover all .csproj files
     all_csproj = find_files_with_pattern_parallel(
@@ -142,6 +145,9 @@ def build_dependency_graph(
         if mapped_name:
             project_cs_files[mapped_name].append(cs_path)
 
+    t1 = time.monotonic()
+    logging.info(f"Graph build steps 1-3 (discovery + mapping): {t1 - t0:.1f}s")
+
     # Step 4: For each project's .cs files, extract type declarations, sproc refs, namespace usages
     # Uses ThreadPoolExecutor for I/O-bound file reads (GIL released during I/O).
     project_types: Dict[str, Set[str]] = defaultdict(set)
@@ -153,6 +159,7 @@ def build_dependency_graph(
 
     captured_file_facts: Optional[Dict] = {} if capture_facts else None
     file_identifier_cache: Dict[Path, Set[str]] = {}
+    file_namespace_cache: Dict[Path, Set[str]] = {}
 
     # Flatten project→files for dispatch
     all_file_tasks: List[Tuple[str, Path]] = [
@@ -184,6 +191,7 @@ def build_dependency_graph(
     # Aggregate results (main thread)
     for project_name, ext in file_extractions:
         file_identifier_cache[ext.cs_path] = ext.identifiers
+        file_namespace_cache[ext.cs_path] = ext.namespaces
         project_types[project_name].update(ext.types)
         project_sprocs[project_name].update(ext.sprocs)
         for ns in ext.namespaces:
@@ -211,6 +219,9 @@ def build_dependency_graph(
         f"{sum(len(v) for v in file_identifier_cache.values())} total identifiers"
     )
 
+    t2 = time.monotonic()
+    logging.info(f"Graph build step 4 (file extraction): {t2 - t1:.1f}s")
+
     # Build nodes
     for project_name, meta in project_metadata.items():
         node = ProjectNode(
@@ -230,6 +241,9 @@ def build_dependency_graph(
 
     # 5a: project_reference edges (from .csproj ProjectReference entries)
     _build_project_reference_edges(graph, project_refs, csproj_files, project_metadata)
+
+    t3 = time.monotonic()
+    logging.info(f"Graph build step 5a (project_reference edges): {t3 - t2:.1f}s")
 
     # 5b: namespace_usage edges (project A uses a namespace that matches project B's namespace)
     namespace_to_project: Dict[str, str] = {}
@@ -259,6 +273,9 @@ def build_dependency_graph(
                     )
                 )
 
+    t4 = time.monotonic()
+    logging.info(f"Graph build step 5b (namespace_usage edges): {t4 - t3:.1f}s")
+
     # 5c: type_usage edges (project A references types declared in project B)
     # Build multi-owner map: a type name may exist in multiple projects
     type_to_projects: Dict[str, Set[str]] = defaultdict(set)
@@ -276,6 +293,21 @@ def build_dependency_graph(
                 if edge.edge_type in ("project_reference", "namespace_usage"):
                     reachable_targets[source].add(edge.target)
 
+    # Pre-compute per-file scope: which projects each file can reach via its
+    # using statements. This avoids recomputing inside the hot inner loop.
+    # Falls back to project-level reachable_targets when a file has no
+    # namespace-matched usings (e.g., files relying on global usings declared
+    # elsewhere, or generated code without explicit using statements).
+    # Known limitation: misses fully-qualified type usage without a using
+    # statement (e.g. new GalaxyWorks.Data.Foo()). Use full_type_scan=True
+    # to bypass this scope gate entirely.
+    file_scope_cache: Dict[Path, Set[str]] = {}
+    if not full_type_scan:
+        for cs_path, file_ns in file_namespace_cache.items():
+            file_scope_cache[cs_path] = {
+                namespace_to_project[ns] for ns in file_ns if ns in namespace_to_project
+            }
+
     for source_project, cs_paths in project_cs_files.items():
         if source_project not in graph._nodes:
             continue
@@ -286,17 +318,41 @@ def build_dependency_graph(
             if file_identifiers is None:
                 continue
             matched_types = file_identifiers & type_name_set
-            for type_name in matched_types:
-                for owner_project in type_to_projects[type_name]:
-                    if (
-                        owner_project != source_project
-                        and owner_project in graph._nodes
-                        and (
-                            full_type_scan
-                            or owner_project in reachable_targets.get(source_project, set())
-                        )
-                    ):
-                        type_usage_evidence[owner_project].append(f"{cs_path}:{type_name}")
+            if not matched_types:
+                continue
+
+            if full_type_scan:
+                # No scope gate — check all projects
+                for type_name in matched_types:
+                    for owner_project in type_to_projects[type_name]:
+                        if (
+                            owner_project != source_project
+                            and owner_project in graph._nodes
+                        ):
+                            type_usage_evidence[owner_project].append(
+                                f"{cs_path}:{type_name}"
+                            )
+            else:
+                # Per-file scope gate: narrow to projects this file imports
+                file_reachable = file_scope_cache.get(cs_path, set())
+                scope = file_reachable if file_reachable else reachable_targets.get(
+                    source_project, set()
+                )
+                if not file_reachable and scope:
+                    logging.debug(
+                        f"Scope gate fallback for {cs_path} "
+                        f"(no file-level usings matched)"
+                    )
+                for type_name in matched_types:
+                    for owner_project in type_to_projects[type_name]:
+                        if (
+                            owner_project != source_project
+                            and owner_project in graph._nodes
+                            and owner_project in scope
+                        ):
+                            type_usage_evidence[owner_project].append(
+                                f"{cs_path}:{type_name}"
+                            )
 
         for target_project, evidence in type_usage_evidence.items():
             graph.add_edge(
@@ -309,7 +365,9 @@ def build_dependency_graph(
                 )
             )
 
-    del file_identifier_cache
+    del file_identifier_cache, file_namespace_cache, file_scope_cache
+    t5 = time.monotonic()
+    logging.info(f"Graph build step 5c (type_usage edges): {t5 - t4:.1f}s")
 
     # Step 6 (optional): DB dependency scan → sproc_shared edges
     if include_db_dependencies:
@@ -326,7 +384,11 @@ def build_dependency_graph(
         )
         add_db_edges_to_graph(graph, db_deps)
 
-    logging.info(f"Built dependency graph: {graph.node_count} nodes, {graph.edge_count} edges")
+    t6 = time.monotonic()
+    logging.info(
+        f"Built dependency graph: {graph.node_count} nodes, {graph.edge_count} edges "
+        f"(total: {t6 - t0:.1f}s)"
+    )
 
     if not capture_facts:
         return graph

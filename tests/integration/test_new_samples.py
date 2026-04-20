@@ -242,15 +242,13 @@ class TestGlobalUsings:
         code = "global using GalaxyWorks.Common.Models;"
         assert pattern.search(code) is not None
 
-    def test_graph_builder_pattern_misses_global_using(self):
-        """graph_builder's _USING_PATTERN does NOT handle global using — documents gap."""
+    def test_graph_builder_pattern_handles_global_using(self):
+        """USING_PATTERN now handles global using statements."""
         from scatter.analyzers.graph_builder import _USING_PATTERN
 
         code = "global using GalaxyWorks.Common.Models;"
         matches = [m.group(1) for m in _USING_PATTERN.finditer(code)]
-        # _USING_PATTERN expects `using` at start of line (after optional whitespace),
-        # but `global using` has `global ` before `using`
-        assert "GalaxyWorks.Common.Models" not in matches  # documents gap
+        assert "GalaxyWorks.Common.Models" in matches
 
     def test_global_usings_file_exists(self):
         """Verify GlobalUsings.cs files exist in the right projects."""
