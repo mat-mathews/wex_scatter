@@ -11,7 +11,7 @@ Scatter is a dependency and risk analysis tool for .NET codebases. Point it at a
 
 ```bash
 git clone https://github.com/ORG/REPO.git
-cd wex_scatter
+cd REPO
 docker build -t scatter .
 ```
 

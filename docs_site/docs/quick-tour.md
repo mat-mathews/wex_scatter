@@ -278,7 +278,7 @@ Every number comes from the dependency graph — consumer counts, shared stored 
 
 See [SOW Scoping](usage/scoping.md) for the full breakdown.
 
-## All five modes
+## All six modes
 
 | Mode | What it does | Needs AI? |
 |------|-------------|-----------|
@@ -287,6 +287,7 @@ See [SOW Scoping](usage/scoping.md) for the full breakdown.
 | `--stored-procedure` | Find C# consumers of a stored procedure | No |
 | `--sow` / `--sow-file` | Natural language → blast radius | Yes |
 | `--graph` | Full dependency graph with health metrics | No |
+| `--pr-risk` | Score a branch across coupling, blast radius, and DB dimensions | No |
 
 ## Try it on your code
 

@@ -1,7 +1,10 @@
 """Scatter — .NET dependency analyzer package.
 
-Re-exports all public functions for backward compatibility.
-Code that does `from scatter import find_consumers` continues to work.
+This file re-exports public symbols for convenience and backward
+compatibility.  The canonical import path for new code is the
+submodule directly (e.g. `from scatter.analyzers.consumer_analyzer
+import find_consumers`).  Top-level imports like `from scatter import
+find_consumers` work but are maintained for existing callers.
 """
 
 from scatter.__version__ import __version__

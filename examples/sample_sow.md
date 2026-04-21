@@ -101,7 +101,7 @@ The portal caching layer currently caches configuration objects by setting key o
 
 | Role | Name | Date | Signature |
 |------|------|------|-----------|
-| VP Product | Sarah Chen | 2026-03-15 | _____________ |
-| Engineering Lead | James Park | 2026-03-15 | _____________ |
-| Architecture | __________________ | 2026-03-16 | _____________ |
-| DBA Lead | Maria Rodriguez | 2026-03-16 | _____________ |
+| VP Product | __________________ | __________ | _____________ |
+| Engineering Lead | __________________ | __________ | _____________ |
+| Architecture | __________________ | __________ | _____________ |
+| DBA Lead | __________________ | __________ | _____________ |

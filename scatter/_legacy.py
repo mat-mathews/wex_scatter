@@ -1,7 +1,8 @@
-"""Backward-compatible wrappers for AI/Gemini functions.
+"""Backward-compatibility shim for AI/Gemini functions — do not add new code here.
 
 Provides the old function signatures (accepting raw model_instance) that
 delegate to the canonical implementations in scatter.ai.providers.gemini_provider.
+Tested in tests/unit/test_legacy.py.
 """
 
 import logging
