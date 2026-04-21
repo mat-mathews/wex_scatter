@@ -22,7 +22,7 @@ from scatter.ai.base import (
 _STUB_MSG = (
     "WEX AI Platform provider is not yet implemented. "
     "Use --google-api-key with the Gemini provider in the meantime. "
-    "See: https://github.com/mat-mathews/wex_scatter#ai-providers"
+    "See: https://github.com/ORG/REPO#ai-providers"
 )
 
 

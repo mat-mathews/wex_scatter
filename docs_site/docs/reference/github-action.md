@@ -153,6 +153,6 @@ No marketplace actions, no Docker, no additional tokens.
 
 ## Template Reference
 
-- [`tools/github-action/scatter-pr-risk.yml`](https://github.com/mat-mathews/wex_scatter/blob/main/tools/github-action/scatter-pr-risk.yml) — PR risk scoring
-- [`tools/github-action/scatter-impact.yml`](https://github.com/mat-mathews/wex_scatter/blob/main/tools/github-action/scatter-impact.yml) — PR impact analysis
-- [`tools/github-action/README.md`](https://github.com/mat-mathews/wex_scatter/blob/main/tools/github-action/README.md) — detailed troubleshooting and advanced configuration
+- [`tools/github-action/scatter-pr-risk.yml`](https://github.com/ORG/REPO/blob/main/tools/github-action/scatter-pr-risk.yml) — PR risk scoring
+- [`tools/github-action/scatter-impact.yml`](https://github.com/ORG/REPO/blob/main/tools/github-action/scatter-impact.yml) — PR impact analysis
+- [`tools/github-action/README.md`](https://github.com/ORG/REPO/blob/main/tools/github-action/README.md) — detailed troubleshooting and advanced configuration

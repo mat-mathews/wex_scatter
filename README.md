@@ -2,7 +2,7 @@
 
 Scatter is a dependency and risk analysis tool for .NET codebases. Point it at a project and it tells you what depends on it, how tightly coupled those consumers are, and which pipelines are involved.
 
-[![CI](https://github.com/mat-mathews/wex_scatter/actions/workflows/ci.yml/badge.svg)](https://github.com/mat-mathews/wex_scatter/actions/workflows/ci.yml)
+[![CI](https://github.com/ORG/REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/ORG/REPO/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
 ---
@@ -10,7 +10,7 @@ Scatter is a dependency and risk analysis tool for .NET codebases. Point it at a
 ## Try it
 
 ```bash
-git clone https://github.com/mat-mathews/wex_scatter.git
+git clone https://github.com/ORG/REPO.git
 cd wex_scatter
 docker build -t scatter .
 ```
