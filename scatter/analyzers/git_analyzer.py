@@ -9,8 +9,7 @@ from typing import Dict, List, NamedTuple, Optional, Tuple, cast
 try:
     import git
 except ImportError:
-    print("Error: GitPython library not found.")
-    print("Please install it using: pip install GitPython")
+    logging.error("GitPython library not found. Install it using: pip install GitPython")
     sys.exit(1)
 
 from scatter.core.models import ChangeKind, ChangedType, TypeKind
@@ -28,7 +27,7 @@ def resolve_branch_shas(repo_path: str, feature_branch: str, base_branch: str) -
 
     Shallow-clone safe: the broad except catches partial/corrupt repos where
     repo.heads may raise unexpectedly. This is intentional — prediction logging
-    must not break the main flow. (Fatima #3)
+    must not break the main flow.
     """
     head_sha = base_sha = None
     repo_id = repo_path

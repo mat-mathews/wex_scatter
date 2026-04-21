@@ -1,6 +1,6 @@
 """Risk analysis data models for Scatter.
 
-All risk types live here — separate from models.py (Decision #1, Priya).
+All risk types live here — separate from models.py.
 The risk vocabulary is self-contained: RiskDimension → RiskProfile →
 AggregateRisk. No imports from scatter.core.models or any external package.
 
@@ -58,7 +58,7 @@ class RiskDimension:
 
     When data_available is False, the score is 0.0 by default — not because
     the target is safe, but because we have no data. Reporters must render
-    this differently from a true 0.0 (Decision #4, Marcus).
+    this differently from a true 0.0.
     """
 
     name: str  # machine-readable identifier
@@ -87,7 +87,7 @@ class RiskDimension:
 class RiskContext:
     """Weighting profile for a specific risk analysis context.
 
-    Validates at construction time (Decision #9, Fatima) — fail fast
+    Validates at construction time — fail fast
     with specific error messages, not at scoring time.
 
     Partial dimension_weights: dimensions not listed default to weight 0.0,

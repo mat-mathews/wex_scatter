@@ -198,7 +198,7 @@ class TestAppendPrediction:
 
 
 class TestIntegration:
-    """Integration test: call run_pr_risk_mode with a real git repo (Anya #2)."""
+    """Integration test: call run_pr_risk_mode with a real git repo."""
 
     @pytest.fixture()
     def git_repo(self, tmp_path):

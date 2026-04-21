@@ -1,6 +1,6 @@
 # Test Architecture
 
-For developers about to write or modify tests. This is the page Anya asked for.
+For developers about to write or modify tests.
 
 ---
 

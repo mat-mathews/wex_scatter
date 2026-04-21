@@ -119,7 +119,7 @@ def estimate_effort(
         )
     )
 
-    # 2. Implementation (sublinear past 5 — Marcus #11)
+    # 2. Implementation (sublinear past 5 direct consumers)
     impl_base = _compute_implementation(direct_count, depth1_count, depth2_count)
     categories.append(
         _make_category(
@@ -191,7 +191,7 @@ def _compute_investigation(target_count: int, extra_clusters: int, has_cycles: b
 
 
 def _compute_implementation(direct: int, depth1: int, depth2: int) -> float:
-    """Sublinear past 5 direct consumers (Marcus #11)."""
+    """Sublinear past 5 direct consumers."""
     direct_days = min(direct, 5) * 1.0 + max(0, direct - 5) * 0.3
     return direct_days + depth1 * 0.5 + depth2 * 0.25
 

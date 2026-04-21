@@ -1,6 +1,6 @@
 # Contributing
 
-The page Anya asked for. How to add features, tests, and scanners to Scatter without breaking what already works.
+How to add features, tests, and scanners to Scatter without breaking what already works.
 
 ---
 

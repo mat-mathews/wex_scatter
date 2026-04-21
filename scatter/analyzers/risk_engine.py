@@ -10,8 +10,8 @@ Helper functions (also public — used by pr_risk_analyzer):
   compute_composite()   — weighted-max across dimensions
   collect_factors()     — deduplicated, sorted risk factors
 
-Pure functions. Data in, score out. No I/O (Decision: Devon).
-Structured logging at DEBUG/INFO (Decision #5, Marcus).
+Pure functions. Data in, score out. No I/O.
+Structured logging at DEBUG/INFO.
 """
 
 import logging
@@ -55,12 +55,11 @@ def compute_risk_profile(
 ) -> RiskProfile:
     """Compute full risk profile for a single target.
 
-    Decision #7 (Fatima): if target is not in graph or metrics,
-    returns a GREEN profile with all dimensions data_available=False.
-    Never raises.
+    If target is not in graph or metrics, returns a GREEN profile
+    with all dimensions data_available=False. Never raises.
 
-    Decision #5 (Marcus): logs dimension scores at DEBUG,
-    composite result at INFO, wall-clock timing always.
+    Logs dimension scores at DEBUG, composite result at INFO,
+    wall-clock timing always.
     """
     start = time.monotonic()
 
@@ -178,7 +177,7 @@ def aggregate_risk(
 ) -> AggregateRisk:
     """Aggregate risk across multiple targets.
 
-    Decision #8 (Fatima): empty list → GREEN aggregate, all zeros.
+    Empty list → GREEN aggregate, all zeros.
     Never raises ValueError from max() on empty sequence.
 
     Note: total_consumers and total_transitive are sums across profiles,

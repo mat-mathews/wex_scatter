@@ -464,7 +464,7 @@ class TestSolutionMetrics:
 
     def test_multi_solution_edge_classification(self):
         """Edge A→B where A is in {X,Y} and B is in {X} only.
-        Internal to X, external to Y (Fatima)."""
+        Internal to X, external to Y."""
         g = DependencyGraph()
         g.add_node(_make_node("A", solutions=["X", "Y"]))
         g.add_node(_make_node("B", solutions=["X"]))

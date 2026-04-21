@@ -276,7 +276,7 @@ class TestScoreDatabase:
         result = score_database("A", graph, m)
         assert result.score == 0.0
 
-    # --- Deeper database tests (Phase 2 tech debt, Anya) ---
+    # --- Deeper database tests ---
 
     def test_multi_sproc_multi_team(self):
         """Multiple shared sprocs across multiple teams scores high."""

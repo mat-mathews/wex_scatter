@@ -53,7 +53,7 @@ def _adjust_effort_with_model(
     # Risk composite
     risk_score = confidence.composite_score
 
-    # Target and consumer context for grounding (Marcus review)
+    # Target and consumer context for grounding
     target_lines = []
     for ti in impact_report.targets or []:
         consumer_names = [c.consumer_name for c in ti.consumers[:10]]

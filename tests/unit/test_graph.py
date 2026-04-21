@@ -993,7 +993,7 @@ class TestWalkAndCollect:
         for d in ("bin", "obj"):
             excluded = tmp_path / d
             excluded.mkdir()
-            (excluded / f"should_not_find.cs").write_text("class X {}")
+            (excluded / "should_not_find.cs").write_text("class X {}")
             deep = excluded / "Debug" / "net8.0"
             deep.mkdir(parents=True)
             (deep / "deep.cs").write_text("class Y {}")
@@ -1173,7 +1173,6 @@ class TestProjectReferenceBackslash:
 class TestDbScannerContentCache:
     def test_cache_produces_identical_results(self):
         """DB scanner with content_by_path should match scanning without."""
-        from scatter.analyzers.graph_builder import build_dependency_graph, _extract_file_data
         from scatter.core.parallel import walk_and_collect
         from scatter.core.parallel import extract_exclude_dirs
         from scatter.scanners.db_scanner import scan_db_dependencies
@@ -1188,7 +1187,6 @@ class TestDbScannerContentCache:
             _build_project_directory_index,
             _map_cs_to_project,
         )
-        from scatter.scanners.project_scanner import parse_csproj_all_references
 
         csproj_files = discovered[".csproj"]
         cs_files = discovered[".cs"]

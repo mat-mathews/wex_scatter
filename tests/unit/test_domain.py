@@ -384,7 +384,7 @@ class TestSolutionAlignment:
         assert dominant == "Alpha"
 
     def test_multi_solution_project_counts(self):
-        """Project in {X, Y} counts toward dominant X (Fatima)."""
+        """Project in {X, Y} counts toward dominant X."""
         g = DependencyGraph()
         g.add_node(_sol_node("A", solutions=["X", "Y"]))
         g.add_node(_sol_node("B", solutions=["X"]))

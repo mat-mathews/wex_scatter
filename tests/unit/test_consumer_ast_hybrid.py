@@ -137,7 +137,7 @@ class TestMethodHybridFiltering:
         assert result["has_match"] is False
 
     def test_method_with_whitespace_before_paren(self):
-        """Fatima's case: `.Save (` with whitespace before paren still passes."""
+        """`.Save (` with whitespace before paren still passes."""
         import re
 
         content = "var x = svc.Save (data);"

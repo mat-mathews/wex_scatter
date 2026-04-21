@@ -75,6 +75,6 @@ def run_pr_risk_mode(args, ctx: ModeContext, start_time: float) -> None:
         )
         append_prediction(record, ctx.repo_path)
 
-    # GitHub Action passes PR number via env var (Marcus #1):
+    # GitHub Action passes PR number via env var:
     #   env:
     #     SCATTER_PR_NUMBER: ${{ github.event.number }}

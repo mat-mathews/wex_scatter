@@ -65,7 +65,7 @@ def run_impact_mode(args, ctx: ModeContext, start_time: float) -> None:
             _dispatch_scoping_output(scoping_report, args, ctx, start_time, graph_enriched)
             return
         except Exception:
-            # Fatima #13: scoping failure falls back to impact report
+            # Scoping failure falls back to impact report
             logging.warning("Scoping analysis failed, falling back to impact report", exc_info=True)
 
     # Output impact report

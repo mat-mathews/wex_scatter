@@ -26,7 +26,7 @@ def run_scoping_analysis(
 
     Pipeline:
     1. Read AggregateRisk from impact_report (Decision #10 — no recompute)
-    2. Call find_clusters() once if graph available (Devon #14)
+    2. Call find_clusters() once if graph available
     3. Assess database impact
     4. Compute confidence band
     5. Estimate effort
@@ -40,7 +40,7 @@ def run_scoping_analysis(
     agg = impact_report.aggregate_risk
     composite_score = agg.composite_score if agg else 0.0
 
-    # 2. Domain clusters — called once, passed to effort estimator (Devon #14)
+    # 2. Domain clusters — called once, passed to effort estimator
     clusters = None
     if graph_ctx is not None:
         try:

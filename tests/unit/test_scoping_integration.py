@@ -127,7 +127,7 @@ class TestScopingAnalysis:
         assert result.confidence.composite_score == agg.composite_score
 
     def test_no_graph_produces_warnings(self):
-        """Without graph, warnings should be populated (Fatima #12)."""
+        """Without graph, warnings should be populated."""
         report = _make_impact_report()
 
         result = run_scoping_analysis(report, None)
@@ -162,7 +162,7 @@ class TestScopingAnalysis:
 
 class TestScopingFallback:
     def test_scoping_failure_is_catchable(self):
-        """Scoping wrapped in try/except — impact report still ships on failure (Fatima #13).
+        """Scoping wrapped in try/except — impact report still ships on failure.
 
         This tests the pattern, not the actual mode handler.
         """

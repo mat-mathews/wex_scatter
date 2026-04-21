@@ -907,9 +907,6 @@ class TestCacheConsistency:
 
         # Full build with facts
         graph1, ff1, pf1 = _build_graph_and_facts(scope)
-        edges_before = {
-            (e.source, e.target, e.edge_type) for e in graph1.all_edges
-        }
 
         # Modify a .cs file in ProjectB (add a new class usage)
         proj_b_cs = scope / "ProjectB" / "ProjectBService.cs"

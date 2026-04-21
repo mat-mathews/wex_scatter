@@ -3,9 +3,9 @@
 Six dimension scorers for the risk engine. Each is a pure function:
 graph data in, RiskDimension out. No AI, no I/O, no side effects.
 
-Naming: score_* (Decision #3, Devon).
-Scoring: piecewise linear interpolation between thresholds (Decision #2, Devon).
-Missing data: returns data_available=False (Decision #7, Fatima).
+Naming: score_* prefix for all dimension scorers.
+Scoring: piecewise linear interpolation between thresholds.
+Missing data: returns data_available=False.
 """
 
 from __future__ import annotations

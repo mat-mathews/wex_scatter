@@ -94,7 +94,7 @@ class ScopingReport:
     ai_effort_adjustment: Optional[str] = None  # AI narrative
     ai_effort_min_days: Optional[float] = None
     ai_effort_max_days: Optional[float] = None
-    warnings: List[str] = field(default_factory=list)  # degradation visibility (Fatima #12)
+    warnings: List[str] = field(default_factory=list)  # degradation visibility
     comparable_sows: List[Any] = field(default_factory=list)  # Phase 3: List[ComparableSOW]
     teams_to_consult: List[Any] = field(default_factory=list)  # Phase 2: List[TeamConsultation]
     duration_ms: int = 0
