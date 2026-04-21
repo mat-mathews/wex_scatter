@@ -137,6 +137,4 @@ Then open [http://localhost:8000](http://localhost:8000). Or browse the raw mark
 
 ---
 
-## License
-
-Proprietary — for internal WEX use only. See [LICENSE](LICENSE) for terms.
+Proprietary — for internal WEX use only.
