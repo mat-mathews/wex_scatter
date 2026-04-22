@@ -238,3 +238,106 @@ class TestCLIIntegration:
                 cli_overrides={"ai.max_ai_calls": 10},
             )
         assert config.ai.max_ai_calls == 10
+
+
+# ===========================================================================
+# Thread Safety Tests
+# ===========================================================================
+class TestAIBudgetThreadSafety:
+    def test_concurrent_record_call(self):
+        """N threads calling record_call() concurrently yield exactly N."""
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
+        budget = AIBudget(max_calls=None)
+        n = 100
+        barrier = threading.Barrier(n)
+
+        def _record():
+            barrier.wait()
+            budget.record_call()
+
+        with ThreadPoolExecutor(max_workers=n) as executor:
+            futures = [executor.submit(_record) for _ in range(n)]
+            for f in futures:
+                f.result()
+
+        assert budget.calls_made == n
+
+    def test_concurrent_record_skip(self):
+        """N threads calling record_skip() concurrently yield exactly N."""
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
+        budget = AIBudget(max_calls=0)
+        n = 100
+        barrier = threading.Barrier(n)
+
+        def _skip():
+            barrier.wait()
+            budget.record_skip()
+
+        with ThreadPoolExecutor(max_workers=n) as executor:
+            futures = [executor.submit(_skip) for _ in range(n)]
+            for f in futures:
+                f.result()
+
+        assert budget.calls_skipped == n
+
+    def test_concurrent_generate_content(self):
+        """Multiple threads through RateLimitedModel all count toward budget."""
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
+        model = MagicMock()
+        model.generate_content.return_value = MagicMock(text="ok")
+        budget = AIBudget(max_calls=None)
+        proxy = RateLimitedModel(model, budget)
+
+        n = 50
+        barrier = threading.Barrier(n)
+
+        def _call():
+            barrier.wait()
+            proxy.generate_content("prompt")
+
+        with ThreadPoolExecutor(max_workers=n) as executor:
+            futures = [executor.submit(_call) for _ in range(n)]
+            for f in futures:
+                f.result()
+
+        assert budget.calls_made == n
+        assert model.generate_content.call_count == n
+
+    def test_budget_exhaustion_under_contention(self):
+        """Budget set to N/2, N threads competing. ~N/2 succeed, rest raise or overshoot."""
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
+        n = 50
+        cap = n // 2
+        budget = AIBudget(max_calls=cap)
+        model = MagicMock()
+        model.generate_content.return_value = MagicMock(text="ok")
+        proxy = RateLimitedModel(model, budget)
+
+        barrier = threading.Barrier(n)
+        successes = []
+        exhausted = []
+
+        def _call():
+            barrier.wait()
+            try:
+                proxy.generate_content("prompt")
+                successes.append(1)
+            except BudgetExhaustedError:
+                exhausted.append(1)
+
+        with ThreadPoolExecutor(max_workers=n) as executor:
+            futures = [executor.submit(_call) for _ in range(n)]
+            for f in futures:
+                f.result()
+
+        # Budget is advisory — overshoot by up to worker count is acceptable
+        assert cap <= len(successes) <= cap + 10
+        assert len(successes) + len(exhausted) == n

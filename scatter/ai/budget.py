@@ -9,6 +9,7 @@ helper functions — goes through the proxy automatically.
 
 import logging
 import random
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any, Optional
@@ -39,46 +40,67 @@ class BudgetExhaustedError(Exception):
 class AIBudget:
     """Tracks AI API call counts and enforces an optional cap.
 
-    Thread safety: scatter runs AI calls sequentially (parallelism is
-    only used for file discovery), so no lock is needed.
+    Thread safety: all counter mutations are protected by a
+    threading.Lock, allowing safe concurrent use from
+    ThreadPoolExecutor workers during parallel AI enrichment.
+
+    Note: RateLimitedModel.generate_content() calls can_proceed()
+    then record_call() non-atomically. Under concurrent threads,
+    this may slightly overshoot max_calls (two threads both pass
+    can_proceed before either records). This is acceptable — the
+    budget is advisory and the alternative (holding the lock across
+    the HTTP call) would serialize all AI calls.
     """
 
     max_calls: Optional[int] = None
     calls_made: int = field(default=0, init=False)
     calls_skipped: int = field(default=0, init=False)
     _warned_at_threshold: bool = field(default=False, init=False, repr=False)
+    _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
 
     def can_proceed(self) -> bool:
         """Check whether another call is allowed (no side effects)."""
-        if self.max_calls is None:
-            return True
-        return self.calls_made < self.max_calls
+        with self._lock:
+            if self.max_calls is None:
+                return True
+            return self.calls_made < self.max_calls
 
     def record_call(self) -> None:
         """Record a completed AI call and warn at threshold."""
-        self.calls_made += 1
-        if (
-            not self._warned_at_threshold
-            and self.calls_made >= _CALL_WARNING_THRESHOLD
-            and (self.max_calls is None or self.max_calls > _CALL_WARNING_THRESHOLD)
-        ):
-            logging.warning(
-                f"AI call count has reached {self.calls_made}. "
-                f"Consider using --max-ai-calls to set a budget."
-            )
-            self._warned_at_threshold = True
+        with self._lock:
+            self.calls_made += 1
+            if (
+                self.max_calls is not None
+                and self.calls_made > self.max_calls
+            ):
+                logging.debug(
+                    f"AI budget slightly exceeded: {self.calls_made}/{self.max_calls} "
+                    f"(concurrent overshoot)"
+                )
+            if (
+                not self._warned_at_threshold
+                and self.calls_made >= _CALL_WARNING_THRESHOLD
+                and (self.max_calls is None or self.max_calls > _CALL_WARNING_THRESHOLD)
+            ):
+                logging.warning(
+                    f"AI call count has reached {self.calls_made}. "
+                    f"Consider using --max-ai-calls to set a budget."
+                )
+                self._warned_at_threshold = True
 
     def record_skip(self) -> None:
         """Record a skipped call (budget exhausted)."""
-        self.calls_skipped += 1
+        with self._lock:
+            self.calls_skipped += 1
 
     def summary(self) -> dict:
         """Return a JSON-serializable summary of AI usage."""
-        return {
-            "calls_made": self.calls_made,
-            "calls_skipped": self.calls_skipped,
-            "max_calls": self.max_calls,
-        }
+        with self._lock:
+            return {
+                "calls_made": self.calls_made,
+                "calls_skipped": self.calls_skipped,
+                "max_calls": self.max_calls,
+            }
 
 
 def _is_transient(exc: Exception) -> bool:

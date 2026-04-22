@@ -103,8 +103,8 @@ class TestDeriveOverallRisk:
 class TestSowWithGraphUsesRiskEngine:
     """Graph available → risk_rating populated from engine (Decision #11)."""
 
-    @patch("scatter.ai.tasks.risk_assess.assess_risk", return_value=None)
-    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling", return_value=None)
+    @patch("scatter.ai.tasks.risk_assess.assess_risk_with_model", return_value=None)
+    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling_with_model", return_value=None)
     @patch("scatter.ai.tasks.complexity_estimate.estimate_complexity", return_value=None)
     @patch("scatter.ai.tasks.impact_narrative.generate_impact_narrative", return_value=None)
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
@@ -147,8 +147,8 @@ class TestSowWithGraphUsesRiskEngine:
 class TestSowWithoutGraphUsesAiOnly:
     """No graph → falls back to AI assess_risk."""
 
-    @patch("scatter.ai.tasks.risk_assess.assess_risk")
-    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling", return_value=None)
+    @patch("scatter.ai.tasks.risk_assess.assess_risk_with_model")
+    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling_with_model", return_value=None)
     @patch("scatter.ai.tasks.complexity_estimate.estimate_complexity", return_value=None)
     @patch("scatter.ai.tasks.impact_narrative.generate_impact_narrative", return_value=None)
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
@@ -190,8 +190,8 @@ class TestSowWithoutGraphUsesAiOnly:
 class TestSowWithGraphAndAiEnriches:
     """Graph fills rating, AI adds justification."""
 
-    @patch("scatter.ai.tasks.risk_assess.assess_risk")
-    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling", return_value=None)
+    @patch("scatter.ai.tasks.risk_assess.assess_risk_with_model")
+    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling_with_model", return_value=None)
     @patch("scatter.ai.tasks.complexity_estimate.estimate_complexity", return_value=None)
     @patch("scatter.ai.tasks.impact_narrative.generate_impact_narrative", return_value=None)
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
@@ -238,8 +238,8 @@ class TestSowWithGraphAndAiEnriches:
 class TestSowWithGraphAiEscalatesNotDowngrades:
     """AI 'Critical' overrides 'High', AI 'Low' does not override 'Medium' (Decision #16)."""
 
-    @patch("scatter.ai.tasks.risk_assess.assess_risk")
-    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling", return_value=None)
+    @patch("scatter.ai.tasks.risk_assess.assess_risk_with_model")
+    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling_with_model", return_value=None)
     @patch("scatter.ai.tasks.complexity_estimate.estimate_complexity", return_value=None)
     @patch("scatter.ai.tasks.impact_narrative.generate_impact_narrative", return_value=None)
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
@@ -294,8 +294,8 @@ class TestSowWithGraphAiEscalatesNotDowngrades:
         consumer = report.targets[0].consumers[0]
         assert consumer.risk_rating == "Critical"
 
-    @patch("scatter.ai.tasks.risk_assess.assess_risk")
-    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling", return_value=None)
+    @patch("scatter.ai.tasks.risk_assess.assess_risk_with_model")
+    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling_with_model", return_value=None)
     @patch("scatter.ai.tasks.complexity_estimate.estimate_complexity", return_value=None)
     @patch("scatter.ai.tasks.impact_narrative.generate_impact_narrative", return_value=None)
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
@@ -354,8 +354,8 @@ class TestSowWithGraphAiEscalatesNotDowngrades:
 class TestSowNoGraphNoAi:
     """No graph, no AI → all risk fields None, no crashes (Decision #14)."""
 
-    @patch("scatter.ai.tasks.risk_assess.assess_risk", return_value=None)
-    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling", return_value=None)
+    @patch("scatter.ai.tasks.risk_assess.assess_risk_with_model", return_value=None)
+    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling_with_model", return_value=None)
     @patch("scatter.ai.tasks.complexity_estimate.estimate_complexity", return_value=None)
     @patch("scatter.ai.tasks.impact_narrative.generate_impact_narrative", return_value=None)
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
@@ -397,8 +397,8 @@ class TestSowNoGraphNoAi:
 class TestOverallRiskDerivedFromProfiles:
     """Aggregate of per-target profiles (Decision #13)."""
 
-    @patch("scatter.ai.tasks.risk_assess.assess_risk", return_value=None)
-    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling", return_value=None)
+    @patch("scatter.ai.tasks.risk_assess.assess_risk_with_model", return_value=None)
+    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling_with_model", return_value=None)
     @patch("scatter.ai.tasks.complexity_estimate.estimate_complexity", return_value=None)
     @patch("scatter.ai.tasks.impact_narrative.generate_impact_narrative", return_value=None)
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
@@ -439,8 +439,8 @@ class TestOverallRiskDerivedFromProfiles:
 class TestMultipleTargetsAggregateOverall:
     """RED target + GREEN target → overall 'High' (Decision #17)."""
 
-    @patch("scatter.ai.tasks.risk_assess.assess_risk", return_value=None)
-    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling", return_value=None)
+    @patch("scatter.ai.tasks.risk_assess.assess_risk_with_model", return_value=None)
+    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling_with_model", return_value=None)
     @patch("scatter.ai.tasks.complexity_estimate.estimate_complexity", return_value=None)
     @patch("scatter.ai.tasks.impact_narrative.generate_impact_narrative", return_value=None)
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
@@ -514,8 +514,8 @@ class TestMultipleTargetsAggregateOverall:
 class TestBackwardCompatSowOutput:
     """JSON schema unchanged — consumers still have risk_rating as string."""
 
-    @patch("scatter.ai.tasks.risk_assess.assess_risk", return_value=None)
-    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling", return_value=None)
+    @patch("scatter.ai.tasks.risk_assess.assess_risk_with_model", return_value=None)
+    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling_with_model", return_value=None)
     @patch("scatter.ai.tasks.complexity_estimate.estimate_complexity", return_value=None)
     @patch("scatter.ai.tasks.impact_narrative.generate_impact_narrative", return_value=None)
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
@@ -562,8 +562,8 @@ class TestBackwardCompatSowOutput:
 class TestSowRegressionNoGraphByteIdentical:
     """No-graph path unchanged by Phase 2 (Decision #17)."""
 
-    @patch("scatter.ai.tasks.risk_assess.assess_risk")
-    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling", return_value=None)
+    @patch("scatter.ai.tasks.risk_assess.assess_risk_with_model")
+    @patch("scatter.ai.tasks.coupling_narrative.explain_coupling_with_model", return_value=None)
     @patch("scatter.ai.tasks.complexity_estimate.estimate_complexity", return_value=None)
     @patch("scatter.ai.tasks.impact_narrative.generate_impact_narrative", return_value=None)
     @patch("scatter.ai.tasks.parse_work_request.parse_work_request")

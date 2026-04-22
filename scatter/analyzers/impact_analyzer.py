@@ -1,6 +1,8 @@
 """Impact analysis orchestrator — SOW text to ImpactReport pipeline."""
 
 import logging
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional
 
@@ -31,6 +33,7 @@ from scatter.compat.v1_bridge import find_solutions_for_project
 # Risk level ordering for AI escalation logic (Decision #16).
 # Graph-derived risk tops out at "High"; only AI can escalate to "Critical".
 RISK_ORDER = {"Low": 0, "Medium": 1, "High": 2, "Critical": 3}
+_DEFAULT_AI_WORKERS = 8  # I/O-bound AI calls; GIL releases during network wait
 
 
 def _risk_level_to_label(level: RiskLevel) -> str:
@@ -202,21 +205,22 @@ def run_impact_analysis(
         )
         report.targets.append(target_impact)
 
-    # Step 3: Risk assessment per target (Decision #11 — per-target, not per-consumer)
-    # Graph-derived risk fills first when graph_ctx is available. AI enrichment
-    # can escalate but never downgrade (Decision #16).
-    logging.info("\nStep 3: Assessing risk per target...")
-    from scatter.ai.tasks.risk_assess import assess_risk
+    # Steps 3-4: Risk assessment + coupling narratives (parallel AI enrichment)
+    #
+    # Steps 3 and 4 are independent — risk assessment reads consumer counts,
+    # coupling narratives read consumer.depth and relevant_files. Neither reads
+    # the other's output. Both are fan-out/collect/apply: pure AI calls in
+    # threads, consumer mutations on the main thread afterward.
+    from scatter.ai.tasks.risk_assess import assess_risk_with_model
+    from scatter.ai.tasks.coupling_narrative import explain_coupling_with_model
 
     risk_profiles = []
 
+    # Step 3a (main thread): Graph-derived risk scoring — deterministic, instant
     for target_impact in report.targets:
         if not target_impact.consumers:
             continue
-
         consumers = target_impact.consumers
-
-        # Graph-derived risk (deterministic, no AI needed)
         if graph_ctx is not None:
             profile = compute_risk_profile(
                 target=target_impact.target.name,
@@ -224,7 +228,7 @@ def run_impact_analysis(
                 metrics=graph_ctx.metrics,
                 consumers=[c.consumer_name for c in consumers],
                 cycles=graph_ctx.cycles,
-                context=SOW_RISK_CONTEXT,  # Phase 3 replaces with mode-aware context selection
+                context=SOW_RISK_CONTEXT,
                 direct_consumer_count=target_impact.total_direct,
                 transitive_consumer_count=target_impact.total_transitive,
             )
@@ -240,22 +244,122 @@ def run_impact_analysis(
                 consumer.risk_rating = risk_label
                 consumer.risk_justification = "; ".join(profile.risk_factors[:3])
 
-        # AI enrichment (can escalate, never downgrade — Decision #16)
-        risk_result = assess_risk(target_impact.target, consumers, ai_provider)
-        if risk_result:
+    # Build work items for AI enrichment (main thread)
+    # risk_work: (target_index, target, consumers)
+    # coupling_work: (target_index, consumer_index, target, consumer, file_contexts)
+    risk_work: list = []
+    coupling_work: list = []
+
+    if ai_provider is not None:
+        for ti_idx, target_impact in enumerate(report.targets):
+            if target_impact.consumers:
+                risk_work.append((ti_idx, target_impact.target, target_impact.consumers))
+
+            for c_idx, consumer in enumerate(target_impact.consumers):
+                if consumer.depth == 0 and consumer.relevant_files:
+                    # Pre-read files on main thread (avoids concurrent WSL2 bridge I/O)
+                    file_contexts = []
+                    for f in consumer.relevant_files[:5]:
+                        try:
+                            if f.is_file():
+                                content = f.read_text(encoding="utf-8", errors="ignore")
+                                file_contexts.append(f"// File: {f.name}\n{content[:5000]}")
+                        except OSError:
+                            continue
+                    if file_contexts:
+                        coupling_work.append(
+                            (ti_idx, c_idx, target_impact.target, consumer, file_contexts)
+                        )
+
+    total_ai_work = len(risk_work) + len(coupling_work)
+
+    if total_ai_work > 0:
+        t_enrich = time.monotonic()
+        workers = min(total_ai_work, _DEFAULT_AI_WORKERS)
+        logging.info(
+            f"\nSteps 3-4: AI enrichment — dispatching {len(risk_work)} risk + "
+            f"{len(coupling_work)} coupling calls across {workers} workers"
+        )
+
+        # Tag results so the apply phase knows which is which
+        _TAG_RISK = "risk"
+        _TAG_COUPLING = "coupling"
+        model = ai_provider.model
+
+        if disable_multiprocessing or total_ai_work < 2:
+            # Sequential fallback
+            risk_results = [
+                (ti_idx, assess_risk_with_model(model, target, consumers))
+                for ti_idx, target, consumers in risk_work
+            ]
+            coupling_results = [
+                (ti_idx, c_idx, explain_coupling_with_model(model, target, consumer, fctx))
+                for ti_idx, c_idx, target, consumer, fctx in coupling_work
+            ]
+        else:
+            risk_results = []
+            coupling_results = []
+            try:
+                with ThreadPoolExecutor(max_workers=workers) as executor:
+                    futures: dict = {}
+                    for item in risk_work:
+                        ti_idx, target, consumers = item
+                        fut = executor.submit(assess_risk_with_model, model, target, consumers)
+                        futures[fut] = (_TAG_RISK, ti_idx)
+                    for item in coupling_work:
+                        ti_idx, c_idx, target, consumer, fctx = item
+                        fut = executor.submit(
+                            explain_coupling_with_model, model, target, consumer, fctx
+                        )
+                        futures[fut] = (_TAG_COUPLING, ti_idx, c_idx)
+
+                    from scatter.ai.budget import BudgetExhaustedError
+
+                    budget_exhausted = False
+                    for future in as_completed(futures):
+                        tag_info = futures[future]
+                        try:
+                            result = future.result()
+                        except BudgetExhaustedError:
+                            if not budget_exhausted:
+                                logging.warning("AI budget exhausted — skipping remaining enrichment")
+                                budget_exhausted = True
+                                executor.shutdown(wait=False, cancel_futures=True)
+                            continue
+                        except Exception as e:
+                            logging.warning(f"AI enrichment call failed: {e}")
+                            continue
+
+                        if tag_info[0] == _TAG_RISK:
+                            risk_results.append((tag_info[1], result))
+                        else:
+                            coupling_results.append((tag_info[1], tag_info[2], result))
+            except Exception as e:
+                logging.warning(f"Parallel AI enrichment failed: {e}. Falling back to sequential.")
+                risk_results = [
+                    (ti_idx, assess_risk_with_model(model, target, consumers))
+                    for ti_idx, target, consumers in risk_work
+                ]
+                coupling_results = [
+                    (ti_idx, c_idx, explain_coupling_with_model(model, target, consumer, fctx))
+                    for ti_idx, c_idx, target, consumer, fctx in coupling_work
+                ]
+
+        # Apply risk results (main thread) — escalation logic
+        for ti_idx, risk_result in risk_results:
+            if not risk_result:
+                continue
             ai_rating = risk_result.get("rating")
-            for consumer in consumers:
+            for consumer in report.targets[ti_idx].consumers:
                 if consumer.risk_rating is None:
-                    # No graph data — AI is primary
                     consumer.risk_rating = ai_rating
                     consumer.risk_justification = risk_result.get("justification")
                 elif ai_rating and RISK_ORDER.get(ai_rating, 0) > RISK_ORDER.get(
                     consumer.risk_rating, 0
                 ):
-                    # AI escalates graph-derived risk (e.g. "High" → "Critical")
                     logging.debug(
                         "risk_ai_escalation: %s consumer=%s %s→%s",
-                        target_impact.target.name,
+                        report.targets[ti_idx].target.name,
                         consumer.consumer_name,
                         consumer.risk_rating,
                         ai_rating,
@@ -264,19 +368,19 @@ def run_impact_analysis(
                 if consumer.risk_justification is None:
                     consumer.risk_justification = risk_result.get("justification")
 
-    # Step 4: AI coupling narrative (optional, per consumer)
-    logging.info("Step 4: Generating coupling narratives...")
-    from scatter.ai.tasks.coupling_narrative import explain_coupling
+        # Apply coupling results (main thread)
+        for ti_idx, c_idx, coupling_result in coupling_results:
+            if coupling_result:
+                consumer = report.targets[ti_idx].consumers[c_idx]
+                consumer.coupling_narrative = coupling_result.get("narrative")
+                consumer.coupling_vectors = coupling_result.get("vectors")
 
-    for target_impact in report.targets:
-        for consumer in target_impact.consumers:
-            if consumer.depth == 0 and consumer.relevant_files:
-                coupling = explain_coupling(
-                    target_impact.target, consumer, ai_provider, search_scope
-                )
-                if coupling:
-                    consumer.coupling_narrative = coupling.get("narrative")
-                    consumer.coupling_vectors = coupling.get("vectors")
+        elapsed = time.monotonic() - t_enrich
+        seq_estimate = total_ai_work * 3.0  # ~3s per call estimate
+        logging.info(
+            f"AI enrichment complete: {total_ai_work} calls in {elapsed:.1f}s "
+            f"(sequential estimate: ~{seq_estimate:.0f}s)"
+        )
 
     # Step 5: AI complexity estimate
     logging.info("Step 5: Estimating complexity...")
