@@ -211,6 +211,7 @@ def run_impact_analysis(
     # coupling narratives read consumer.depth and relevant_files. Neither reads
     # the other's output. Both are fan-out/collect/apply: pure AI calls in
     # threads, consumer mutations on the main thread afterward.
+    from scatter.ai.budget import BudgetExhaustedError
     from scatter.ai.tasks.risk_assess import assess_risk_with_model
     from scatter.ai.tasks.coupling_narrative import explain_coupling_with_model
 
@@ -313,8 +314,6 @@ def run_impact_analysis(
                         )
                         futures[fut] = (_TAG_COUPLING, ti_idx, c_idx)
 
-                    from scatter.ai.budget import BudgetExhaustedError
-
                     budget_exhausted = False
                     for future in as_completed(futures):
                         tag_info = futures[future]
@@ -376,10 +375,9 @@ def run_impact_analysis(
                 consumer.coupling_vectors = coupling_result.get("vectors")
 
         elapsed = time.monotonic() - t_enrich
-        seq_estimate = total_ai_work * 3.0  # ~3s per call estimate
         logging.info(
             f"AI enrichment complete: {total_ai_work} calls in {elapsed:.1f}s "
-            f"(sequential estimate: ~{seq_estimate:.0f}s)"
+            f"(would be {total_ai_work} serial calls without parallelism)"
         )
 
     # Step 5: AI complexity estimate
