@@ -69,10 +69,7 @@ class AIBudget:
         """Record a completed AI call and warn at threshold."""
         with self._lock:
             self.calls_made += 1
-            if (
-                self.max_calls is not None
-                and self.calls_made > self.max_calls
-            ):
+            if self.max_calls is not None and self.calls_made > self.max_calls:
                 logging.debug(
                     f"AI budget slightly exceeded: {self.calls_made}/{self.max_calls} "
                     f"(concurrent overshoot)"

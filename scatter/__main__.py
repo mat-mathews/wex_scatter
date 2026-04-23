@@ -58,7 +58,10 @@ def main():
     batch_jobs = load_batch_jobs(args)
     pipeline_map = load_pipeline_csv(paths.pipeline_csv)
     graph_ctx, graph_enriched = build_graph_context_if_needed(
-        args, config, paths.search_scope, solutions.index,
+        args,
+        config,
+        paths.search_scope,
+        solutions.index,
         discovered_files=discovered,
     )
     ctx = build_mode_context(

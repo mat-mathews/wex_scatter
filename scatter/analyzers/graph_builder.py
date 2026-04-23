@@ -333,23 +333,19 @@ def build_dependency_graph(
                 # No scope gate — check all projects
                 for type_name in matched_types:
                     for owner_project in type_to_projects[type_name]:
-                        if (
-                            owner_project != source_project
-                            and owner_project in graph._nodes
-                        ):
-                            type_usage_evidence[owner_project].append(
-                                f"{cs_path}:{type_name}"
-                            )
+                        if owner_project != source_project and owner_project in graph._nodes:
+                            type_usage_evidence[owner_project].append(f"{cs_path}:{type_name}")
             else:
                 # Per-file scope gate: narrow to projects this file imports
                 file_reachable = file_scope_cache.get(cs_path, set())
-                scope = file_reachable if file_reachable else reachable_targets.get(
-                    source_project, set()
+                scope = (
+                    file_reachable
+                    if file_reachable
+                    else reachable_targets.get(source_project, set())
                 )
                 if not file_reachable and scope:
                     logging.debug(
-                        f"Scope gate fallback for {cs_path} "
-                        f"(no file-level usings matched)"
+                        f"Scope gate fallback for {cs_path} (no file-level usings matched)"
                     )
                 for type_name in matched_types:
                     for owner_project in type_to_projects[type_name]:
@@ -358,9 +354,7 @@ def build_dependency_graph(
                             and owner_project in graph._nodes
                             and owner_project in scope
                         ):
-                            type_usage_evidence[owner_project].append(
-                                f"{cs_path}:{type_name}"
-                            )
+                            type_usage_evidence[owner_project].append(f"{cs_path}:{type_name}")
 
         for target_project, evidence in type_usage_evidence.items():
             graph.add_edge(
@@ -526,7 +520,6 @@ def _map_cs_to_project(
             return None
         current = parent
     return None
-
 
 
 def _filter_excluded(paths: List[Path], exclude_patterns: List[str]) -> List[Path]:

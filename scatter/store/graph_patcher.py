@@ -375,7 +375,9 @@ def patch_graph(
             cs_abs = search_scope / rel_path
             try:
                 content = cs_abs.read_text(encoding="utf-8", errors="ignore")
-                file_identifier_cache[rel_path] = set(_IDENT_PATTERN.findall(content)) - _CSHARP_KEYWORDS
+                file_identifier_cache[rel_path] = (
+                    set(_IDENT_PATTERN.findall(content)) - _CSHARP_KEYWORDS
+                )
             except OSError:
                 pass
         cache_elapsed = (time.monotonic() - cache_start) * 1000

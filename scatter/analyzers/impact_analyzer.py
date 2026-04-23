@@ -321,7 +321,9 @@ def run_impact_analysis(
                             result = future.result()
                         except BudgetExhaustedError:
                             if not budget_exhausted:
-                                logging.warning("AI budget exhausted — skipping remaining enrichment")
+                                logging.warning(
+                                    "AI budget exhausted — skipping remaining enrichment"
+                                )
                                 budget_exhausted = True
                                 executor.shutdown(wait=False, cancel_futures=True)
                             continue

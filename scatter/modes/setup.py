@@ -346,7 +346,10 @@ def build_graph_context_if_needed(
 
         if args.graph_metrics or cache_exists(search_scope, config.graph.cache_dir):
             graph_ctx = build_graph_context(
-                search_scope, config, args, solution_index=solution_index,
+                search_scope,
+                config,
+                args,
+                solution_index=solution_index,
                 discovered_files=discovered_files,
             )
             if graph_ctx:

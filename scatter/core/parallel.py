@@ -745,10 +745,7 @@ def walk_and_collect(
         # Prune excluded and dot-prefixed directories in-place
         # (os.walk won't descend into removed entries)
         original_count = len(dirnames)
-        dirnames[:] = [
-            d for d in dirnames
-            if d not in exclude_dirs and not d.startswith(".")
-        ]
+        dirnames[:] = [d for d in dirnames if d not in exclude_dirs and not d.startswith(".")]
         dirs_pruned += original_count - len(dirnames)
 
         for filename in filenames:
