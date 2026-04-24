@@ -1,0 +1,22 @@
+<Project>
+
+  <!--
+    Root-level shared build properties for the GalaxyWorks monorepo.
+    Implicitly imported by ALL projects under this directory tree.
+    MSBuild walks up from each .csproj to find the nearest Directory.Build.props.
+  -->
+
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <Company>WEX Health</Company>
+    <Product>GalaxyWorks</Product>
+    <Copyright>Copyright (c) WEX Health</Copyright>
+  </PropertyGroup>
+
+  <!-- Shared analyzers applied to every project -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="8.0.0" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

@@ -21,6 +21,11 @@ if TYPE_CHECKING:
 from scatter.core.graph import DependencyEdge, DependencyGraph, ProjectNode
 from scatter.core.models import DEFAULT_CHUNK_SIZE, DEFAULT_MAX_WORKERS
 from scatter.core.parallel import extract_exclude_dirs, walk_and_collect
+from scatter.scanners.msbuild_import_scanner import (
+    build_directory_build_index,
+    parse_explicit_imports,
+    resolve_directory_build_imports,
+)
 from scatter.scanners.project_scanner import (
     derive_namespace,
     parse_csproj_all_references,
@@ -102,14 +107,20 @@ def build_dependency_graph(
     if discovered_files is not None:
         csproj_files = discovered_files[".csproj"]
         cs_files = discovered_files[".cs"]
+        props_files = discovered_files.get(".props", [])
+        targets_files = discovered_files.get(".targets", [])
         logging.info(
             f"Using pre-discovered files: {len(csproj_files)} .csproj, {len(cs_files)} .cs"
         )
     else:
         exclude_dirs = extract_exclude_dirs(exclude_patterns)
-        discovered = walk_and_collect(search_scope, {".csproj", ".cs"}, exclude_dirs)
+        discovered = walk_and_collect(
+            search_scope, {".csproj", ".cs", ".props", ".targets"}, exclude_dirs
+        )
         csproj_files = discovered[".csproj"]
         cs_files = discovered[".cs"]
+        props_files = discovered.get(".props", [])
+        targets_files = discovered.get(".targets", [])
 
     t0a = time.monotonic()
     logging.info(
@@ -140,6 +151,38 @@ def build_dependency_graph(
 
     t0b = time.monotonic()
     logging.info(f"Graph build step 2 (csproj parsing): {t0b - t0a:.1f}s")
+
+    # Step 2b: Resolve MSBuild imports (Directory.Build.props/targets + explicit <Import>)
+    props_index, targets_index = build_directory_build_index(props_files, targets_files)
+    project_msbuild_imports: Dict[str, List[str]] = {}
+
+    for project_name, meta in project_metadata.items():
+        csproj_path = meta["path"]
+        imports: List[Path] = resolve_directory_build_imports(
+            csproj_path.parent, props_index, targets_index, search_scope
+        )
+        imports.extend(parse_explicit_imports(csproj_path, search_scope))
+
+        if imports:
+            rel_paths = []
+            resolved_scope = search_scope.resolve()
+            for p in imports:
+                try:
+                    rel_paths.append(str(p.resolve().relative_to(resolved_scope)))
+                except ValueError:
+                    logging.warning(
+                        f"MSBuild import outside search scope, skipping: {p} "
+                        f"(project: {project_name})"
+                    )
+            if rel_paths:
+                project_msbuild_imports[project_name] = sorted(rel_paths)
+
+    logging.info(
+        f"Graph build step 2b (MSBuild imports): "
+        f"{len(props_index)} Directory.Build.props, "
+        f"{len(targets_index)} Directory.Build.targets, "
+        f"{sum(len(v) for v in project_msbuild_imports.values())} total import edges"
+    )
 
     # Step 3: Map .cs files to parent projects via reverse index
     project_dir_index = _build_project_directory_index(csproj_files)
@@ -242,6 +285,7 @@ def build_dependency_graph(
             file_count=len(project_cs_files.get(project_name, [])),
             type_declarations=sorted(project_types.get(project_name, set())),
             sproc_references=sorted(project_sprocs.get(project_name, set())),
+            msbuild_imports=project_msbuild_imports.get(project_name, []),
         )
         graph.add_node(node)
 

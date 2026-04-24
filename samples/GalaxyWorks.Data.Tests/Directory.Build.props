@@ -1,0 +1,21 @@
+<Project>
+
+  <!--
+    Test-project override. Chains to the root Directory.Build.props via
+    GetPathOfFileAbove, then relaxes settings that don't apply to tests.
+    This is the standard pattern for subfolder overrides in .NET monorepos.
+  -->
+
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.0" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

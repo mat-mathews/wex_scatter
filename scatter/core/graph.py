@@ -27,6 +27,7 @@ class ProjectNode:
     type_declarations: List[str] = field(default_factory=list)
     sproc_references: List[str] = field(default_factory=list)
     solutions: List[str] = field(default_factory=list)
+    msbuild_imports: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -306,6 +307,7 @@ class DependencyGraph:
                 "type_declarations": node.type_declarations,
                 "sproc_references": node.sproc_references,
                 "solutions": node.solutions,
+                "msbuild_imports": node.msbuild_imports,
             }
 
         edges = []
@@ -340,6 +342,7 @@ class DependencyGraph:
                 type_declarations=node_data.get("type_declarations", []),
                 sproc_references=node_data.get("sproc_references", []),
                 solutions=node_data.get("solutions", []),
+                msbuild_imports=node_data.get("msbuild_imports", []),
             )
             graph.add_node(node)
 

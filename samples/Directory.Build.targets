@@ -1,0 +1,19 @@
+<Project>
+
+  <!--
+    Root-level shared build targets for the GalaxyWorks monorepo.
+    Implicitly imported AFTER each project's own content.
+    Common use: shared post-build steps, packaging rules, artifact paths.
+  -->
+
+  <PropertyGroup>
+    <BaseOutputPath>$(MSBuildThisFileDirectory).artifacts\bin\$(MSBuildProjectName)\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory).artifacts\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+
+  <!-- Stamp assembly version from CI when available -->
+  <PropertyGroup Condition="'$(BUILD_BUILDNUMBER)' != ''">
+    <InformationalVersion>$(BUILD_BUILDNUMBER)</InformationalVersion>
+  </PropertyGroup>
+
+</Project>

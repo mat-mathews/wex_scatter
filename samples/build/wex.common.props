@@ -1,0 +1,25 @@
+<Project>
+
+  <!--
+    Shared properties for projects that opt in via explicit <Import>.
+    Unlike Directory.Build.props, this is NOT auto-discovered by MSBuild.
+    Projects must explicitly import it:
+      <Import Project="$(MSBuildThisFileDirectory)..\build\wex.common.props" />
+
+    This pattern is common in monorepos for cross-cutting concerns that
+    only apply to a subset of projects (e.g., deployable services vs libraries).
+  -->
+
+  <PropertyGroup>
+    <WexServiceDeployable>true</WexServiceDeployable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <!-- Shared runtime hosting packages for deployable services -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>
