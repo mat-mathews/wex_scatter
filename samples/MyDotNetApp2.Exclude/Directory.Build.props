@@ -1,0 +1,14 @@
+<Project>
+
+  <!--
+    Standalone override that does NOT chain to the root Directory.Build.props.
+    Models a project that opts out of the monorepo's shared build settings —
+    common for vendored code, isolated tools, or projects migrated from
+    a separate repo that haven't adopted the shared build configuration.
+  -->
+
+  <PropertyGroup>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

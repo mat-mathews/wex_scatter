@@ -52,7 +52,9 @@ def main():
     # when --no-graph is set, but the marginal cost of extra extensions during
     # an already-necessary walk is near zero.
     exclude_dirs = extract_exclude_dirs(config.exclude_patterns)
-    discovered = walk_and_collect(paths.search_scope, {".sln", ".csproj", ".cs"}, exclude_dirs)
+    discovered = walk_and_collect(
+        paths.search_scope, {".sln", ".csproj", ".cs", ".props", ".targets"}, exclude_dirs
+    )
 
     solutions = scan_solutions_data(paths.search_scope, sln_files=discovered[".sln"])
     batch_jobs = load_batch_jobs(args)

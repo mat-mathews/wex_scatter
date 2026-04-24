@@ -34,6 +34,7 @@ __pycache__/
 
 # Distribution / packaging
 build/
+!samples/build/
 dist/
 eggs/
 *.egg-info/
