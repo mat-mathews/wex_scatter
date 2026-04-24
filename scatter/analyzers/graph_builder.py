@@ -164,20 +164,25 @@ def build_dependency_graph(
         imports.extend(parse_explicit_imports(csproj_path, search_scope))
 
         if imports:
-            try:
-                project_msbuild_imports[project_name] = sorted(
-                    str(p.relative_to(search_scope)) for p in imports
-                )
-            except ValueError:
-                project_msbuild_imports[project_name] = sorted(str(p) for p in imports)
+            rel_paths = []
+            resolved_scope = search_scope.resolve()
+            for p in imports:
+                try:
+                    rel_paths.append(str(p.resolve().relative_to(resolved_scope)))
+                except ValueError:
+                    logging.warning(
+                        f"MSBuild import outside search scope, skipping: {p} "
+                        f"(project: {project_name})"
+                    )
+            if rel_paths:
+                project_msbuild_imports[project_name] = sorted(rel_paths)
 
-    if project_msbuild_imports:
-        logging.info(
-            f"Graph build step 2b (MSBuild imports): "
-            f"{len(props_index)} Directory.Build.props, "
-            f"{len(targets_index)} Directory.Build.targets, "
-            f"{sum(len(v) for v in project_msbuild_imports.values())} total import edges"
-        )
+    logging.info(
+        f"Graph build step 2b (MSBuild imports): "
+        f"{len(props_index)} Directory.Build.props, "
+        f"{len(targets_index)} Directory.Build.targets, "
+        f"{sum(len(v) for v in project_msbuild_imports.values())} total import edges"
+    )
 
     # Step 3: Map .cs files to parent projects via reverse index
     project_dir_index = _build_project_directory_index(csproj_files)

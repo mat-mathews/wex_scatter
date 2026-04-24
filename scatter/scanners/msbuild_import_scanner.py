@@ -62,6 +62,10 @@ def resolve_directory_build_imports(
     A file that chains (contains GetPathOfFileAbove) causes the walk to
     continue upward to find the next ancestor. A file without chaining
     terminates the walk.
+
+    Note: the ancestor walk is bounded by search_root, not the filesystem
+    root. A Directory.Build.props above search_root will not be found.
+    This is deliberate — scatter only indexes within its configured scope.
     """
     result = _resolve_chain(project_dir, props_index, search_root)
     result.extend(_resolve_chain(project_dir, targets_index, search_root))
