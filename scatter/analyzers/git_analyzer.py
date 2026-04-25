@@ -252,9 +252,7 @@ def analyze_branch_changes(
 
             # Collect .props/.targets before .cs so a find_project_file
             # failure on a later .cs item doesn't skip config files
-            relevant_path = (
-                diff_item.a_path if diff_item.change_type == "D" else diff_item.b_path
-            )
+            relevant_path = diff_item.a_path if diff_item.change_type == "D" else diff_item.b_path
             if relevant_path and (
                 relevant_path.lower().endswith(".props")
                 or relevant_path.lower().endswith(".targets")
