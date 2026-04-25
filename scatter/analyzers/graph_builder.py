@@ -23,12 +23,11 @@ from scatter.core.models import DEFAULT_CHUNK_SIZE, DEFAULT_MAX_WORKERS
 from scatter.core.parallel import extract_exclude_dirs, walk_and_collect
 from scatter.scanners.msbuild_import_scanner import (
     build_directory_build_index,
-    parse_explicit_imports,
     resolve_directory_build_imports,
 )
 from scatter.scanners.project_scanner import (
     derive_namespace,
-    parse_csproj_all_references,
+    parse_csproj,
 )
 from scatter.core.patterns import CSHARP_KEYWORDS as _CSHARP_KEYWORDS
 from scatter.core.patterns import IDENT_PATTERN as _IDENT_PATTERN
@@ -128,12 +127,13 @@ def build_dependency_graph(
         f"— {len(csproj_files)} .csproj, {len(cs_files)} .cs"
     )
 
-    # Step 2: Parse each .csproj → extract metadata
+    # Step 2: Parse each .csproj → extract metadata + explicit imports (single XML pass)
     project_metadata: Dict[str, Dict[str, Any]] = {}
     project_refs: Dict[str, List[str]] = {}  # project_name -> list of ref include paths
+    project_explicit_imports: Dict[str, List[Path]] = {}
 
     for csproj_path in csproj_files:
-        parsed = parse_csproj_all_references(csproj_path)
+        parsed = parse_csproj(csproj_path, search_scope=search_scope)
         if parsed is None:
             continue
 
@@ -148,6 +148,8 @@ def build_dependency_graph(
             "output_type": parsed["output_type"],
         }
         project_refs[project_name] = parsed["project_references"]
+        if parsed["explicit_imports"]:
+            project_explicit_imports[project_name] = parsed["explicit_imports"]
 
     t0b = time.monotonic()
     logging.info(f"Graph build step 2 (csproj parsing): {t0b - t0a:.1f}s")
@@ -161,7 +163,7 @@ def build_dependency_graph(
         imports: List[Path] = resolve_directory_build_imports(
             csproj_path.parent, props_index, targets_index, search_scope
         )
-        imports.extend(parse_explicit_imports(csproj_path, search_scope))
+        imports.extend(project_explicit_imports.get(project_name, []))
 
         if imports:
             rel_paths = []

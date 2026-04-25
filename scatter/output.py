@@ -15,7 +15,11 @@ from scatter.__version__ import __version__
 from scatter.cli_parser import _REDACTED_CLI_KEYS
 from scatter.core.models import ConsumerResult, FilterPipeline, PropsImpact
 from scatter.reports.console_reporter import print_console_report
-from scatter.reports.json_reporter import prepare_detailed_results, write_json_report
+from scatter.reports.json_reporter import (
+    REPORT_SCHEMA_VERSION,
+    prepare_detailed_results,
+    write_json_report,
+)
 from scatter.reports.csv_reporter import write_csv_report
 
 
@@ -29,6 +33,7 @@ def _build_metadata(
     """Build metadata dict for JSON report output."""
     cli_args = {k: v for k, v in vars(args).items() if k not in _REDACTED_CLI_KEYS}
     return {
+        "schema_version": REPORT_SCHEMA_VERSION,
         "scatter_version": __version__,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "cli_args": cli_args,

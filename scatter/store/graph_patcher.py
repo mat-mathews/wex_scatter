@@ -27,7 +27,7 @@ from scatter.core.patterns import SPROC_PATTERN as _SPROC_PATTERN
 from scatter.core.patterns import USING_PATTERN as _USING_PATTERN
 from scatter.scanners.project_scanner import (
     derive_namespace,
-    parse_csproj_all_references,
+    parse_csproj,
 )
 from scatter.scanners.type_scanner import extract_type_names_from_content
 from scatter.store.graph_cache import (
@@ -98,7 +98,7 @@ def extract_project_facts(
     content_hash = compute_content_hash(csproj_path)
     namespace = derive_namespace(csproj_path)
 
-    parsed = parse_csproj_all_references(csproj_path)
+    parsed = parse_csproj(csproj_path)
     if parsed is None:
         return ProjectFacts(
             namespace=namespace,

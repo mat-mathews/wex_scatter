@@ -46,7 +46,10 @@ def generate_narrative_with_model(
     prompt = f"""Write a 1-2 paragraph executive summary of the following impact analysis.
 This should be suitable for inclusion in a project scoping email or ticket.
 
-Work Request: {report.sow_text[:500]}
+Work Request:
+```
+{report.sow_text[:500]}
+```
 
 Complexity: {report.complexity_rating or "Not assessed"}
 {f"Effort estimate: {report.effort_estimate}" if report.effort_estimate else ""}

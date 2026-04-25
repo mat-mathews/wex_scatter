@@ -96,7 +96,7 @@ from scatter.store.graph_cache import (
     get_default_cache_path,
 )
 from scatter.core.graph import DependencyGraph, ProjectNode, DependencyEdge
-from scatter.scanners.project_scanner import parse_csproj_all_references
+from scatter.scanners.project_scanner import parse_csproj, parse_csproj_all_references
 from scatter.analyzers.graph_builder import build_dependency_graph
 from scatter.analyzers.coupling_analyzer import (
     ProjectMetrics,
