@@ -259,7 +259,7 @@ def analyze_branch_changes(
             ):
                 normalized = relevant_path.replace("\\", "/")
                 changed_config_files.append(
-                    ConfigFileChange(path=normalized, change_type=diff_item.change_type)
+                    ConfigFileChange(path=normalized, change_type=diff_item.change_type or "M")
                 )
                 continue
 
