@@ -1,14 +1,23 @@
-"""Tests for MSBuild implicit import resolution."""
+"""Tests for MSBuild implicit import resolution and explicit import extraction."""
 
 from pathlib import Path
+from typing import List
 
 import pytest
 
 from scatter.scanners.msbuild_import_scanner import (
     build_directory_build_index,
-    parse_explicit_imports,
     resolve_directory_build_imports,
 )
+from scatter.scanners.project_scanner import parse_csproj
+
+
+def _parse_explicit_imports(csproj_path: Path, search_scope: Path) -> List[Path]:
+    """Thin wrapper: extract explicit imports via parse_csproj (moved in PR 3)."""
+    result = parse_csproj(csproj_path, search_scope=search_scope)
+    if result is None:
+        return []
+    return result["explicit_imports"]
 
 
 @pytest.fixture
@@ -154,7 +163,7 @@ class TestParseExplicitImports:
             "</Project>"
         )
 
-        result = parse_explicit_imports(csproj, tmp_path)
+        result = _parse_explicit_imports(csproj, tmp_path)
         assert len(result) == 1
         assert result[0].name == "wex.common.props"
 
@@ -168,7 +177,7 @@ class TestParseExplicitImports:
             "</Project>"
         )
 
-        result = parse_explicit_imports(csproj, tmp_path)
+        result = _parse_explicit_imports(csproj, tmp_path)
         assert result == []
 
     def test_skips_unresolvable_variables(self, tmp_path):
@@ -179,7 +188,7 @@ class TestParseExplicitImports:
             "</Project>"
         )
 
-        result = parse_explicit_imports(csproj, tmp_path)
+        result = _parse_explicit_imports(csproj, tmp_path)
         assert result == []
 
     def test_skips_nonexistent_import(self, tmp_path):
@@ -190,12 +199,12 @@ class TestParseExplicitImports:
             "</Project>"
         )
 
-        result = parse_explicit_imports(csproj, tmp_path)
+        result = _parse_explicit_imports(csproj, tmp_path)
         assert result == []
 
     def test_skips_directory_build_files(self, tmp_path):
         """Explicit <Import> of Directory.Build.props is handled by the ancestor
-        walk, not by parse_explicit_imports — avoid double-counting."""
+        walk, not by explicit import extraction — avoid double-counting."""
         db_props = tmp_path / "Directory.Build.props"
         db_props.write_text("<Project/>")
         csproj = tmp_path / "sub" / "MyProject.csproj"
@@ -206,14 +215,14 @@ class TestParseExplicitImports:
             "</Project>"
         )
 
-        result = parse_explicit_imports(csproj, tmp_path)
+        result = _parse_explicit_imports(csproj, tmp_path)
         assert result == []
 
     def test_handles_malformed_csproj(self, tmp_path):
         csproj = tmp_path / "Bad.csproj"
         csproj.write_text("this is not xml at all")
 
-        result = parse_explicit_imports(csproj, tmp_path)
+        result = _parse_explicit_imports(csproj, tmp_path)
         assert result == []
 
 
@@ -288,9 +297,9 @@ class TestSamplesIntegration:
         )
         data_csproj = samples_dir / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
 
-        api_imports = parse_explicit_imports(api_csproj, samples_dir)
-        notif_imports = parse_explicit_imports(notifications_csproj, samples_dir)
-        data_imports = parse_explicit_imports(data_csproj, samples_dir)
+        api_imports = _parse_explicit_imports(api_csproj, samples_dir)
+        notif_imports = _parse_explicit_imports(notifications_csproj, samples_dir)
+        data_imports = _parse_explicit_imports(data_csproj, samples_dir)
 
         assert any(p.name == "wex.common.props" for p in api_imports)
         assert any(p.name == "wex.common.props" for p in notif_imports)
@@ -301,7 +310,7 @@ class TestSamplesIntegration:
             pytest.skip("samples/ not found")
 
         portal_csproj = samples_dir / "GalaxyWorks.WebPortal" / "GalaxyWorks.WebPortal.csproj"
-        result = parse_explicit_imports(portal_csproj, samples_dir)
+        result = _parse_explicit_imports(portal_csproj, samples_dir)
 
         for imp in result:
             assert "Microsoft.Common.props" not in str(imp)

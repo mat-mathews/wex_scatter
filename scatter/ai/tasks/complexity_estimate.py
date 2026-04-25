@@ -51,7 +51,10 @@ def estimate_complexity_with_model(
 
     prompt = f"""Estimate the implementation complexity for the following work request.
 
-Work Request: {report.sow_text[:500]}
+Work Request:
+```
+{report.sow_text[:500]}
+```
 
 Impact metrics:
 - Number of targets: {len(report.targets)}

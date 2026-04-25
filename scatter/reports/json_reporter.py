@@ -9,6 +9,10 @@ from typing import Any, Dict, List, Optional
 from scatter.core.models import FilterPipeline, ImpactReport, PRRiskReport, PropsImpact
 from scatter.core.tree import build_adjacency, CONFIDENCE_LABEL_RANK
 
+# Major bump = breaking field removal/rename; minor bump = additive fields.
+# Absence of schema_version in old reports should be treated as "0.0".
+REPORT_SCHEMA_VERSION = "1.0"
+
 
 def prepare_detailed_results(
     all_results: list, graph_metrics_requested: bool = False

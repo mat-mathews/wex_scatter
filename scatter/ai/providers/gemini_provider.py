@@ -20,6 +20,7 @@ from scatter.ai.base import (
     AnalysisResult,
     MAX_SUMMARIZATION_CHARS,
     SUMMARIZATION_PROMPT_TEMPLATE,
+    redact_credentials,
 )
 
 
@@ -105,9 +106,12 @@ def summarize_file_with_model(model_instance, csharp_code: str, file_path: str) 
         return "[File is empty or contains only whitespace]"
 
     try:
+        code_to_send = redact_credentials(
+            csharp_code[:MAX_SUMMARIZATION_CHARS], file_path=file_path
+        )
         prompt = SUMMARIZATION_PROMPT_TEMPLATE.format(
             filename=Path(file_path).name,
-            code=csharp_code[:MAX_SUMMARIZATION_CHARS],
+            code=code_to_send,
         )
 
         logging.info(f"Requesting summary for {file_path} from Gemini API...")

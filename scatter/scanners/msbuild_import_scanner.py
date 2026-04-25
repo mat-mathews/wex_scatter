@@ -3,30 +3,17 @@
 Resolves which .props/.targets files affect each project via:
 1. Implicit Directory.Build.props/targets (nearest-ancestor walk)
 2. Parent chaining (GetPathOfFileAbove)
-3. Explicit <Import Project="..."> in csproj files
+
+Explicit <Import Project="..."> extraction has moved to
+scatter.scanners.project_scanner.parse_csproj() to avoid re-parsing
+csproj XML (Devon's PR 2 review point).
 """
 
-import logging
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 _DIRECTORY_BUILD_PROPS = "Directory.Build.props"
 _DIRECTORY_BUILD_TARGETS = "Directory.Build.targets"
-_DIRECTORY_BUILD_NAMES = frozenset({_DIRECTORY_BUILD_PROPS, _DIRECTORY_BUILD_TARGETS})
-
-_SYSTEM_IMPORT_MARKERS = frozenset(
-    {
-        "$(MSBuildExtensionsPath)",
-        "$(MSBuildToolsPath)",
-        "$(MSBuildBinPath)",
-        "$(VSToolsPath)",
-        "$(NuGetPackageRoot)",
-        "Microsoft.Common.props",
-        "Microsoft.CSharp.targets",
-        "Microsoft.WebApplication.targets",
-    }
-)
 
 _MAX_ANCESTOR_DEPTH = 64
 _MAX_CHAIN_DEPTH = 10
@@ -41,7 +28,7 @@ def build_directory_build_index(
     Returns two dicts mapping directory -> file path. Only indexes files
     named exactly Directory.Build.props or Directory.Build.targets.
     Custom .props files (e.g. wex.common.props) are handled separately
-    via parse_explicit_imports.
+    via parse_csproj() in project_scanner.
     """
     props_index = {f.parent.resolve(): f for f in props_files if f.name == _DIRECTORY_BUILD_PROPS}
     targets_index = {
@@ -70,46 +57,6 @@ def resolve_directory_build_imports(
     result = _resolve_chain(project_dir, props_index, search_root)
     result.extend(_resolve_chain(project_dir, targets_index, search_root))
     return result
-
-
-def parse_explicit_imports(csproj_path: Path, search_scope: Path) -> List[Path]:
-    """Parse <Import Project="..."> elements from a csproj and resolve to local paths.
-
-    Filters out system MSBuild imports. Resolves $(MSBuildThisFileDirectory)
-    to the csproj's parent directory. Only returns paths that exist on disk
-    and fall within search_scope.
-    """
-    try:
-        tree = ET.parse(csproj_path)
-        root = tree.getroot()
-    except (ET.ParseError, OSError) as e:
-        logging.debug(f"Could not parse {csproj_path} for imports: {e}")
-        return []
-
-    msb_ns = "{http://schemas.microsoft.com/developer/msbuild/2003}"
-    imports: List[Path] = []
-
-    for import_elem in list(root.findall(".//Import")) + list(root.findall(f".//{msb_ns}Import")):
-        project_attr = import_elem.get("Project", "")
-        if not project_attr or _is_system_import(project_attr):
-            continue
-
-        resolved = project_attr.replace("\\", "/")
-        resolved = resolved.replace("$(MSBuildThisFileDirectory)", str(csproj_path.parent) + "/")
-        if "$(" in resolved:
-            continue
-
-        try:
-            abs_path = (csproj_path.parent / resolved).resolve()
-            if not abs_path.is_file():
-                continue
-            abs_path.relative_to(search_scope.resolve())
-            if abs_path.name not in _DIRECTORY_BUILD_NAMES:
-                imports.append(abs_path)
-        except (ValueError, OSError):
-            continue
-
-    return imports
 
 
 # --- Internal helpers ---
@@ -174,8 +121,3 @@ def _resolve_chain(
         current = next_file
 
     return chain
-
-
-def _is_system_import(project_attr: str) -> bool:
-    """Check if an <Import Project="..."> is a system/SDK import to ignore."""
-    return any(marker in project_attr for marker in _SYSTEM_IMPORT_MARKERS)

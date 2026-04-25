@@ -84,11 +84,14 @@ def derive_namespace(csproj_path: Path) -> Optional[str]:
         return None
 
 
-def parse_csproj_all_references(csproj_path: Path) -> Optional[Dict[str, Any]]:
-    """Parse a .csproj file and extract all metadata.
+def parse_csproj(
+    csproj_path: Path, search_scope: Optional[Path] = None
+) -> Optional[Dict[str, Any]]:
+    """Parse a .csproj file and extract all metadata in a single XML pass.
 
     Returns dict with keys:
     - 'project_references': List[str]  — Include attribute values from <ProjectReference>
+    - 'explicit_imports': List[Path]   — resolved local .props/.targets from <Import>
     - 'root_namespace': Optional[str]
     - 'assembly_name': Optional[str]
     - 'target_framework': Optional[str]
@@ -109,6 +112,7 @@ def parse_csproj_all_references(csproj_path: Path) -> Optional[Dict[str, Any]]:
         return None
 
     msb_ns = {"msb": "http://schemas.microsoft.com/developer/msbuild/2003"}
+    msb_ns_uri = "{http://schemas.microsoft.com/developer/msbuild/2003}"
 
     # Detect project style: SDK-style has Sdk attribute on <Project> element
     project_style = "sdk" if root.get("Sdk") else "framework"
@@ -134,11 +138,75 @@ def parse_csproj_all_references(csproj_path: Path) -> Optional[Dict[str, Any]]:
             if include:
                 refs.append(include.replace("\\", "/"))
 
+    # Extract explicit <Import> elements (same XML tree, no re-parse)
+    explicit_imports: List[Path] = []
+    if search_scope is not None:
+        try:
+            explicit_imports = _extract_explicit_imports(
+                root, msb_ns_uri, csproj_path, search_scope
+            )
+        except Exception as e:
+            logging.warning(
+                f"Import extraction failed for {csproj_path}, continuing without imports: {e}"
+            )
+
     return {
         "project_references": refs,
+        "explicit_imports": explicit_imports,
         "root_namespace": _find_text("RootNamespace"),
         "assembly_name": _find_text("AssemblyName"),
         "target_framework": _find_text("TargetFramework") or _find_text("TargetFrameworkVersion"),
         "output_type": _find_text("OutputType"),
         "project_style": project_style,
     }
+
+
+# Keep old name as alias for backward compatibility with external callers
+parse_csproj_all_references = parse_csproj
+
+
+_SYSTEM_IMPORT_MARKERS = frozenset(
+    {
+        "$(MSBuildExtensionsPath)",
+        "$(MSBuildToolsPath)",
+        "$(MSBuildBinPath)",
+        "$(VSToolsPath)",
+        "$(NuGetPackageRoot)",
+        "Microsoft.Common.props",
+        "Microsoft.CSharp.targets",
+        "Microsoft.WebApplication.targets",
+    }
+)
+
+_DIRECTORY_BUILD_NAMES = frozenset({"Directory.Build.props", "Directory.Build.targets"})
+
+
+def _extract_explicit_imports(
+    root: ET.Element, msb_ns_uri: str, csproj_path: Path, search_scope: Path
+) -> List[Path]:
+    """Extract <Import Project="..."> elements from an already-parsed XML tree."""
+    imports: List[Path] = []
+
+    for import_elem in list(root.findall(".//Import")) + list(
+        root.findall(f".//{msb_ns_uri}Import")
+    ):
+        project_attr = import_elem.get("Project", "")
+        if not project_attr or any(m in project_attr for m in _SYSTEM_IMPORT_MARKERS):
+            continue
+
+        resolved = project_attr.replace("\\", "/")
+        resolved = resolved.replace("$(MSBuildThisFileDirectory)", str(csproj_path.parent) + "/")
+        if "$(" in resolved:
+            continue
+
+        try:
+            abs_path = (csproj_path.parent / resolved).resolve()
+            if not abs_path.is_file():
+                continue
+            abs_path.relative_to(search_scope.resolve())
+            if abs_path.name not in _DIRECTORY_BUILD_NAMES:
+                imports.append(abs_path)
+        except (ValueError, OSError):
+            continue
+
+    return imports

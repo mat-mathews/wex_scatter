@@ -84,6 +84,9 @@ def parse_work_request(
     return targets
 
 
+MAX_SOW_TEXT_LENGTH = 50_000
+
+
 def parse_work_request_with_model(
     model_instance,
     sow_text: str,
@@ -92,7 +95,20 @@ def parse_work_request_with_model(
     """Module-level function accepting any model with generate_content().
 
     Returns raw parsed JSON list of target dicts, or None on failure.
+
+    # SECURITY: sow_text is user-supplied and injected into the prompt below.
+    # Mitigations: (1) length cap prevents context-window/cost blowout,
+    # (2) triple-backtick fencing isolates user content from instructions,
+    # (3) output parsed via json.loads (not eval), (4) downstream codebase
+    # index validation halves confidence for names not in the known set.
     """
+    if len(sow_text) > MAX_SOW_TEXT_LENGTH:
+        logging.error(
+            f"SOW text too long ({len(sow_text)} chars, max {MAX_SOW_TEXT_LENGTH}). "
+            "Truncate or split the work request."
+        )
+        return None
+
     # Build optional index section
     index_section = ""
     if codebase_index and codebase_index.text:
@@ -127,7 +143,9 @@ Rules:
 - Return ONLY the JSON array, no other text
 
 Work request:
+```
 {sow_text}
+```
 
 Return ONLY the JSON array:"""
 
