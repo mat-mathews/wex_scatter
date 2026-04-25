@@ -89,9 +89,7 @@ def parse_explicit_imports(csproj_path: Path, search_scope: Path) -> List[Path]:
     msb_ns = "{http://schemas.microsoft.com/developer/msbuild/2003}"
     imports: List[Path] = []
 
-    for import_elem in list(root.findall(".//Import")) + list(
-        root.findall(f".//{msb_ns}Import")
-    ):
+    for import_elem in list(root.findall(".//Import")) + list(root.findall(f".//{msb_ns}Import")):
         project_attr = import_elem.get("Project", "")
         if not project_attr or _is_system_import(project_attr):
             continue
