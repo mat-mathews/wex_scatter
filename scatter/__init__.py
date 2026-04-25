@@ -14,6 +14,7 @@ from scatter.core.models import (
     MULTIPROCESSING_ENABLED,
     TYPE_DECLARATION_PATTERN,
     ConsumerResult,
+    PropsImpact,
     AnalysisTarget,
     EnrichedConsumer,
     TargetImpact,
@@ -59,6 +60,8 @@ from scatter.analyzers.git_analyzer import (
     find_project_file,
     analyze_branch_changes,
     get_diff_for_file,
+    BranchChanges,
+    ConfigFileChange,
 )
 from scatter.compat.v1_bridge import (
     find_solutions_for_project,

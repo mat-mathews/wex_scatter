@@ -195,6 +195,31 @@ class TestDependencyGraph:
         assert len(edges_ac) == 1
         assert edges_ac[0].edge_type == "project_reference"
 
+    def test_get_projects_importing(self):
+        g = DependencyGraph()
+        g.add_node(
+            _make_node("A", msbuild_imports=["build/wex.common.props", "Directory.Build.props"])
+        )
+        g.add_node(_make_node("B", msbuild_imports=["build/wex.common.props"]))
+        g.add_node(_make_node("C", msbuild_imports=[]))
+
+        result = g.get_projects_importing("build/wex.common.props")
+        names = {n.name for n in result}
+        assert names == {"A", "B"}
+
+        result2 = g.get_projects_importing("Directory.Build.props")
+        assert len(result2) == 1
+        assert result2[0].name == "A"
+
+        assert g.get_projects_importing("nonexistent.props") == []
+
+    def test_get_projects_importing_normalizes_backslash(self):
+        g = DependencyGraph()
+        g.add_node(_make_node("A", msbuild_imports=["build/wex.common.props"]))
+        result = g.get_projects_importing("build\\wex.common.props")
+        assert len(result) == 1
+        assert result[0].name == "A"
+
     def test_transitive_consumers_depth_1(self):
         g = _sample_graph()
         result = g.get_transitive_consumers("C", max_depth=1)

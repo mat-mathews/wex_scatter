@@ -89,6 +89,18 @@ class ConsumerResult:
     in_cycle: Optional[bool] = None
 
 
+# --- Config change data models ---
+
+
+@dataclass
+class PropsImpact:
+    """A .props/.targets file changed in a branch, with its affected projects."""
+
+    import_path: str  # relative path of the changed .props/.targets file
+    change_type: str  # "A", "M", "D", "R" from git diff
+    importing_projects: List[str] = field(default_factory=list)
+
+
 # --- Impact analysis data models ---
 
 

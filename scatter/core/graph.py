@@ -221,6 +221,11 @@ class DependencyGraph:
         edges.extend(self._incoming.get(name, []))
         return edges
 
+    def get_projects_importing(self, import_path: str) -> List[ProjectNode]:
+        """Projects whose msbuild_imports contain import_path."""
+        normalized = import_path.replace("\\", "/")
+        return [node for node in self._nodes.values() if normalized in node.msbuild_imports]
+
     def get_edges_between(self, a: str, b: str) -> List[DependencyEdge]:
         """Edges between two specific nodes (either direction)."""
         result = []

@@ -25,6 +25,7 @@ from scatter.core.models import (
     DEFAULT_CHUNK_SIZE,
     ConsumerResult,
     FilterPipeline,
+    PropsImpact,
     RawConsumerDict,
 )
 
@@ -65,6 +66,7 @@ class ModeResult:
     all_results: List[ConsumerResult] = field(default_factory=list)
     filter_pipeline: Optional[FilterPipeline] = None
     graph_enriched: bool = False
+    props_impacts: List[PropsImpact] = field(default_factory=list)
 
 
 def _summarize_consumer_files(
@@ -204,6 +206,21 @@ def _apply_graph_enrichment(all_results: List[ConsumerResult], ctx: ModeContext)
         enrich_legacy_results(all_results, ctx.graph_ctx)
 
 
+def _build_import_reverse_index(graph) -> Dict[str, List[str]]:
+    """Build {import_path: [project_names]} from graph nodes in a single pass.
+
+    O(nodes) — iterates all nodes once regardless of how many config files
+    changed. Normalizes paths as a safety net (PR 1's graph builder already
+    stores forward-slash paths, but this guards against cross-platform edge cases).
+    """
+    index: Dict[str, List[str]] = defaultdict(list)
+    for node in graph.get_all_nodes():
+        for imp in node.msbuild_imports:
+            normalized = imp.replace("\\", "/")
+            index[normalized].append(node.name)
+    return dict(index)
+
+
 def apply_impact_graph_enrichment(impact_report, ctx: ModeContext) -> None:
     """Build graph context if needed, enrich impact consumers in place.
 
@@ -334,7 +351,8 @@ def run_git_analysis(
     )
 
     logging.info("Step 1: Analyzing Git changes...")
-    changed_projects_dict = analyze_branch_changes(str(repo_path), branch_name, base_branch)
+    branch_changes = analyze_branch_changes(str(repo_path), branch_name, base_branch)
+    changed_projects_dict = branch_changes.project_changes
 
     all_results: List[ConsumerResult] = []
     filter_pipeline: Optional[FilterPipeline] = None
@@ -531,10 +549,41 @@ def run_git_analysis(
 
     _apply_graph_enrichment(all_results, ctx)
 
+    # --- Props/targets expansion ---
+    props_impacts: List[PropsImpact] = []
+    if branch_changes.changed_config_files:
+        if ctx.graph_ctx is not None:
+            import_index = _build_import_reverse_index(ctx.graph_ctx.graph)
+            for cfg in branch_changes.changed_config_files:
+                importing_projects = import_index.get(cfg.path, [])
+                props_impacts.append(
+                    PropsImpact(
+                        import_path=cfg.path,
+                        change_type=cfg.change_type,
+                        importing_projects=sorted(importing_projects),
+                    )
+                )
+                if importing_projects:
+                    logging.info(
+                        f"Config change {cfg.path} ({cfg.change_type}): "
+                        f"affects {len(importing_projects)} project(s)"
+                    )
+                else:
+                    logging.info(
+                        f"Config change {cfg.path} ({cfg.change_type}): "
+                        f"not imported by any project in graph"
+                    )
+        else:
+            logging.warning(
+                "Graph context unavailable — skipping .props/.targets expansion. "
+                "Run without --no-graph to enable config change detection."
+            )
+
     return ModeResult(
         all_results=all_results,
         filter_pipeline=filter_pipeline,
         graph_enriched=ctx.graph_enriched,
+        props_impacts=props_impacts,
     )
 
 

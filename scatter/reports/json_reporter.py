@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from scatter.core.models import FilterPipeline, ImpactReport, PRRiskReport
+from scatter.core.models import FilterPipeline, ImpactReport, PRRiskReport, PropsImpact
 from scatter.core.tree import build_adjacency, CONFIDENCE_LABEL_RANK
 
 
@@ -42,6 +42,7 @@ def write_json_report(
     output_file_path: Path,
     metadata: Optional[Dict] = None,
     pipeline: Optional[FilterPipeline] = None,
+    props_impacts: Optional[List[PropsImpact]] = None,
 ) -> None:
     """Write analysis results as JSON to file."""
     logging.info(f"Writing {len(detailed_results)} detailed results to JSON: {output_file_path}")
@@ -57,6 +58,15 @@ def write_json_report(
         json_output["filter_pipeline"] = asdict(pipeline)
     json_output["pipeline_summary"] = unique_pipelines
     json_output["all_results"] = detailed_results
+    if props_impacts:
+        json_output["props_impacts"] = [
+            {
+                "import_path": pi.import_path,
+                "change_type": pi.change_type,
+                "importing_projects": pi.importing_projects,
+            }
+            for pi in props_impacts
+        ]
 
     try:
         output_file_path.parent.mkdir(parents=True, exist_ok=True)

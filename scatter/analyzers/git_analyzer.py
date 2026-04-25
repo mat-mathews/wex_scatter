@@ -3,6 +3,7 @@
 import logging
 import sys
 from collections import defaultdict
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Tuple, cast
 
@@ -14,6 +15,22 @@ except ImportError:
 
 from scatter.core.models import ChangeKind, ChangedType, TypeKind
 from scatter.scanners.type_scanner import extract_type_declarations_with_kind
+
+
+@dataclass
+class ConfigFileChange:
+    """A .props/.targets file changed in a git diff."""
+
+    path: str  # POSIX-normalized relative path
+    change_type: str  # "A", "M", "D", "R" from git diff
+
+
+@dataclass
+class BranchChanges:
+    """Result of analyze_branch_changes."""
+
+    project_changes: Dict[str, List[str]] = field(default_factory=dict)
+    changed_config_files: List[ConfigFileChange] = field(default_factory=list)
 
 
 class BranchSHAs(NamedTuple):
@@ -186,9 +203,14 @@ def find_project_file(
 
 def analyze_branch_changes(
     repo_path: str, feature_branch_name: str, base_branch_name: str = "main"
-) -> Dict[str, List[str]]:
-    """Analyzes git changes, returns {proj_rel_path_str: [cs_rel_path_str,...]} using POSIX paths"""
-    project_changes = defaultdict(list)
+) -> BranchChanges:
+    """Analyzes git changes between branches.
+
+    Returns BranchChanges with project-level .cs changes and any changed
+    .props/.targets config files found in the diff.
+    """
+    project_changes: Dict[str, List[str]] = defaultdict(list)
+    changed_config_files: List[ConfigFileChange] = []
     try:
         repo = git.Repo(repo_path, search_parent_directories=True)
         logging.info(f"Opened repository: {repo.working_tree_dir}")
@@ -224,9 +246,23 @@ def analyze_branch_changes(
 
         changed_cs_files_count = 0
         project_not_found_count = 0
-        logging.info("Analyzing changed C# files to identify projects...")
+        logging.info("Analyzing changed files to identify projects...")
         for diff_item in diff_index:
             logging.debug(f"diff_item: {diff_item} - {diff_item.change_type}")
+
+            # Collect .props/.targets before .cs so a find_project_file
+            # failure on a later .cs item doesn't skip config files
+            relevant_path = diff_item.a_path if diff_item.change_type == "D" else diff_item.b_path
+            if relevant_path and (
+                relevant_path.lower().endswith(".props")
+                or relevant_path.lower().endswith(".targets")
+            ):
+                normalized = relevant_path.replace("\\", "/")
+                changed_config_files.append(
+                    ConfigFileChange(path=normalized, change_type=diff_item.change_type or "M")
+                )
+                continue
+
             if (
                 diff_item.change_type != "D"
                 and diff_item.b_path
@@ -256,7 +292,15 @@ def analyze_branch_changes(
                 log_msg += f" ({project_not_found_count} file(s) could not be mapped to a .csproj)."
             logging.info(log_msg)
 
-        return dict(project_changes)
+        if changed_config_files:
+            logging.info(
+                f"Found {len(changed_config_files)} changed .props/.targets file(s) in diff."
+            )
+
+        return BranchChanges(
+            project_changes=dict(project_changes),
+            changed_config_files=changed_config_files,
+        )
 
     except (git.InvalidGitRepositoryError, git.NoSuchPathError) as e:
         logging.error(f"Git repository error: {e}. Is '{repo_path}' a valid Git repository?")

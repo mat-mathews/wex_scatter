@@ -16,13 +16,14 @@ LOW_INSTABILITY_THRESHOLD = 0.3
 HIGH_COUPLING_THRESHOLD = 8.0
 LOW_COHESION_THRESHOLD = 0.3
 HIGH_CLUSTER_COUPLING_RATIO = 0.6
+WIDE_BLAST_RADIUS_IMPORT_THRESHOLD = 5
 
 
 @dataclass
 class Observation:
     """A single health observation about a project or cluster."""
 
-    project: str  # project or cluster name
+    project: str  # project name, cluster name, sproc name, or file path depending on rule
     rule: str  # machine-readable id: "stable_core", "high_coupling", etc.
     message: str  # human-readable message
     severity: str  # "info" | "warning" | "critical"
@@ -78,20 +79,22 @@ def compute_health_dashboard(
 
     max_proj = max(metrics, key=lambda k: metrics[k].coupling_score)
 
-    # DB hotspots: sprocs shared by 3+ projects
+    # Single pass over nodes to build reverse indexes
     sproc_to_projects: Dict[str, List[str]] = defaultdict(list)
+    import_to_projects: Dict[str, List[str]] = defaultdict(list)
+    node_solutions_lookup: Optional[Dict[str, List[str]]] = None
+    if bridge_projects:
+        node_solutions_lookup = {}
+
     for node in graph.get_all_nodes():
         for sproc in node.sproc_references:
             sproc_to_projects[sproc].append(node.name)
+        for imp in node.msbuild_imports:
+            import_to_projects[imp].append(node.name)
+        if node_solutions_lookup is not None and node.solutions:
+            node_solutions_lookup[node.name] = node.solutions
 
     db_hotspots = sorted(sproc for sproc, projs in sproc_to_projects.items() if len(projs) >= 3)
-
-    # Build node_solutions lookup for bridge project observations
-    node_solutions_lookup: Optional[Dict[str, List[str]]] = None
-    if bridge_projects:
-        node_solutions_lookup = {
-            node.name: node.solutions for node in graph.get_all_nodes() if node.solutions
-        }
 
     observations = _generate_observations(
         metrics,
@@ -101,6 +104,7 @@ def compute_health_dashboard(
         solution_metrics=solution_metrics,
         bridge_projects=bridge_projects,
         node_solutions=node_solutions_lookup,
+        import_to_projects=import_to_projects,
     )
 
     return HealthDashboard(
@@ -127,6 +131,7 @@ def _generate_observations(
     solution_metrics: Optional[Dict[str, SolutionMetrics]] = None,
     bridge_projects: Optional[List[str]] = None,
     node_solutions: Optional[Dict[str, List[str]]] = None,
+    import_to_projects: Optional[Dict[str, List[str]]] = None,
 ) -> List[Observation]:
     """Apply deterministic rules to generate observations."""
     obs: List[Observation] = []
@@ -230,6 +235,22 @@ def _generate_observations(
                             f"({sol_str}) with {bridge_m.fan_in} incoming dependencies"
                         ),
                         severity="info",
+                    )
+                )
+
+    # MSBuild import blast radius rules
+    if import_to_projects:
+        for imp, projs in sorted(import_to_projects.items()):
+            if len(projs) >= WIDE_BLAST_RADIUS_IMPORT_THRESHOLD:
+                obs.append(
+                    Observation(
+                        project=imp,
+                        rule="wide_blast_radius_import",
+                        message=(
+                            f"{imp}: imported by {len(projs)} projects "
+                            f"— config change affects wide blast radius"
+                        ),
+                        severity="warning",
                     )
                 )
 
