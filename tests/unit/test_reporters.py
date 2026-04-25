@@ -322,6 +322,87 @@ class TestHealthDashboard:
         rules = [o.rule for o in dashboard.observations]
         assert "low_cohesion_cluster" in rules
 
+    def test_wide_blast_radius_import_observation(self):
+        """Import shared by 5+ projects triggers wide_blast_radius_import."""
+        g = DependencyGraph()
+        shared_import = "build/wex.common.props"
+        for i in range(6):
+            name = f"P{i}"
+            g.add_node(_make_node(name, msbuild_imports=[shared_import]))
+        metrics = {
+            f"P{i}": ProjectMetrics(
+                fan_in=0,
+                fan_out=0,
+                instability=0.0,
+                coupling_score=0.0,
+                afferent_coupling=0,
+                efferent_coupling=0,
+                shared_db_density=0.0,
+                type_export_count=0,
+                consumer_count=0,
+            )
+            for i in range(6)
+        }
+        dashboard = compute_health_dashboard(g, metrics, [])
+        rules = [o.rule for o in dashboard.observations]
+        assert "wide_blast_radius_import" in rules
+        obs = [o for o in dashboard.observations if o.rule == "wide_blast_radius_import"]
+        assert len(obs) == 1
+        assert "6 projects" in obs[0].message
+        assert obs[0].severity == "warning"
+
+    def test_wide_blast_radius_import_at_threshold(self):
+        """Import shared by exactly 5 projects (threshold) triggers observation."""
+        g = DependencyGraph()
+        shared_import = "build/wex.common.props"
+        for i in range(5):
+            name = f"P{i}"
+            g.add_node(_make_node(name, msbuild_imports=[shared_import]))
+        metrics = {
+            f"P{i}": ProjectMetrics(
+                fan_in=0,
+                fan_out=0,
+                instability=0.0,
+                coupling_score=0.0,
+                afferent_coupling=0,
+                efferent_coupling=0,
+                shared_db_density=0.0,
+                type_export_count=0,
+                consumer_count=0,
+            )
+            for i in range(5)
+        }
+        dashboard = compute_health_dashboard(g, metrics, [])
+        rules = [o.rule for o in dashboard.observations]
+        assert "wide_blast_radius_import" in rules
+        obs = [o for o in dashboard.observations if o.rule == "wide_blast_radius_import"]
+        assert obs[0].project == shared_import
+
+    def test_wide_blast_radius_import_below_threshold(self):
+        """Import shared by fewer than 5 projects does NOT trigger observation."""
+        g = DependencyGraph()
+        shared_import = "build/wex.common.props"
+        for i in range(4):
+            name = f"P{i}"
+            g.add_node(_make_node(name, msbuild_imports=[shared_import]))
+        metrics = {
+            f"P{i}": ProjectMetrics(
+                fan_in=0,
+                fan_out=0,
+                instability=0.0,
+                coupling_score=0.0,
+                afferent_coupling=0,
+                efferent_coupling=0,
+                shared_db_density=0.0,
+                type_export_count=0,
+                consumer_count=0,
+            )
+            for i in range(4)
+        }
+        dashboard = compute_health_dashboard(g, metrics, [])
+        rules = [o.rule for o in dashboard.observations]
+        assert "wide_blast_radius_import" not in rules
+
     def test_empty_graph(self):
         g = DependencyGraph()
         dashboard = compute_health_dashboard(g, {}, [])

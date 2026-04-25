@@ -677,6 +677,92 @@ class TestPatchStructuralChange:
         assert result.patch_applied is False
 
 
+class TestPatchPropsTargetsPassthrough:
+    """Changed .props/.targets files are classified but cause no graph mutation."""
+
+    def test_props_content_change_is_noop(self, tmp_path):
+        """Content change to an existing known .props is a no-op."""
+        scope, _, _ = _make_synthetic_codebase(tmp_path)
+        # Create the props file on disk and register it on a node
+        props = scope / "Directory.Build.props"
+        props.write_text("<Project>\n  <PropertyGroup />\n</Project>\n")
+        graph, ff, pf = _build_graph_and_facts(scope)
+        node = graph.get_all_nodes()[0]
+        node.msbuild_imports = ["Directory.Build.props"]
+        original_edge_count = graph.edge_count
+
+        # Modify the file content (still exists, still known)
+        props.write_text("<Project>\n  <PropertyGroup><Foo>1</Foo></PropertyGroup>\n</Project>\n")
+        changed = ["Directory.Build.props"]
+        result = patch_graph(graph, ff, pf, changed, scope)
+        assert result.patch_applied is True
+        assert result.files_processed == 0
+        assert result.projects_affected == 0
+        assert graph.edge_count == original_edge_count
+
+    def test_targets_content_change_is_noop(self, tmp_path):
+        """Content change to an existing known .targets is a no-op."""
+        scope, _, _ = _make_synthetic_codebase(tmp_path)
+        targets = scope / "Directory.Build.targets"
+        targets.write_text("<Project>\n  <PropertyGroup />\n</Project>\n")
+        graph, ff, pf = _build_graph_and_facts(scope)
+        node = graph.get_all_nodes()[0]
+        node.msbuild_imports = ["Directory.Build.targets"]
+        original_edge_count = graph.edge_count
+
+        targets.write_text("<Project>\n  <PropertyGroup><Bar>2</Bar></PropertyGroup>\n</Project>\n")
+        changed = ["Directory.Build.targets"]
+        result = patch_graph(graph, ff, pf, changed, scope)
+        assert result.patch_applied is True
+        assert result.files_processed == 0
+        assert result.projects_affected == 0
+        assert graph.edge_count == original_edge_count
+
+    def test_new_props_triggers_full_rebuild(self, tmp_path):
+        """Adding a new .props file is a structural change — full rebuild needed."""
+        scope, _, _ = _make_synthetic_codebase(tmp_path)
+        graph, ff, pf = _build_graph_and_facts(scope)
+
+        # Create a new props file that wasn't in the original graph
+        new_props = scope / "Directory.Build.props"
+        new_props.write_text("<Project>\n  <PropertyGroup />\n</Project>\n")
+
+        changed = ["Directory.Build.props"]
+        result = patch_graph(graph, ff, pf, changed, scope)
+        assert result.patch_applied is False
+
+    def test_deleted_props_triggers_full_rebuild(self, tmp_path):
+        """Removing a known .props file is a structural change — full rebuild needed."""
+        scope, _, _ = _make_synthetic_codebase(tmp_path)
+        props = scope / "Directory.Build.props"
+        props.write_text("<Project>\n  <PropertyGroup />\n</Project>\n")
+        graph, ff, pf = _build_graph_and_facts(scope)
+        node = graph.get_all_nodes()[0]
+        node.msbuild_imports = ["Directory.Build.props"]
+
+        # Delete the file
+        props.unlink()
+        changed = ["Directory.Build.props"]
+        result = patch_graph(graph, ff, pf, changed, scope)
+        assert result.patch_applied is False
+
+    def test_mixed_props_and_cs_changes(self, tmp_path):
+        scope, _, cs_paths = _make_synthetic_codebase(tmp_path)
+        graph, ff, pf = _build_graph_and_facts(scope)
+
+        cs_paths[0].write_text(
+            "namespace ProjectA;\n\n"
+            "public class ProjectAService { public void Changed() {} }\n"
+        )
+        cs_rel = str(cs_paths[0].relative_to(scope))
+
+        # build/wex.common.props doesn't exist on disk and isn't in graph — passthrough
+        changed = ["build/wex.common.props", cs_rel]
+        result = patch_graph(graph, ff, pf, changed, scope)
+        assert result.patch_applied is True
+        assert result.projects_affected >= 1
+
+
 # ===========================================================================
 # Phase 3: Git Diff
 # ===========================================================================

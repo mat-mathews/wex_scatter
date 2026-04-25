@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 
 from scatter.__version__ import __version__
 from scatter.cli_parser import _REDACTED_CLI_KEYS
-from scatter.core.models import ConsumerResult, FilterPipeline
+from scatter.core.models import ConsumerResult, FilterPipeline, PropsImpact
 from scatter.reports.console_reporter import print_console_report
 from scatter.reports.json_reporter import prepare_detailed_results, write_json_report
 from scatter.reports.csv_reporter import write_csv_report
@@ -54,6 +54,7 @@ def dispatch_legacy_output(
     start_time: float,
     graph_enriched: bool,
     pipeline_map: Optional[Dict[str, str]] = None,
+    props_impacts: Optional[List[PropsImpact]] = None,
 ) -> None:
     """Route legacy mode results (git/target/sproc) to the chosen reporter.
 
@@ -94,6 +95,7 @@ def dispatch_legacy_output(
             output_path,
             metadata=_build_metadata(args, search_scope, start_time, graph_enriched=graph_enriched),
             pipeline=filter_pipeline,
+            props_impacts=props_impacts,
         )
 
     # Handle CSV Output
@@ -154,5 +156,23 @@ def dispatch_legacy_output(
             pipeline=filter_pipeline,
             graph_metrics_requested=graph_enriched,
         )
+        if props_impacts:
+            _print_props_impacts_console(props_impacts)
 
-    # Summary line is printed by each reporter; no duplicate needed here.
+
+def _print_props_impacts_console(props_impacts: List[PropsImpact]) -> None:
+    """Print .props/.targets change summary to console."""
+    print(f"\n{'=' * 60}")
+    print("  Config File Changes (.props/.targets)")
+    print(f"{'=' * 60}")
+    for pi in props_impacts:
+        count = len(pi.importing_projects)
+        label = {"A": "added", "M": "modified", "D": "deleted", "R": "renamed"}.get(
+            pi.change_type, pi.change_type
+        )
+        if count > 0:
+            print(f"\n  {pi.import_path} ({label}) — {count} project(s):")
+            for proj in pi.importing_projects:
+                print(f"    - {proj}")
+        else:
+            print(f"\n  {pi.import_path} ({label}) — not imported by any project")

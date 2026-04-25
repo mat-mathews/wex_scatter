@@ -132,7 +132,7 @@ def get_changed_files(
     cached_git_head: str,
     search_scope: Path,
 ) -> Optional[List[str]]:
-    """Return list of changed .cs/.csproj files since cached_git_head.
+    """Return list of changed .cs/.csproj/.props/.targets files since cached_git_head.
 
     Returns None if git is unavailable or cached_git_head is unreachable
     (e.g., after a force push). Caller should fall back to full rebuild.
@@ -148,6 +148,8 @@ def get_changed_files(
                 "--",
                 "*.csproj",
                 "*.cs",
+                "*.props",
+                "*.targets",
             ],
             cwd=str(search_scope),
             capture_output=True,
@@ -214,11 +216,44 @@ def patch_graph(
     # Step 1: Classify changes
     changed_cs: List[str] = []
     changed_csproj: List[str] = []
+    changed_props_targets: List[str] = []
     for f in changed_files:
         if f.endswith(".cs"):
             changed_cs.append(f)
         elif f.endswith(".csproj"):
             changed_csproj.append(f)
+        elif f.endswith(".props") or f.endswith(".targets"):
+            changed_props_targets.append(f)
+
+    # .props/.targets content changes don't alter graph topology —
+    # import resolution is structural (which files exist), not content-based.
+    # But adding or removing a .props/.targets file IS structural: it changes
+    # which projects inherit the file, so msbuild_imports on nodes go stale.
+    if changed_props_targets:
+        known_imports: Set[str] = set()
+        for node in graph.get_all_nodes():
+            known_imports.update(node.msbuild_imports)
+
+        for pt_rel in changed_props_targets:
+            pt_abs = search_scope / pt_rel
+            normalized = pt_rel.replace("\\", "/")
+            was_known = normalized in known_imports
+            exists_on_disk = pt_abs.is_file()
+
+            if not was_known and exists_on_disk:
+                logging.info(
+                    f"Structural change: new .props/.targets {pt_rel}. Full rebuild needed."
+                )
+                return _no_patch(graph, file_facts, project_facts, start)
+            if was_known and not exists_on_disk:
+                logging.info(
+                    f"Structural change: .props/.targets removed {pt_rel}. Full rebuild needed."
+                )
+                return _no_patch(graph, file_facts, project_facts, start)
+
+        logging.debug(
+            f"Patcher: {len(changed_props_targets)} .props/.targets file(s) changed (content-only, no-op)"
+        )
 
     # Step 2: Detect structural changes (.csproj added or removed)
     existing_csproj_paths = set()

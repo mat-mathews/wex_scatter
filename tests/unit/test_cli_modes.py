@@ -12,6 +12,7 @@ from scatter.analysis import (
     run_target_analysis,
     run_sproc_analysis,
 )
+from scatter.analyzers.git_analyzer import BranchChanges
 
 
 class TestModeResult:
@@ -165,7 +166,7 @@ class TestRunSprocAnalysis:
 class TestRunGitAnalysis:
     @patch("scatter.analyzers.git_analyzer.analyze_branch_changes")
     def test_no_changes_returns_empty(self, mock_analyze, make_mode_context):
-        mock_analyze.return_value = {}
+        mock_analyze.return_value = BranchChanges(project_changes={}, changed_config_files=[])
         ctx = make_mode_context()
         result = run_git_analysis(
             ctx,
@@ -192,9 +193,10 @@ class TestRunGitAnalysis:
         cs_file = proj_dir / "Foo.cs"
         cs_file.write_text("public class Foo {}\npublic class Bar {}")
 
-        mock_analyze.return_value = {
-            "MyApp/MyApp.csproj": ["MyApp/Foo.cs"],
-        }
+        mock_analyze.return_value = BranchChanges(
+            project_changes={"MyApp/MyApp.csproj": ["MyApp/Foo.cs"]},
+            changed_config_files=[],
+        )
 
         consumer = {
             "consumer_name": "Consumer1",
@@ -228,9 +230,10 @@ class TestRunGitAnalysis:
         cs_file = proj_dir / "Foo.cs"
         cs_file.write_text("public class Foo {}\npublic class Bar {}")
 
-        mock_analyze.return_value = {
-            "MyApp/MyApp.csproj": ["MyApp/Foo.cs"],
-        }
+        mock_analyze.return_value = BranchChanges(
+            project_changes={"MyApp/MyApp.csproj": ["MyApp/Foo.cs"]},
+            changed_config_files=[],
+        )
         mock_fc.return_value = ([], MagicMock())
 
         ctx = make_mode_context(search_scope=tmp_path, class_name="Foo")
