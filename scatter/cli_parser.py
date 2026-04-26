@@ -37,6 +37,8 @@ def _build_cli_overrides(args) -> Dict[str, Any]:
         overrides["graph.rebuild"] = True
     if hasattr(args, "include_db") and args.include_db:
         overrides["db.include_db_edges"] = True
+    if getattr(args, "include_test_projects", False):
+        overrides["analysis.exclude_test_projects"] = False
     return overrides
 
 
@@ -213,6 +215,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--target-namespace",
         default=None,
         help="(Optional) Explicitly specify the target project's namespace. Overrides automatic derivation (mainly useful in Target Project mode).",
+    )
+    common_group.add_argument(
+        "--include-test-projects",
+        action="store_true",
+        help="Include test projects (e.g. *.Tests) in blast radius analysis. By default they are excluded.",
     )
     common_group.add_argument(
         "--pipeline-csv",

@@ -179,6 +179,7 @@ class ImpactReport:
 # Stage name constants — use these instead of raw strings.
 STAGE_DISCOVERY = "discovery"
 STAGE_PROJECT_REFERENCE = "project_reference"
+STAGE_TEST_EXCLUSION = "test_exclusion"
 STAGE_NAMESPACE = "namespace"
 STAGE_CLASS = "class"
 STAGE_METHOD = "method"
@@ -187,6 +188,7 @@ STAGE_METHOD = "method"
 STAGE_LABELS = {
     STAGE_DISCOVERY: None,  # discovery uses input_count as the chain start
     STAGE_PROJECT_REFERENCE: "project refs",
+    STAGE_TEST_EXCLUSION: "test-excluded",
     STAGE_NAMESPACE: "namespace",
     STAGE_CLASS: "class match",
     STAGE_METHOD: "method match",
@@ -195,7 +197,8 @@ STAGE_LABELS = {
 # Label describing the *input* population for each stage (used in diagnostic hints).
 STAGE_INPUT_LABELS = {
     STAGE_PROJECT_REFERENCE: "potential",
-    STAGE_NAMESPACE: "project-reference-matching",
+    STAGE_TEST_EXCLUSION: "project-reference-matching",
+    STAGE_NAMESPACE: "non-test",
     STAGE_CLASS: "namespace-matching",
     STAGE_METHOD: "class-matching",
 }
