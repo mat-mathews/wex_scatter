@@ -220,3 +220,35 @@ class TestConsumerAnalyzerIntegration:
 
         consumer_names = [r["consumer_name"] for r in results]
         assert "Consumer.Tests" in consumer_names
+        stage_names = [s.name for s in pipeline.stages]
+        assert STAGE_TEST_EXCLUSION not in stage_names
+
+
+class TestCLIFlag:
+    """Verify --include-test-projects wires through to config."""
+
+    def test_include_test_projects_flag_disables_exclusion(self):
+        from scatter.cli_parser import _build_cli_overrides, build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["--target-project", "Foo.csproj", "--include-test-projects"])
+        overrides = _build_cli_overrides(args)
+        assert overrides.get("analysis.exclude_test_projects") is False
+
+    def test_default_does_not_override(self):
+        from scatter.cli_parser import _build_cli_overrides, build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["--target-project", "Foo.csproj"])
+        overrides = _build_cli_overrides(args)
+        assert "analysis.exclude_test_projects" not in overrides
+
+
+class TestExactNamePattern:
+    """Verify patterns without wildcards work as exact matches."""
+
+    def test_exact_name_matches(self):
+        assert is_test_project("MySpecificProject", ["MySpecificProject"])
+
+    def test_exact_name_no_match(self):
+        assert not is_test_project("OtherProject", ["MySpecificProject"])

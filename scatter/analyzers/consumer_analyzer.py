@@ -31,8 +31,11 @@ if TYPE_CHECKING:
 
 
 def is_test_project(project_name: str, patterns: List[str]) -> bool:
-    """Check whether a project name matches any test-project pattern."""
-    return any(fnmatch.fnmatch(project_name, pat) for pat in patterns)
+    """Check whether a project name matches any test-project pattern.
+
+    Uses fnmatchcase for deterministic case-sensitive matching across platforms.
+    """
+    return any(fnmatch.fnmatchcase(project_name, pat) for pat in patterns)
 
 
 def _lookup_consumers_from_graph(

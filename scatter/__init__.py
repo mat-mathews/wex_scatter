@@ -88,9 +88,7 @@ from scatter.config import (
     GraphConfig,
     DbConfig,
     load_config,
-    DEFAULT_TEST_PROJECT_PATTERNS,
 )
-from scatter.analyzers.consumer_analyzer import is_test_project
 from scatter.scanners.db_scanner import (
     DbDependency,
     DEFAULT_SPROC_PREFIXES,
