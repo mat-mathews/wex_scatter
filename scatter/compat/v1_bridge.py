@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from scatter.core.models import ConsumerResult, RawConsumerDict
+from scatter.pipeline.resolver import PipelineResolver
 
 
 def find_solutions_for_project(
@@ -104,6 +105,7 @@ def _build_consumer_results(
     batch_job_map: Dict[str, List[str]],
     search_scope_path_abs: Path,
     solution_index: Optional[Dict] = None,
+    pipeline_resolver: Optional[PipelineResolver] = None,
 ) -> None:
     """
     Helper to process summaries for consumer files and append to the main results list.
@@ -138,25 +140,23 @@ def _build_consumer_results(
 
         consumer_summaries_dict = summaries_for_this_target.get(consumer_rel_path_str, {})
 
-        found_pipelines: Dict[str, str] = {}
-        if solutions_for_consumer_names:
-            for solution_name in solutions_for_consumer_names:
-                solution_stem = Path(solution_name).stem
-                if solution_stem in pipeline_map_dict:
-                    pipeline_name = pipeline_map_dict[solution_stem]
-                    if pipeline_name not in found_pipelines:
-                        found_pipelines[pipeline_name] = solution_stem
-                        logging.debug(
-                            f"   Found mapping: Solution '{solution_stem}' -> Pipeline '{pipeline_name}'"
-                        )
+        resolver = pipeline_resolver or PipelineResolver(pipeline_map_dict)
+        solution_stems = [Path(sn).stem for sn in solutions_for_consumer_names]
+        probes = solution_stems + [consumer_name_stem]
+        match = resolver.resolve(*probes)
 
-        # Fallback: try consumer project name directly when solution-stem lookup found nothing
-        if not found_pipelines and consumer_name_stem in pipeline_map_dict:
-            pipeline_name = pipeline_map_dict[consumer_name_stem]
-            found_pipelines[pipeline_name] = consumer_name_stem
-            logging.debug(
-                f"   Found mapping via project name fallback: '{consumer_name_stem}' -> Pipeline '{pipeline_name}'"
-            )
+        found_pipelines: Dict[str, str] = {}
+        if match:
+            found_pipelines[match.pipeline_name] = match.matched_key
+            if match.strategy != "exact":
+                logging.info(
+                    f"   Pipeline resolved via {match.strategy}: "
+                    f"'{match.probe}' -> key '{match.matched_key}' -> '{match.pipeline_name}'"
+                )
+            else:
+                logging.debug(
+                    f"   Found mapping: '{match.matched_key}' -> Pipeline '{match.pipeline_name}'"
+                )
 
         if found_pipelines:
             for pipeline_name, source_solution in found_pipelines.items():
