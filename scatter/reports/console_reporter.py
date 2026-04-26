@@ -126,12 +126,16 @@ def print_console_report(
 
         print()
 
-    # Pipeline footer — shown when any result has a resolved pipeline
-    all_pipelines = sorted(set(r.pipeline_name for r in all_results if r.pipeline_name))
-    if all_pipelines:
-        print(f"  Pipelines affected: {len(all_pipelines)}")
-        for p in all_pipelines:
-            print(f"    {p}")
+    # Pipeline footer — grouped by pipeline when any result has one
+    from scatter.reports.pipeline_reporter import group_by_pipeline
+
+    pipeline_groups = group_by_pipeline(all_results)
+    if pipeline_groups:
+        print(f"  Pipelines affected: {len(pipeline_groups)}")
+        for g in pipeline_groups:
+            print(f"    {g['pipeline_name']} ({g['consumer_count']} project(s))")
+            for name in g["consumers"]:
+                print(f"      • {name}")
         print()
 
     print(

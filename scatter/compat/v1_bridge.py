@@ -150,6 +150,14 @@ def _build_consumer_results(
                             f"   Found mapping: Solution '{solution_stem}' -> Pipeline '{pipeline_name}'"
                         )
 
+        # Fallback: try consumer project name directly when solution-stem lookup found nothing
+        if not found_pipelines and consumer_name_stem in pipeline_map_dict:
+            pipeline_name = pipeline_map_dict[consumer_name_stem]
+            found_pipelines[pipeline_name] = consumer_name_stem
+            logging.debug(
+                f"   Found mapping via project name fallback: '{consumer_name_stem}' -> Pipeline '{pipeline_name}'"
+            )
+
         if found_pipelines:
             for pipeline_name, source_solution in found_pipelines.items():
                 batch_job_verification = None

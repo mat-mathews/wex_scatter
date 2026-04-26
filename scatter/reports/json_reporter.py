@@ -11,7 +11,7 @@ from scatter.core.tree import build_adjacency, CONFIDENCE_LABEL_RANK
 
 # Major bump = breaking field removal/rename; minor bump = additive fields.
 # Absence of schema_version in old reports should be treated as "0.0".
-REPORT_SCHEMA_VERSION = "1.0"
+REPORT_SCHEMA_VERSION = "1.1"
 
 
 def prepare_detailed_results(
@@ -55,12 +55,16 @@ def write_json_report(
         [p for item in detailed_results if (p := item.get("PipelineName")) is not None]
     )
 
+    pipeline_groups = _build_pipeline_groups(detailed_results)
+
     json_output: Dict[str, Any] = {}
     if metadata is not None:
         json_output["metadata"] = metadata
     if pipeline is not None:
         json_output["filter_pipeline"] = asdict(pipeline)
     json_output["pipeline_summary"] = unique_pipelines
+    if pipeline_groups:
+        json_output["pipeline_groups"] = pipeline_groups
     json_output["all_results"] = detailed_results
     if props_impacts:
         json_output["props_impacts"] = [
@@ -86,6 +90,30 @@ def _path_serializer(obj):
     if isinstance(obj, Path):
         return str(obj)
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+
+def _build_pipeline_groups(detailed_results: List[Dict]) -> List[Dict[str, Any]]:
+    """Build grouped pipeline view from PascalCase result dicts."""
+    from collections import defaultdict
+
+    buckets: Dict[str, List[str]] = defaultdict(list)
+    for item in detailed_results:
+        pipeline = item.get("PipelineName")
+        consumer = item.get("ConsumerProjectName", "")
+        if pipeline and consumer and consumer not in buckets[pipeline]:
+            buckets[pipeline].append(consumer)
+
+    return sorted(
+        [
+            {
+                "pipeline_name": p,
+                "consumer_count": len(c),
+                "consumers": sorted(c),
+            }
+            for p, c in buckets.items()
+        ],
+        key=lambda g: g["pipeline_name"],
+    )
 
 
 def _build_propagation_tree(consumers_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
