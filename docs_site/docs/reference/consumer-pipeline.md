@@ -1,12 +1,12 @@
 # Consumer Detection Pipeline
 
-The consumer pipeline is Scatter's answer to the question: "If I change this project, who is affected?" It is a 5-stage filter funnel that progressively narrows the candidate set from "every .csproj in the search scope" down to "projects that actually call this specific method." Each stage is cheaper to evaluate but stricter in its criteria.
+The consumer pipeline is Scatter's answer to the question: "If I change this project, who is affected?" It is a 6-stage filter funnel that progressively narrows the candidate set from "every .csproj in the search scope" down to "projects that actually call this specific method." Each stage is cheaper to evaluate but stricter in its criteria.
 
 The pipeline lives in `analyzers/consumer_analyzer.py`.
 
 ---
 
-## The 5 Stages
+## The 6 Stages
 
 ### Stage 1: File Discovery
 
@@ -23,6 +23,25 @@ Keep only projects that have a `<ProjectReference>` to the target project.
 - **Graph path:** `graph.get_edges_to(target_name)` filtered to `edge_type == "project_reference"`. O(in-degree).
 
 This is typically the biggest drop. A 250-project codebase might have only 8-12 projects that directly reference any given target.
+
+### Stage 2b: Test Project Exclusion
+
+Remove test projects from the consumer set. Enabled by default (`exclude_test_projects: true` in config).
+
+Projects are matched against a configurable list of glob patterns using `fnmatch.fnmatchcase` for deterministic cross-platform behavior. The default patterns are:
+
+```
+*.Tests, *.Tests.*, *.UnitTests, *.IntegrationTests,
+*.TestUtils, *.TestHelpers, *.Benchmarks, *.Specs, *PostDeployTests
+```
+
+Test projects inflate the blast radius without representing real deployment risk. Excluding them keeps reports focused on production consumers. To include test projects for a run, pass `--include-test-projects`.
+
+The filter line shows this stage:
+
+```
+Filter: 13 → 9 project refs[graph] → 8 test-excluded[graph] → 7 namespace
+```
 
 ### Stage 3: Namespace Filter
 
@@ -89,7 +108,8 @@ Each stage is a `FilterStage`:
 ```python
 @dataclass
 class FilterStage:
-    name: str           # "discovery", "project_reference", "namespace", "class", "method"
+    name: str           # "discovery", "project_reference", "test_exclusion",
+                        # "namespace", "class", "method"
     input_count: int    # Projects entering this stage
     output_count: int   # Projects passing this stage
     source: str         # "filesystem" or "graph"
@@ -100,13 +120,13 @@ class FilterStage:
 The pipeline produces a human-readable arrow chain for reports:
 
 ```
-Filter: 250 → 12 project refs → 8 namespace → 4 class match → 2 method match
+Filter: 250 → 12 project refs → 11 test-excluded → 8 namespace → 4 class match → 2 method match
 ```
 
 With graph acceleration:
 
 ```
-Filter: 250[graph] → 12 project refs[graph] → 8 namespace → 4 class match
+Filter: 250[graph] → 12 project refs[graph] → 11 test-excluded[graph] → 8 namespace → 4 class match
 ```
 
 The `[graph]` annotation tells you which stages used the cached graph instead of the filesystem.
@@ -115,7 +135,7 @@ The `[graph]` annotation tells you which stages used the cached graph instead of
 
 When a stage drops to zero, it is useful to know which filter caused the dead end. The pipeline tracks `STAGE_INPUT_LABELS` so reporters can tell you "0 of 12 project-reference-matching projects use the target namespace" rather than just "0 projects found."
 
-Stage name constants (`STAGE_DISCOVERY`, `STAGE_PROJECT_REFERENCE`, etc.) are defined in `core/models.py` and used everywhere instead of raw strings.
+Stage name constants (`STAGE_DISCOVERY`, `STAGE_PROJECT_REFERENCE`, `STAGE_TEST_EXCLUSION`, etc.) are defined in `core/models.py` and used everywhere instead of raw strings.
 
 ---
 
@@ -235,20 +255,76 @@ What happens:
 
 1. **Discovery:** Find 247 .csproj files in `/path/to/monorepo`
 2. **ProjectReference:** 247 candidates -> 11 have `<ProjectReference>` to GalaxyWorks.Data
-3. **Namespace:** 11 candidates -> 8 have `using GalaxyWorks.Data;` in their .cs files
-4. **Class:** 8 candidates -> 4 reference `PortalDataService`
-5. **Method:** 4 candidates -> 2 call `.GetPortalConfig(`
+3. **Test Exclusion:** 11 candidates -> 9 after removing `*.Tests` and `*.Benchmarks` projects
+4. **Namespace:** 9 candidates -> 6 have `using GalaxyWorks.Data;` in their .cs files
+5. **Class:** 6 candidates -> 4 reference `PortalDataService`
+6. **Method:** 4 candidates -> 2 call `.GetPortalConfig(`
 
 Output:
 
 ```
-Filter: 247 → 11 project refs → 8 namespace → 4 class match → 2 method match
+Filter: 247 → 11 project refs → 9 test-excluded → 6 namespace → 4 class match → 2 method match
 ```
 
-If the graph cache exists, stages 1-2 produce the same result in microseconds:
+If the graph cache exists, stages 1-2b produce the same result in microseconds:
 
 ```
-Filter: 247[graph] → 11 project refs[graph] → 8 namespace → 4 class match → 2 method match
+Filter: 247[graph] → 11 project refs[graph] → 9 test-excluded[graph] → 6 namespace → 4 class match → 2 method match
 ```
 
 The FilterPipeline is included in all output formats (console, JSON, CSV, markdown) so you always know how the funnel narrowed.
+
+---
+
+## Pipeline Resolution
+
+After the consumer pipeline identifies affected projects, each consumer is resolved to a CI/CD pipeline name using the `PipelineResolver` (in `pipeline/resolver.py`). The resolver is constructed once per analysis run from the `--pipeline-csv` data and shared across all resolution paths.
+
+### Probe Order
+
+For each consumer, the resolver builds a probe list:
+
+1. **Solution stems** — the `.sln` files containing the consumer project, with extensions stripped (e.g., `GalaxyWorks.sln` becomes `GalaxyWorks`)
+2. **Consumer project name** — the `.csproj` stem (e.g., `GalaxyWorks.Api`)
+
+Each probe is tried against four matching strategies before moving to the next probe.
+
+### Matching Strategies
+
+| Priority | Strategy | Example |
+|----------|----------|---------|
+| 1 | Exact match | `"GalaxyWorks.Api"` matches key `"GalaxyWorks.Api"` |
+| 2 | Case-insensitive | `"galaxyworks.api"` matches key `"GalaxyWorks.Api"` |
+| 3 | Suffix-stripped | `"Auth.Service"` strips `.Service`, matches key `"Auth"` |
+| 4 | Prefix match | `"MyApp.Data.Migrations"` matches key `"MyApp.Data"` (longest key wins) |
+
+Exact match always wins. Fuzzy strategies only activate when exact match fails, which previously yielded `pipeline_name=None`.
+
+Suffix stripping removes one known .NET project suffix (`.Service`, `.Api`, `.Web`, `.Host`, `.Worker`, `.Client`, `.Core`, `.Console`, `.WebApi`, `.Shared`, `.Server`, `.App`, `.IntegrationTests`, `.UnitTests`) and retries exact + case-insensitive matching on the stripped name. Only one suffix is stripped per probe.
+
+Prefix matching requires a dot boundary: CSV key `"MyApp"` matches probe `"MyApp.Something"` but not `"MyAppExtra"`. When multiple keys are prefixes, the longest (most specific) key wins.
+
+### Logging
+
+Non-exact matches are logged at INFO level with the strategy used:
+
+```
+Pipeline resolved via suffix_stripped: 'Auth.Service' -> key 'Auth' -> 'auth-az-cd'
+```
+
+When no match is found across all probes and strategies, scatter logs a warning suggesting the entry be added to `pipeline_manual_overrides.csv`.
+
+### Grouped Pipeline Output
+
+Pipelines are grouped with their consumer projects in all output formats. Console output shows pipeline name, project count, and a bullet list:
+
+```
+Pipelines affected: 3
+  deploy-api (2 project(s))
+    • Api
+    • Web
+  deploy-svc (1 project(s))
+    • Svc
+```
+
+JSON output includes a `pipeline_groups` array (schema version 1.1) alongside the flat `pipeline_summary` list for backward compatibility.

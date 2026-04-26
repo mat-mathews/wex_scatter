@@ -27,14 +27,14 @@ MSYS_NO_PATHCONV=1 docker run -v "$(pwd)":/workspace scatter \
 > `MSYS_NO_PATHCONV=1` prevents Git Bash on Windows from rewriting `/workspace` paths.
 
 ```
-Search scope: /workspace (scanned 13 projects, 35 files)
-Filter: 13 → 9 project refs → 8 namespace
+Search scope: /workspace (scanned 13 projects, 33 files)
+Filter: 13 → 9 project refs[graph] → 8 test-excluded[graph] → 7 namespace
 
 ============================================================
   Consumer Analysis
 ============================================================
-  Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
-  Consumers: 8
+  Target: GalaxyWorks.Data (samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj)
+  Consumers: 7
 
   Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
   ---------------------------------------- ------- ------- ------- ------- -------------------------
@@ -43,21 +43,25 @@ Filter: 13 → 9 project refs → 8 namespace
   GalaxyWorks.Api                              7.1       0       2    1.00 GalaxyWorks.sln
   GalaxyWorks.DevTools                         4.9       0       1    1.00 GalaxyWorks.sln
   MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
-  GalaxyWorks.Data.Tests                       3.5       0       2    1.00 GalaxyWorks.sln
   GalaxyWorks.Notifications                    2.8       0       1    1.00 GalaxyWorks.sln
   MyGalaryConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
 
   Pipelines affected: 5
-    galaxyworks-api-az-cd
-    galaxyworks-batch-az-cd
-    galaxyworks-devtools-az-cd
-    galaxyworks-notifications-az-cd
-    galaxyworks-portal-az-cd
+    galaxyworks-api-az-cd (1 project(s))
+      • GalaxyWorks.Api
+    galaxyworks-batch-az-cd (1 project(s))
+      • GalaxyWorks.BatchProcessor
+    galaxyworks-devtools-az-cd (1 project(s))
+      • GalaxyWorks.DevTools
+    galaxyworks-notifications-az-cd (1 project(s))
+      • GalaxyWorks.Notifications
+    galaxyworks-portal-az-cd (1 project(s))
+      • GalaxyWorks.WebPortal
 
-Analysis complete. 8 consumer(s) found across 1 target(s).
+Analysis complete. 7 consumer(s) found across 1 target(s).
 ```
 
-Scatter narrowed 13 projects down to the 8 that actually consume GalaxyWorks.Data, ranked them by coupling, and resolved 5 CI/CD pipelines that would need to run.
+Scatter narrowed 13 projects down to 7 real consumers of GalaxyWorks.Data (test projects are excluded automatically), ranked them by coupling, and resolved 5 CI/CD pipelines grouped with their consumer projects.
 
 ### Pipeline mapping
 
@@ -73,7 +77,7 @@ MSYS_NO_PATHCONV=1 docker run --rm \
         --output /workspace/examples/pipeline_to_app_mapping.csv
 ```
 
-For deployed apps the generator can't resolve, add manual entries to `examples/pipeline_manual_overrides.csv` (same schema, `source=manual`). Scatter loads both files; manual entries take precedence.
+Scatter uses layered matching to resolve consumer projects to pipeline names: exact match first, then case-insensitive, suffix-stripped (e.g., `Auth.Service` matches key `Auth`), and prefix matching (e.g., key `MyApp` matches `MyApp.Data.Migrations`). When the automatic resolver can't find a match, add manual entries to `examples/pipeline_manual_overrides.csv` (same schema, `source=manual`). Scatter loads both files; manual entries take precedence.
 
 You can also trace stored procedures back to their consumers — coupling that's invisible in project references:
 

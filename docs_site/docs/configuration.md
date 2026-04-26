@@ -136,6 +136,17 @@ analysis:
   parser_mode: regex                    # "regex" (default) or "hybrid"
                                         # hybrid uses tree-sitter AST to filter
                                         # false positives in comments/strings
+  exclude_test_projects: true           # Filter test projects from blast radius (default: true)
+  test_project_patterns:                # Glob patterns for test project names (fnmatchcase)
+    - "*.Tests"                         # These are the defaults — only set this if you need
+    - "*.Tests.*"                       # to override them. Setting this REPLACES the defaults.
+    - "*.UnitTests"
+    - "*.IntegrationTests"
+    - "*.TestUtils"
+    - "*.TestHelpers"
+    - "*.Benchmarks"
+    - "*.Specs"
+    - "*PostDeployTests"
 
 # Database dependency scanning
 db:
@@ -155,7 +166,16 @@ scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --pipeline-csv examples/pipeline_to_app_mapping.csv
 ```
 
-The CSV needs at least two columns: `pipeline_name` and `app_name`. Scatter matches consumer projects against the `app_name` column via **solution stem lookup** — it takes each consumer's `.sln` file, strips the extension (e.g., `GalaxyWorks.sln` → `GalaxyWorks`), and looks that up in the CSV. Pipeline names then appear in every output format.
+The CSV needs at least two columns: `pipeline_name` and `app_name`. Scatter resolves consumer projects to pipeline names using a layered matching strategy. For each consumer, it builds a probe list (solution stems first, then the project name) and tries four strategies in order:
+
+| Priority | Strategy | Example |
+|----------|----------|---------|
+| 1 | Exact match | `"GalaxyWorks.Api"` matches key `"GalaxyWorks.Api"` |
+| 2 | Case-insensitive | `"galaxyworks.api"` matches key `"GalaxyWorks.Api"` |
+| 3 | Suffix-stripped | `"Auth.Service"` strips `.Service`, matches key `"Auth"` |
+| 4 | Prefix match | `"MyApp.Data.Migrations"` matches key `"MyApp.Data"` (longest key wins) |
+
+Strippable suffixes include `.Service`, `.Api`, `.Web`, `.Host`, `.Worker`, `.Client`, `.Core`, `.Console`, `.WebApi`, `.IntegrationTests`, `.UnitTests`, `.Shared`, `.Server`, and `.App`. The first match wins, so exact matches are never overridden by fuzzy ones. Pipeline names then appear in every output format.
 
 The full schema produced by `tools/generate_pipeline_csv.py` is:
 
