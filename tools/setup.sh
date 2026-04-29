@@ -20,7 +20,7 @@ pass()  { echo -e "  ${GREEN}ok${RESET}  $1"; }
 warn()  { echo -e "  ${YELLOW}!!${RESET}  $1"; }
 fail()  { echo -e "  ${RED}FAIL${RESET}  $1"; }
 
-echo -e "\n${BOLD}wex-scatter dev setup${RESET}\n"
+echo -e "\n${BOLD}scatter dev setup${RESET}\n"
 
 # --- 1. Python version ---
 echo -e "${BOLD}Python${RESET}"

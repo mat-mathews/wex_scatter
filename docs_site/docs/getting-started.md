@@ -7,6 +7,14 @@ Two ways to run scatter:
 
 This page covers the native install. The repo includes 13 sample .NET projects, so you don't need a production codebase to start.
 
+!!! tip "Don't have Python?"
+    Skip this page entirely — run scatter via Docker with no local dependencies:
+    ```bash
+    docker build -t scatter .
+    docker run -v "$(pwd)":/workspace scatter --help
+    ```
+    See [Docker](usage/docker.md) for full usage, cache volumes, and platform-specific examples.
+
 ## Prerequisites
 
 - **Python 3.10+** -- Scatter uses type hints and dataclass features

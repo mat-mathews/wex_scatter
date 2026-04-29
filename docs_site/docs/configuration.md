@@ -74,19 +74,19 @@ You only need an API key for AI features: `--summarize-consumers`, `--enable-hyb
 
 ### Google Gemini (Current Default)
 
-Three ways to provide the API key, in order of precedence:
+Three ways to provide the API key (simplest first, highest-precedence last):
 
-1. **CLI flag**: `--google-api-key YOUR_KEY` -- highest priority, useful for CI/CD
+1. **Environment variable**: `export GOOGLE_API_KEY=YOUR_KEY` -- set once, works everywhere
 2. **Config file**: Set in `~/.scatter/config.yaml` or `.scatter.yaml` under `ai.credentials.gemini.api_key`
-3. **Environment variable**: `export GOOGLE_API_KEY=YOUR_KEY`
+3. **CLI flag**: `--google-api-key YOUR_KEY` -- highest priority, useful for CI/CD or one-off runs
 
 ### WEX AI Platform (Coming Soon)
 
 The WEX AI Platform provider is stubbed and ready for integration. Once the API contract is finalized, it will become the default provider. Configure it the same way:
 
-1. **CLI flag**: `--wex-api-key YOUR_KEY`
+1. **Environment variable**: `export WEX_AI_API_KEY=YOUR_KEY`
 2. **Config file**: `ai.credentials.wex.api_key` in config YAML
-3. **Environment variable**: `export WEX_AI_API_KEY=YOUR_KEY`
+3. **CLI flag**: `--wex-api-key YOUR_KEY`
 
 To switch providers: set `ai.default_provider: wex` in your config or `export SCATTER_DEFAULT_PROVIDER=wex`.
 

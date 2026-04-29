@@ -126,18 +126,11 @@ uv run --with-requirements docs_site/requirements-docs.txt \
 
 Then open [http://localhost:8000](http://localhost:8000). Or browse the raw markdown:
 
-- [Quick Tour](docs_site/docs/quick-tour.md) — guided walkthrough
-- [Target Project](docs_site/docs/usage/target-project.md) — find all consumers of a project
-- [Git Branch](docs_site/docs/usage/git-branch.md) — blast radius of a feature branch
-- [Stored Procedure](docs_site/docs/usage/stored-procedure.md) — trace sproc callers
-- [PR Risk Scoring](docs_site/docs/usage/pr-risk.md) — risk-score every pull request
-- [Dependency Graph](docs_site/docs/usage/dependency-graph.md) — architecture health check
-- [Docker](docs_site/docs/usage/docker.md) — container usage and caching
-- [Output Formats](docs_site/docs/output-formats.md) — JSON, CSV, markdown, Mermaid, pipelines
-- [Configuration](docs_site/docs/configuration.md) — YAML config, env vars, CLI flags
+- [Quick Tour](docs_site/docs/quick-tour.md) — guided walkthrough of all six modes
 - [CLI Reference](docs_site/docs/cli-reference.md) — every flag and option
+- [Configuration](docs_site/docs/configuration.md) — YAML config, env vars, pipeline mapping
 - [Architecture](docs_site/docs/reference/architecture.md) — system design and data flow
-- [Development Log](docs/ADR_DEV_LOG.md) — architecture decisions, performance work, and roadmap
+- [Docker](docs_site/docs/usage/docker.md) — container usage and caching
 
 ---
 

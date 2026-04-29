@@ -1,14 +1,8 @@
 # Quick Tour
 
-See what Scatter does in under 5 minutes. No API key needed.
+See what Scatter does in under 5 minutes. No API key needed. Run everything from the scatter repo root against the included [sample projects](reference/sample-projects.md).
 
-## What you'll see
-
-Scatter analyzes a .NET codebase and tells you which projects are affected by a change. You point it at a project, and it traces every consumer through project references, namespace usage, and type matching. The output shows the blast radius — who depends on what you're changing, and how tightly coupled they are.
-
-## Step 1: Find all consumers
-
-After [installing](getting-started.md), run this from the scatter repo root:
+## Find consumers of a project
 
 ```bash
 uv run scatter \
@@ -16,142 +10,43 @@ uv run scatter \
   --search-scope .
 ```
 
-This analyzes the sample `GalaxyWorks.Data` project and finds every project that consumes it:
-
 ```
-Search scope: /code/scatter (scanned 13 projects, 35 files)
-Filter: 13 → 9 project refs[graph] → 8 namespace
-
-============================================================
-  Consumer Analysis
-============================================================
-  Target: GalaxyWorks.Data (samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj)
-  Consumers: 8
+Filter: 13 → 9 project refs[graph] → 7 test-excluded[graph] → 7 namespace
 
   Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
   ---------------------------------------- ------- ------- ------- ------- -------------------------
   GalaxyWorks.WebPortal                       12.7       1       1    0.50 GalaxyWorks.sln
   GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
   GalaxyWorks.Api                              7.1       0       2    1.00 GalaxyWorks.sln
-  GalaxyWorks.DevTools                         4.9       0       1    1.00 GalaxyWorks.sln
-  MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
-  GalaxyWorks.Data.Tests                       3.5       0       2    1.00 GalaxyWorks.sln
-  GalaxyWorks.Notifications                    2.8       0       1    1.00 GalaxyWorks.sln
-  MyGalaryConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
+  ...
 
-Analysis complete. 8 consumer(s) found across 1 target(s).
+Analysis complete. 7 consumer(s) found across 1 target(s).
 ```
 
-**Filter line** — the analysis funnel. Started with 13 projects, narrowed to 9 that have a project reference to GalaxyWorks.Data, then to 8 that actually use its namespace. Each stage cuts aggressively so you see real consumers, not false positives.
+The filter line shows the funnel: 13 projects in scope, 9 with a `<ProjectReference>` to the target, test projects excluded, 7 that actually use the namespace. Consumers are sorted by coupling score — highest risk first. Graph metrics (Score, Fan-In, Fan-Out, Instability) are computed automatically from the cached dependency graph.
 
-**Consumer table** — every project that depends on GalaxyWorks.Data, sorted by coupling score (highest risk first). If you change `PortalDataService`, these are the projects that might break.
+Add `--class-name PortalDataService` to narrow to consumers that reference a specific type. Add `--parser-mode hybrid` to use tree-sitter AST validation and eliminate false positives in comments and string literals. See [Target Project Analysis](usage/target-project.md).
 
-**Graph columns** — automatically computed from the dependency graph:
-
-- **Score** — coupling score: how connected this project is (higher = more risk when changing)
-- **Fan-In / Fan-Out** — incoming vs outgoing dependencies
-- **Instab.** — instability index: 0.00 (stable, many dependents) to 1.00 (unstable, depends on others)
-
-You didn't ask for graph metrics — Scatter builds the graph automatically on first run, caches it, and enriches every result.
-
-!!! note
-    Test projects (like `GalaxyWorks.Data.Tests`) appear as consumers because they reference the target. In production, exclude test directories via [`.scatter.yaml` configuration](configuration.md).
-
-## Step 2: Narrow by class
-
-Maybe you only touched `PortalDataService`, not the whole project:
-
-```bash
-uv run scatter \
-  --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --class-name PortalDataService
-```
-
-Now Scatter only reports projects that actually reference `PortalDataService` specifically. The consumer list gets shorter — only the projects that use that class show up.
-
-## Step 3: Filter out false positives with hybrid mode
-
-The regex match in step 2 catches mentions of `PortalDataService` in comments and string literals too. Add `--parser-mode hybrid` to use tree-sitter AST validation and keep only real code references:
-
-```bash
-uv run scatter \
-  --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --class-name PortalDataService \
-  --parser-mode hybrid
-```
-
-On the sample projects, this filters out consumers that only mention `PortalDataService` in comments or template strings.
-
-No API key needed. `--parser-mode hybrid` uses tree-sitter (a local parser), not an LLM. Requires `uv sync --extra ast` (included in Docker).
-
-## Step 4: See the full dependency graph
+## See the full dependency graph
 
 ```bash
 uv run scatter --graph --search-scope .
 ```
 
 ```
-============================================================
-  Dependency Graph Analysis
-============================================================
-  Projects: 13
-  Dependencies: 35
-  Solutions: 1
-  Connected components: 3
-  Circular dependencies: 0
+  Projects: 13 | Dependencies: 35 | Circular dependencies: 0
 
   Top Coupled Projects:
-  Project                                     Score   Fan-In  Fan-Out  Instab.
-  ---------------------------------------- -------- -------- -------- --------
   GalaxyWorks.Data                             30.3        9        0     0.00
   GalaxyWorks.WebPortal                        12.7        1        1     0.50
   GalaxyWorks.BatchProcessor                   10.8        0        2     1.00
-  GalaxyWorks.Common                           10.0        3        1     0.25
-  GalaxyWorks.Api                               7.1        0        2     1.00
-
-  Domain Clusters:
-  Cluster                          Size   Cohesion   Coupling          Feasibility    Align
-  ------------------------------ ------ ---------- ---------- -------------------- --------
-  cluster_0                          10      0.367      0.000         easy (1.000)     1.00
-  MyDotNetApp                         2      1.000      0.000         easy (1.000)     0.50
-
-  Observations:
-    [warning] GalaxyWorks.Data: stable core (fan_in=9, instability=0.00) — change carefully
-    [warning] GalaxyWorks.Data: high coupling score (30.3) — review dependencies
-    [info] dbo.sp_InsertPortalConfiguration: shared by 3 projects — database coupling hotspot
 ```
 
-This builds the complete dependency graph, computes coupling metrics, detects cycles, identifies domain clusters, and generates observations.
+Builds the full graph, computes coupling metrics, detects cycles, and identifies domain clusters. See [Graph Engine](reference/graph-engine.md).
 
-## What just happened
+## Describe a change, get the blast radius
 
-The filter pipeline works like a funnel:
-
-1. **Discovery** — found all `.csproj` files in the search scope
-2. **Project reference filter** — kept only the ones with a `<ProjectReference>` pointing at the target
-3. **Namespace filter** — of those, kept only the ones whose `.cs` files contain the target's `using` statement
-4. **Type/class filter** — of those, kept only the ones that actually reference specific types
-
-Each stage cuts aggressively. The numbers in the filter line show exactly where projects got filtered out and why.
-
-Meanwhile, Scatter quietly built a dependency graph and cached it to disk. On your next run, it loads from cache (under 1 second). After that, it detects changes via `git diff` and patches incrementally (~10ms).
-
-## Get a shareable report
-
-```bash
-uv run scatter \
-  --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
-  --search-scope . \
-  --output-format markdown
-```
-
-This produces a markdown report you can paste into a PR description, Confluence page, or Slack message.
-
-## What AI adds
-
-With a Google API key (`export GOOGLE_API_KEY=your-key`), Scatter unlocks impact analysis mode. Instead of pointing at a specific project, you describe the change in plain English:
+With a Google API key (`export GOOGLE_API_KEY=your-key`):
 
 ```bash
 uv run scatter \
@@ -159,124 +54,15 @@ uv run scatter \
   --search-scope .
 ```
 
-The AI parses your work request into concrete targets, then Scatter traces the blast radius and enriches the report with:
-
-- **Risk ratings** — Low / Medium / High / Critical per target, with justification
-- **Coupling narratives** — plain English explanation of how each consumer depends on the target
-- **Complexity estimate** — effort range (e.g., "3-5 developer-days") with contributing factors
-- **Executive summary** — a paragraph you can paste into a ticket or email
-- **Next Steps** — template-driven guidance based on the blast radius
-
-The core consumer tracing is pure code — it works without AI. The AI adds context and risk assessment on top.
-
-Here's what the AI-enriched markdown report looks like:
-
-```markdown
-# Impact Analysis
-
-**Work Request:** Modify PortalDataService in GalaxyWorks.Data to add tenant isolation
-
-## Summary
-
-This change to PortalDataService affects 6 consuming projects across the
-GalaxyWorks ecosystem. The primary risk is breaking the API contract used
-by downstream services.
-
-| Metric | Value |
-|--------|-------|
-| Risk | Medium |
-| Complexity | Medium (3-5 developer-days) |
-| Direct consumers | 6 |
-| Transitive consumers | 0 |
-
-## Targets
-
-### GalaxyWorks.Data
-
-**Confidence:** 0.95 (HIGH) — SOW explicitly names PortalDataService
-
-Direct Consumers: 6 | Transitive: 0
-
-#### Blast Radius
-
-├── GalaxyWorks.WebPortal  [HIGH]  direct
-│   Risk: Medium — "6 direct consumers including API and batch processor"
-├── GalaxyWorks.Api  [HIGH]  direct
-│   Risk: Medium
-├── GalaxyWorks.BatchProcessor  [HIGH]  direct
-│   Risk: Medium
-└── ...
-
-## Next Steps
-
-- Review the 6 direct consumers listed above for breaking changes
-- Blast radius suggests staged rollout may reduce risk
-```
-
-Every section is computed from real dependency data. The AI interprets and explains — it doesn't invent dependencies.
+The AI parses your work request into concrete targets, Scatter traces the blast radius, and the report includes risk ratings, coupling narratives, and a complexity estimate. Add `--scope-estimate` for an effort breakdown with confidence bands. See [Impact Analysis](usage/impact-analysis.md) and [SOW Scoping](usage/scoping.md).
 
 ## Score a PR's risk
 
-If you're reviewing a PR, you want to know: how far does the blast radius reach?
-
 ```bash
-uv run scatter \
-  --branch-name feature/refactor-data \
-  --pr-risk \
-  --search-scope .
+uv run scatter --branch-name feature/refactor-data --pr-risk --search-scope .
 ```
 
-```
-============================================================
-  PR Risk: RED (0.80)
-============================================================
-  Branch: feature/refactor-data (vs main)
-  Changed: 2 type(s) across 1 project(s)
-
-  Dimension                     Score  Severity
-  ───────────────────────────── ─────  ──────────
-  Structural coupling            0.65  high
-  Database coupling              0.72  high
-  Blast radius                   0.80  critical
-  Change surface                 0.70  high
-
-  Risk Factors:
-    • 7 direct consumers affected
-    • shared sproc used by 3 projects
-    • stable core project — many dependents
-```
-
-The score is deterministic — same branch produces the same number. No AI needed. The [GitHub Action template](reference/github-action.md) posts this as a PR comment automatically.
-
-See [PR Risk Scoring](usage/pr-risk.md) for output formats and CI setup.
-
-## Scope a work request
-
-After impact analysis tells you *what's affected*, scoping tells you *how long it'll take*:
-
-```bash
-uv run scatter \
-  --sow "Add tenant isolation to the portal configuration system" \
-  --search-scope . \
-  --scope-estimate
-```
-
-```
-=== Effort Estimate (MODERATE confidence, ±30%) ===
-  Category               Base     Min     Max  Notes
-  ────────────────────── ─────── ─────── ───────  ──────────────────────────────
-  investigation            1.0     0.7     1.3  2 target(s); no cycles
-  implementation           4.0     2.8     5.2  4 direct; 2 depth-1
-  testing                  3.0     2.1     3.9  4 direct consumer(s); 1 shared sproc(s)
-  integration_risk         0.5     0.4     0.7  1 shared sproc(s)
-  database_migration       1.0     0.7     1.3  1 shared sproc(s)
-  ────────────────────── ─────── ─────── ───────  ──────────────────────────────
-  TOTAL                    9.5     6.7    12.4  (1.3–2.5 dev-weeks)
-```
-
-Every number comes from the dependency graph — consumer counts, shared stored procedures, cycle membership, domain clusters. The confidence band widens when the SOW is vague or risk is high. This is a starting point for a scoping conversation, not a commitment.
-
-See [SOW Scoping](usage/scoping.md) for the full breakdown.
+Deterministic score (GREEN/YELLOW/RED) across structural coupling, database coupling, blast radius, and change surface dimensions. No AI needed. The [GitHub Action template](reference/github-action.md) posts this as a PR comment automatically. See [PR Risk Scoring](usage/pr-risk.md).
 
 ## All six modes
 
@@ -291,16 +77,8 @@ See [SOW Scoping](usage/scoping.md) for the full breakdown.
 
 ## Try it on your code
 
-Point Scatter at your own .NET codebase:
-
 ```bash
 uv run scatter --target-project ./path/to/Your.Project.csproj --search-scope /path/to/repo
 ```
 
-See [CLI Reference](cli-reference.md) for every flag, or dive into a specific mode:
-
-- [Target Project Analysis](usage/target-project.md)
-- [Git Branch Analysis](usage/git-branch.md)
-- [Impact Analysis](usage/impact-analysis.md)
-- [Output Formats](output-formats.md)
-- [Configuration](configuration.md)
+See [CLI Reference](cli-reference.md) for every flag, or [Output Formats](output-formats.md) for JSON, CSV, Markdown, and Mermaid options.

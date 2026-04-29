@@ -65,11 +65,11 @@ First time you run Scatter against a codebase, it constructs a full dependency g
 
 Second run loads from cache: under 1 second.
 
-After that, Scatter detects what changed via `git diff` and patches incrementally: ~10ms for typical edits.
+After that, Scatter detects what changed via `git diff` and patches incrementally: ~10ms for typical edits, 100-950x faster than a full rebuild.
 
 You never pass a flag for this. You never configure it. It just happens.
 
-> **How this works:** Scatter maintains a content-hashed graph cache with git-aware invalidation. See [Graph Engine](reference/graph-engine.md) for the full story.
+> **How this works:** Scatter maintains a content-hashed graph cache with git-aware invalidation. See [Graph Engine](reference/graph-engine.md) for the full story, or [Benchmarks](reference/benchmarks.md) for reproducible numbers on synthetic codebases.
 
 ## Built to last
 

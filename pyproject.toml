@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "wex-scatter"
+name = "scatter"
 version = "2.1.0"  # keep in sync with scatter/__version__.py
 description = ".NET dependency graph engine — trace blast radius before you ship"
 requires-python = ">=3.10"

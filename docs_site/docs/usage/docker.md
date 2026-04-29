@@ -6,7 +6,7 @@ Run scatter without installing Python or uv. Mount a .NET repo into the containe
 
 ```bash
 git clone https://github.com/ORG/REPO.git
-cd wex_scatter
+cd scatter
 docker build -t scatter .
 ```
 
