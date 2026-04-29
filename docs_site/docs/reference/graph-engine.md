@@ -14,7 +14,9 @@ The builder lives in `analyzers/graph_builder.py` and follows a 6-step pipeline.
 
 **Step 1: Discover .csproj and .cs files.** A single `os.walk` pass (`walk_and_collect`) traverses the search scope once, collecting files by extension and pruning excluded directories (`bin/`, `obj/`, dot-prefixed) during traversal so they're never entered. When called from `__main__.py`, the walk also collects `.sln` files — discovery is shared with solution scanning. When the graph builder is called standalone (tests, scripts), it falls back to its own `walk_and_collect` call.
 
-**Step 2: Parse each .csproj.** Extract `ProjectReference` includes, `TargetFramework`, `OutputType`, project style (SDK vs legacy). Derive namespace from `<RootNamespace>` element or fall back to the project name.
+**Step 2: Parse each .csproj.** Extract `ProjectReference` includes, `TargetFramework`, `OutputType`, project style (SDK vs legacy). Derive namespace from `<RootNamespace>` element or fall back to the project name. Also extract explicit `<Import Project="...">` elements (filtering SDK/system imports and resolving `$(MSBuildThisFileDirectory)` variables).
+
+**Step 2b: MSBuild implicit imports.** For each project, walk up the directory tree to find `Directory.Build.props` and `Directory.Build.targets` files (the standard MSBuild nearest-ancestor convention). Supports `GetPathOfFileAbove` parent chaining, where one props file imports another higher up the tree. Creates `msbuild_import` edges from each project to its implicit imports.
 
 **Step 3: Build reverse directory index.** Map each .cs file to its parent project. The mapping uses a directory index built from .csproj locations — walk upward from each .cs file until a known project directory is found.
 
@@ -30,6 +32,7 @@ When `capture_facts=True`, `FileFacts` are captured inline during this step to a
 | Edge Type | Weight | How It Is Detected |
 |-----------|--------|--------------------|
 | `project_reference` | 1.0 | `<ProjectReference>` in .csproj XML, resolved to absolute paths |
+| `msbuild_import` | 1.0 | Implicit `Directory.Build.props/.targets` (nearest-ancestor walk) and explicit `<Import Project="...">` elements |
 | `namespace_usage` | file count | `using TargetNamespace;` in .cs files, matched against project namespaces |
 | `type_usage` | evidence count | Inverted index: tokenize .cs files, intersect with known type names |
 | `sproc_shared` | shared count | Projects referencing the same stored procedures (optional, `--include-db`) |

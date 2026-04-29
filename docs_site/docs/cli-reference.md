@@ -36,8 +36,10 @@ These work with any mode (unless noted).
 | `--no-graph` | false | Skip all graph operations (build, load, enrichment) |
 | `--rebuild-graph` | false | Force full graph rebuild, ignoring cache |
 | `--include-graph-topology` | false | Include raw graph nodes/edges in JSON output. Omitted by default to keep file size down. |
+| `--full-type-scan` | false | Compute `type_usage` edges between **all** project pairs, not just those already connected by `project_reference` or `namespace_usage` edges. Catches fully-qualified type references (e.g., `new GalaxyWorks.Data.Foo()`) that the default scope gate misses. **Warning:** this is O(P²) where P = project count. On an 800-project codebase it can add 30+ seconds to the graph build. Use only when you suspect hidden cross-project type usage without `using` statements. |
 | `--include-db` | false | Include database dependency scanning (sprocs, EF models, direct SQL) in `--graph` mode |
 | `--pipeline-csv PATH` | None | Path to CSV mapping app names to pipeline names. Accepts both new schema (`pipeline_name`, `app_name`) and old (`Pipeline Name`, `Application Name`). If a `pipeline_manual_overrides.csv` exists in the same directory, it is loaded automatically and takes precedence. See `examples/pipeline_to_app_mapping.csv`. |
+| `--include-test-projects` | false | Include test projects (e.g., `*.Tests`, `*.Benchmarks`) in consumer results. By default, scatter excludes projects matching common test patterns from the blast radius. |
 | `--app-config-path PATH` | None | Path to app-config repo for batch job name resolution |
 | `--target-namespace NS` | Auto-derived | Override namespace detection for the target project |
 | `-v`, `--verbose` | false | Enable DEBUG-level logging. Shows every step of the analysis pipeline. |

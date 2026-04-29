@@ -28,6 +28,7 @@ from scatter.core.models import (
     PropsImpact,
     RawConsumerDict,
 )
+from scatter.pipeline.resolver import PipelineResolver
 
 
 @dataclass
@@ -243,6 +244,8 @@ def run_target_analysis(ctx: ModeContext, target_csproj: Path) -> ModeResult:
     from scatter.analyzers.consumer_analyzer import find_consumers
     from scatter.compat.v1_bridge import _build_consumer_results
 
+    resolver = PipelineResolver(ctx.pipeline_map)
+
     logging.info("\n--- Running Target Project Analysis Mode ---")
     target_project_name = target_csproj.stem
     logging.info(f"Analyzing target project: {target_project_name} ({target_csproj})")
@@ -303,6 +306,7 @@ def run_target_analysis(ctx: ModeContext, target_csproj: Path) -> ModeResult:
             batch_job_map=ctx.batch_job_map,
             search_scope_path_abs=ctx.search_scope,
             solution_index=ctx.solution_index,
+            pipeline_resolver=resolver,
         )
 
         if ctx.summarize_consumers and ctx.ai_provider:
@@ -344,6 +348,8 @@ def run_git_analysis(
     from scatter.scanners.project_scanner import derive_namespace
     from scatter.analyzers.consumer_analyzer import find_consumers
     from scatter.compat.v1_bridge import _build_consumer_results
+
+    resolver = PipelineResolver(ctx.pipeline_map)
 
     logging.info("\n--- Running Git Branch Analysis Mode ---")
     logging.info(
@@ -529,6 +535,8 @@ def run_git_analysis(
                             solution_file_cache=ctx.solution_file_cache,
                             batch_job_map=ctx.batch_job_map,
                             search_scope_path_abs=ctx.search_scope,
+                            solution_index=ctx.solution_index,
+                            pipeline_resolver=resolver,
                         )
 
                         if ctx.summarize_consumers and ctx.ai_provider:
@@ -601,6 +609,8 @@ def run_sproc_analysis(
     from scatter.scanners.sproc_scanner import find_cs_files_referencing_sproc
     from scatter.analyzers.consumer_analyzer import find_consumers
     from scatter.compat.v1_bridge import _build_consumer_results
+
+    resolver = PipelineResolver(ctx.pipeline_map)
 
     logging.info("\n--- Running Stored Procedure Analysis Mode ---")
     logging.info(
@@ -705,6 +715,8 @@ def run_sproc_analysis(
                 solution_file_cache=ctx.solution_file_cache,
                 batch_job_map=ctx.batch_job_map,
                 search_scope_path_abs=ctx.search_scope,
+                solution_index=ctx.solution_index,
+                pipeline_resolver=resolver,
             )
 
             if ctx.summarize_consumers and ctx.ai_provider:

@@ -33,9 +33,26 @@ class DbConfig:
     include_db_edges: bool = True  # add sproc_shared edges to graph
 
 
+DEFAULT_TEST_PROJECT_PATTERNS = [
+    "*.Tests",
+    "*.Tests.*",
+    "*.UnitTests",
+    "*.IntegrationTests",
+    "*.TestUtils",
+    "*.TestHelpers",
+    "*.Benchmarks",
+    "*.Specs",
+    "*PostDeployTests",
+]
+
+
 @dataclass
 class AnalysisConfig:
     parser_mode: str = "regex"  # "regex" | "hybrid"
+    exclude_test_projects: bool = True
+    test_project_patterns: List[str] = field(
+        default_factory=lambda: list(DEFAULT_TEST_PROJECT_PATTERNS)
+    )
 
 
 @dataclass
@@ -111,6 +128,14 @@ def _apply_yaml(config: ScatterConfig, data: Dict[str, Any]) -> None:
     if isinstance(analysis, dict):
         if "parser_mode" in analysis:
             config.analysis.parser_mode = str(analysis["parser_mode"])
+        if "exclude_test_projects" in analysis:
+            config.analysis.exclude_test_projects = bool(analysis["exclude_test_projects"])
+        if "test_project_patterns" in analysis and isinstance(
+            analysis["test_project_patterns"], list
+        ):
+            config.analysis.test_project_patterns = [
+                str(p) for p in analysis["test_project_patterns"]
+            ]
 
     graph = data.get("graph", {})
     if isinstance(graph, dict):
@@ -192,6 +217,10 @@ def _apply_cli_overrides(config: ScatterConfig, overrides: Dict[str, Any]) -> No
             config.exclude_patterns = list(value)
         elif key == "analysis.parser_mode":
             config.analysis.parser_mode = str(value)
+        elif key == "analysis.exclude_test_projects":
+            config.analysis.exclude_test_projects = bool(value)
+        elif key == "analysis.test_project_patterns":
+            config.analysis.test_project_patterns = list(value)
         elif key == "graph.rebuild":
             config.graph.rebuild = bool(value)
         elif key == "graph.cache_dir":

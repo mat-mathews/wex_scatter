@@ -11,7 +11,7 @@ function Pass($msg) { Write-Host "  ok  $msg" -ForegroundColor Green }
 function Warn($msg) { Write-Host "  !!  $msg" -ForegroundColor Yellow }
 function Fail($msg) { Write-Host "  FAIL  $msg" -ForegroundColor Red }
 
-Write-Host "`nwex-scatter dev setup`n"
+Write-Host "`nscatter dev setup`n"
 
 # --- 1. Python version ---
 Write-Host "Python" -ForegroundColor White

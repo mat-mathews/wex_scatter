@@ -27,6 +27,7 @@ from scatter.core.models import (
 from scatter.analyzers.consumer_analyzer import find_consumers
 from scatter.analyzers.risk_engine import aggregate_risk, compute_risk_profile
 from scatter.core.risk_models import RiskLevel, SOW_RISK_CONTEXT
+from scatter.pipeline.resolver import PipelineResolver
 from scatter.scanners.project_scanner import derive_namespace
 from scatter.compat.v1_bridge import find_solutions_for_project
 
@@ -106,6 +107,8 @@ def run_impact_analysis(
         pipeline_map = {}
     if solution_file_cache is None:
         solution_file_cache = []
+
+    resolver = PipelineResolver(pipeline_map)
 
     # Extract raw graph for consumer tracing and codebase index (Decision #12).
     # Risk scoring uses graph_ctx directly (metrics, cycles); consumer tracing
@@ -202,6 +205,7 @@ def run_impact_analysis(
             graph=graph,  # raw graph for consumer tracing
             solution_index=solution_index,
             analysis_config=analysis_config,
+            pipeline_resolver=resolver,
         )
         report.targets.append(target_impact)
 
@@ -427,6 +431,7 @@ def _analyze_single_target(
     graph=None,
     solution_index=None,
     analysis_config: Optional["AnalysisConfig"] = None,
+    pipeline_resolver: Optional[PipelineResolver] = None,
 ) -> TargetImpact:
     """Analyze a single target: find direct consumers, trace transitively."""
     impact = TargetImpact(target=target)
@@ -478,6 +483,7 @@ def _analyze_single_target(
         graph=graph,
         solution_index=solution_index,
         analysis_config=analysis_config,
+        pipeline_resolver=pipeline_resolver,
     )
 
     impact.consumers = all_consumers
@@ -502,6 +508,7 @@ def trace_transitive_impact(
     graph=None,
     solution_index=None,
     analysis_config: Optional["AnalysisConfig"] = None,
+    pipeline_resolver: Optional[PipelineResolver] = None,
 ) -> List[EnrichedConsumer]:
     """BFS transitive tracing with confidence decay and cycle detection.
 
@@ -512,6 +519,8 @@ def trace_transitive_impact(
         pipeline_map = {}
     if solution_file_cache is None:
         solution_file_cache = []
+
+    resolver = pipeline_resolver or PipelineResolver(pipeline_map)
 
     confidence_by_depth = {0: CONFIDENCE_HIGH, 1: CONFIDENCE_MEDIUM, 2: CONFIDENCE_LOW}
     visited: set = set()
@@ -542,8 +551,15 @@ def trace_transitive_impact(
                 )
                 solutions = [s.stem for s in sol_paths]
 
-            # Resolve pipeline
-            pipeline_name = pipeline_map.get(consumer_name, "")
+            # Resolve pipeline — solution stems first, then consumer name
+            probes = solutions + [consumer_name]
+            match = resolver.resolve(*probes)
+            pipeline_name = match.pipeline_name if match else ""
+            if match and match.strategy != "exact":
+                logging.info(
+                    f"   Pipeline resolved via {match.strategy}: "
+                    f"'{match.probe}' -> key '{match.matched_key}' -> '{match.pipeline_name}'"
+                )
 
             enriched = EnrichedConsumer(
                 consumer_path=consumer_path,

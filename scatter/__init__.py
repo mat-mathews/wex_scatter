@@ -23,6 +23,7 @@ from scatter.core.models import (
     FilterPipeline,
     STAGE_DISCOVERY,
     STAGE_PROJECT_REFERENCE,
+    STAGE_TEST_EXCLUSION,
     STAGE_NAMESPACE,
     STAGE_CLASS,
     STAGE_METHOD,
@@ -80,7 +81,14 @@ from scatter.ai.base import AITaskType, AnalysisResult, AIProvider
 from scatter.ai.providers.gemini_provider import GeminiProvider
 from scatter.ai.providers.wex_provider import WexProvider
 from scatter.ai.router import AIRouter
-from scatter.config import ScatterConfig, AIConfig, GraphConfig, DbConfig, load_config
+from scatter.config import (
+    ScatterConfig,
+    AIConfig,
+    AnalysisConfig,
+    GraphConfig,
+    DbConfig,
+    load_config,
+)
 from scatter.scanners.db_scanner import (
     DbDependency,
     DEFAULT_SPROC_PREFIXES,

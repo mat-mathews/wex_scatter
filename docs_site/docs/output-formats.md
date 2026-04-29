@@ -15,7 +15,7 @@ scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
 
 ```
 Search scope: /code/myrepo (scanned 142 projects, 3,891 files)
-Filter: 142 → 8 project refs[graph] → 5 namespace → 3 class match
+Filter: 142 → 8 project refs[graph] → 7 test-excluded[graph] → 5 namespace → 3 class match
 
 ============================================================
   Consumer Analysis
@@ -31,6 +31,13 @@ Filter: 142 → 8 project refs[graph] → 5 namespace → 3 class match
   MyGalaxyConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
 
     [portal-nightly-sync] PortalBatchProcessor
+
+  Pipelines affected: 2
+    galaxy-consumer-ci (2 project(s))
+      • MyGalaxyConsumerApp
+      • MyGalaxyConsumerApp2
+    portal-batch-ci (1 project(s))
+      • PortalBatchProcessor
 
 Analysis complete. 3 consumer(s) found across 1 target(s).
 ```
@@ -73,6 +80,18 @@ Requires `--output-file`. Scatter won't dump JSON to stdout -- that path leads t
         "galaxy-consumer2-ci",
         "portal-batch-ci"
     ],
+    "pipeline_groups": [
+        {
+            "pipeline_name": "galaxy-consumer-ci",
+            "consumer_count": 2,
+            "consumers": ["MyGalaxyConsumerApp", "MyGalaxyConsumerApp2"]
+        },
+        {
+            "pipeline_name": "portal-batch-ci",
+            "consumer_count": 1,
+            "consumers": ["PortalBatchProcessor"]
+        }
+    ],
     "all_results": [
         {
             "TargetProjectName": "GalaxyWorks.Data",
@@ -97,6 +116,7 @@ Requires `--output-file`. Scatter won't dump JSON to stdout -- that path leads t
 A few things worth knowing:
 
 - **`pipeline_summary`** is sorted and deduplicated. Quick "what needs to deploy" check without iterating `all_results`.
+- **`pipeline_groups`** groups consumers by pipeline with counts. Only present when at least one consumer has a resolved pipeline. Added in schema version 1.1.
 - **`ConsumerFileSummaries`** is a native JSON object (not stringified). Keys are relative file paths, values are AI-generated summaries. Empty `{}` when `--summarize-consumers` is not used.
 - **`PipelineName`** and **`BatchJobVerification`** are `null` when absent, not empty strings.
 - **Path objects** serialize as strings. The custom serializer handles this transparently -- you'll never see a `PosixPath(...)` in the output.

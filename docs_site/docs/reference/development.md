@@ -155,10 +155,10 @@ The generator always writes a clean, complete file — it does not merge with ex
 
 ### Running against the monolith
 
-The OD monolith repo lives at `../OD/` relative to `wex_scatter` on the PC. To run scatter against it with the generated pipeline CSV:
+The OD monolith repo lives at `../OD/` relative to `scatter` on the PC. To run scatter against it with the generated pipeline CSV:
 
 ```bash
-# From the wex_scatter directory in Git Bash
+# From the scatter directory in Git Bash
 MSYS_NO_PATHCONV=1 docker run --rm \
     -v "$(pwd)":/workspace \
     -v "$(pwd)/../OD":/monolith:ro \

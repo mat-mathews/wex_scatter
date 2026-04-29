@@ -1,5 +1,6 @@
 """Consumer detection pipeline — finds projects that consume a target project."""
 
+import fnmatch
 import logging
 import re
 from pathlib import Path
@@ -13,6 +14,7 @@ from scatter.core.models import (
     RawConsumerDict,
     STAGE_DISCOVERY,
     STAGE_PROJECT_REFERENCE,
+    STAGE_TEST_EXCLUSION,
     STAGE_NAMESPACE,
     STAGE_CLASS,
     STAGE_METHOD,
@@ -26,6 +28,14 @@ from scatter.core.parallel import (
 if TYPE_CHECKING:
     from scatter.config import AnalysisConfig
     from scatter.core.graph import DependencyGraph
+
+
+def is_test_project(project_name: str, patterns: List[str]) -> bool:
+    """Check whether a project name matches any test-project pattern.
+
+    Uses fnmatchcase for deterministic case-sensitive matching across platforms.
+    """
+    return any(fnmatch.fnmatchcase(project_name, pat) for pat in patterns)
 
 
 def _lookup_consumers_from_graph(
@@ -224,6 +234,28 @@ def find_consumers(
         except OSError as e:
             logging.error(f"Error scanning search scope '{search_scope_path}': {e}")
             return [], pipeline
+
+    # --- test-project exclusion (between stage 2 and 3) ---
+    if analysis_config and analysis_config.exclude_test_projects:
+        before_count = len(direct_consumers)
+        test_patterns = analysis_config.test_project_patterns
+        direct_consumers = {
+            path: info
+            for path, info in direct_consumers.items()
+            if not is_test_project(str(info["consumer_name"]), test_patterns)
+        }
+        excluded = before_count - len(direct_consumers)
+        if excluded:
+            logging.info(f"Excluded {excluded} test project(s) from consumer set.")
+        source = "graph" if used_graph else "filesystem"
+        pipeline.stages.append(
+            FilterStage(
+                name=STAGE_TEST_EXCLUSION,
+                input_count=before_count,
+                output_count=len(direct_consumers),
+                source=source,
+            )
+        )
 
     if not direct_consumers:
         logging.info("No projects directly referencing the target were found.")

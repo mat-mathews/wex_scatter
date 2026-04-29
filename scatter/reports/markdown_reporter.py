@@ -302,13 +302,11 @@ def build_impact_markdown(
     total_direct = sum(ti.total_direct for ti in (report.targets or []))
     total_transitive = sum(ti.total_transitive for ti in (report.targets or []))
 
-    # Collect unique pipeline names
-    all_pipelines: List[str] = []
-    for ti in report.targets or []:
-        for c in ti.consumers:
-            if c.pipeline_name:
-                all_pipelines.append(c.pipeline_name)
-    unique_pipelines = sorted(set(all_pipelines))
+    # Collect unique pipeline names and build groups
+    from scatter.reports.pipeline_reporter import group_impact_by_pipeline
+
+    pipeline_groups = group_impact_by_pipeline(report)
+    unique_pipelines = [g["pipeline_name"] for g in pipeline_groups]
     pipelines_str = ", ".join(unique_pipelines) if unique_pipelines else "\u2014"
 
     # Identification confidence
@@ -425,6 +423,15 @@ def build_impact_markdown(
     if report.complexity_justification:
         parts.append("### Complexity\n")
         parts.append(f"{report.complexity_rating}: {report.complexity_justification}\n")
+
+    # --- Pipelines Affected section (grouped) ---
+    if pipeline_groups:
+        parts.append("## Pipelines Affected\n")
+        for g in pipeline_groups:
+            parts.append(f"**{g['pipeline_name']}** ({g['consumer_count']} project(s))")
+            for name in g["consumers"]:
+                parts.append(f"- {name}")
+            parts.append("")
 
     # --- Next Steps section ---
     next_steps = _build_next_steps(report, total_direct, total_transitive, unique_pipelines)

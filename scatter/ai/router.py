@@ -69,24 +69,17 @@ class AIRouter:
         return None
 
     def _create_wex(self) -> Optional[AIProvider]:
-        """Create a WexProvider from config credentials.
+        """WEX AI Platform provider is not yet implemented.
 
-        Note: WexProvider.__init__ has its own WEX_AI_API_KEY env-var
-        fallback when api_key is None, matching the GeminiProvider pattern.
+        Returns None with a clear warning so callers degrade gracefully
+        instead of getting a NotImplementedError mid-analysis.
         """
-        from scatter.ai.providers.wex_provider import WexProvider
-
-        api_key = self._config.ai.credentials.get("wex", {}).get("api_key")
-        model_name = self._config.ai.wex_model
-        endpoint = self._config.ai.credentials.get("wex", {}).get("endpoint")
-
-        try:
-            return WexProvider(
-                api_key=api_key, model_name=model_name, endpoint=endpoint, budget=self._budget
-            )
-        except Exception as e:
-            logging.warning(f"Could not create WEX AI provider: {e}")
-            return None
+        logging.warning(
+            "WEX AI Platform provider is not yet implemented. "
+            "AI features will be skipped. Use the Gemini provider "
+            "(set ai.default_provider: gemini) in the meantime."
+        )
+        return None
 
     def _create_gemini(self) -> Optional[AIProvider]:
         """Create a GeminiProvider from config credentials.

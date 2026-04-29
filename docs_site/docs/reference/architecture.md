@@ -20,12 +20,13 @@ scatter/
 │   ├── ast_validator.py   # identifiers_in_code, validate_type_usage, query cache
 │   └── ts_queries.py      # tree-sitter query strings (non-code ranges, type declarations)
 │
-├── scanners/          # File, project, type, sproc, DB scanning
+├── scanners/          # File, project, type, sproc, DB, MSBuild scanning
 │   ├── file_scanner.py
-│   ├── project_scanner.py   # .csproj parsing, namespace derivation
-│   ├── type_scanner.py      # C# type declaration extraction
-│   ├── sproc_scanner.py     # Stored procedure reference detection
-│   └── db_scanner.py        # Database dependency scanning, comment stripping
+│   ├── project_scanner.py        # .csproj parsing, namespace derivation, <Import> extraction
+│   ├── msbuild_import_scanner.py # Directory.Build.props/.targets detection, ancestor walk
+│   ├── type_scanner.py           # C# type declaration extraction
+│   ├── sproc_scanner.py          # Stored procedure reference detection
+│   └── db_scanner.py             # Database dependency scanning, comment stripping
 │
 ├── analyzers/         # Consumer, git, graph builder, impact, coupling, domain, health, risk
 │   ├── consumer_analyzer.py  # 5-stage filter pipeline
@@ -64,7 +65,10 @@ scatter/
 │   ├── graph_cache.py    # Persistence, invalidation, FileFacts, ProjectFacts
 │   └── graph_patcher.py  # Incremental updates via git diff
 │
-├── compat/            # V1 bridge (solution lookup, pipeline mapping)
+├── pipeline/          # Pipeline name resolution
+│   └── resolver.py    # PipelineResolver with layered matching strategies
+│
+├── compat/            # V1 bridge (solution lookup, result processing)
 │   └── v1_bridge.py
 │
 ├── config.py          # YAML config with layered precedence
