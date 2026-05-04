@@ -23,9 +23,11 @@ Filter: 13 → 9 project refs[graph] → 7 test-excluded[graph] → 7 namespace
 Analysis complete. 7 consumer(s) found across 1 target(s).
 ```
 
-The filter line shows the funnel: 13 projects in scope, 9 with a `<ProjectReference>` to the target, test projects excluded, 7 that actually use the namespace. Consumers are sorted by coupling score — highest risk first. Graph metrics (Score, Fan-In, Fan-Out, Instability) are computed automatically from the cached dependency graph.
+Read the filter line left to right — it's a funnel. 13 projects in scope → 9 have a `<ProjectReference>` to the target → test projects excluded → 7 actually import the namespace. Each arrow is a stage that ruled something out.
 
-Add `--class-name PortalDataService` to narrow to consumers that reference a specific type. Add `--parser-mode hybrid` to use tree-sitter AST validation and eliminate false positives in comments and string literals. See [Target Project Analysis](usage/target-project.md).
+Consumers are ranked by coupling score — the number that answers "how painful is this consumer to update?" High fan-in means lots of things depend on it (stable core — change carefully). High instability means it depends on many things but nothing depends on it (leaf — change freely).
+
+Want to narrow further? `--class-name PortalDataService` limits to consumers that reference a specific type. `--parser-mode hybrid` uses tree-sitter to filter out matches in comments and string literals. See [Target Project Analysis](usage/target-project.md).
 
 ## See the full dependency graph
 
@@ -42,7 +44,7 @@ uv run scatter --graph --search-scope .
   GalaxyWorks.BatchProcessor                   10.8        0        2     1.00
 ```
 
-Builds the full graph, computes coupling metrics, detects cycles, and identifies domain clusters. See [Graph Engine](reference/graph-engine.md).
+That's the full codebase X-ray. Coupling scores tell you which projects are load-bearing (high score = lots of things depend on it). Zero circular dependencies is good — when that number isn't zero, Scatter tells you exactly which projects are in the cycle. See [Dependency Graph](usage/dependency-graph.md).
 
 ## Describe a change, get the blast radius
 
@@ -54,7 +56,7 @@ uv run scatter \
   --search-scope .
 ```
 
-The AI parses your work request into concrete targets, Scatter traces the blast radius, and the report includes risk ratings, coupling narratives, and a complexity estimate. Add `--scope-estimate` for an effort breakdown with confidence bands. See [Impact Analysis](usage/impact-analysis.md) and [SOW Scoping](usage/scoping.md).
+Plain English in, risk-rated blast radius tree out. The AI identifies which projects and types match your description, Scatter traces every consumer, and the report shows risk ratings, coupling narratives, and a complexity estimate. Add `--scope-estimate` for an effort breakdown with confidence bands. See [Impact Analysis](usage/impact-analysis.md) and [SOW Scoping](usage/scoping.md).
 
 ## Score a PR's risk
 
@@ -62,7 +64,7 @@ The AI parses your work request into concrete targets, Scatter traces the blast 
 uv run scatter --branch-name feature/refactor-data --pr-risk --search-scope .
 ```
 
-Deterministic score (GREEN/YELLOW/RED) across structural coupling, database coupling, blast radius, and change surface dimensions. No AI needed. The [GitHub Action template](reference/github-action.md) posts this as a PR comment automatically. See [PR Risk Scoring](usage/pr-risk.md).
+Deterministic score — same branch against the same graph always produces the same number. GREEN means low risk, YELLOW means review it, RED means it's touching core infrastructure. No AI needed. The [GitHub Action template](reference/github-action.md) posts this as a PR comment automatically. See [PR Risk Scoring](usage/pr-risk.md).
 
 ## All six modes
 

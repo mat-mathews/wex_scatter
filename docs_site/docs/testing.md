@@ -25,16 +25,16 @@ uv run pytest
 ```
 
 ```
-~878 passed, 1 xfailed (run `uv run pytest --co -q` for the current count)
+~1,490 passed, 1 xfailed (run `uv run pytest --co -q` for the current count)
 ```
 
-~878 tests across 33 files. The single xfail is an intentional marker for a tracked edge case, not a failing test someone gave up on.
+~1,490 tests across 35+ files. The single xfail tracks a known limitation: `TargetFrameworks` (plural) in `.csproj` files isn't parsed yet — only `TargetFramework` (singular). The test marks it so we don't forget.
 
 ## What the tests cover
 
 The short version, without the file-by-file inventory:
 
-- **All five analysis modes** -- target project, git branch, stored procedure, impact analysis, dependency graph. Each mode has its own test file plus integration tests that run the full pipeline.
+- **All six analysis modes** -- target project, git branch, stored procedure, impact analysis, dependency graph, and PR risk scoring. Each mode has its own test file plus integration tests that run the full pipeline.
 - **Graph construction and caching** -- build, serialize, deserialize, roundtrip. Smart git-based cache invalidation with mtime fallback.
 - **Incremental updates** -- the patch algorithm is property-tested: for 6 mutation types (usage edits, declaration changes, new files, deleted files, csproj changes), incremental patching produces identical results to a full rebuild.
 - **Coupling metrics** -- fan-in, fan-out, instability index, coupling score, shared database density. Cycle detection across project-reference edges.
@@ -47,15 +47,15 @@ No flaky tests. No sleeps. No network calls.
 
 ## Smoke-testing against sample projects
 
-The repo ships with 11 sample .NET projects. Use them to verify Scatter works end-to-end on your machine.
+The repo ships with 13 sample .NET projects. Use them to verify Scatter works end-to-end on your machine.
 
-### GalaxyWorks.Data should have 6 consumers
+### GalaxyWorks.Data should have 7 consumers
 
 ```bash
 scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --search-scope .
 ```
 
-Look for: `6 consumer(s)` in the output.
+Look for: `7 consumer(s)` in the output. Test projects are excluded by default — GalaxyWorks.Data.Tests won't appear in the list.
 
 ### MyDotNetApp should have 1 consumer
 

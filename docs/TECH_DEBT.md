@@ -2,6 +2,8 @@
 
 Tracked risks, known limitations, and deferred optimizations from the graph performance work. Each item includes context on why it was deferred and what would trigger revisiting it.
 
+*Last reviewed: 2026-05-03. Items dated from initial graph performance work (2026-03) unless noted.*
+
 ---
 
 ## Performance

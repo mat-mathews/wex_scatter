@@ -13,14 +13,14 @@ scatter --stored-procedure "dbo.sp_InsertPortalConfiguration" --search-scope .
 ```
 
 ```
-Search scope: /code/scatter (scanned 11 projects, 38 files)
-Filter: 11 → 7 project refs[graph] → 6 namespace → 6 class match
+Search scope: /code/scatter/samples (scanned 13 projects, 48 files)
+Filter: 13 → 9 project refs → 8 test-excluded → 7 namespace → 7 class match
 
 ============================================================
   Consumer Analysis
 ============================================================
   Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
-  Consumers: 6
+  Consumers: 7
   Triggering type: PortalDataService (via Sproc: dbo.sp_InsertPortalConfiguration)
 
   Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
@@ -28,9 +28,10 @@ Filter: 11 → 7 project refs[graph] → 6 namespace → 6 class match
   GalaxyWorks.WebPortal                       12.7       1       1    0.50 GalaxyWorks.sln
   GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
   GalaxyWorks.Api                              7.1       0       2    1.00 GalaxyWorks.sln
-  MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
-  GalaxyWorks.Data.Tests                       3.5       0       2    1.00 GalaxyWorks.sln
-  MyGalaryConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
+  GalaxyWorks.DevTools                         4.9       0       1    1.00 GalaxyWorks.sln
+  MyGalaxyConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
+  GalaxyWorks.Notifications                    2.8       0       1    1.00 GalaxyWorks.sln
+  MyGalaxyConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
 
   Target: GalaxyWorks.WebPortal (GalaxyWorks.WebPortal/GalaxyWorks.WebPortal.csproj)
   Consumers: 1
@@ -40,10 +41,10 @@ Filter: 11 → 7 project refs[graph] → 6 namespace → 6 class match
   ---------------------------------------- ------- ------- ------- ------- -------------------------
   GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
 
-Analysis complete. 7 consumer(s) found across 2 target(s).
+Analysis complete. 9 consumer(s) found across 3 target(s).
 ```
 
-Notice the multi-hop chain: the sproc is referenced by `PortalDataService` in GalaxyWorks.Data (6 consumers) and `PortalCacheService` in GalaxyWorks.WebPortal (1 consumer). The `(via Sproc: dbo.sp_InsertPortalConfiguration)` annotation preserves the provenance so readers understand why these consumers were flagged.
+Notice the multi-hop chain: the sproc is referenced by `PortalDataService` in GalaxyWorks.Data (7 consumers), `FakeDatabaseHelper` in GalaxyWorks.Data (1 consumer), and `PortalCacheService` in GalaxyWorks.WebPortal (1 consumer). The `(via Sproc: ...)` annotation preserves the provenance so readers understand why these consumers were flagged.
 
 ## Different Stored Procedure
 

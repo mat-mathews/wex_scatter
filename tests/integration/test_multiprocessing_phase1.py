@@ -24,10 +24,10 @@ class TestMultiprocessingPhase1(unittest.TestCase):
         self.test_root = Path(__file__).parent.parent.parent.resolve() / "samples"
         self.galaxy_works_project = self.test_root / "GalaxyWorks.Data" / "GalaxyWorks.Data.csproj"
         self.consumer1_project = (
-            self.test_root / "MyGalaxyConsumerApp" / "MyGalaryConsumerApp.csproj"
+            self.test_root / "MyGalaxyConsumerApp" / "MyGalaxyConsumerApp.csproj"
         )
         self.consumer2_project = (
-            self.test_root / "MyGalaxyConsumerApp2" / "MyGalaryConsumerApp2.csproj"
+            self.test_root / "MyGalaxyConsumerApp2" / "MyGalaxyConsumerApp2.csproj"
         )
 
         # Verify test projects exist
@@ -69,8 +69,8 @@ class TestMultiprocessingPhase1(unittest.TestCase):
         # Should find at least our test projects
         expected_projects = {
             "GalaxyWorks.Data.csproj",
-            "MyGalaryConsumerApp.csproj",
-            "MyGalaryConsumerApp2.csproj",
+            "MyGalaxyConsumerApp.csproj",
+            "MyGalaxyConsumerApp2.csproj",
         }
 
         self.assertTrue(

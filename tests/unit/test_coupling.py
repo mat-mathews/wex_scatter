@@ -137,7 +137,7 @@ class TestComputeAllMetrics:
         _, metrics = graph_and_metrics
         m = metrics["GalaxyWorks.Data"]
         # 9 project_reference edges pointing TO Data
-        # (WebPortal, BatchProcessor, MyGalaryConsumerApp, MyGalaryConsumerApp2,
+        # (WebPortal, BatchProcessor, MyGalaxyConsumerApp, MyGalaxyConsumerApp2,
         #  GalaxyWorks.Common, GalaxyWorks.Api, GalaxyWorks.Data.Tests,
         #  GalaxyWorks.DevTools, GalaxyWorks.Notifications)
         assert m.fan_in == 9

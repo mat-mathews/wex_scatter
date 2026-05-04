@@ -4,7 +4,7 @@ A work request or CSE comes in... Before anyone writes code, you need to know wh
 
 Describe the change in plain English. Get back a risk-rated blast radius report with a tree view of affected consumers, confidence labels by depth, and an AI-generated narrative you can paste straight into a ticket.
 
-The `--sow` mode requires a configured AI provider (currently Google Gemini via `--google-api-key` or `$GOOGLE_API_KEY`; WEX AI Platform coming soon). Other modes (`--target-project`, `--branch-name`, `--graph`) work without AI. The core consumer tracing, graph building, and blast radius tree are pure code -- AI adds risk ratings, coupling narratives, complexity estimates, and executive summaries on top.
+This mode requires a Google API key (`--google-api-key` or `$GOOGLE_API_KEY`). Other modes work without AI. The core consumer tracing, graph building, and blast radius tree are pure code — AI adds risk ratings, coupling narratives, and the executive summary on top.
 
 ## Basic Example
 
@@ -32,10 +32,10 @@ Direct Consumers: 4 | Transitive: 2
 |   +-- GalaxyWorks.BatchProcessor  [MEDIUM]  via GalaxyWorks.WebPortal
 |       Risk: Medium -- "Transitively affected through WebPortal dependency"
 |       Pipeline: galaxyworks-batch-ci
-+-- MyGalaryConsumerApp  [HIGH]  direct
++-- MyGalaxyConsumerApp  [HIGH]  direct
 |   Risk: Medium -- "Uses PortalDataService but only reads, does not write"
 |   Coupling vectors: method_invocation
-+-- MyGalaryConsumerApp2  [HIGH]  direct
++-- MyGalaxyConsumerApp2  [HIGH]  direct
 |   Risk: Medium -- "Minimal usage of PortalDataService"
 +-- GalaxyWorks.Api  [HIGH]  direct
     Risk: High -- "API controller exposes PortalDataService methods to external callers"
@@ -58,22 +58,24 @@ That's a lot of information from a one-line description. Let's break down what y
 
 ## Reading the Report
 
-**Overall Risk and Complexity** appear at the top. Complexity is always an AI estimate of effort. Risk uses a two-layer model:
+**Risk comes from two sources:**
 
-1. **Graph-derived risk** (deterministic) — when a dependency graph is available, the risk engine scores each target across 7 dimensions: structural coupling, instability, cycle entanglement, database coupling, blast radius, domain boundaries, and change surface. This produces a reproducible rating — same input, same score, no AI variance.
-2. **AI enrichment** (escalation-only) — AI can raise a rating (e.g. "High" to "Critical") when it detects business context the graph can't see, but it can never lower a graph-derived rating. Without a graph, AI provides the primary risk rating directly.
+| Layer | How it works | Reproducible? |
+|-------|-------------|---------------|
+| **Graph-derived** | Scores each target across 7 dimensions (coupling, instability, cycles, database, blast radius, domain boundaries, change surface) | Yes — same input, same score |
+| **AI enrichment** | Can escalate a rating (e.g. "High" → "Critical") when it detects business context the graph can't see. Can never lower a graph-derived rating. | No — AI variance applies |
 
-Overall risk is the worst-case across all targets.
+Overall risk is the worst-case across all targets. Complexity is an AI effort estimate.
 
-**The tree view** shows direct consumers at the root level and transitive consumers nested beneath the consumer they flow through. The brackets show confidence:
+**The tree view** shows direct consumers at root level, transitive consumers nested beneath:
 
-- **[HIGH]** -- direct consumer. This project references the target and uses the relevant class.
-- **[MEDIUM]** -- one hop away. It references a direct consumer, not the target itself.
-- **[LOW]** -- two or more hops away. Real impact is possible but increasingly unlikely.
+- **[HIGH]** — direct consumer. References the target and uses the relevant class.
+- **[MEDIUM]** — one hop away. References a direct consumer, not the target itself.
+- **[LOW]** — two or more hops away. Real impact possible but increasingly unlikely.
 
-**Coupling vectors** tell you how a consumer is connected: `method_invocation`, `constructor_injection`, `type_reference`, etc. These help you estimate how hard the consumer update will be.
+**Coupling vectors** (`method_invocation`, `constructor_injection`, `type_reference`) tell you *how* a consumer is connected — useful for estimating how hard the update will be.
 
-**The impact summary** at the bottom is AI-generated prose, suitable for pasting into a Jira ticket or a Slack message to your manager. It covers the scope, highest-risk consumers, and a deployment recommendation.
+**The impact summary** at the bottom is AI-generated prose. Paste it into a Jira ticket or a Slack message. It covers scope, highest-risk consumers, and a deployment recommendation.
 
 ## From a File
 
@@ -88,7 +90,10 @@ For longer work requests -- feature specs, change proposals, migration plans -- 
 
 ## Codebase Index
 
-When a dependency graph is available (which it usually is -- Scatter builds and caches one automatically), impact analysis sends a compact **codebase index** alongside the SOW to the LLM. This index lists every project, its types, and its stored procedures, so the LLM can match domain language to real code artifacts instead of guessing.
+Scatter sends the LLM a compact **codebase index** — every project name, its type names, and its stored procedure names — so it can match domain language to real code artifacts instead of guessing. The graph builds and caches automatically; you don't configure this.
+
+!!! note "What leaves the network"
+    The codebase index contains project names, type names, namespace names, and stored procedure names. It does **not** contain source code, file contents, or business logic. Your SOW text is also sent. Both go to Google's Gemini API. Use `--dump-index` to see exactly what the LLM receives.
 
 The index is what makes vague SOWs work. A request like "update the portal configuration workflow to support multi-tenant isolation" maps to `GalaxyWorks.Data`, `PortalDataService`, and `dbo.sp_InsertPortalConfiguration` because those names are in the index.
 
@@ -99,7 +104,7 @@ scatter --dump-index --search-scope .
 ```
 
 ```
-=== Codebase Index (11 projects) ===
+=== Codebase Index (13 projects) ===
 P=Project NS=Namespace (omitted when same as project name) T=Types SP=StoredProcs
 P:GalaxyWorks.Data T:PortalDataService,PortalConfiguration,IDataAccessor SP:dbo.sp_InsertPortalConfiguration,...
 P:GalaxyWorks.WebPortal T:PortalController,PortalCacheService SP:dbo.sp_GetPortalConfigurationDetails,...
@@ -139,13 +144,7 @@ scatter \
   --sow-min-confidence 0.5
 ```
 
-The `--sow-min-confidence` flag (default: 0.3) excludes targets below the threshold. Excluded targets are logged:
-
-```
-Excluded target 'Billing.Data' (confidence 0.30, threshold 0.50)
-```
-
-Use a higher threshold when you want fewer, higher-confidence results. Use the default when you want broader coverage and are willing to triage.
+The `--sow-min-confidence` flag (default: 0.3) excludes targets below the threshold. Targets that get filtered out are logged so you can see what was dropped. Raise the threshold when you want fewer, sharper results. Keep the default when you'd rather see everything and triage manually.
 
 ## Deeper Tracing
 
@@ -211,9 +210,7 @@ See [SOW Scoping](scoping.md) for the full breakdown of categories, heuristics, 
 
 ## Risk Model
 
-Impact analysis uses the same 7-dimension risk engine as PR risk scoring. When a dependency graph is available, each target gets a deterministic risk profile across structural coupling, instability, cycles, database coupling, blast radius, domain boundaries, and change surface. AI can escalate but never lower graph-derived ratings.
-
-See [Risk Engine](risk-engine.md) for the full model.
+Same 7-dimension risk engine as PR risk scoring. Graph-derived scores are deterministic. AI can escalate but never lower them. See [Risk Engine](risk-engine.md) for the full model.
 
 ---
 

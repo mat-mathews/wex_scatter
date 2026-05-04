@@ -2,7 +2,7 @@
 
 You're refactoring a shared library and need to know who's using it. Maybe someone said "we want to modernize GalaxyWorks.Data" and you need to find out how many teams will have opinions about that. This is the mode for that.
 
-Point Scatter at a `.csproj` file. It finds every project that references it, confirms they actually import the namespace, and optionally drills down to specific class or method usage.
+Give Scatter a `.csproj` file. It finds every project that references it, checks they actually use the namespace, and can drill down to specific class or method usage.
 
 ## Basic Example
 
@@ -11,32 +11,33 @@ scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --se
 ```
 
 ```
-Search scope: /code/scatter (scanned 11 projects, 27 files)
-Filter: 11 → 7 project refs[graph] → 6 namespace
+Search scope: /code/scatter/samples (scanned 13 projects, 33 files)
+Filter: 13 → 9 project refs → 8 test-excluded → 7 namespace
 
 ============================================================
   Consumer Analysis
 ============================================================
   Target: GalaxyWorks.Data (GalaxyWorks.Data/GalaxyWorks.Data.csproj)
-  Consumers: 6
+  Consumers: 7
 
   Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
   ---------------------------------------- ------- ------- ------- ------- -------------------------
   GalaxyWorks.WebPortal                       12.7       1       1    0.50 GalaxyWorks.sln
   GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
   GalaxyWorks.Api                              7.1       0       2    1.00 GalaxyWorks.sln
-  MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
-  GalaxyWorks.Data.Tests                       3.5       0       2    1.00 GalaxyWorks.sln
-  MyGalaryConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
+  GalaxyWorks.DevTools                         4.9       0       1    1.00 GalaxyWorks.sln
+  MyGalaxyConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
+  GalaxyWorks.Notifications                    2.8       0       1    1.00 GalaxyWorks.sln
+  MyGalaxyConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
 
-Analysis complete. 6 consumer(s) found across 1 target(s).
+Analysis complete. 7 consumer(s) found across 1 target(s).
 ```
 
-Six consumers. That's your blast radius. Now you know who to talk to before you start moving things around.
+Seven consumers (test projects excluded automatically). That's your blast radius. Now you know who to talk to before you start moving things around.
 
 ## Narrowing the Results
 
-Six consumers is manageable. But GalaxyWorks.Data exports a lot of types, and maybe you only care about one class.
+Seven consumers is manageable. But GalaxyWorks.Data exports a lot of types, and maybe you only care about one class.
 
 ### Filter by Class
 
@@ -46,10 +47,10 @@ scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
 ```
 
 ```
-Filter: 11 → 7 project refs[graph] → 6 namespace → 6 class match
+Filter: 13 → 9 project refs → 8 test-excluded → 7 namespace → 7 class match
 ```
 
-All 6 consumers reference `PortalDataService` -- it's the main type in GalaxyWorks.Data. For libraries with multiple types, this filter cuts aggressively.
+All 7 consumers reference `PortalDataService` -- it's the main type in GalaxyWorks.Data. For libraries with multiple types, this filter cuts aggressively.
 
 ### Filter by Method
 
@@ -60,10 +61,11 @@ scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
 ```
 
 ```
-Filter: 11 → 7 project refs[graph] → 6 namespace → 6 class match → 1 method match
+Filter: 13 → 9 project refs → 8 test-excluded → 7 namespace → 7 class match → 0 method match
+  Hint: 0 of 7 class-matching projects contained 'StorePortalConfigurationAsync' — verify the method name
 ```
 
-Only one project actually calls `StorePortalConfigurationAsync`. If you're changing that method's signature, this is the only consumer that needs updating.
+Zero matches here — the sample projects don't actually call this method by name. In a real codebase, this is how you'd narrow from "everyone who uses the class" to "only the projects calling this specific method." When the method filter hits zero, Scatter prints a diagnostic hint so you can verify the method name.
 
 Note: `--method-name` requires `--class-name`. Pass `--method-name` alone and Scatter warns and ignores it.
 
@@ -109,7 +111,7 @@ scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
   --search-scope . --summarize-consumers --google-api-key $GOOGLE_API_KEY
 ```
 
-For each consumer, Scatter sends its relevant `.cs` files to Gemini and gets back a 2-3 sentence summary of what that code does. Useful when you're triaging a long consumer list and need to quickly understand "what does MyGalaryConsumerApp actually do with PortalDataService?" without opening 15 files.
+Scatter asks Gemini what each consumer actually does with your code and gets back a 2-3 sentence summary. Useful when the consumer list is long and you need to triage without opening 15 files.
 
 ## Output Formats
 
@@ -141,7 +143,7 @@ Markdown also works without `--output-file` -- it prints to stdout so you can pi
 The most important line in the output is the arrow chain. Read it left to right:
 
 ```
-Filter: 200 → 12 project refs[graph] → 8 namespace → 4 class match
+Filter: 200 → 12 project refs → 10 test-excluded → 8 namespace → 4 class match
 ```
 
 Translation: "200 projects in scope. 12 have a `<ProjectReference>` to the target. 8 of those import the namespace. 4 of those reference the class."

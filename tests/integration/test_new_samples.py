@@ -383,8 +383,8 @@ class TestSolutionFile:
             "GalaxyWorks.Api",
             "GalaxyWorks.Data.Tests",
             "MyDotNetApp.Consumer",
-            "MyGalaryConsumerApp",
-            "MyGalaryConsumerApp2",
+            "MyGalaxyConsumerApp",
+            "MyGalaxyConsumerApp2",
             "MyDotNetApp2.Exclude",
         ]
         for project in expected_projects:
@@ -687,7 +687,7 @@ class TestGraphIntegrationWithNewProjects:
         consumer_names = {c.name for c in consumers}
         assert "GalaxyWorks.Api" in consumer_names
         assert "GalaxyWorks.Data.Tests" in consumer_names
-        assert "MyGalaryConsumerApp" in consumer_names
+        assert "MyGalaxyConsumerApp" in consumer_names
 
     def test_api_file_count(self, graph):
         """Api project should have multiple .cs files."""

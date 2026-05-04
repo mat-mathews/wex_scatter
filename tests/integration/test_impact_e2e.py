@@ -213,8 +213,8 @@ class TestCorePipeline:
         consumer_names = {c.consumer_name for c in ti.consumers}
         # GalaxyWorks.Data has multiple known consumers in sample projects
         assert len(consumer_names) >= 4
-        assert "MyGalaryConsumerApp" in consumer_names
-        assert "MyGalaryConsumerApp2" in consumer_names
+        assert "MyGalaxyConsumerApp" in consumer_names
+        assert "MyGalaxyConsumerApp2" in consumer_names
         assert "GalaxyWorks.Api" in consumer_names
         assert "GalaxyWorks.BatchProcessor" in consumer_names
 

@@ -14,37 +14,35 @@ scatter --graph --search-scope .
 ============================================================
   Dependency Graph Analysis
 ============================================================
-  Projects: 11
-  Dependencies: 50
-  Solutions: 1
-  Connected components: 1
+  Projects: 13
+  Dependencies: 35
+  Connected components: 3
   Circular dependencies: 0
 
   Top Coupled Projects:
   Project                                     Score   Fan-In  Fan-Out  Instab.
   ---------------------------------------- -------- -------- -------- --------
-  GalaxyWorks.Data                             22.3        7        0     0.00
+  GalaxyWorks.Data                             30.3        9        0     0.00
   GalaxyWorks.WebPortal                        12.7        1        1     0.50
   GalaxyWorks.BatchProcessor                   10.8        0        2     1.00
+  GalaxyWorks.Common                           10.0        3        1     0.25
   ...
 
   Domain Clusters:
-  Cluster                          Size   Cohesion   Coupling          Feasibility    Align
-  ------------------------------ ------ ---------- ---------- -------------------- --------
-  cluster_0                          11      0.455      0.000         easy (1.000)     0.91
-    Members: GalaxyWorks.Api, GalaxyWorks.BatchProcessor, ... (solution: GalaxyWorks)
-
-  Solution Coupling:
-  Solution                       Projects   Internal   External    Ratio
-  ------------------------------ -------- ---------- ---------- --------
-  GalaxyWorks                          10         41          9     0.18
+  Cluster                          Size   Cohesion   Coupling          Feasibility
+  ------------------------------ ------ ---------- ---------- --------------------
+  cluster_0                          10      0.367      0.000         easy (1.000)
+    Members: GalaxyWorks.Api, GalaxyWorks.BatchProcessor, GalaxyWorks.Common, GalaxyWorks.Data, ...
+  MyDotNetApp                         2      1.000      0.000         easy (1.000)
+    Members: MyDotNetApp, MyDotNetApp.Consumer
 
   Observations:
-    [warning] GalaxyWorks.Data: stable core (fan_in=7, instability=0.00) -- change carefully
-    [warning] GalaxyWorks.Data: high coupling score (22.3) -- review dependencies
-    [info] dbo.sp_GetPortalConfigurationDetails: shared by 3 projects -- database coupling hotspot
+    [warning] GalaxyWorks.Data: stable core (fan_in=9, instability=0.00) — change carefully
+    [warning] GalaxyWorks.Data: high coupling score (30.3) — review dependencies
+    [info] dbo.sp_InsertPortalConfiguration: shared by 3 projects — database coupling hotspot
+    [warning] Directory.Build.props: imported by 12 projects — config change affects wide blast radius
 
-Analysis complete. 11 projects, 50 dependencies, 0 cycle(s).
+Analysis complete. 13 projects, 35 dependencies, 0 cycle(s).
 ```
 
 That's the whole codebase in one screen. Let's walk through what you're looking at.
@@ -53,7 +51,7 @@ That's the whole codebase in one screen. Let's walk through what you're looking 
 
 ### Top Coupled Projects
 
-The project with the highest coupling score is the one you should worry about most before modifying. In this case, GalaxyWorks.Data sits at the top with a high fan-in and zero instability -- a classic "stable core." Everything depends on it. It depends on nothing. Change it carefully.
+The project with the highest coupling score is the one you should worry about most before modifying. GalaxyWorks.Data sits at the top with fan-in of 9 and zero instability — a classic "stable core." Everything depends on it. It depends on nothing. Change it carefully.
 
 The columns:
 
@@ -64,9 +62,7 @@ The columns:
 
 ### Domain Clusters
 
-Scatter groups tightly-connected projects into clusters and scores how feasible it would be to extract each cluster as an independent deployable unit.
-
-The **Feasibility** column is the one that matters for planning:
+Scatter identifies clusters of projects that are tightly connected. The **Feasibility** column tells you whether extracting that cluster is realistic or a multi-quarter project:
 
 - **easy** -- low coupling to outside, no cross-boundary cycles. Could extract in a sprint or two.
 - **moderate** -- some coupling to break, maybe shared database state. Feasible with planning.
@@ -75,7 +71,7 @@ The **Feasibility** column is the one that matters for planning:
 
 ### Observations
 
-Rule-based warnings (no AI involved) that flag specific concerns:
+Scatter flags specific concerns automatically:
 
 - **stable core** -- high fan-in, low instability. Lots of things depend on it.
 - **high coupling** -- coupling score above threshold. Too many dependency edges.

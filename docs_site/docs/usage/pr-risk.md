@@ -115,9 +115,9 @@ The sticky comment updates on each push — no comment spam.
 
 ## Prediction logging
 
-Every `--pr-risk` run writes a prediction record to `.scatter/predictions.jsonl`. This stores the branch name, composite score, dimension breakdown, and timestamp. Over time, this builds a dataset for calibrating the risk model against actual outcomes (did high-risk PRs actually cause incidents?).
+Every `--pr-risk` run writes a prediction record to `.scatter/predictions.jsonl` — branch name, composite score, dimension breakdown, timestamp. The purpose: over time, you can compare predictions against actual outcomes. Did the RED PRs actually cause incidents? Did GREEN PRs sail through? That feedback loop is how you calibrate whether the thresholds are right for your codebase.
 
-Disable with `--no-prediction-log` if you don't want the file written (e.g., in ephemeral CI containers).
+Nobody reviews these automatically today — it's a dataset for future analysis. The file grows by ~500 bytes per PR. Disable with `--no-prediction-log` in ephemeral CI containers where the file won't persist anyway.
 
 ## Output formats
 
