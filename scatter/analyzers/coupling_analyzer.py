@@ -17,9 +17,10 @@ from scatter.core.graph import DependencyGraph
 # (could be a single enum ref).
 DEFAULT_COUPLING_WEIGHTS: Dict[str, float] = {
     "project_reference": 1.0,
+    "sproc_shared": 0.8,
+    "config_di": 0.7,  # provisional — calibrate against monolith
     "namespace_usage": 0.5,
     "type_usage": 0.3,
-    "sproc_shared": 0.8,
 }
 
 

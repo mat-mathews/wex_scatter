@@ -54,7 +54,17 @@ def main():
     exclude_dirs = extract_exclude_dirs(config.exclude_patterns)
     discovered = walk_and_collect(
         paths.search_scope,
-        {".sln", ".csproj", ".vbproj", ".fsproj", ".rptproj", ".cs", ".props", ".targets"},
+        {
+            ".sln",
+            ".csproj",
+            ".vbproj",
+            ".fsproj",
+            ".rptproj",
+            ".cs",
+            ".props",
+            ".targets",
+            ".config",
+        },
         exclude_dirs,
     )
 

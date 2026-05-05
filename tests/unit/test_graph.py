@@ -504,6 +504,13 @@ class TestGraphBuilder:
         # VB.NET project referencing C# project (cross-language)
         assert ("GalaxyWorks.VBLib", "GalaxyWorks.Common") in edge_pairs
 
+    def test_config_di_edge_exists(self, graph: DependencyGraph):
+        """Config DI scanner should create an edge from Api → Data (unity.config)."""
+        config_edges = [e for e in graph.all_edges if e.edge_type == "config_di"]
+        assert len(config_edges) >= 1
+        edge_pairs = {(e.source, e.target) for e in config_edges}
+        assert ("GalaxyWorks.Api", "GalaxyWorks.Data") in edge_pairs
+
     def test_galaxyworks_data_consumers(self, graph: DependencyGraph):
         consumers = graph.get_consumers("GalaxyWorks.Data")
         consumer_names = {c.name for c in consumers}

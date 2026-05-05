@@ -113,6 +113,7 @@ def build_dependency_graph(
         cs_files = discovered_files[".cs"]
         props_files = discovered_files.get(".props", [])
         targets_files = discovered_files.get(".targets", [])
+        config_files = discovered_files.get(".config", [])
         logging.info(
             f"Using pre-discovered files: {len(dotnet_project_files)} .csproj/.vbproj/.fsproj, "
             f"{len(rptproj_files)} .rptproj, {len(cs_files)} .cs"
@@ -121,7 +122,7 @@ def build_dependency_graph(
         exclude_dirs = extract_exclude_dirs(exclude_patterns)
         discovered = walk_and_collect(
             search_scope,
-            {".csproj", ".vbproj", ".fsproj", ".rptproj", ".cs", ".props", ".targets"},
+            {".csproj", ".vbproj", ".fsproj", ".rptproj", ".cs", ".props", ".targets", ".config"},
             exclude_dirs,
         )
         dotnet_project_files = (
@@ -133,6 +134,7 @@ def build_dependency_graph(
         cs_files = discovered[".cs"]
         props_files = discovered.get(".props", [])
         targets_files = discovered.get(".targets", [])
+        config_files = discovered.get(".config", [])
 
     t0a = time.monotonic()
     rptproj_count_msg = f", {len(rptproj_files)} .rptproj" if rptproj_files else ""
@@ -468,9 +470,24 @@ def build_dependency_graph(
     t6 = time.monotonic()
     if include_db_dependencies:
         logging.info(f"Graph build step 6 (DB scanner): {t6 - t5:.1f}s")
+
+    # Step 7 (optional): Config DI scanner → config_di edges
+    if config_files:
+        from scatter.scanners.config_di_scanner import (
+            add_config_di_edges,
+            scan_config_files,
+        )
+
+        config_refs = scan_config_files(config_files, project_dir_index, search_scope)
+        add_config_di_edges(graph, config_refs, type_to_projects)
+        t7 = time.monotonic()
+        logging.info(f"Graph build step 7 (config DI scanner): {t7 - t6:.1f}s")
+    else:
+        t7 = t6
+
     logging.info(
         f"Built dependency graph: {graph.node_count} nodes, {graph.edge_count} edges "
-        f"(total: {t6 - t0:.1f}s)"
+        f"(total: {t7 - t0:.1f}s)"
     )
 
     if not capture_facts:
