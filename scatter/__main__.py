@@ -53,7 +53,9 @@ def main():
     # an already-necessary walk is near zero.
     exclude_dirs = extract_exclude_dirs(config.exclude_patterns)
     discovered = walk_and_collect(
-        paths.search_scope, {".sln", ".csproj", ".cs", ".props", ".targets"}, exclude_dirs
+        paths.search_scope,
+        {".sln", ".csproj", ".vbproj", ".fsproj", ".rptproj", ".cs", ".props", ".targets"},
+        exclude_dirs,
     )
 
     solutions = scan_solutions_data(paths.search_scope, sln_files=discovered[".sln"])

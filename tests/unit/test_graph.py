@@ -451,10 +451,11 @@ class TestGraphBuilder:
         assert graph.edge_count > 0
 
     def test_node_count(self, graph: DependencyGraph):
-        # 13 real .csproj files in repo (excluding temp_test_data)
+        # 15 real project files in repo (excluding temp_test_data)
         # Original 8 + GalaxyWorks.Common, GalaxyWorks.Api, GalaxyWorks.Data.Tests
         # + GalaxyWorks.DevTools, GalaxyWorks.Notifications
-        assert graph.node_count == 13
+        # + GalaxyWorks.VBLib, GalaxyWorks.Reports
+        assert graph.node_count == 15
 
     def test_expected_projects_present(self, graph: DependencyGraph):
         expected = {
@@ -466,6 +467,8 @@ class TestGraphBuilder:
             "GalaxyWorks.Data.Tests",
             "GalaxyWorks.DevTools",
             "GalaxyWorks.Notifications",
+            "GalaxyWorks.VBLib",
+            "GalaxyWorks.Reports",
             "MyDotNetApp",
             "MyDotNetApp.Consumer",
             "MyDotNetApp2.Exclude",
@@ -476,9 +479,9 @@ class TestGraphBuilder:
         assert actual == expected
 
     def test_project_reference_edges(self, graph: DependencyGraph):
-        """There should be 14 project_reference edges."""
+        """There should be 15 project_reference edges (VBLib adds one ref to Common)."""
         ref_edges = [e for e in graph.all_edges if e.edge_type == "project_reference"]
-        assert len(ref_edges) == 14
+        assert len(ref_edges) == 15
 
         edge_pairs = {(e.source, e.target) for e in ref_edges}
         # Original 6 edges
@@ -498,6 +501,8 @@ class TestGraphBuilder:
         # Hybrid AST false-positive test projects
         assert ("GalaxyWorks.DevTools", "GalaxyWorks.Data") in edge_pairs
         assert ("GalaxyWorks.Notifications", "GalaxyWorks.Data") in edge_pairs
+        # VB.NET project referencing C# project (cross-language)
+        assert ("GalaxyWorks.VBLib", "GalaxyWorks.Common") in edge_pairs
 
     def test_galaxyworks_data_consumers(self, graph: DependencyGraph):
         consumers = graph.get_consumers("GalaxyWorks.Data")
@@ -564,9 +569,9 @@ class TestGraphBuilder:
         components = graph.connected_components
         # Should have at least 1 component; exact count depends on namespace/type edges
         assert len(components) >= 1
-        # All 13 nodes should be accounted for
+        # All 15 nodes should be accounted for (13 C# + 1 VB + 1 SSRS)
         total_nodes = sum(len(c) for c in components)
-        assert total_nodes == 13
+        assert total_nodes == 15
 
     def test_serialization_roundtrip(self, graph: DependencyGraph):
         data = graph.to_dict()
@@ -749,9 +754,9 @@ class TestCSharpKeywords:
             (e.source, e.target) for e in graph.all_edges if e.edge_type == "type_usage"
         }
         assert len(type_edges) > 0
-        # project_reference count should be unchanged
+        # project_reference count should be unchanged (15 = 14 original + VBLib→Common)
         ref_edges = [e for e in graph.all_edges if e.edge_type == "project_reference"]
-        assert len(ref_edges) == 14
+        assert len(ref_edges) == 15
 
 
 # ===========================================================================

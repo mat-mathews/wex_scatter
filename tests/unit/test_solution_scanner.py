@@ -48,6 +48,16 @@ SLN_MIXED_TYPES = (
     + "EndProject\n"
 )
 
+SLN_WITH_SSRS = (
+    SLN_HEADER
+    + '# C# project\n'
+    + 'Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSharp", "CSharp\\CSharp.csproj", "{1111}"\n'
+    + "EndProject\n"
+    + "# SSRS report project\n"
+    + 'Project("{F14B399A-7131-4C87-9E4B-1186C45EF12D}") = "Reports", "Reports\\Reports.rptproj", "{5555}"\n'
+    + "EndProject\n"
+)
+
 SLN_DUPLICATE = (
     SLN_HEADER
     + 'Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dup", "Dup\\Dup.csproj", "{AAAA}"\n'
@@ -92,17 +102,27 @@ class TestParseSolutionFile:
         sln = _write_sln(tmp_path, SLN_MIXED_TYPES)
         info = parse_solution_file(sln)
 
-        assert info.project_entries == ["CSharp"]
-        assert len(info.project_paths) == 1
+        assert "Solution Items" not in info.project_entries
 
-    def test_parse_skips_non_csharp(self, tmp_path):
+    def test_parse_includes_vb_and_fsharp(self, tmp_path):
         sln = _write_sln(tmp_path, SLN_MIXED_TYPES)
         info = parse_solution_file(sln)
 
         names = info.project_entries
-        assert "VBProject" not in names
-        assert "FSharp" not in names
+        assert "CSharp" in names
+        assert "VBProject" in names
+        assert "FSharp" in names
         assert "Solution Items" not in names
+        assert len(names) == 3
+
+    def test_parse_includes_ssrs_projects(self, tmp_path):
+        sln = _write_sln(tmp_path, SLN_WITH_SSRS)
+        info = parse_solution_file(sln)
+
+        names = info.project_entries
+        assert "CSharp" in names
+        assert "Reports" in names
+        assert len(names) == 2
 
     def test_parse_backslash_paths_resolved(self, tmp_path):
         sln = _write_sln(tmp_path, SLN_THREE_CSHARP)
@@ -195,10 +215,12 @@ class TestScanSolutions:
         assert "GalaxyWorks" in names
 
         gw = next(s for s in solutions if s.name == "GalaxyWorks")
-        # 12 C# projects, excluding "Solution Items" folder
-        assert len(gw.project_entries) == 12
+        # 14 projects (12 C# + 1 VB.NET + 1 SSRS), excluding "Solution Items" folder
+        assert len(gw.project_entries) == 14
         assert "GalaxyWorks.Data" in gw.project_entries
         assert "GalaxyWorks.WebPortal" in gw.project_entries
+        assert "GalaxyWorks.VBLib" in gw.project_entries
+        assert "GalaxyWorks.Reports" in gw.project_entries
 
     def test_scan_sorted(self, tmp_path):
         _write_sln(tmp_path, SLN_THREE_CSHARP, "Zebra.sln")

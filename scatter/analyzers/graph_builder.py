@@ -99,40 +99,54 @@ def build_dependency_graph(
     graph = DependencyGraph()
     t0 = time.monotonic()
 
-    # Step 1: Discover all .csproj and .cs files.
+    # Step 1: Discover all .NET project files and .cs files.
     # When called from __main__, files are pre-discovered in a single walk
     # shared with solution scanning. Standalone/test callers fall back to
     # walking here.
     if discovered_files is not None:
-        csproj_files = discovered_files[".csproj"]
+        dotnet_project_files = (
+            discovered_files.get(".csproj", [])
+            + discovered_files.get(".vbproj", [])
+            + discovered_files.get(".fsproj", [])
+        )
+        rptproj_files = discovered_files.get(".rptproj", [])
         cs_files = discovered_files[".cs"]
         props_files = discovered_files.get(".props", [])
         targets_files = discovered_files.get(".targets", [])
         logging.info(
-            f"Using pre-discovered files: {len(csproj_files)} .csproj, {len(cs_files)} .cs"
+            f"Using pre-discovered files: {len(dotnet_project_files)} .csproj/.vbproj/.fsproj, "
+            f"{len(rptproj_files)} .rptproj, {len(cs_files)} .cs"
         )
     else:
         exclude_dirs = extract_exclude_dirs(exclude_patterns)
         discovered = walk_and_collect(
-            search_scope, {".csproj", ".cs", ".props", ".targets"}, exclude_dirs
+            search_scope,
+            {".csproj", ".vbproj", ".fsproj", ".rptproj", ".cs", ".props", ".targets"},
+            exclude_dirs,
         )
-        csproj_files = discovered[".csproj"]
+        dotnet_project_files = (
+            discovered.get(".csproj", [])
+            + discovered.get(".vbproj", [])
+            + discovered.get(".fsproj", [])
+        )
+        rptproj_files = discovered.get(".rptproj", [])
         cs_files = discovered[".cs"]
         props_files = discovered.get(".props", [])
         targets_files = discovered.get(".targets", [])
 
     t0a = time.monotonic()
+    rptproj_count_msg = f", {len(rptproj_files)} .rptproj" if rptproj_files else ""
     logging.info(
         f"Graph build step 1 (file discovery): {t0a - t0:.1f}s "
-        f"— {len(csproj_files)} .csproj, {len(cs_files)} .cs"
+        f"— {len(dotnet_project_files)} project files{rptproj_count_msg}, {len(cs_files)} .cs"
     )
 
-    # Step 2: Parse each .csproj → extract metadata + explicit imports (single XML pass)
+    # Step 2: Parse each .csproj/.vbproj/.fsproj → extract metadata + explicit imports (single XML pass)
     project_metadata: Dict[str, Dict[str, Any]] = {}
     project_refs: Dict[str, List[str]] = {}  # project_name -> list of ref include paths
     project_explicit_imports: Dict[str, List[Path]] = {}
 
-    for csproj_path in csproj_files:
+    for csproj_path in dotnet_project_files:
         parsed = parse_csproj(csproj_path, search_scope=search_scope)
         if parsed is None:
             continue
@@ -151,8 +165,20 @@ def build_dependency_graph(
         if parsed["explicit_imports"]:
             project_explicit_imports[project_name] = parsed["explicit_imports"]
 
+    # Step 2a: Parse .rptproj files — SSRS report projects (lightweight, no ProjectReferences)
+    for rptproj_path in rptproj_files:
+        project_name = rptproj_path.stem
+        project_metadata[project_name] = {
+            "path": rptproj_path,
+            "namespace": project_name,
+            "framework": None,
+            "project_style": "ssrs",
+            "output_type": None,
+        }
+        project_refs[project_name] = []
+
     t0b = time.monotonic()
-    logging.info(f"Graph build step 2 (csproj parsing): {t0b - t0a:.1f}s")
+    logging.info(f"Graph build step 2 (project parsing): {t0b - t0a:.1f}s")
 
     # Step 2b: Resolve MSBuild imports (Directory.Build.props/targets + explicit <Import>)
     props_index, targets_index = build_directory_build_index(props_files, targets_files)
@@ -187,7 +213,8 @@ def build_dependency_graph(
     )
 
     # Step 3: Map .cs files to parent projects via reverse index
-    project_dir_index = _build_project_directory_index(csproj_files)
+    all_project_files = dotnet_project_files + rptproj_files
+    project_dir_index = _build_project_directory_index(all_project_files)
     project_cs_files: Dict[str, List[Path]] = defaultdict(list)
 
     for cs_path in cs_files:
@@ -294,7 +321,7 @@ def build_dependency_graph(
     # Step 5: Build edges
 
     # 5a: project_reference edges (from .csproj ProjectReference entries)
-    _build_project_reference_edges(graph, project_refs, csproj_files, project_metadata)
+    _build_project_reference_edges(graph, project_refs, dotnet_project_files, project_metadata)
 
     t3 = time.monotonic()
     logging.info(f"Graph build step 5a (project_reference edges): {t3 - t2:.1f}s")
@@ -483,7 +510,7 @@ def build_dependency_graph(
 def _build_project_reference_edges(
     graph: DependencyGraph,
     project_refs: Dict[str, List[str]],
-    csproj_files: List[Path],
+    dotnet_project_files: List[Path],
     project_metadata: Dict[str, Dict[str, Any]],
 ) -> None:
     """Resolve ProjectReference Include paths and add edges.
@@ -496,7 +523,7 @@ def _build_project_reference_edges(
 
     # Build lookup: normalized path string -> project name
     path_to_name: Dict[str, str] = {}
-    for csproj_path in csproj_files:
+    for csproj_path in dotnet_project_files:
         name = csproj_path.stem
         if name in project_metadata:
             path_to_name[_os.path.normpath(str(csproj_path))] = name
