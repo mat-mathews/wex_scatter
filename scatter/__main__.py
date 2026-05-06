@@ -64,6 +64,9 @@ def main():
             ".props",
             ".targets",
             ".config",
+            ".rdl",
+            ".rdlc",
+            ".rds",
         },
         exclude_dirs,
     )

@@ -72,9 +72,7 @@ class TestBranchChangesCollection:
         # dict already supports `in` — no override needed
         mock_repo.merge_base.return_value = [base]
 
-        diff_item = self._mock_diff_item(
-            "Directory.Build.props", "Directory.Build.props", "M"
-        )
+        diff_item = self._mock_diff_item("Directory.Build.props", "Directory.Build.props", "M")
         base.diff.return_value = [diff_item]
 
         result = analyze_branch_changes("/repo", "feature/x", "main")
@@ -95,9 +93,7 @@ class TestBranchChangesCollection:
         # dict already supports `in` — no override needed
         mock_repo.merge_base.return_value = [base]
 
-        diff_item = self._mock_diff_item(
-            "Directory.Build.targets", "Directory.Build.targets", "M"
-        )
+        diff_item = self._mock_diff_item("Directory.Build.targets", "Directory.Build.targets", "M")
         base.diff.return_value = [diff_item]
 
         result = analyze_branch_changes("/repo", "feature/x", "main")
@@ -159,9 +155,7 @@ class TestBranchChangesCollection:
         # dict already supports `in` — no override needed
         mock_repo.merge_base.return_value = [base]
 
-        props_item = self._mock_diff_item(
-            "Directory.Build.props", "Directory.Build.props", "M"
-        )
+        props_item = self._mock_diff_item("Directory.Build.props", "Directory.Build.props", "M")
         cs_item = self._mock_diff_item("Foo/Bar.cs", "Foo/Bar.cs", "M")
         base.diff.return_value = [props_item, cs_item]
         mock_find.return_value = "Foo/Foo.csproj"
@@ -176,6 +170,7 @@ class TestBranchChangesCollection:
     def test_from_analyzer(self, mock_git, mock_find):
         """Import from the analyzer module works."""
         from scatter.analyzers.git_analyzer import analyze_branch_changes as abc
+
         assert callable(abc)
 
 
@@ -186,11 +181,13 @@ class TestBranchChangesCollection:
 
 class TestImportReverseIndex:
     def test_single_pass_index_build(self):
-        g = _make_graph_with_imports({
-            "A": ["build/wex.common.props", "Directory.Build.props"],
-            "B": ["build/wex.common.props"],
-            "C": [],
-        })
+        g = _make_graph_with_imports(
+            {
+                "A": ["build/wex.common.props", "Directory.Build.props"],
+                "B": ["build/wex.common.props"],
+                "C": [],
+            }
+        )
         index = _build_import_reverse_index(g)
         assert sorted(index["build/wex.common.props"]) == ["A", "B"]
         assert index["Directory.Build.props"] == ["A"]
@@ -204,11 +201,13 @@ class TestImportReverseIndex:
         assert "build\\wex.common.props" not in index
 
     def test_multiple_projects_same_import(self):
-        g = _make_graph_with_imports({
-            "P1": ["shared.props"],
-            "P2": ["shared.props"],
-            "P3": ["shared.props"],
-        })
+        g = _make_graph_with_imports(
+            {
+                "P1": ["shared.props"],
+                "P2": ["shared.props"],
+                "P3": ["shared.props"],
+            }
+        )
         index = _build_import_reverse_index(g)
         assert sorted(index["shared.props"]) == ["P1", "P2", "P3"]
 
@@ -230,11 +229,13 @@ class TestPropsExpansionInGitAnalysis:
             project_changes={},
             changed_config_files=[ConfigFileChange(path="Directory.Build.props", change_type="M")],
         )
-        graph = _make_graph_with_imports({
-            "A": ["Directory.Build.props"],
-            "B": ["Directory.Build.props"],
-            "C": [],
-        })
+        graph = _make_graph_with_imports(
+            {
+                "A": ["Directory.Build.props"],
+                "B": ["Directory.Build.props"],
+                "C": [],
+            }
+        )
         graph_ctx = MagicMock()
         graph_ctx.graph = graph
 

@@ -751,8 +751,7 @@ class TestPatchPropsTargetsPassthrough:
         graph, ff, pf = _build_graph_and_facts(scope)
 
         cs_paths[0].write_text(
-            "namespace ProjectA;\n\n"
-            "public class ProjectAService { public void Changed() {} }\n"
+            "namespace ProjectA;\n\npublic class ProjectAService { public void Changed() {} }\n"
         )
         cs_rel = str(cs_paths[0].relative_to(scope))
 
@@ -997,23 +996,17 @@ class TestCacheConsistency:
         # Modify a .cs file in ProjectB (add a new class usage)
         proj_b_cs = scope / "ProjectB" / "ProjectBService.cs"
         original = proj_b_cs.read_text()
-        proj_b_cs.write_text(
-            original + "\n// Extra comment to trigger content change\n"
-        )
+        proj_b_cs.write_text(original + "\n// Extra comment to trigger content change\n")
 
         # Patch the graph
         changed = ["ProjectB/ProjectB_Main.cs"]
         result = patch_graph(graph1, ff1, pf1, changed, scope)
         assert result.patch_applied is True
-        patched_edges = {
-            (e.source, e.target, e.edge_type) for e in result.graph.all_edges
-        }
+        patched_edges = {(e.source, e.target, e.edge_type) for e in result.graph.all_edges}
 
         # Fresh build from scratch on the same modified codebase
         graph2, _, _ = _build_graph_and_facts(scope)
-        fresh_edges = {
-            (e.source, e.target, e.edge_type) for e in graph2.all_edges
-        }
+        fresh_edges = {(e.source, e.target, e.edge_type) for e in graph2.all_edges}
 
         # Patched and fresh should produce the same edge set
         assert patched_edges == fresh_edges, (

@@ -33,9 +33,7 @@ class TestBuildDirectoryBuildIndex:
         custom_props.parent.mkdir()
         custom_props.write_text("<Project/>")
 
-        props_index, targets_index = build_directory_build_index(
-            [root_props, custom_props], []
-        )
+        props_index, targets_index = build_directory_build_index([root_props, custom_props], [])
 
         assert tmp_path in props_index
         assert props_index[tmp_path] == root_props
@@ -64,9 +62,7 @@ class TestResolveDirectoryBuildImports:
         project_dir.mkdir(parents=True)
 
         props_index, targets_index = build_directory_build_index([root_props], [])
-        result = resolve_directory_build_imports(
-            project_dir, props_index, targets_index, tmp_path
-        )
+        result = resolve_directory_build_imports(project_dir, props_index, targets_index, tmp_path)
 
         assert root_props in result
 
@@ -91,8 +87,8 @@ class TestResolveDirectoryBuildImports:
         sub_props = tmp_path / "tests" / "Directory.Build.props"
         sub_props.parent.mkdir(parents=True)
         sub_props.write_text(
-            '<Project>\n'
-            '  <Import Project="$([MSBuild]::GetPathOfFileAbove(\'Directory.Build.props\', '
+            "<Project>\n"
+            "  <Import Project=\"$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', "
             "'$(MSBuildThisFileDirectory)../'))\"/>\n"
             "</Project>"
         )
@@ -132,12 +128,8 @@ class TestResolveDirectoryBuildImports:
         project_dir = tmp_path / "MyProject"
         project_dir.mkdir()
 
-        props_index, targets_index = build_directory_build_index(
-            [root_props], [root_targets]
-        )
-        result = resolve_directory_build_imports(
-            project_dir, props_index, targets_index, tmp_path
-        )
+        props_index, targets_index = build_directory_build_index([root_props], [root_targets])
+        result = resolve_directory_build_imports(project_dir, props_index, targets_index, tmp_path)
 
         assert root_props in result
         assert root_targets in result
@@ -209,11 +201,7 @@ class TestParseExplicitImports:
         db_props.write_text("<Project/>")
         csproj = tmp_path / "sub" / "MyProject.csproj"
         csproj.parent.mkdir()
-        csproj.write_text(
-            '<Project>\n'
-            '  <Import Project="..\\Directory.Build.props" />\n'
-            "</Project>"
-        )
+        csproj.write_text('<Project>\n  <Import Project="..\\Directory.Build.props" />\n</Project>')
 
         result = _parse_explicit_imports(csproj, tmp_path)
         assert result == []

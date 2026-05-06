@@ -114,6 +114,11 @@ def build_dependency_graph(
         props_files = discovered_files.get(".props", [])
         targets_files = discovered_files.get(".targets", [])
         config_files = discovered_files.get(".config", [])
+        rdl_files = (
+            discovered_files.get(".rdl", [])
+            + discovered_files.get(".rdlc", [])
+            + discovered_files.get(".rds", [])
+        )
         logging.info(
             f"Using pre-discovered files: {len(dotnet_project_files)} .csproj/.vbproj/.fsproj, "
             f"{len(rptproj_files)} .rptproj, {len(cs_files)} .cs"
@@ -122,7 +127,19 @@ def build_dependency_graph(
         exclude_dirs = extract_exclude_dirs(exclude_patterns)
         discovered = walk_and_collect(
             search_scope,
-            {".csproj", ".vbproj", ".fsproj", ".rptproj", ".cs", ".props", ".targets", ".config"},
+            {
+                ".csproj",
+                ".vbproj",
+                ".fsproj",
+                ".rptproj",
+                ".cs",
+                ".props",
+                ".targets",
+                ".config",
+                ".rdl",
+                ".rdlc",
+                ".rds",
+            },
             exclude_dirs,
         )
         dotnet_project_files = (
@@ -135,6 +152,9 @@ def build_dependency_graph(
         props_files = discovered.get(".props", [])
         targets_files = discovered.get(".targets", [])
         config_files = discovered.get(".config", [])
+        rdl_files = (
+            discovered.get(".rdl", []) + discovered.get(".rdlc", []) + discovered.get(".rds", [])
+        )
 
     t0a = time.monotonic()
     rptproj_count_msg = f", {len(rptproj_files)} .rptproj" if rptproj_files else ""
@@ -471,6 +491,23 @@ def build_dependency_graph(
     if include_db_dependencies:
         logging.info(f"Graph build step 6 (DB scanner): {t6 - t5:.1f}s")
 
+    # Build sproc-to-project map from graph nodes (used by Steps 6b+)
+    sproc_to_projects: Dict[str, Set[str]] = defaultdict(set)
+    for node in graph.get_all_nodes():
+        for sproc in node.sproc_references:
+            sproc_to_projects[sproc].add(node.name)
+
+    # Step 6b (optional): RDL scanner → rdl_sproc edges
+    if rdl_files:
+        from scatter.scanners.rdl_scanner import add_rdl_sproc_edges, scan_rdl_files
+
+        rdl_refs = scan_rdl_files(rdl_files, project_dir_index, search_scope)
+        add_rdl_sproc_edges(graph, rdl_refs, sproc_to_projects)
+        t6b = time.monotonic()
+        logging.info(f"Graph build step 6b (RDL scanner): {t6b - t6:.1f}s")
+    else:
+        t6b = t6
+
     # Step 7 (optional): Config DI scanner → config_di edges
     if config_files:
         from scatter.scanners.config_di_scanner import (
@@ -481,7 +518,7 @@ def build_dependency_graph(
         config_refs = scan_config_files(config_files, project_dir_index, search_scope)
         add_config_di_edges(graph, config_refs, type_to_projects)
         t7 = time.monotonic()
-        logging.info(f"Graph build step 7 (config DI scanner): {t7 - t6:.1f}s")
+        logging.info(f"Graph build step 7 (config DI scanner): {t7 - t6b:.1f}s")
     else:
         t7 = t6
 

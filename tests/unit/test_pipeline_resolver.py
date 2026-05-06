@@ -92,10 +92,12 @@ class TestSuffixStripped:
         assert m.strategy == "suffix_stripped"
 
     def test_no_strip_when_exact_exists(self):
-        r = PipelineResolver({
-            "Auth.Service": "pipe-exact",
-            "Auth": "pipe-stripped",
-        })
+        r = PipelineResolver(
+            {
+                "Auth.Service": "pipe-exact",
+                "Auth": "pipe-stripped",
+            }
+        )
         m = r.resolve("Auth.Service")
         assert m.pipeline_name == "pipe-exact"
         assert m.strategy == "exact"

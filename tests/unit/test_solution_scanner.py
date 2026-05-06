@@ -50,7 +50,7 @@ SLN_MIXED_TYPES = (
 
 SLN_WITH_SSRS = (
     SLN_HEADER
-    + '# C# project\n'
+    + "# C# project\n"
     + 'Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSharp", "CSharp\\CSharp.csproj", "{1111}"\n'
     + "EndProject\n"
     + "# SSRS report project\n"

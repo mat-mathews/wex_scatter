@@ -31,30 +31,34 @@ class TestV1BridgePipelineFallback:
             target_project_rel_path_str="Target/Target.csproj",
             triggering_info="N/A",
             final_consumers_data=[
-                {"consumer_path": Path(f"/repo/{consumer_name}/{consumer_name}.csproj"),
-                 "consumer_name": consumer_name}
+                {
+                    "consumer_path": Path(f"/repo/{consumer_name}/{consumer_name}.csproj"),
+                    "consumer_name": consumer_name,
+                }
             ],
             all_results_list=results,
             pipeline_map_dict=pipeline_map,
             solution_file_cache=[],
             batch_job_map={},
             search_scope_path_abs=Path("/repo"),
-            solution_index=MagicMock(
-                get=lambda stem, default=None: solutions.get(stem, default)
-            ),
+            solution_index=MagicMock(get=lambda stem, default=None: solutions.get(stem, default)),
         )
         return results
 
     def test_solution_stem_maps_to_pipeline(self):
         """Solution stem found in pipeline_map — standard path."""
-        solutions = {"Consumer": [MagicMock(path=Path("/repo/App.sln"), name="App.sln", stem="App")]}
+        solutions = {
+            "Consumer": [MagicMock(path=Path("/repo/App.sln"), name="App.sln", stem="App")]
+        }
         results = self._run_bridge({"App": "deploy-app"}, solutions)
         assert len(results) == 1
         assert results[0].pipeline_name == "deploy-app"
 
     def test_consumer_name_fallback_when_solution_misses(self):
         """Solution exists but its stem isn't in pipeline_map — fallback to consumer name."""
-        solutions = {"Consumer": [MagicMock(path=Path("/repo/Other.sln"), name="Other.sln", stem="Other")]}
+        solutions = {
+            "Consumer": [MagicMock(path=Path("/repo/Other.sln"), name="Other.sln", stem="Other")]
+        }
         results = self._run_bridge({"Consumer": "deploy-consumer"}, solutions)
         assert len(results) == 1
         assert results[0].pipeline_name == "deploy-consumer"
@@ -68,14 +72,18 @@ class TestV1BridgePipelineFallback:
 
     def test_no_match_anywhere(self):
         """Neither solution stem nor consumer name in pipeline_map."""
-        solutions = {"Consumer": [MagicMock(path=Path("/repo/Other.sln"), name="Other.sln", stem="Other")]}
+        solutions = {
+            "Consumer": [MagicMock(path=Path("/repo/Other.sln"), name="Other.sln", stem="Other")]
+        }
         results = self._run_bridge({"Unrelated": "deploy-x"}, solutions)
         assert len(results) == 1
         assert results[0].pipeline_name is None
 
     def test_solution_stem_wins_over_consumer_name(self):
         """Both solution stem and consumer name are in pipeline_map — solution wins."""
-        solutions = {"Consumer": [MagicMock(path=Path("/repo/App.sln"), name="App.sln", stem="App")]}
+        solutions = {
+            "Consumer": [MagicMock(path=Path("/repo/App.sln"), name="App.sln", stem="App")]
+        }
         results = self._run_bridge(
             {"App": "deploy-via-solution", "Consumer": "deploy-via-name"},
             solutions,

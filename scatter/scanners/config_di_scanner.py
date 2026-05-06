@@ -13,9 +13,10 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Set
 
 from scatter.core.graph import DependencyEdge, DependencyGraph
+from scatter.scanners._helpers import find_owning_project
 
 _MAX_FILE_SIZE = 1_048_576  # 1 MB — skip oversized config files
 
@@ -68,7 +69,7 @@ def scan_config_files(
             logging.warning(f"Skipping oversized .config file ({file_size:,} bytes): {config_path}")
             continue
 
-        owning_project = _find_owning_project(config_path, project_dir_index)
+        owning_project = find_owning_project(config_path, project_dir_index)
         if owning_project is None:
             continue
 
@@ -148,26 +149,6 @@ def add_config_di_edges(
         logging.info(f"Added {edges_added} config_di edge(s) to graph")
 
     return edges_added
-
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-
-def _find_owning_project(
-    file_path: Path,
-    project_dir_index: Dict[Path, str],
-) -> Optional[str]:
-    """Walk up from a file to find the nearest project directory."""
-    current = file_path.parent
-    while True:
-        if current in project_dir_index:
-            return project_dir_index[current]
-        parent = current.parent
-        if parent == current:
-            return None
-        current = parent
 
 
 def _extract_type_references(

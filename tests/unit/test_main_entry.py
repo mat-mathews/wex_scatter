@@ -4,7 +4,6 @@ from argparse import Namespace
 from unittest.mock import MagicMock, patch
 
 
-
 def _fake_args(**overrides):
     defaults = dict(
         branch_name=None,

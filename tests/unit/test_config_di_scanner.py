@@ -43,9 +43,7 @@ class TestScanConfigFiles:
               </unity>
             </configuration>""",
         )
-        refs = scan_config_files(
-            [config], _project_dir_index(tmp_path), tmp_path
-        )
+        refs = scan_config_files([config], _project_dir_index(tmp_path), tmp_path)
         type_names = {r.type_fqtn for r in refs}
         assert "Foo.Bar.IService" in type_names
         assert "Foo.Bar.ServiceImpl" in type_names
@@ -61,9 +59,7 @@ class TestScanConfigFiles:
               </components>
             </autofac>""",
         )
-        refs = scan_config_files(
-            [config], _project_dir_index(tmp_path), tmp_path
-        )
+        refs = scan_config_files([config], _project_dir_index(tmp_path), tmp_path)
         assert len(refs) == 1
         assert refs[0].type_fqtn == "MyApp.Data.Repository"
         assert refs[0].element_tag == "component"
@@ -78,9 +74,7 @@ class TestScanConfigFiles:
               <register mapTo="Foo.Bar.Service, Foo.Bar" />
             </configuration>""",
         )
-        refs = scan_config_files(
-            [config], _project_dir_index(tmp_path), tmp_path
-        )
+        refs = scan_config_files([config], _project_dir_index(tmp_path), tmp_path)
         # Same FQTN should appear only once
         assert len(refs) == 1
 
@@ -95,25 +89,19 @@ class TestScanConfigFiles:
               </appSettings>
             </configuration>""",
         )
-        refs = scan_config_files(
-            [config], _project_dir_index(tmp_path), tmp_path
-        )
+        refs = scan_config_files([config], _project_dir_index(tmp_path), tmp_path)
         assert refs == []
 
     def test_malformed_xml_skipped(self, tmp_path):
         config = _write_config(tmp_path, "bad.config", "this is not xml at all")
-        refs = scan_config_files(
-            [config], _project_dir_index(tmp_path), tmp_path
-        )
+        refs = scan_config_files([config], _project_dir_index(tmp_path), tmp_path)
         assert refs == []
 
     def test_oversized_file_skipped(self, tmp_path):
         config = tmp_path / "huge.config"
         # Write just over 1 MB
         config.write_text("x" * (1_048_577), encoding="utf-8")
-        refs = scan_config_files(
-            [config], _project_dir_index(tmp_path), tmp_path
-        )
+        refs = scan_config_files([config], _project_dir_index(tmp_path), tmp_path)
         assert refs == []
 
     def test_empty_file_list(self, tmp_path):
@@ -140,9 +128,7 @@ class TestScanConfigFiles:
               <type>MyApp.Plugins.Reporter, MyApp.Plugins</type>
             </plugins>""",
         )
-        refs = scan_config_files(
-            [config], _project_dir_index(tmp_path), tmp_path
-        )
+        refs = scan_config_files([config], _project_dir_index(tmp_path), tmp_path)
         assert len(refs) == 1
         assert refs[0].type_fqtn == "MyApp.Plugins.Reporter"
 
@@ -224,7 +210,9 @@ class TestSamplesIntegration:
             project_dir_index[csproj.parent] = csproj.stem
 
         refs = scan_config_files(config_files, project_dir_index, samples_dir)
-        assert len(refs) >= 2  # unity.config has IDataAccessor + PortalDataService + IHealthMonitor + HealthMonitor
+        assert (
+            len(refs) >= 2
+        )  # unity.config has IDataAccessor + PortalDataService + IHealthMonitor + HealthMonitor
 
         type_names = {r.type_fqtn for r in refs}
         assert "GalaxyWorks.Data.PortalDataService" in type_names

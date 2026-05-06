@@ -28,7 +28,7 @@ class TestParseCsprojExplicitImports:
     def test_system_only_imports_filtered(self, tmp_path):
         csproj = tmp_path / "SystemOnly.csproj"
         csproj.write_text(
-            '<Project>\n'
+            "<Project>\n"
             '  <Import Project="$(MSBuildExtensionsPath)\\foo.props" />\n'
             '  <Import Project="$(MSBuildBinPath)\\Microsoft.CSharp.targets" />\n'
             "</Project>"
@@ -77,9 +77,9 @@ class TestParseCsprojExplicitImports:
         csproj = tmp_path / "App.csproj"
         csproj.write_text(
             '<Project Sdk="Microsoft.NET.Sdk">\n'
-            '  <ItemGroup>\n'
+            "  <ItemGroup>\n"
             '    <ProjectReference Include="Other/Other.csproj" />\n'
-            '  </ItemGroup>\n'
+            "  </ItemGroup>\n"
             "</Project>"
         )
         result = parse_csproj(csproj, search_scope=tmp_path)
@@ -185,7 +185,7 @@ class TestCredentialScanning:
         assert result == content
 
     def test_preserves_non_matching_lines(self):
-        content = "line one\npassword = \"secret123\"\nline three"
+        content = 'line one\npassword = "secret123"\nline three'
         result = redact_credentials(content)
         assert "line one" in result
         assert "line three" in result
