@@ -357,7 +357,7 @@ class TestParseCsprojAllReferences:
 
     def test_multiple_references(self):
         """Test against consumer apps that reference GalaxyWorks.Data and GalaxyWorks.Common."""
-        csproj = SAMPLES / "MyGalaxyConsumerApp" / "MyGalaryConsumerApp.csproj"
+        csproj = SAMPLES / "MyGalaxyConsumerApp" / "MyGalaxyConsumerApp.csproj"
         if not csproj.exists():
             pytest.skip("Sample project not available")
         result = parse_csproj_all_references(csproj)
@@ -469,8 +469,8 @@ class TestGraphBuilder:
             "MyDotNetApp",
             "MyDotNetApp.Consumer",
             "MyDotNetApp2.Exclude",
-            "MyGalaryConsumerApp",
-            "MyGalaryConsumerApp2",
+            "MyGalaxyConsumerApp",
+            "MyGalaxyConsumerApp2",
         }
         actual = {n.name for n in graph.get_all_nodes()}
         assert actual == expected
@@ -483,8 +483,8 @@ class TestGraphBuilder:
         edge_pairs = {(e.source, e.target) for e in ref_edges}
         # Original 6 edges
         assert ("MyDotNetApp.Consumer", "MyDotNetApp") in edge_pairs
-        assert ("MyGalaryConsumerApp", "GalaxyWorks.Data") in edge_pairs
-        assert ("MyGalaryConsumerApp2", "GalaxyWorks.Data") in edge_pairs
+        assert ("MyGalaxyConsumerApp", "GalaxyWorks.Data") in edge_pairs
+        assert ("MyGalaxyConsumerApp2", "GalaxyWorks.Data") in edge_pairs
         assert ("GalaxyWorks.WebPortal", "GalaxyWorks.Data") in edge_pairs
         assert ("GalaxyWorks.BatchProcessor", "GalaxyWorks.Data") in edge_pairs
         assert ("GalaxyWorks.BatchProcessor", "GalaxyWorks.WebPortal") in edge_pairs
@@ -494,7 +494,7 @@ class TestGraphBuilder:
         assert ("GalaxyWorks.Api", "GalaxyWorks.Common") in edge_pairs
         assert ("GalaxyWorks.Data.Tests", "GalaxyWorks.Data") in edge_pairs
         assert ("GalaxyWorks.Data.Tests", "GalaxyWorks.Common") in edge_pairs
-        assert ("MyGalaryConsumerApp", "GalaxyWorks.Common") in edge_pairs
+        assert ("MyGalaxyConsumerApp", "GalaxyWorks.Common") in edge_pairs
         # Hybrid AST false-positive test projects
         assert ("GalaxyWorks.DevTools", "GalaxyWorks.Data") in edge_pairs
         assert ("GalaxyWorks.Notifications", "GalaxyWorks.Data") in edge_pairs
@@ -502,8 +502,8 @@ class TestGraphBuilder:
     def test_galaxyworks_data_consumers(self, graph: DependencyGraph):
         consumers = graph.get_consumers("GalaxyWorks.Data")
         consumer_names = {c.name for c in consumers}
-        assert "MyGalaryConsumerApp" in consumer_names
-        assert "MyGalaryConsumerApp2" in consumer_names
+        assert "MyGalaxyConsumerApp" in consumer_names
+        assert "MyGalaxyConsumerApp2" in consumer_names
         assert "GalaxyWorks.WebPortal" in consumer_names
         assert "GalaxyWorks.BatchProcessor" in consumer_names
 

@@ -1,6 +1,8 @@
 # Scatter
 
-Scatter is a dependency and risk analysis tool for .NET codebases. Point it at a project and it tells you what depends on it, how tightly coupled those consumers are, and which pipelines are involved.
+Someone asks "what breaks if we change this?" and three people get in a room to guess. Scatter replaces the room.
+
+Point it at a .NET project, a feature branch, a stored procedure, or just a plain-English work request — it traces every consumer, scores the coupling, maps the pipelines, and tells you the risk. Not a guess. Structural data from the actual codebase.
 
 [![CI](https://github.com/ORG/REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/ORG/REPO/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -15,7 +17,7 @@ cd REPO
 docker build -t scatter .
 ```
 
-The repo ships with 13 sample .NET projects in the `samples/` directory. Analyze `GalaxyWorks.Data` to see what depends on it and which pipelines are involved:
+The repo ships with 13 sample .NET projects. Analyze `GalaxyWorks.Data` to see who depends on it:
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run -v "$(pwd)":/workspace scatter \
@@ -42,9 +44,9 @@ Filter: 13 → 9 project refs[graph] → 8 test-excluded[graph] → 7 namespace
   GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
   GalaxyWorks.Api                              7.1       0       2    1.00 GalaxyWorks.sln
   GalaxyWorks.DevTools                         4.9       0       1    1.00 GalaxyWorks.sln
-  MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
+  MyGalaxyConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
   GalaxyWorks.Notifications                    2.8       0       1    1.00 GalaxyWorks.sln
-  MyGalaryConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
+  MyGalaxyConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
 
   Pipelines affected: 5
     galaxyworks-api-az-cd (1 project(s))
@@ -61,11 +63,11 @@ Filter: 13 → 9 project refs[graph] → 8 test-excluded[graph] → 7 namespace
 Analysis complete. 7 consumer(s) found across 1 target(s).
 ```
 
-Scatter narrowed 13 projects down to 7 real consumers of GalaxyWorks.Data (test projects are excluded automatically), ranked them by coupling, and resolved 5 CI/CD pipelines grouped with their consumer projects.
+13 projects in scope. 7 actual consumers. Ranked by coupling. 5 pipelines mapped. Test projects excluded automatically. That's the answer to "what breaks?" in under 3 seconds.
 
 ### Pipeline mapping
 
-The pipeline CSV maps application names to CI/CD pipeline names. Generate it from the app-config repo:
+The pipeline CSV maps consumer project names to CI/CD pipeline names. Generate it from your app-config repo:
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run --rm \
@@ -77,9 +79,22 @@ MSYS_NO_PATHCONV=1 docker run --rm \
         --output /workspace/examples/pipeline_to_app_mapping.csv
 ```
 
-Scatter uses layered matching to resolve consumer projects to pipeline names: exact match first, then case-insensitive, suffix-stripped (e.g., `Auth.Service` matches key `Auth`), and prefix matching (e.g., key `MyApp` matches `MyApp.Data.Migrations`). When the automatic resolver can't find a match, add manual entries to `examples/pipeline_manual_overrides.csv` (same schema, `source=manual`). Scatter loads both files; manual entries take precedence.
+Scatter uses layered matching (exact → case-insensitive → suffix-stripped → prefix) to resolve names. When it can't match, add manual entries to `examples/pipeline_manual_overrides.csv`. Manual entries take precedence.
 
-You can also trace stored procedures back to their consumers — coupling that's invisible in project references:
+---
+
+## Six ways in
+
+| Mode | The question it answers |
+|------|------------------------|
+| `--target-project` | Who consumes this project? |
+| `--branch-name` | What's the blast radius of this branch? |
+| `--stored-procedure` | Which C# services call this sproc? |
+| `--sow` / `--sow-file` | What's the blast radius of this work request? (plain English in, risk-rated tree out) |
+| `--graph` | What's the health of this codebase? (coupling, cycles, domain clusters) |
+| `--pr-risk` | How risky is this PR? (GREEN/YELLOW/RED across 7 dimensions) |
+
+Stored procedures are the invisible coupling that project references don't show. Scatter traces sproc callers through string literals in `.cs` files:
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run -v "$(pwd)":/workspace scatter \
@@ -89,29 +104,33 @@ MSYS_NO_PATHCONV=1 docker run -v "$(pwd)":/workspace scatter \
 
 ---
 
-## Other workflows
+## How it works
 
-- **PR risk scoring** — score a branch before merge across coupling, blast radius, and database dimensions. GREEN/YELLOW/RED composite with a [GitHub Action template](tools/github-action/scatter-pr-risk.yml) for automated PR comments. See [PR Risk Scoring](docs_site/docs/usage/pr-risk.md).
+Scatter walks your `.csproj` files and traces dependency chains through project references, `using` statements, class usage, and stored procedure calls. Each stage narrows the set — the filter line in the output shows exactly where projects got ruled out.
 
-- **Impact analysis / SOW scoping** — analyze a plain-English work request, find affected targets and consumers, and generate a first-pass effort estimate. Requires `GOOGLE_API_KEY` for AI-assisted steps. Core analysis does not require an API key. See [Impact Analysis](docs_site/docs/usage/impact-analysis.md).
+First run builds a dependency graph and caches it (~2.6s for 250 projects, ~39s for 800). After that, Scatter detects changes via `git diff` and patches incrementally — typical edits take ~10ms, 100-950x faster than rebuilding.
 
-- **Dependency graph** — full project graph with coupling scores, cycle detection, and domain clustering. See [Dependency Graph](docs_site/docs/usage/dependency-graph.md).
-
-For platform-specific Docker examples (PowerShell, macOS, Git Bash), cache volumes, and output file mounts, see [Docker](docs_site/docs/usage/docker.md).
+You never configure this. It just happens.
 
 ---
 
-## How it works
+## CI integration
 
-Scatter scans `.csproj` files and traces dependency chains through project references, `using` statements, and class/sproc usage. Each stage narrows aggressively — the filter line in the output shows exactly where projects were cut and why.
+Every PR can get an automatic risk score:
 
-On first run it builds a dependency graph and caches it. Subsequent runs patch incrementally via `git diff`.
+```bash
+scatter --branch-name feature/my-change --pr-risk \
+  --repo-path . --search-scope . \
+  --output-format markdown --collapsible
+```
+
+GREEN/YELLOW/RED across 7 dimensions, posted as a PR comment. There's a [GitHub Action template](tools/github-action/scatter-pr-risk.yml) ready to drop in.
 
 ---
 
 ## Documentation
 
-The full docs live in `docs_site/`. Serve them locally:
+Full docs live in `docs_site/`. Serve them locally:
 
 ```bash
 # Via Docker

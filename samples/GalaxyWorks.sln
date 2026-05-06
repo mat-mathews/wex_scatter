@@ -17,9 +17,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GalaxyWorks.Data.Tests", "G
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyDotNetApp.Consumer", "MyDotNetApp.Consumer\MyDotNetApp.Consumer.csproj", "{A7B8C9D0-E1F2-3456-ABCD-567890123456}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyGalaryConsumerApp", "MyGalaxyConsumerApp\MyGalaryConsumerApp.csproj", "{B8C9D0E1-F2A3-4567-BCDE-678901234567}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyGalaxyConsumerApp", "MyGalaxyConsumerApp\MyGalaxyConsumerApp.csproj", "{B8C9D0E1-F2A3-4567-BCDE-678901234567}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyGalaryConsumerApp2", "MyGalaxyConsumerApp2\MyGalaryConsumerApp2.csproj", "{C9D0E1F2-A3B4-5678-CDEF-789012345678}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyGalaxyConsumerApp2", "MyGalaxyConsumerApp2\MyGalaxyConsumerApp2.csproj", "{C9D0E1F2-A3B4-5678-CDEF-789012345678}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyDotNetApp2.Exclude", "MyDotNetApp2.Exclude\MyDotNetApp2.Exclude.csproj", "{D0E1F2A3-B4C5-6789-DEFA-890123456789}"
 EndProject

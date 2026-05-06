@@ -127,11 +127,13 @@ __main__.py: parse args, load config, build ModeContext
         Stage 3: filter by namespace usage
         Stage 4: filter by class name (optional, AST-confirmed in hybrid mode)
         Stage 5: filter by method name (optional, AST-confirmed in hybrid mode)
-    --> graph_enrichment: enrich_legacy_results() (if graph available)
+    --> graph_enrichment: enrich_consumer_results() (if graph available)
     --> v1_bridge: map to pipelines, solutions, batch jobs
   --> dispatch_legacy_output()
     --> console_reporter | json_reporter | csv_reporter | markdown_reporter
 ```
+
+> **Naming note:** The code calls this `enrich_legacy_results()` — "legacy" refers to the original target/git/sproc output format (flat consumer list), as distinct from the impact analysis tree format. It's not deprecated code — just the enrichment path for the flat-list modes.
 
 ### Git Branch Mode
 
@@ -142,7 +144,7 @@ __main__.py: parse args, load config, build ModeContext
     --> type_scanner: extract_type_names_from_content() per changed file
     --> [optional] ai_provider: extract_affected_symbols() (hybrid mode)
     --> consumer_analyzer: find_consumers() per changed project/type
-    --> graph_enrichment: enrich_legacy_results()
+    --> graph_enrichment: enrich_consumer_results()
   --> dispatch_legacy_output()
 ```
 

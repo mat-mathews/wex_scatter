@@ -23,7 +23,7 @@ scatter --branch-name feature/new-widget --repo-path .
   GalaxyWorks.WebPortal                       12.7       1       1    0.50 GalaxyWorks.sln
   GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
   GalaxyWorks.Api                              7.1       0       2    1.00 GalaxyWorks.sln
-  MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
+  MyGalaxyConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
 
 Analysis complete. 6 consumer(s) found across 2 target(s).
 ```
@@ -57,7 +57,7 @@ scatter \
   --google-api-key $GOOGLE_API_KEY
 ```
 
-Use default for quick checks and CI pipelines where speed matters and false positives are acceptable. Use hybrid when precision matters -- a complex PR with many types per file, or when you need a clean report for a review meeting.
+Use default for quick checks and CI — fast enough, and false positives don't matter. Use hybrid when precision matters — code reviews, complicated PRs with many types per file, or when you need a clean report for a review meeting.
 
 The practical difference: on a branch that touches 15 files across 3 projects, regex might report 40 types. Hybrid might report 12. Both find the same consumers for the types they do report. The difference is in the starting set.
 

@@ -309,7 +309,7 @@ Optional tree-sitter validation layer (`--parser-mode hybrid`): regex finds cand
 
 | Metric | Value |
 |--------|-------|
-| Test count | ~800 across unit and integration |
+| Test count | ~1,490 across unit and integration |
 | Coverage | ~87% |
 | Output formats | 6 (console, JSON, CSV, markdown, Mermaid, pipelines) |
 | Analysis modes | 6 (target, branch, sproc, graph, impact, pr-risk) |

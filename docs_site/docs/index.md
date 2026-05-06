@@ -8,13 +8,13 @@ scatter --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj --se
 
 ```
 Search scope: /code/scatter (scanned 13 projects, 35 files)
-Filter: 13 → 9 project refs[graph] → 8 namespace
+Filter: 13 → 9 project refs[graph] → 8 test-excluded[graph] → 7 namespace
 
 ============================================================
   Consumer Analysis
 ============================================================
   Target: GalaxyWorks.Data (samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj)
-  Consumers: 8
+  Consumers: 7
 
   Consumer                                   Score  Fan-In Fan-Out Instab. Solutions
   ---------------------------------------- ------- ------- ------- ------- -------------------------
@@ -22,15 +22,14 @@ Filter: 13 → 9 project refs[graph] → 8 namespace
   GalaxyWorks.BatchProcessor                  10.8       0       2    1.00 GalaxyWorks.sln
   GalaxyWorks.Api                              7.1       0       2    1.00 GalaxyWorks.sln
   GalaxyWorks.DevTools                         4.9       0       1    1.00 GalaxyWorks.sln
-  MyGalaryConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
-  GalaxyWorks.Data.Tests                       3.5       0       2    1.00 GalaxyWorks.sln
+  MyGalaxyConsumerApp                          4.3       0       2    1.00 GalaxyWorks.sln
   GalaxyWorks.Notifications                    2.8       0       1    1.00 GalaxyWorks.sln
-  MyGalaryConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
+  MyGalaxyConsumerApp2                         1.8       0       1    1.00 GalaxyWorks.sln
 
-Analysis complete. 8 consumer(s) found across 1 target(s).
+Analysis complete. 7 consumer(s) found across 1 target(s).
 ```
 
-Eight consumers. Now you know who to warn before you merge.
+Seven consumers (test projects excluded automatically). Now you know who to warn before you merge.
 
 ---
 
@@ -69,11 +68,11 @@ After that, Scatter detects what changed via `git diff` and patches incrementall
 
 You never pass a flag for this. You never configure it. It just happens.
 
-> **How this works:** Scatter maintains a content-hashed graph cache with git-aware invalidation. See [Graph Engine](reference/graph-engine.md) for the full story, or [Benchmarks](reference/benchmarks.md) for reproducible numbers on synthetic codebases.
+> **Under the hood:** Scatter hashes file contents and tracks git HEAD. When something changes, it patches the cache surgically instead of rebuilding. See [Graph Engine](reference/graph-engine.md) for the full story, or [Benchmarks](reference/benchmarks.md) for reproducible numbers.
 
 ## Built to last
 
-Comprehensive test suite. Modular Python package. Actively developed by team Athena.
+~1,500 tests. Modular Python package. Used in production.
 
 ## Where to go from here
 
