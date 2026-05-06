@@ -34,15 +34,15 @@ All claims below are grounded in:
 | **Implicit `Directory.Build.props/.targets`** | ✅ `msbuild_import_scanner.py` — nearest-ancestor walk + `GetPathOfFileAbove` parent chaining, integrated in `graph_builder.py` step 2b as `msbuild_import` edges | ✅ `Find-NearestFileInAncestors` walks up from each project dir, attaches nearest to `PropsTargetsMap` (lines ~548-620) |
 | `namespace_usage` (derived: A uses namespace matching B's) | ✅ `graph_builder.py:302-331` (step 5b) | ❌ |
 | `type_usage` (derived: A declares T, B references T) | ✅ `graph_builder.py:333-418` (step 5c) with per-file scope gate | ❌ (but `Analyze-Real*` does a narrower variant for config DI) |
-| **Soft refs: config-based DI** (type FQTN in .config) | ❌ | ✅ `Find-ConfigFilesReferencingTypesWithNamespaces` |
-| **Soft refs: SSRS .rdl → sproc** | ❌ (scatter scans sproc refs inside .cs only, via `db_scanner`) | ✅ `Find-RdlFilesReferencingStoredProcs` |
+| **Soft refs: config-based DI** (type FQTN in .config) | ✅ `config_di_scanner.py` — scans assembly-qualified type names in .config XML, creates `config_di` edges | ✅ `Find-ConfigFilesReferencingTypesWithNamespaces` |
+| **Soft refs: SSRS .rdl → sproc** | ✅ `rdl_scanner.py` — extracts sproc names from `<CommandText>` in .rdl/.rdlc/.rds, creates `rdl_sproc` edges | ✅ `Find-RdlFilesReferencingStoredProcs` |
 | **Soft refs: plugin XML** (`AppMonitoringTypes.xml`, `RegisteredTypes.xml`) | ❌ | ✅ `Find-PluginXmlFilesReferencingTypes` |
 | Stored-proc refs in source | ✅ `db_scanner.py` with comment stripping, configurable prefixes, reuses content cache | ❌ (CDH only trips on sproc name when `.sql` file itself changes) |
 | EF DbSet/DbContext | ✅ `db_scanner.py` | ❌ |
 | Direct SQL literals (SELECT/INSERT/…) | ✅ `db_scanner.py` | ❌ |
 | Connection strings | ✅ `db_scanner.py` | ❌ |
-| `.rptproj` (SSRS projects) | ❌ (`solution_scanner._CS_PROJECT_GUIDS` only whitelists two C# GUIDs) | ✅ `.rdl` files attribute to nearest `.rptproj`, which is a gateable unit |
-| `.vbproj` / `.fsproj` | ❌ | ❌ |
+| `.rptproj` (SSRS projects) | ✅ `solution_scanner._SUPPORTED_PROJECT_GUIDS` includes SSRS GUID; `.rptproj` parsed as graph nodes with `project_style="ssrs"` | ✅ `.rdl` files attribute to nearest `.rptproj`, which is a gateable unit |
+| `.vbproj` / `.fsproj` | ✅ GUIDs added to `_SUPPORTED_PROJECT_GUIDS`; parsed via existing `parse_csproj()` (same MSBuild schema) | ❌ |
 
 ## 3. Change-type classification — CDH has a gating taxonomy, scatter doesn't
 
@@ -96,9 +96,9 @@ Past graph + BFS, CDH spends ~70% of its code on decisions scatter has no analog
 ### CDH's strengths (things scatter doesn't do)
 
 1. ~~**MSBuild implicit imports**~~ — **CLOSED.** Scatter now has `msbuild_import_scanner.py` with nearest-ancestor walk + `GetPathOfFileAbove` parent chaining, plus explicit `<Import>` extraction in `project_scanner._extract_explicit_imports()`. Integrated in `graph_builder.py` step 2b. 21 tests cover ancestor resolution, chaining, standalone overrides, and system-import filtering.
-2. **Soft-reference detection** — config DI (`Find-ConfigFilesReferencingTypesWithNamespaces`), RDL→sproc (`Find-RdlFilesReferencingStoredProcs`), plugin XML (`Find-PluginXmlFilesReferencingTypes`). These are real runtime dependencies that compile-time graphs don't see.
+2. ~~**Soft-reference detection**~~ — **PARTIALLY CLOSED.** Config DI scanning (`config_di_scanner.py`) and RDL→sproc scanning (`rdl_scanner.py`) are implemented with `config_di` and `rdl_sproc` edge types. Plugin XML (`Find-PluginXmlFilesReferencingTypes`) remains open — deferred until actual plugin XML files from the monolith are available for testing.
 3. **File-type coverage** — CDH classifies 25+ file extensions into gating categories. Scatter ingests `.cs/.csproj/.sln/.props/.targets` but nothing beyond that. A PR that changes only `.cshtml`, `.razor`, `.json`, `.xml`, `.resx`, images, or `.rdl` produces zero nodes/edges in scatter.
-4. **`.rptproj` support** — SSRS projects are first-class gateable units. Scatter ignores them.
+4. ~~**`.rptproj` support**~~ — **CLOSED.** `solution_scanner._SUPPORTED_PROJECT_GUIDS` includes the SSRS GUID. `.rptproj` files are parsed as graph nodes. `.rdl` files within them are scanned for sproc references via `rdl_scanner.py`.
 5. **Decision framework / CD gating taxonomy** — the `ChangeType` upgrade lattice + build-only suppression is a thoughtful design for avoiding CD-pipeline spam on metadata-only changes. Scatter has nothing equivalent.
 6. **Pipeline mapping layer** — `pipeline-mappings.json` + YAML-derived artifact patterns → project → pipeline mapping. Scatter uses `pipeline_to_app_mapping.csv` for runtime mapping; a YAML-to-CSV converter exists (`tools/parse_pipeline_artifacts.py`) but YAML introspection is not integrated into the runtime.
 7. **Method-level impact (Analyze-Real*)** — fetches the unified diff and extracts changed method names, then uses Roslyn to resolve references. Scatter has method-level *filtering* (`consumer_analyzer.find_consumers_with_method_filter()`) via regex pattern matching, but no Roslyn AST or git-hunk-level method extraction.
@@ -112,8 +112,8 @@ Past graph + BFS, CDH spends ~70% of its code on decisions scatter has no analog
 |---|---|---|---|---|
 | ~~1~~ | ~~No `Directory.Build.props/.targets` indexing~~ | ~~High~~ | ~~S~~ | **CLOSED.** `msbuild_import_scanner.py` — nearest-ancestor walk + `GetPathOfFileAbove` chaining. Integrated in `graph_builder.py` step 2b. 21 tests. |
 | ~~2~~ | ~~No `<Import>` parsing in `parse_csproj`~~ | ~~High~~ | ~~S~~ | **CLOSED.** `project_scanner._extract_explicit_imports()` — single-pass XML, filters SDK imports, resolves `$(MSBuildThisFileDirectory)`. 6 tests. |
-| 3 | No soft-reference scanners (config/RDL/plugin XML) | **High** | M | New scanner modules; feed them from the unified walk by widening `walk_and_collect` extensions to `{.config, .xml, .rdl, .rds, .rdlc}`. |
-| 4 | No `.rptproj` / `.vbproj` / `.fsproj` | **Medium** | S for `.rptproj` (GUID whitelist + rptproj-specific parser); M for full MSBuild coverage | `solution_scanner._CS_PROJECT_GUIDS` currently whitelists only C# GUIDs. |
+| ~~3~~ | ~~No soft-reference scanners (config/RDL/plugin XML)~~ | ~~High~~ | ~~M~~ | **PARTIALLY CLOSED.** `config_di_scanner.py` (config DI, 14 tests) and `rdl_scanner.py` (RDL→sproc, 13 tests). Plugin XML deferred — no monolith fixtures available. |
+| ~~4~~ | ~~No `.rptproj` / `.vbproj` / `.fsproj`~~ | ~~Medium~~ | ~~S~~ | **CLOSED.** `_SUPPORTED_PROJECT_GUIDS` expanded with VB.NET, F#, SSRS GUIDs. `.vbproj`/`.fsproj` parsed via `parse_csproj()`. `.rptproj` as lightweight graph nodes. |
 | 5 | No change-type classification / gating taxonomy | **Medium** | M | Add a `ChangeType` to consumer/impact analyzer outputs. |
 | 6 | No pipeline-mapping decision layer | **Medium** | M | `scatter/reports` has pipeline mapping infrastructure; needs the include/exclude regex + threshold gate on top. |
 | 7 | Step 2 csproj parse sequential | Low | S | Parallelize the same way step 4 is parallelized; ~15-20s saved. |
@@ -161,7 +161,7 @@ They solve complementary halves of the problem and could be composed:
                  │  Unified walk · facts cache · incremental    │
                  │  patch · full edge graph (project_ref +      │
                  │  msbuild_import + namespace + type + sproc   │
-                 │  + EF + SQL)                                 │
+                 │  + EF + SQL + config_di + rdl_sproc)         │
                  └──────────────────┬───────────────────────────┘
                                     │  exports graph.json +
                                     │  file_facts.json
@@ -182,11 +182,11 @@ They solve complementary halves of the problem and could be composed:
 
 Option (2) is lower-risk and preserves the CDH team's institutional knowledge of their pipeline mapping. Option (3) is cleaner long-term.
 
-The hybrid also means scatter gets pushed on the gaps it has (soft refs, .rptproj) — because the CDH layer consuming the graph would be broken without them, which is the right forcing function.
+The hybrid also means scatter gets pushed on its remaining gaps (plugin XML, change-type classification, pipeline gating) — because the CDH layer consuming the graph would be broken without them, which is the right forcing function.
 
 ## 10. Bottom line
 
-- **Not redundant; complementary.** They address different ends of the pipeline: scatter is the better indexer (richer edges, sounder caching, better performance per LOC, more extensible), CDH is the better policy layer (change-type classification, pipeline gating, soft refs).
-- **Scatter's former high-severity gaps are closed** — `Directory.Build.*` implicit imports, explicit `<Import>` parsing, and test-project exclusion are all implemented and tested. **Remaining gaps are soft-reference scanning, `.rptproj` support, change-type classification, and the pipeline decision layer.**
+- **Not redundant; complementary.** They address different ends of the pipeline: scatter is the better indexer (richer edges, sounder caching, better performance per LOC, more extensible), CDH is the better policy layer (change-type classification, pipeline gating).
+- **Scatter's indexing gaps are nearly closed** — `Directory.Build.*` imports, explicit `<Import>` parsing, test-project exclusion, config DI scanning, RDL→sproc scanning, and `.rptproj`/`.vbproj`/`.fsproj` support are all implemented and tested. **Remaining gaps are plugin XML scanning (deferred), change-type classification, and the pipeline decision layer.**
 - **CDH's correctness gaps are architectural** — no derived edges means entire classes of dependency go undetected, and the full-cache-invalidation model is a ceiling on its warm-path performance that won't come down without a v2 cache design.
 - **The convergent path**: scatter indexes, CDH-style layer decides. Both codebases shrink; neither's strengths are lost.

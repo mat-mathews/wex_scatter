@@ -3,7 +3,6 @@
 from pathlib import Path
 
 
-
 class TestVersionConsistency:
     def test_pyproject_matches_version_py(self):
         """pyproject.toml version must match scatter/__version__.py."""

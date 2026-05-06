@@ -451,10 +451,11 @@ class TestGraphBuilder:
         assert graph.edge_count > 0
 
     def test_node_count(self, graph: DependencyGraph):
-        # 13 real .csproj files in repo (excluding temp_test_data)
+        # 15 real project files in repo (excluding temp_test_data)
         # Original 8 + GalaxyWorks.Common, GalaxyWorks.Api, GalaxyWorks.Data.Tests
         # + GalaxyWorks.DevTools, GalaxyWorks.Notifications
-        assert graph.node_count == 13
+        # + GalaxyWorks.VBLib, GalaxyWorks.Reports
+        assert graph.node_count == 15
 
     def test_expected_projects_present(self, graph: DependencyGraph):
         expected = {
@@ -466,6 +467,8 @@ class TestGraphBuilder:
             "GalaxyWorks.Data.Tests",
             "GalaxyWorks.DevTools",
             "GalaxyWorks.Notifications",
+            "GalaxyWorks.VBLib",
+            "GalaxyWorks.Reports",
             "MyDotNetApp",
             "MyDotNetApp.Consumer",
             "MyDotNetApp2.Exclude",
@@ -476,9 +479,9 @@ class TestGraphBuilder:
         assert actual == expected
 
     def test_project_reference_edges(self, graph: DependencyGraph):
-        """There should be 14 project_reference edges."""
+        """There should be 15 project_reference edges (VBLib adds one ref to Common)."""
         ref_edges = [e for e in graph.all_edges if e.edge_type == "project_reference"]
-        assert len(ref_edges) == 14
+        assert len(ref_edges) == 15
 
         edge_pairs = {(e.source, e.target) for e in ref_edges}
         # Original 6 edges
@@ -498,6 +501,15 @@ class TestGraphBuilder:
         # Hybrid AST false-positive test projects
         assert ("GalaxyWorks.DevTools", "GalaxyWorks.Data") in edge_pairs
         assert ("GalaxyWorks.Notifications", "GalaxyWorks.Data") in edge_pairs
+        # VB.NET project referencing C# project (cross-language)
+        assert ("GalaxyWorks.VBLib", "GalaxyWorks.Common") in edge_pairs
+
+    def test_config_di_edge_exists(self, graph: DependencyGraph):
+        """Config DI scanner should create an edge from Api → Data (unity.config)."""
+        config_edges = [e for e in graph.all_edges if e.edge_type == "config_di"]
+        assert len(config_edges) >= 1
+        edge_pairs = {(e.source, e.target) for e in config_edges}
+        assert ("GalaxyWorks.Api", "GalaxyWorks.Data") in edge_pairs
 
     def test_galaxyworks_data_consumers(self, graph: DependencyGraph):
         consumers = graph.get_consumers("GalaxyWorks.Data")
@@ -564,9 +576,9 @@ class TestGraphBuilder:
         components = graph.connected_components
         # Should have at least 1 component; exact count depends on namespace/type edges
         assert len(components) >= 1
-        # All 13 nodes should be accounted for
+        # All 15 nodes should be accounted for (13 C# + 1 VB + 1 SSRS)
         total_nodes = sum(len(c) for c in components)
-        assert total_nodes == 13
+        assert total_nodes == 15
 
     def test_serialization_roundtrip(self, graph: DependencyGraph):
         data = graph.to_dict()
@@ -689,8 +701,22 @@ class TestCSharpKeywords:
     def test_contains_reserved_keywords(self):
         from scatter.core.patterns import CSHARP_KEYWORDS
 
-        for kw in ("class", "void", "string", "int", "return", "public", "static",
-                    "namespace", "using", "if", "else", "while", "bool", "null"):
+        for kw in (
+            "class",
+            "void",
+            "string",
+            "int",
+            "return",
+            "public",
+            "static",
+            "namespace",
+            "using",
+            "if",
+            "else",
+            "while",
+            "bool",
+            "null",
+        ):
             assert kw in CSHARP_KEYWORDS, f"Missing reserved keyword: {kw}"
 
     def test_contains_contextual_keywords(self):
@@ -702,8 +728,16 @@ class TestCSharpKeywords:
     def test_excludes_known_type_names(self):
         from scatter.core.patterns import CSHARP_KEYWORDS
 
-        for name in ("PortalDataService", "StringBuilder", "IDisposable",
-                      "Dictionary", "List", "Task", "Exception", "String"):
+        for name in (
+            "PortalDataService",
+            "StringBuilder",
+            "IDisposable",
+            "Dictionary",
+            "List",
+            "Task",
+            "Exception",
+            "String",
+        ):
             assert name not in CSHARP_KEYWORDS, f"Type name wrongly in keywords: {name}"
 
     def test_minimum_count(self):
@@ -745,13 +779,11 @@ class TestCSharpKeywords:
             exclude_patterns=["*/bin/*", "*/obj/*", "*/temp_test_data/*"],
         )
         # Type usage edges should still exist -- keywords are never type names
-        type_edges = {
-            (e.source, e.target) for e in graph.all_edges if e.edge_type == "type_usage"
-        }
+        type_edges = {(e.source, e.target) for e in graph.all_edges if e.edge_type == "type_usage"}
         assert len(type_edges) > 0
-        # project_reference count should be unchanged
+        # project_reference count should be unchanged (15 = 14 original + VBLib→Common)
         ref_edges = [e for e in graph.all_edges if e.edge_type == "project_reference"]
-        assert len(ref_edges) == 14
+        assert len(ref_edges) == 15
 
 
 # ===========================================================================
@@ -834,12 +866,7 @@ class TestScopeGate:
             "  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>\n"
             "</Project>\n"
         )
-        (proj_b / "Widget.cs").write_text(
-            "namespace ProjectB\n"
-            "{\n"
-            "    public class Widget { }\n"
-            "}\n"
-        )
+        (proj_b / "Widget.cs").write_text("namespace ProjectB\n{\n    public class Widget { }\n}\n")
 
         # ProjectA: references ProjectB, has two files
         proj_a = tmp_path / "ProjectA"
@@ -909,9 +936,7 @@ class TestScopeGate:
             "  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>\n"
             "</Project>\n"
         )
-        (proj_c / "Gadget.cs").write_text(
-            "namespace ProjectC { public class Gadget { } }\n"
-        )
+        (proj_c / "Gadget.cs").write_text("namespace ProjectC { public class Gadget { } }\n")
 
         search_scope = self._build_two_project_codebase(
             tmp_path,
@@ -933,7 +958,8 @@ class TestScopeGate:
         graph = build_dependency_graph(search_scope, disable_multiprocessing=True)
 
         type_edges = [
-            e for e in graph.all_edges
+            e
+            for e in graph.all_edges
             if e.edge_type == "type_usage" and e.source == "ProjectA" and e.target == "ProjectB"
         ]
         # Only File1 should have evidence (it has using ProjectB)
@@ -953,8 +979,8 @@ class TestScopeGate:
         # Build the codebase: File1 has no local using, but GlobalUsings.cs does
         search_scope = self._build_two_project_codebase(
             tmp_path,
-            file1_usings="",   # no local using
-            file2_usings="",   # no local using
+            file1_usings="",  # no local using
+            file2_usings="",  # no local using
         )
         # Add a GlobalUsings.cs to ProjectA
         global_usings = tmp_path / "ProjectA" / "GlobalUsings.cs"
@@ -963,7 +989,8 @@ class TestScopeGate:
         graph = build_dependency_graph(search_scope, disable_multiprocessing=True)
 
         type_edges = [
-            e for e in graph.all_edges
+            e
+            for e in graph.all_edges
             if e.edge_type == "type_usage" and e.source == "ProjectA" and e.target == "ProjectB"
         ]
         # GlobalUsings.cs has the namespace match, so its file_reachable is non-empty.
@@ -982,10 +1009,13 @@ class TestScopeGate:
             file2_usings="",
         )
         graph = build_dependency_graph(
-            search_scope, disable_multiprocessing=True, full_type_scan=True,
+            search_scope,
+            disable_multiprocessing=True,
+            full_type_scan=True,
         )
         type_edges = [
-            e for e in graph.all_edges
+            e
+            for e in graph.all_edges
             if e.edge_type == "type_usage" and e.source == "ProjectA" and e.target == "ProjectB"
         ]
         assert len(type_edges) > 0
@@ -1101,8 +1131,7 @@ class TestWalkAndCollect:
             f"only in old: {old_csproj - new_csproj}"
         )
         assert new_cs == old_cs, (
-            f"cs diff — only in new: {new_cs - old_cs}, "
-            f"only in old: {old_cs - new_cs}"
+            f"cs diff — only in new: {new_cs - old_cs}, only in old: {old_cs - new_cs}"
         )
 
 
@@ -1164,9 +1193,7 @@ class TestProjectReferenceBackslash:
             "  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>\n"
             "</Project>\n"
         )
-        (proj_b / "Widget.cs").write_text(
-            "namespace ProjectB { public class Widget { } }\n"
-        )
+        (proj_b / "Widget.cs").write_text("namespace ProjectB { public class Widget { } }\n")
 
         # ProjectA: references ProjectB with backslash path
         proj_a = tmp_path / "ProjectA"
@@ -1229,9 +1256,7 @@ class TestDbScannerContentCache:
         for cs_paths in project_cs_map.values():
             for cs_path in cs_paths:
                 try:
-                    content_by_path[cs_path] = cs_path.read_text(
-                        encoding="utf-8", errors="ignore"
-                    )
+                    content_by_path[cs_path] = cs_path.read_text(encoding="utf-8", errors="ignore")
                 except OSError:
                     pass
 
@@ -1254,12 +1279,6 @@ class TestDbScannerContentCache:
         assert len(deps_with) == len(deps_without), (
             f"Cache: {len(deps_with)} deps, no cache: {len(deps_without)} deps"
         )
-        without_set = {
-            (d.db_object_name, d.db_object_type, d.source_project)
-            for d in deps_without
-        }
-        with_set = {
-            (d.db_object_name, d.db_object_type, d.source_project)
-            for d in deps_with
-        }
+        without_set = {(d.db_object_name, d.db_object_type, d.source_project) for d in deps_without}
+        with_set = {(d.db_object_name, d.db_object_type, d.source_project) for d in deps_with}
         assert with_set == without_set

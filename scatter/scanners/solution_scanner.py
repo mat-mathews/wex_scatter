@@ -8,11 +8,14 @@ from typing import Dict, List, Optional
 
 from scatter.core.parallel import find_files_with_pattern_parallel
 
-# C# project type GUIDs — whitelist, not blacklist.
-# Only these produce .cs files that scatter can analyze.
-_CS_PROJECT_GUIDS = {
+# Supported .NET project type GUIDs — whitelist, not blacklist.
+# Projects with other GUIDs (solution folders, setup projects, etc.) are skipped.
+_SUPPORTED_PROJECT_GUIDS = {
     "FAE04EC0-301F-11D3-BF4B-00C04F79EFBC",  # Classic C# project
     "9A19103F-16F7-4668-BE54-9A1E7A4F7556",  # SDK-style C# project
+    "F184B08F-C81C-45F6-A57F-5ABD9991F28F",  # VB.NET project
+    "F2A71F9B-5D33-465A-A702-920D77279786",  # F# project
+    "F14B399A-7131-4C87-9E4B-1186C45EF12D",  # SSRS report project (.rptproj)
 }
 
 # Captures: (type_guid, project_name, relative_path)
@@ -73,7 +76,7 @@ def parse_solution_file(sln_path: Path) -> SolutionInfo:
     for match in _PROJECT_LINE_RE.finditer(content):
         type_guid, project_name, raw_path = match.groups()
 
-        if type_guid.upper() not in _CS_PROJECT_GUIDS:
+        if type_guid.upper() not in _SUPPORTED_PROJECT_GUIDS:
             continue
 
         # Normalize Windows backslashes, then resolve via string math

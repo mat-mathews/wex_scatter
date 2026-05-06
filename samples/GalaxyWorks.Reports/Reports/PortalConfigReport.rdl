@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Report xmlns="http://schemas.microsoft.com/sqlserver/reporting/2016/01/reportdefinition" xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner">
+  <DataSets>
+    <DataSet Name="PortalConfigData">
+      <Query>
+        <DataSourceName>GalaxyWorksDB</DataSourceName>
+        <CommandType>StoredProcedure</CommandType>
+        <CommandText>dbo.sp_GetPortalConfigurationDetails</CommandText>
+      </Query>
+    </DataSet>
+  </DataSets>
+</Report>

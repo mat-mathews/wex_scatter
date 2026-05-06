@@ -172,7 +172,7 @@ class TestComputeAllMetrics:
     def test_all_projects_have_metrics(self, graph_and_metrics):
         graph, metrics = graph_and_metrics
         assert len(metrics) == graph.node_count
-        assert len(metrics) == 13
+        assert len(metrics) == 15
 
     def test_coupling_score_ordering(self, graph_and_metrics):
         """GalaxyWorks.Data should have the highest coupling score (most edges)."""

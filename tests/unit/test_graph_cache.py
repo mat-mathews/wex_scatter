@@ -375,7 +375,6 @@ class TestCLIArgParsing:
         # Verify --graph sets is_graph_mode
         test_args = ["scatter", "--graph", "--search-scope", "."]
         with mock_patch("sys.argv", test_args):
-
             # We just need to verify arg parsing works — not full execution
 
             parser = argparse.ArgumentParser()

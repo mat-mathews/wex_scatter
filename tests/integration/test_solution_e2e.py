@@ -65,7 +65,7 @@ class TestGraphModeSolutionOutput:
         assert "solution_metrics" in data
         assert "GalaxyWorks" in data["solution_metrics"]
         gw = data["solution_metrics"]["GalaxyWorks"]
-        assert gw["project_count"] == 12
+        assert gw["project_count"] == 14
         assert "cross_solution_ratio" in gw
 
         # Cluster alignment

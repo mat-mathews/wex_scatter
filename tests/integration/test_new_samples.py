@@ -536,9 +536,7 @@ class TestConditionalCompilation:
 
     def test_conditional_compilation_in_sample(self):
         """ServiceCollectionExtensions.cs should have #if preprocessor directives."""
-        ext_file = (
-            SAMPLES / "GalaxyWorks.Common" / "Extensions" / "ServiceCollectionExtensions.cs"
-        )
+        ext_file = SAMPLES / "GalaxyWorks.Common" / "Extensions" / "ServiceCollectionExtensions.cs"
         if not ext_file.exists():
             pytest.skip("Sample project not available")
         content = ext_file.read_text(encoding="utf-8")
