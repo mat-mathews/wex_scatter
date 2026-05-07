@@ -60,10 +60,13 @@ def dispatch_legacy_output(
     graph_enriched: bool,
     pipeline_map: Optional[Dict[str, str]] = None,
     props_impacts: Optional[List[PropsImpact]] = None,
+    ai_provider=None,
+    graph_ctx=None,
 ) -> None:
     """Route legacy mode results (git/target/sproc) to the chosen reporter.
 
-    Handles sorting, metadata building, and format-specific dispatch.
+    Handles sorting, metadata building, AI summary generation, and
+    format-specific dispatch.
 
     ``args`` attributes read: output_format, output_file, and all attributes
     forwarded to ``_build_metadata`` (everything except ``_REDACTED_CLI_KEYS``).
@@ -86,6 +89,13 @@ def dispatch_legacy_output(
             )
         )
 
+    # Generate AI summary if requested (one call, all modes)
+    ai_summary = None
+    if getattr(args, "ai_summary", False) and ai_provider and all_results:
+        from scatter.ai.tasks.report_summary import generate_report_summary
+
+        ai_summary = generate_report_summary(all_results, filter_pipeline, graph_ctx, ai_provider)
+
     # Handle JSON Output
     if args.output_format == "json":
         output_path = _require_output_file(args, "JSON")
@@ -96,6 +106,7 @@ def dispatch_legacy_output(
             metadata=_build_metadata(args, search_scope, start_time, graph_enriched=graph_enriched),
             pipeline=filter_pipeline,
             props_impacts=props_impacts,
+            ai_summary=ai_summary,
         )
 
     # Handle CSV Output
@@ -122,6 +133,7 @@ def dispatch_legacy_output(
                 metadata=md_metadata,
                 pipeline=filter_pipeline,
                 graph_metrics_requested=graph_enriched,
+                ai_summary=ai_summary,
             )
         else:
             print(
@@ -130,6 +142,7 @@ def dispatch_legacy_output(
                     metadata=md_metadata,
                     pipeline=filter_pipeline,
                     graph_metrics_requested=graph_enriched,
+                    ai_summary=ai_summary,
                 )
             )
 
@@ -155,6 +168,7 @@ def dispatch_legacy_output(
             all_results,
             pipeline=filter_pipeline,
             graph_metrics_requested=graph_enriched,
+            ai_summary=ai_summary,
         )
         if props_impacts:
             _print_props_impacts_console(props_impacts)

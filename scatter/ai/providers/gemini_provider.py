@@ -206,6 +206,7 @@ class GeminiProvider(AIProvider):
             AITaskType.COUPLING_NARRATIVE,
             AITaskType.IMPACT_NARRATIVE,
             AITaskType.COMPLEXITY_ESTIMATE,
+            AITaskType.REPORT_SUMMARY,
         )
 
     def estimate_tokens(self, context: str) -> int:

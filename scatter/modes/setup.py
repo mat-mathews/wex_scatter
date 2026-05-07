@@ -194,7 +194,8 @@ def setup_ai_provider(args, config):
 
     ai_provider = None
     budget = None
-    if args.summarize_consumers or args.enable_hybrid_git or is_impact_mode:
+    ai_summary_requested = getattr(args, "ai_summary", False)
+    if args.summarize_consumers or args.enable_hybrid_git or is_impact_mode or ai_summary_requested:
         reason = []
         if args.summarize_consumers:
             reason.append("summarization")
@@ -202,6 +203,8 @@ def setup_ai_provider(args, config):
             reason.append("hybrid git analysis")
         if is_impact_mode:
             reason.append("impact analysis")
+        if ai_summary_requested:
+            reason.append("report summary")
         logging.info(f"{', '.join(reason).capitalize()} enabled. Configuring AI provider...")
         budget = AIBudget(max_calls=config.ai.max_ai_calls)
         if budget.max_calls is not None:
@@ -216,6 +219,9 @@ def setup_ai_provider(args, config):
             if args.enable_hybrid_git:
                 logging.warning("Hybrid git analysis will fall back to regex extraction.")
                 args.enable_hybrid_git = False
+            if ai_summary_requested:
+                logging.warning("AI summary requested but no API key configured — skipping.")
+                args.ai_summary = False
             if is_impact_mode:
                 print(
                     "\nImpact analysis (--sow) requires a Google API key for work request parsing.\n"

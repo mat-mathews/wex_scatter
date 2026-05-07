@@ -31,4 +31,6 @@ def run_git_mode(args, ctx: ModeContext, start_time: float) -> None:
         result.graph_enriched,
         pipeline_map=ctx.pipeline_map,
         props_impacts=result.props_impacts,
+        ai_provider=ctx.ai_provider,
+        graph_ctx=ctx.graph_ctx,
     )

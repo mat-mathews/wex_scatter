@@ -41,6 +41,7 @@ def print_console_report(
     all_results: List["ConsumerResult"],
     pipeline: Optional[FilterPipeline] = None,
     graph_metrics_requested: bool = False,
+    ai_summary: Optional[str] = None,
 ) -> None:
     """Print formatted analysis results to console."""
     if pipeline is not None:
@@ -136,6 +137,14 @@ def print_console_report(
             print(f"    {g['pipeline_name']} ({g['consumer_count']} project(s))")
             for name in g["consumers"]:
                 print(f"      • {name}")
+        print()
+
+    if ai_summary:
+        print(f"\n{'=' * 60}")
+        print("  AI Analysis")
+        print(f"{'=' * 60}\n")
+        # Print markdown as-is — it contains headers, tables, and formatting
+        print(ai_summary)
         print()
 
     print(

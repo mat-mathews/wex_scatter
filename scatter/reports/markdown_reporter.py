@@ -162,6 +162,7 @@ def build_markdown(
     metadata: Optional[Dict] = None,
     pipeline: Optional[FilterPipeline] = None,
     graph_metrics_requested: bool = False,
+    ai_summary: Optional[str] = None,
 ) -> str:
     """Build markdown string for legacy consumer analysis results."""
     parts: List[str] = ["# Consumer Analysis Report\n"]
@@ -239,6 +240,9 @@ def build_markdown(
                 parts.append(highlights)
             parts.append(_column_legend())
 
+        if ai_summary:
+            parts.append(ai_summary + "\n")
+
         target_names = {item["TargetProjectName"] for item in detailed_results}
         parts.append(
             f"---\n**Total:** {len(detailed_results)} consuming relationship(s) across {len(target_names)} target(s).\n"
@@ -259,6 +263,7 @@ def write_markdown_report(
     metadata: Optional[Dict] = None,
     pipeline: Optional[FilterPipeline] = None,
     graph_metrics_requested: bool = False,
+    ai_summary: Optional[str] = None,
 ) -> None:
     """Write legacy consumer analysis results as markdown to file."""
     content = build_markdown(
@@ -266,6 +271,7 @@ def write_markdown_report(
         metadata=metadata,
         pipeline=pipeline,
         graph_metrics_requested=graph_metrics_requested,
+        ai_summary=ai_summary,
     )
     _write_file(content, output_file_path)
 
