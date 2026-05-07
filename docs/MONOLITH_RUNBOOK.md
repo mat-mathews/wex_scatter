@@ -132,6 +132,45 @@ MSYS_NO_PATHCONV=1 docker run \
     --class-name SomeImportantService
 ```
 
+**Get an AI-generated analysis report:**
+
+Add `--ai-summary` to any consumer analysis command. It makes one Gemini API call and appends a structured markdown report — executive summary, technical risk analysis, and recommendations. Useful for pasting into a ticket or sharing with your manager.
+
+```bash
+MSYS_NO_PATHCONV=1 docker run \
+  -e GOOGLE_API_KEY="your-gemini-api-key" \
+  -v "//c/repos/monolith:/workspace" \
+  -v scatter-cache:/workspace/.scatter \
+  scatter \
+    --target-project /workspace/src/SomeProject/SomeProject.csproj \
+    --search-scope /workspace \
+    --ai-summary
+```
+
+The report includes:
+- **Executive Summary** — 1-2 sentences with specific numbers for EM/PO audiences
+- **Technical Risk Analysis** — consumers grouped by category (web portals, processors, services), coupling outliers called out by name and score, instability breakdown
+- **Recommendations** — 3-4 actionable items (testing strategy, deployment coordination, refactoring priorities)
+
+Works with any mode: `--target-project`, `--stored-procedure`, `--branch-name`. Combine with `--output-format markdown` to save the full report:
+
+```bash
+MSYS_NO_PATHCONV=1 docker run \
+  -e GOOGLE_API_KEY="your-gemini-api-key" \
+  -v "//c/repos/monolith:/workspace" \
+  -v scatter-cache:/workspace/.scatter \
+  -v "//c/scatter-output:/output" \
+  scatter \
+    --target-project /workspace/src/SomeProject/SomeProject.csproj \
+    --search-scope /workspace \
+    --ai-summary \
+    --output-format markdown --output-file /output/analysis_report.md
+```
+
+The report lands at `C:\scatter-output\analysis_report.md` — ready to paste into Confluence, a PR description, or a Slack message.
+
+> **What gets sent to the AI:** Project names, coupling scores, fan-in/fan-out metrics, instability indices, and solution membership. No source code or file contents leave the network.
+
 ---
 
 ## Step 3: Stored procedure tracing
@@ -385,6 +424,9 @@ MSYS_NO_PATHCONV=1 docker run -v "//c/repos/monolith:/workspace" -v scatter-cach
 
 # Impact analysis
 MSYS_NO_PATHCONV=1 docker run -e GOOGLE_API_KEY="key" -v "//c/repos/monolith:/workspace" -v scatter-cache:/workspace/.scatter scatter --sow "description" --search-scope /workspace
+
+# AI analysis report (any consumer mode)
+MSYS_NO_PATHCONV=1 docker run -e GOOGLE_API_KEY="key" -v "//c/repos/monolith:/workspace" -v scatter-cache:/workspace/.scatter scatter --target-project /workspace/src/Project/Project.csproj --search-scope /workspace --ai-summary
 
 # Save JSON output
 MSYS_NO_PATHCONV=1 docker run -v "//c/repos/monolith:/workspace" -v scatter-cache:/workspace/.scatter -v "//c/scatter-output:/output" scatter --graph --search-scope /workspace --output-format json --output-file /output/report.json
