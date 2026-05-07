@@ -241,6 +241,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Enable summarization of relevant C# files in consuming projects using the configured AI provider.",
     )
     ai_group.add_argument(
+        "--ai-summary",
+        action="store_true",
+        help="Generate an AI narrative summarizing the consumer analysis results. "
+        "Sends project names and coupling metrics to the configured AI provider.",
+    )
+    ai_group.add_argument(
         "--google-api-key",
         default=None,
         help="Google API Key for Gemini provider. If not provided, uses the GOOGLE_API_KEY environment variable.",

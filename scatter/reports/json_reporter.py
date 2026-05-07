@@ -47,6 +47,7 @@ def write_json_report(
     metadata: Optional[Dict] = None,
     pipeline: Optional[FilterPipeline] = None,
     props_impacts: Optional[List[PropsImpact]] = None,
+    ai_summary: Optional[str] = None,
 ) -> None:
     """Write analysis results as JSON to file."""
     logging.info(f"Writing {len(detailed_results)} detailed results to JSON: {output_file_path}")
@@ -66,6 +67,8 @@ def write_json_report(
     if pipeline_groups:
         json_output["pipeline_groups"] = pipeline_groups
     json_output["all_results"] = detailed_results
+    if ai_summary:
+        json_output["ai_summary"] = ai_summary
     if props_impacts:
         json_output["props_impacts"] = [
             {
