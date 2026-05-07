@@ -66,6 +66,18 @@ uv run scatter --branch-name feature/refactor-data --pr-risk --search-scope .
 
 Deterministic score — same branch against the same graph always produces the same number. GREEN means low risk, YELLOW means review it, RED means it's touching core infrastructure. No AI needed. The [GitHub Action template](reference/github-action.md) posts this as a PR comment automatically. See [PR Risk Scoring](usage/pr-risk.md).
 
+## Get an AI analysis report
+
+Add `--ai-summary` to any consumer analysis command. One Gemini API call, structured markdown back.
+
+```bash
+uv run scatter \
+  --target-project ./samples/GalaxyWorks.Data/GalaxyWorks.Data.csproj \
+  --search-scope . --ai-summary
+```
+
+Returns a multi-section report: executive summary for your manager, technical risk analysis with consumer categorization and coupling outliers, and 3-4 specific recommendations. No source code is sent — just project names and coupling metrics. See [AI Features](ai-features.md#report-level-ai-summary).
+
 ## All six modes
 
 | Mode | What it does | Needs AI? |

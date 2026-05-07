@@ -104,6 +104,23 @@ MSYS_NO_PATHCONV=1 docker run -v "$(pwd)":/workspace scatter \
 
 ---
 
+## AI-powered analysis
+
+Add `--ai-summary` to any consumer analysis command. Scatter sends pre-aggregated coupling stats to Gemini and gets back a structured report — executive summary, technical risk analysis, and actionable recommendations. One API call, no source code leaves the network.
+
+```bash
+scatter --target-project ./src/Card/Business/Core/Card.Business.Core.csproj \
+    --search-scope . --ai-summary
+```
+
+From a real 1,591-project monolith run:
+
+> **Lighthouse1.Card.Business.Core** is a critical dependency for **18 consumer projects**. It exhibits high stability (fan-in of 35 via Card.Business.Ev1), making it a bottleneck for development. The highest-risk consumers are the Admin and Participant web portals (coupling scores **6,670** and **4,653**) — these aren't just using the library, they're deeply integrated with its data structures.
+
+The full report includes consumer categorization (web portals vs processors vs services), coupling outlier identification, and specific recommendations (regression testing scope, refactoring priorities, deployment coordination).
+
+---
+
 ## How it works
 
 Scatter walks your `.csproj` files and traces dependency chains through project references, `using` statements, class usage, and stored procedure calls. Each stage narrows the set — the filter line in the output shows exactly where projects got ruled out.

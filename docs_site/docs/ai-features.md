@@ -226,6 +226,69 @@ Requires `uv sync --extra ast` to install tree-sitter. Without it, the flag sile
 
 ---
 
+## Report-Level AI Summary
+
+**Flag:** `--ai-summary`
+**Available in:** Target project, stored procedure, and git branch modes
+
+### The Problem
+
+The consumer table gives you the numbers — coupling scores, fan-in, instability. But when you're presenting to your manager, filing a ticket, or explaining to a DBA why their sproc change is high-risk, you need the story. Which consumers are outliers and why? What's the stable core? What should the team actually do?
+
+### The Solution
+
+Add `--ai-summary` to any consumer analysis command. Scatter pre-aggregates the coupling stats, sends them to the AI provider (not source code — just project names and metrics), and gets back a structured markdown report.
+
+```bash
+scatter --target-project ./src/Card/Business/Core/Card.Business.Core.csproj \
+    --search-scope . --ai-summary --google-api-key $GOOGLE_API_KEY
+```
+
+The report has three sections:
+
+**Executive Summary** — 1-2 sentences with specific numbers. Written for an EM or PO who doesn't want to parse a coupling table.
+
+**Technical Risk Analysis** — Consumers grouped by category (web portals, processors, services) with risk levels. Coupling outliers called out by name and score. Instability breakdown explaining which projects are stable cores vs leaf nodes.
+
+**Recommendations** — 3-4 specific, actionable items: regression testing scope, deployment coordination, refactoring priorities.
+
+### Example Output
+
+From a real 1,591-project monolith run analyzing `Lighthouse1.Card.Business.Core` (18 consumers):
+
+> **Lighthouse1.Card.Business.Core** is a critical dependency for **18 consumer projects**. Any bug introduced here will likely cause cascading failures across Admin/Participant portals and major batch processing services.
+>
+> | Category | Key Projects | Risk Level |
+> | :--- | :--- | :--- |
+> | **Web Portals** | Admin & Participant WebApps | **Critical** (coupling > 4,000) |
+> | **Processors** | FDR, FifthThird, FirstData, Tsys | **High** (financial movement) |
+> | **Services** | Card.Service, DebitCard.Services | **Medium** (core logic) |
+>
+> **Recommendations:** Any PR touching this core library must trigger regression tests for all 18 consumers. The coupling in the Admin WebApp (score **6,670**) is a tech debt hotspot — investigate API-first decoupling. No circular dependencies detected, which is the silver lining.
+
+### What Gets Sent to the AI
+
+The prompt contains project names, coupling scores, fan-in/fan-out metrics, instability indices, solution membership, and pipeline names. **No source code or file contents leave the network.** Use `--ai-summary` with `--output-format json` to see the exact data in the output.
+
+### Combining with Other Flags
+
+`--ai-summary` works alongside other AI features:
+
+```bash
+# AI summary + per-consumer file summaries
+scatter --target-project ./src/MyLib/MyLib.csproj \
+    --search-scope . --ai-summary --summarize-consumers
+
+# AI summary + markdown output saved to file
+scatter --target-project ./src/MyLib/MyLib.csproj \
+    --search-scope . --ai-summary \
+    --output-format markdown --output-file report.md
+```
+
+The AI summary appears after the consumer table and risk highlights in all output formats (console, markdown, JSON). CSV output does not include the narrative.
+
+---
+
 ## Graph Metrics (Not AI)
 
 **No flag needed** -- this is automatic.
