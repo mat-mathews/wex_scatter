@@ -1,8 +1,8 @@
 # Technical Debt
 
-Tracked risks, known limitations, and deferred optimizations from the graph performance work. Each item includes context on why it was deferred and what would trigger revisiting it.
+Things we decided not to fix yet — and why. Each item has a "when to revisit" trigger so it doesn't rot quietly. If the trigger fires, it's time to act. If it doesn't, leave it alone.
 
-*Last reviewed: 2026-05-03. Items dated from initial graph performance work (2026-03) unless noted.*
+*Last reviewed: 2026-05-03. Most items date from the graph performance work (2026-03).*
 
 ---
 
@@ -26,7 +26,7 @@ The string-based path resolution (`os.path.normpath`) replaces `Path.resolve()` 
 
 ### ~~P3: Solution scanning still does its own filesystem walk~~ — RESOLVED
 
-Fixed. `__main__.py` now does a single `walk_and_collect` for `.sln`, `.csproj`, and `.cs`, feeding results into both solution scanning and graph building. `Path.resolve()` replaced with `os.path.normpath()` in .sln parsing. See [ADR_DOCKER_PERFORMANCE.md](ADR_DOCKER_PERFORMANCE.md).
+Fixed. `__main__.py` now does a single `walk_and_collect` for `.sln`, `.csproj`, and `.cs`, feeding results into both solution scanning and graph building. `Path.resolve()` replaced with `os.path.normpath()` in .sln parsing. See [ADR_DOCKER_PERFORMANCE.md](archive/ADR_DOCKER_PERFORMANCE.md).
 
 ### P4: Duplicate sproc extraction in step 4 and step 6
 
