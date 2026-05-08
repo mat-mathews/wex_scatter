@@ -10,6 +10,28 @@ That's the gap. The data to close it is already flowing through the system — w
 
 ---
 
+## Why not just ask an LLM?
+
+Fair question. Tools like Augment and Cursor aren't just autocomplete anymore — they build their own code graphs, index entire repos, and can find callers of a method across a codebase. If you ask Augment "who calls `StorePortalConfigurationAsync`?" it'll search the repo, find references, and give you a reasonable answer. That's real and useful.
+
+So what does scatter add?
+
+**The database layer.** This is the big one. `PortalDataService` calls `dbo.sp_InsertPortalConfiguration`. `BatchProcessor` calls the same sproc through a completely different code path. An SSRS report references it via RDL. That's three coupling vectors — sproc, config DI, RDL — that don't show up as code references. They're strings in `.config` files, `CommandText` values in XML, `CommandType.StoredProcedure` paired with a string literal two lines away. The SOW signal analysis measured this: without sproc tracing, we catch 50–60% of blast radius. The missing 40% lives in the data layer. A code graph — no matter how good — doesn't trace it, because it's not code coupling. It's database coupling encoded in strings and config.
+
+**.NET build system semantics.** Augment's graph is language-generic. Scatter understands `.csproj` project references, `Directory.Build.props` ancestor chains with `GetPathOfFileAbove` chaining, `.sln` solution membership, SDK-style vs Framework-style project files. A generic code graph sees XML files. Scatter sees MSBuild semantics — which project *actually* imports which shared build props, and what breaks if you change one. That's a different kind of knowledge.
+
+**Architectural metrics, not just references.** Augment can tell you who calls a method. Scatter computes coupling scores, instability indices, cycle membership, domain clusters, and extraction feasibility for every project in the graph. A method call from a project with coupling score 6,670 is a different conversation than the same call from a project scoring 14.9. That distinction requires a structural model of the architecture, not just a list of references.
+
+**CI integration.** Scatter runs in CI with exit codes and PR comments. `--fail-on coupling:15.0` blocks a merge. It maps consumers to CI/CD pipelines — "change this method → these 5 pipelines need testing." That's a different deployment model than a dev tool in an editor. You can enforce architecture governance with scatter; you can't with Augment.
+
+**Deterministic, structured output.** Run scatter twice, get the same JSON. Diff two runs, see what changed. Feed the output to a dashboard. An LLM gives you prose — useful for understanding, not for automation.
+
+All that said — LLMs are great at the thing scatter is bad at: reading code and explaining what it *means*. "This method is called inside a retry loop with no parameter validation" is an insight that requires reading and understanding the code, not scanning a graph. That's exactly how this plan uses them. Scatter narrows 7,895 files to the 7 that matter, attaches structural context (coupling, instability, cycles, pipeline mapping), and *then* asks the AI a precise question about those 7 files.
+
+The argument isn't scatter *or* LLMs. It's scatter *then* LLMs — structural analysis finds the complete set and computes the metrics, AI interprets what it means and recommends what to do about it.
+
+---
+
 ## What We Have Today
 
 Scatter's consumer pipeline already narrows files by method name:
