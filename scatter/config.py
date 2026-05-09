@@ -22,7 +22,7 @@ class AIConfig:
     default_provider: str = "gemini"
     task_overrides: Dict[str, str] = field(default_factory=dict)
     credentials: Dict[str, Dict[str, str]] = field(default_factory=dict)
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-2.5-flash"
     wex_model: str = "default"
     max_ai_calls: Optional[int] = None
 

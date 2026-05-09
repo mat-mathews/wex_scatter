@@ -306,7 +306,14 @@ Return ONLY a JSON object with:
 
 
 def _parse_response(response_text: str) -> Optional[str]:
-    """Parse the LLM JSON response and extract the report markdown."""
+    """Parse the LLM JSON response and extract the report markdown.
+
+    Gemini sometimes returns malformed JSON (unescaped newlines in markdown
+    strings, trailing commas, markdown fences around the JSON). This parser
+    tries strict JSON first, then falls back to regex extraction of the
+    ``"report"`` value, and finally returns the raw text if it looks like
+    markdown (starts with ``#`` or ``##``).
+    """
     text = response_text.strip()
 
     # Strip markdown code fences if present
@@ -315,16 +322,38 @@ def _parse_response(response_text: str) -> Optional[str]:
         lines = [line for line in lines if not line.startswith("```")]
         text = "\n".join(lines).strip()
 
+    # --- Attempt 1: strict JSON parse ---
     try:
         result = json.loads(text)
         if isinstance(result, dict):
-            # Accept either "report" or "summary" key for backward compat
             raw = result.get("report") or result.get("summary")
             if isinstance(raw, str) and raw:
-                report: str = raw
-                return report
-        logger.warning(f"AI report summary missing 'report' key: {text[:200]}")
-        return None
-    except json.JSONDecodeError as e:
-        logger.warning(f"Failed to parse AI report summary JSON: {e}")
-        return None
+                return raw
+    except json.JSONDecodeError:
+        pass
+
+    # --- Attempt 2: extract "report" value between delimiters ---
+    # Handles malformed JSON where the value string contains unescaped
+    # characters. Look for {"report": "..." } and grab everything between
+    # the first opening quote after "report" and the final closing brace.
+    import re
+
+    match = re.search(r'"report"\s*:\s*"', text)
+    if match:
+        start = match.end()
+        # Walk backward from the end to find the closing " before the last }
+        end = text.rfind('"')
+        if end > start:
+            raw = text[start:end]
+            # Unescape common JSON escape sequences
+            raw = raw.replace('\\"', '"').replace("\\n", "\n").replace("\\t", "\t")
+            if raw.strip():
+                return raw.strip()
+
+    # --- Attempt 3: raw text looks like markdown (no JSON wrapper) ---
+    # Some models return the markdown directly without the JSON envelope.
+    if text.lstrip().startswith("#"):
+        return text
+
+    logger.warning(f"AI report summary: could not extract report from response: {text[:200]}")
+    return None
