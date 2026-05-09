@@ -67,6 +67,7 @@ def main():
             ".rdl",
             ".rdlc",
             ".rds",
+            ".sql",
         },
         exclude_dirs,
     )
