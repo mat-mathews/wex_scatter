@@ -154,7 +154,15 @@ def build_sproc_catalog(
         if e.referencing_projects and not e.defined_in_sql and not e.defined_in_migration
     )
     total_shared = sum(1 for e in entries if len(e.referencing_projects) >= 2)
-    coverage_pct = (total_defined / len(entries) * 100) if entries else 0.0
+    # Coverage = fraction of *referenced* sprocs that have a .sql definition.
+    # "What % of the sprocs we call do we also have source for?"
+    # Not total_defined/total_sprocs, which inflates if there are many dead .sql files.
+    defined_and_referenced = sum(
+        1
+        for e in entries
+        if e.referencing_projects and (e.defined_in_sql or e.defined_in_migration)
+    )
+    coverage_pct = (defined_and_referenced / total_referenced * 100) if total_referenced else 0.0
 
     catalog = SprocCatalog(
         entries=entries,

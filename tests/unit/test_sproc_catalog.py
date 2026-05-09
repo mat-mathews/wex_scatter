@@ -50,12 +50,27 @@ class TestBuildSprocCatalog:
         assert catalog.entries[0].status == "defined_only"
 
     def test_coverage_calculation(self):
+        """Coverage = defined-and-referenced / total-referenced, not defined / total."""
         deps = [
             _dep("dbo.sp_Defined", "P", method="sql_catalog"),
+            _dep("dbo.sp_Defined", "P", method="string_literal"),  # also referenced
             _dep("dbo.sp_Undefined", "P", method="string_literal"),
         ]
         catalog = build_sproc_catalog(deps)
+        # 1 defined+referenced / 2 referenced = 50%
         assert catalog.coverage_pct == 50.0
+
+    def test_coverage_excludes_dead_definitions(self):
+        """Dead .sql definitions don't inflate coverage."""
+        deps = [
+            _dep("dbo.sp_Dead1", "P", method="sql_catalog"),  # defined only, not referenced
+            _dep("dbo.sp_Dead2", "P", method="sql_catalog"),  # defined only
+            _dep("dbo.sp_Live", "P", method="sql_catalog"),  # defined
+            _dep("dbo.sp_Live", "P", method="string_literal"),  # also referenced
+        ]
+        catalog = build_sproc_catalog(deps)
+        # 1 defined+referenced / 1 referenced = 100% (not 3/4 = 75%)
+        assert catalog.coverage_pct == 100.0
 
     def test_shared_count(self):
         deps = [

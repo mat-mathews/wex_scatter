@@ -497,33 +497,40 @@ def build_dependency_graph(
     # Step 6a (optional): SQL catalog scanner → sproc definitions from .sql files
     # and EF migration files. Runs before sproc_to_projects is built so that
     # .sql-defined sprocs are included in the map for downstream scanners.
+    #
+    # Note on graph_patcher: incremental patches rebuild sproc_references from
+    # FileFacts only — they don't re-run Step 6a. After an incremental update,
+    # .sql-defined sprocs may be missing from node.sproc_references until the
+    # next full graph rebuild. --sproc-inventory always scans .sql files fresh,
+    # so the catalog itself is correct regardless. (Priya review)
     if sql_files or include_db_dependencies:
+        # Scan phase — separated from mutation so scan failures are clean (Fatima)
+        all_new_deps: list = []
         try:
             from scatter.scanners.sql_catalog_scanner import scan_ef_migrations, scan_sql_catalog
 
             if sql_files:
-                sql_deps = scan_sql_catalog(sql_files, project_dir_index, search_scope)
-                for dep in sql_deps:
-                    if dep.source_project in graph._nodes:
-                        node = graph._nodes[dep.source_project]
-                        if dep.db_object_name not in set(node.sproc_references):
-                            node.sproc_references.append(dep.db_object_name)
-                            node.sproc_references.sort()
-
+                all_new_deps.extend(scan_sql_catalog(sql_files, project_dir_index, search_scope))
             if include_db_dependencies:
-                migration_deps = scan_ef_migrations(
-                    cs_files, dict(project_cs_files), content_by_path=None
+                all_new_deps.extend(
+                    scan_ef_migrations(cs_files, dict(project_cs_files), content_by_path=None)
                 )
-                for dep in migration_deps:
-                    if dep.source_project in graph._nodes:
-                        node = graph._nodes[dep.source_project]
-                        if dep.db_object_name not in set(node.sproc_references):
-                            node.sproc_references.append(dep.db_object_name)
-                            node.sproc_references.sort()
         except Exception:
             logging.exception(
                 "SQL catalog/migration scanner failed — continuing with existing graph."
             )
+
+        # Mutation phase — collect per-node, then one set-union + sort (Devon)
+        new_sprocs_by_node: Dict[str, Set[str]] = defaultdict(set)
+        for dep in all_new_deps:
+            if dep.source_project in graph._nodes:
+                new_sprocs_by_node[dep.source_project].add(dep.db_object_name)
+        for node_name, new_names in new_sprocs_by_node.items():
+            node = graph._nodes[node_name]
+            existing = set(node.sproc_references)
+            merged = existing | new_names
+            if merged != existing:
+                node.sproc_references = sorted(merged)
 
     t6a = time.monotonic()
     if sql_files:

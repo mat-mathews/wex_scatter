@@ -17,7 +17,6 @@ def run_sproc_inventory_mode(args, ctx) -> None:
     cross-references against C# sproc references from the graph.
     """
     from scatter.analyzers.sproc_catalog import build_sproc_catalog
-    from scatter.scanners.db_scanner import scan_db_dependencies
     from scatter.scanners.sql_catalog_scanner import scan_sql_catalog
 
     t0 = time.monotonic()
@@ -39,22 +38,14 @@ def run_sproc_inventory_mode(args, ctx) -> None:
         if node.path and node.path.parent:
             project_dir_index[node.path.parent] = node.name
 
-    # Scan .sql catalog
+    # Scan .sql catalog for definition metadata (detection_method="sql_catalog").
+    # C# references come from the graph's ProjectNode.sproc_references, which were
+    # populated during graph build Steps 4+6. No need to re-run scan_db_dependencies
+    # — the graph already has the data. (Marcus review: avoids 30-60s double scan.)
     sql_deps = scan_sql_catalog(sql_files, project_dir_index, ctx.search_scope)
 
-    # Get existing db dependencies from graph (already computed during graph build)
-    # Re-scan to get full DbDependency list with detection methods
-    db_deps = scan_db_dependencies(
-        ctx.search_scope,
-        max_workers=ctx.max_workers,
-        chunk_size=ctx.chunk_size,
-        disable_multiprocessing=ctx.disable_multiprocessing,
-    )
-
-    all_deps = sql_deps + db_deps
-
-    # Build catalog
-    catalog = build_sproc_catalog(all_deps, graph)
+    # Build catalog from .sql definitions + graph node sproc references
+    catalog = build_sproc_catalog(sql_deps, graph)
 
     elapsed = time.monotonic() - t0
     logging.info(f"Sproc inventory completed in {elapsed:.1f}s")
