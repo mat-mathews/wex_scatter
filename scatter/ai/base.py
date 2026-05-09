@@ -18,7 +18,60 @@ SUMMARIZATION_PROMPT_TEMPLATE = (
     "the summary."
 )
 
+METHOD_SUMMARIZATION_PROMPT_TEMPLATE = """\
+Analyze the following C# code from '{filename}'.
+
+The target method being analyzed is: {class_name}.{method_name}
+
+This file is {file_type} code.
+
+For this file, answer:
+1. How is {method_name} called? (direct invocation, through interface, via dependency injection, in a loop, etc.)
+2. Which method(s) in this file call {method_name}? (list the caller method names)
+3. What does the caller do with the return value or side effects?
+4. If {method_name}'s signature changed (e.g., new required parameter), what would need to change in this file?
+5. Risk level for this caller: Low (test code, easily updated), Medium (business logic, needs review), High (critical path, needs careful coordination)
+
+```csharp
+{code}
+```
+
+Return a JSON object with:
+- "caller_methods": list of method names that call {method_name}
+- "call_pattern": how it's called (e.g., "direct invocation in controller action", "called in batch loop")
+- "change_impact": what breaks if the signature changes
+- "risk": "Low" | "Medium" | "High"
+- "summary": 2-3 sentence explanation
+
+Return ONLY the JSON object."""
+
 MAX_SUMMARIZATION_CHARS = 20000
+
+
+_TEST_FILE_PATTERNS = ("*Test*", "*Mock*", "*Fixture*", "*Fake*", "*Spec*")
+
+
+def classify_file_type(file_path: str) -> str:
+    """Label a file as 'test' or 'production' based on path patterns.
+
+    Checks both the filename and path segments. A file under a ``tests/``
+    or ``test/`` directory is labeled as test code even if the filename
+    itself doesn't contain a test marker (e.g., ``tests/helpers/Seeder.cs``).
+    """
+    from fnmatch import fnmatch
+
+    # Check path segments for test directories
+    path_lower = file_path.replace("\\", "/").lower()
+    for segment in ("/test/", "/tests/", "/testing/"):
+        if segment in path_lower:
+            return "test"
+
+    # Check filename patterns
+    name = file_path.rsplit("/", 1)[-1] if "/" in file_path else file_path
+    for pattern in _TEST_FILE_PATTERNS:
+        if fnmatch(name, pattern):
+            return "test"
+    return "production"
 
 
 class AITaskType(Enum):

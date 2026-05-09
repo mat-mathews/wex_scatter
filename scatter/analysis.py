@@ -77,12 +77,19 @@ def _summarize_consumer_files(
     ai_provider,
     search_scope: Path,
     results_start_index: int,
+    class_name: Optional[str] = None,
+    method_name: Optional[str] = None,
 ) -> None:
     """Summarize relevant files for each consumer and inject into result dicts.
 
     Reads each consumer's relevant_files, sends content to the AI provider
     for summarization, and populates the 'ConsumerFileSummaries' field in
     the corresponding result dicts (which were appended by the bridge call).
+
+    When ``method_name`` is provided, uses a method-focused prompt that asks
+    the AI how each file uses the specific method — caller methods, call
+    patterns, change impact, and risk level — instead of the generic "what
+    does this file do?" prompt (Phase 1 of METHOD_LEVEL_ANALYSIS_PLAN.md).
 
     Args:
         final_consumers_data: Consumer dicts from find_consumers(), each with
@@ -92,8 +99,16 @@ def _summarize_consumer_files(
         search_scope: Absolute path used to compute relative file paths.
         results_start_index: Index into all_results where this batch starts,
             so we can match consumers to their result dicts.
+        class_name: Optional class name for method-focused prompts.
+        method_name: Optional method name — triggers method-focused analysis.
     """
-    from scatter.ai.base import AITaskType, MAX_SUMMARIZATION_CHARS, SUMMARIZATION_PROMPT_TEMPLATE
+    from scatter.ai.base import (
+        AITaskType,
+        MAX_SUMMARIZATION_CHARS,
+        METHOD_SUMMARIZATION_PROMPT_TEMPLATE,
+        SUMMARIZATION_PROMPT_TEMPLATE,
+        classify_file_type,
+    )
 
     if not ai_provider or not final_consumers_data:
         return
@@ -101,6 +116,10 @@ def _summarize_consumer_files(
     if not ai_provider.supports(AITaskType.SUMMARIZATION):
         logging.warning("AI provider does not support summarization. Skipping.")
         return
+
+    use_method_prompt = bool(method_name and class_name)
+    if use_method_prompt:
+        logging.info(f"Using method-focused summarization for {class_name}.{method_name}")
 
     # Build a map keyed by consumer_path (absolute) to avoid stem collisions
     consumer_files_map: Dict[Path, List[Path]] = {}
@@ -138,10 +157,20 @@ def _summarize_consumer_files(
             except ValueError:
                 rel_path = file_path.name
 
-            prompt = SUMMARIZATION_PROMPT_TEMPLATE.format(
-                filename=file_path.name,
-                code=content[:MAX_SUMMARIZATION_CHARS],
-            )
+            if use_method_prompt:
+                file_type = classify_file_type(rel_path)
+                prompt = METHOD_SUMMARIZATION_PROMPT_TEMPLATE.format(
+                    filename=file_path.name,
+                    class_name=class_name,
+                    method_name=method_name,
+                    file_type=file_type,
+                    code=content[:MAX_SUMMARIZATION_CHARS],
+                )
+            else:
+                prompt = SUMMARIZATION_PROMPT_TEMPLATE.format(
+                    filename=file_path.name,
+                    code=content[:MAX_SUMMARIZATION_CHARS],
+                )
 
             try:
                 result = ai_provider.analyze(prompt, "", AITaskType.SUMMARIZATION)
@@ -317,6 +346,8 @@ def run_target_analysis(ctx: ModeContext, target_csproj: Path) -> ModeResult:
                 ctx.ai_provider,
                 ctx.search_scope,
                 results_before,
+                class_name=ctx.class_name,
+                method_name=ctx.method_name,
             )
     else:
         logging.info(
@@ -547,6 +578,8 @@ def run_git_analysis(
                                 ctx.ai_provider,
                                 ctx.search_scope,
                                 results_before,
+                                class_name=ctx.class_name,
+                                method_name=ctx.method_name,
                             )
 
                     else:
@@ -766,6 +799,14 @@ def run_sproc_analysis(
                     ctx.ai_provider,
                     ctx.search_scope,
                     results_before,
+                    class_name=class_containing_sproc,
+                    # Only apply method filter when the user explicitly targeted
+                    # this class via --class-name. Otherwise, sproc scanner found
+                    # the class automatically and the user's --method-name may not
+                    # apply to it.
+                    method_name=ctx.method_name
+                    if ctx.class_name == class_containing_sproc
+                    else None,
                 )
         else:
             # Multiple classes in the same project — run namespace scan once,
@@ -937,6 +978,12 @@ def run_sproc_analysis(
                         ctx.ai_provider,
                         ctx.search_scope,
                         results_before,
+                        class_name=class_containing_sproc,
+                        # See comment above — only apply method filter when
+                        # user explicitly targeted this class via --class-name.
+                        method_name=ctx.method_name
+                        if ctx.class_name == class_containing_sproc
+                        else None,
                     )
 
     _apply_graph_enrichment(all_results, ctx)
