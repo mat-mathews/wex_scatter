@@ -9,6 +9,7 @@ See ``modes/setup.py:build_mode_context()`` for ModeContext construction.
 """
 
 import logging
+import re
 import types
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -642,6 +643,8 @@ def run_sproc_analysis(
     filter_pipeline: Optional[FilterPipeline] = None
     processed_targets_count = 0
 
+    graph = ctx.graph_ctx.graph if ctx.graph_ctx else None
+
     for target_csproj_abs, classes_dict in project_class_sproc_map.items():
         target_project_name = target_csproj_abs.stem
         try:
@@ -657,15 +660,46 @@ def run_sproc_analysis(
             )
             target_namespace_str = f"NAMESPACE_ERROR_{target_project_name}"
 
-        for class_containing_sproc, cs_files_with_sproc_call in classes_dict.items():
-            processed_targets_count += 1
-
-            if ctx.class_name and ctx.class_name != class_containing_sproc:
-                logging.debug(
-                    f"Skipping analysis for class '{class_containing_sproc}' "
-                    f"because it doesn't match --class-name '{ctx.class_name}'."
-                )
+        # Filter classes by --class-name if specified
+        class_names_to_analyze = list(classes_dict.keys())
+        if ctx.class_name:
+            class_names_to_analyze = [c for c in class_names_to_analyze if c == ctx.class_name]
+            if not class_names_to_analyze:
+                processed_targets_count += len(classes_dict)
                 continue
+
+        # --- Early exit: skip if all graph consumers are test projects ---
+        if graph and ctx.config.analysis and ctx.config.analysis.exclude_test_projects:
+            from scatter.analyzers.consumer_analyzer import is_test_project
+
+            graph_consumers = graph.get_consumers(target_project_name)
+            test_patterns = ctx.config.analysis.test_project_patterns
+            non_test_consumers = [
+                c for c in graph_consumers if not is_test_project(c.name, test_patterns)
+            ]
+            if not non_test_consumers:
+                for cls in class_names_to_analyze:
+                    processed_targets_count += 1
+                    logging.info(
+                        f"\n--- Analyzing Consumers for Class {processed_targets_count}/"
+                        f"{total_classes_found}: '{cls}' in Project: "
+                        f"{target_project_name} ---"
+                    )
+                    logging.info(
+                        f"   No non-test consumers for target '{target_project_name}' "
+                        f"— skipping consumer analysis for '{cls}'."
+                    )
+                continue
+
+        # --- Deduplication: one find_consumers() call per project ---
+        # When a project has multiple classes referencing the sproc, run the
+        # namespace scan once (class_name=None) then filter by class locally.
+        # For single-class projects, pass class_name directly (no change).
+        # This avoids re-scanning 200+ consumer projects per extra class.
+        if len(class_names_to_analyze) == 1:
+            # Single class — existing path, no behavior change
+            class_containing_sproc = class_names_to_analyze[0]
+            processed_targets_count += 1
 
             method_filter = (
                 ctx.method_name
@@ -685,22 +719,28 @@ def run_sproc_analysis(
                     f"{class_containing_sproc}.{method_filter} (via Sproc: {sproc_name})"
                 )
 
-            final_consumers_data, _pipeline = find_consumers(
-                target_csproj_path=target_csproj_abs,
-                search_scope_path=ctx.search_scope,
-                target_namespace=target_namespace_str,
-                class_name=class_containing_sproc,
-                method_name=method_filter,
-                max_workers=ctx.max_workers,
-                chunk_size=ctx.chunk_size,
-                disable_multiprocessing=ctx.disable_multiprocessing,
-                cs_analysis_chunk_size=ctx.cs_analysis_chunk_size,
-                csproj_analysis_chunk_size=ctx.csproj_analysis_chunk_size,
-                graph=ctx.graph_ctx.graph if ctx.graph_ctx else None,
-                analysis_config=ctx.config.analysis,
-            )
+            try:
+                final_consumers_data, _pipeline = find_consumers(
+                    target_csproj_path=target_csproj_abs,
+                    search_scope_path=ctx.search_scope,
+                    target_namespace=target_namespace_str,
+                    class_name=class_containing_sproc,
+                    method_name=method_filter,
+                    max_workers=ctx.max_workers,
+                    chunk_size=ctx.chunk_size,
+                    disable_multiprocessing=ctx.disable_multiprocessing,
+                    cs_analysis_chunk_size=ctx.cs_analysis_chunk_size,
+                    csproj_analysis_chunk_size=ctx.csproj_analysis_chunk_size,
+                    graph=graph,
+                    analysis_config=ctx.config.analysis,
+                )
+            except Exception:
+                logging.exception(
+                    f"Consumer analysis failed for project '{target_project_name}', "
+                    f"class '{class_containing_sproc}' — skipping."
+                )
+                continue
 
-            # Keep the first pipeline that produced results; fall back to last
             if filter_pipeline is None or final_consumers_data:
                 filter_pipeline = _pipeline
 
@@ -727,6 +767,177 @@ def run_sproc_analysis(
                     ctx.search_scope,
                     results_before,
                 )
+        else:
+            # Multiple classes in the same project — run namespace scan once,
+            # then filter by each class locally. Saves re-scanning 200+ consumer
+            # projects per extra class (the 72% bottleneck from perf_runs/1.txt).
+            logging.info(
+                f"\n--- Analyzing Consumers for {len(class_names_to_analyze)} classes "
+                f"in Project: {target_project_name} (deduplicated namespace scan) ---"
+            )
+
+            try:
+                namespace_consumers, ns_pipeline = find_consumers(
+                    target_csproj_path=target_csproj_abs,
+                    search_scope_path=ctx.search_scope,
+                    target_namespace=target_namespace_str,
+                    class_name=None,
+                    method_name=None,
+                    max_workers=ctx.max_workers,
+                    chunk_size=ctx.chunk_size,
+                    disable_multiprocessing=ctx.disable_multiprocessing,
+                    cs_analysis_chunk_size=ctx.cs_analysis_chunk_size,
+                    csproj_analysis_chunk_size=ctx.csproj_analysis_chunk_size,
+                    graph=graph,
+                    analysis_config=ctx.config.analysis,
+                )
+            except Exception:
+                skipped_classes = ", ".join(f"'{c}'" for c in class_names_to_analyze)
+                logging.exception(
+                    f"Consumer analysis failed for project '{target_project_name}' "
+                    f"— skipping classes: {skipped_classes}."
+                )
+                processed_targets_count += len(class_names_to_analyze)
+                continue
+
+            if filter_pipeline is None or namespace_consumers:
+                filter_pipeline = ns_pipeline
+
+            # Collect all relevant files from namespace consumers for class filtering.
+            # Build a consumer-to-files map so we can partition results per class.
+            consumer_to_files: Dict[Path, List[Path]] = {}
+            all_relevant_files: List[Path] = []
+            for consumer in namespace_consumers:
+                files = [f for f in consumer.get("relevant_files", []) if isinstance(f, Path)]
+                consumer_to_files[consumer["consumer_path"]] = files
+                all_relevant_files.extend(files)
+
+            # Resolve AST mode once for all class filters
+            use_ast = False
+            if ctx.config.analysis:
+                use_ast = ctx.config.analysis.parser_mode == "hybrid"
+
+            for class_containing_sproc in class_names_to_analyze:
+                processed_targets_count += 1
+                logging.info(
+                    f"\n--- Filtering for Class {processed_targets_count}/"
+                    f"{total_classes_found}: '{class_containing_sproc}' in Project: "
+                    f"{target_project_name} ---"
+                )
+
+                method_filter = (
+                    ctx.method_name
+                    if ctx.class_name and ctx.class_name == class_containing_sproc
+                    else None
+                )
+
+                report_trigger_info = f"{class_containing_sproc} (via Sproc: {sproc_name})"
+                if method_filter:
+                    report_trigger_info = (
+                        f"{class_containing_sproc}.{method_filter} (via Sproc: {sproc_name})"
+                    )
+
+                # Class filter using analyze_cs_files_parallel — same path as
+                # find_consumers() stage 4, including AST validation when hybrid
+                # mode is active. Avoids the false-positive divergence that a
+                # plain regex would cause.
+                from scatter.core.parallel import analyze_cs_files_parallel
+
+                class_pattern = re.compile(rf"\b{re.escape(class_containing_sproc)}\b")
+                class_stage_config = {
+                    "analysis_type": "class",
+                    "class_name": class_containing_sproc,
+                    "class_pattern": class_pattern,
+                    "use_ast": use_ast,
+                }
+
+                class_results = analyze_cs_files_parallel(
+                    all_relevant_files,
+                    class_stage_config,
+                    max_workers=ctx.max_workers,
+                    cs_analysis_chunk_size=ctx.cs_analysis_chunk_size,
+                    disable_multiprocessing=ctx.disable_multiprocessing,
+                )
+
+                class_filtered: List[RawConsumerDict] = []
+                for consumer in namespace_consumers:
+                    consumer_path = consumer["consumer_path"]
+                    matching_files = [
+                        f
+                        for f in consumer_to_files.get(consumer_path, [])
+                        if class_results.get(f, {}).get("has_match")
+                    ]
+                    if matching_files:
+                        class_filtered.append(
+                            RawConsumerDict(
+                                consumer_path=consumer_path,
+                                consumer_name=consumer["consumer_name"],
+                                relevant_files=matching_files,
+                            )
+                        )
+
+                # Method filter — same approach, on class-filtered files only
+                if method_filter and class_filtered:
+                    method_pattern = re.compile(rf"\.\s*{re.escape(method_filter)}\s*\(")
+                    method_stage_config = {
+                        "analysis_type": "method",
+                        "method_pattern": method_pattern,
+                        "method_name": method_filter,
+                        "use_ast": use_ast,
+                    }
+                    method_files = [f for c in class_filtered for f in c["relevant_files"]]
+                    method_results = analyze_cs_files_parallel(
+                        method_files,
+                        method_stage_config,
+                        max_workers=ctx.max_workers,
+                        cs_analysis_chunk_size=ctx.cs_analysis_chunk_size,
+                        disable_multiprocessing=ctx.disable_multiprocessing,
+                    )
+                    method_filtered: List[RawConsumerDict] = []
+                    for consumer in class_filtered:
+                        mfiles = [
+                            f
+                            for f in consumer["relevant_files"]
+                            if method_results.get(f, {}).get("has_match")
+                        ]
+                        if mfiles:
+                            method_filtered.append(
+                                RawConsumerDict(
+                                    consumer_path=consumer["consumer_path"],
+                                    consumer_name=consumer["consumer_name"],
+                                    relevant_files=mfiles,
+                                )
+                            )
+                    class_filtered = method_filtered
+
+                logging.info(
+                    f"   Found {len(class_filtered)} consumer(s) for target "
+                    f"'{target_project_name}' triggered by '{report_trigger_info}'."
+                )
+
+                results_before = len(all_results)
+                _build_consumer_results(
+                    target_project_name=target_project_name,
+                    target_project_rel_path_str=target_project_rel_path_str,
+                    triggering_info=report_trigger_info,
+                    final_consumers_data=class_filtered,
+                    all_results_list=all_results,
+                    pipeline_map_dict=ctx.pipeline_map,
+                    solution_file_cache=ctx.solution_file_cache,
+                    batch_job_map=ctx.batch_job_map,
+                    search_scope_path_abs=ctx.search_scope,
+                    solution_index=ctx.solution_index,
+                    pipeline_resolver=resolver,
+                )
+
+                if ctx.summarize_consumers and ctx.ai_provider:
+                    _summarize_consumer_files(
+                        class_filtered,
+                        all_results,
+                        ctx.ai_provider,
+                        ctx.search_scope,
+                        results_before,
+                    )
 
     _apply_graph_enrichment(all_results, ctx)
 
