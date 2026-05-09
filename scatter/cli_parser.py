@@ -82,6 +82,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=False,
         help="MODE: Dependency Graph Analysis. Build graph, compute coupling metrics, detect cycles.",
     )
+    mode_group.add_argument(
+        "--sproc-inventory",
+        action="store_true",
+        default=False,
+        help="MODE: Sproc Inventory. Scan .sql files and C# code to build a complete stored procedure catalog. Requires --search-scope.",
+    )
 
     # --- sproc group ---
     sproc_group = parser.add_argument_group(
