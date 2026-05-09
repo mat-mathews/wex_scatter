@@ -59,10 +59,20 @@ def validate_mode_and_format(args, parser) -> None:
     is_sproc_mode = args.stored_procedure is not None
     is_impact_mode = args.sow is not None or args.sow_file is not None
     is_graph_mode = args.graph
+    is_sproc_inventory = getattr(args, "sproc_inventory", False)
 
-    if not any([is_git_mode, is_target_mode, is_sproc_mode, is_impact_mode, is_graph_mode]):
+    if not any(
+        [
+            is_git_mode,
+            is_target_mode,
+            is_sproc_mode,
+            is_impact_mode,
+            is_graph_mode,
+            is_sproc_inventory,
+        ]
+    ):
         parser.error(
-            "A mode (--branch-name, --target-project, --stored-procedure, --sow, --sow-file, or --graph) must be selected, or use --dump-index."
+            "A mode (--branch-name, --target-project, --stored-procedure, --sow, --sow-file, --graph, or --sproc-inventory) must be selected, or use --dump-index."
         )
 
     if is_graph_mode and args.output_format == "pipelines":

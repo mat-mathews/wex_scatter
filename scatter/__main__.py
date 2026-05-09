@@ -67,6 +67,7 @@ def main():
             ".rdl",
             ".rdlc",
             ".rds",
+            ".sql",
         },
         exclude_dirs,
     )
@@ -108,6 +109,10 @@ def main():
         run_impact_mode(args, ctx, start_time)
     elif args.graph:
         run_graph_mode(args, ctx, start_time)
+    elif getattr(args, "sproc_inventory", False):
+        from scatter.modes.sproc_inventory import run_sproc_inventory_mode
+
+        run_sproc_inventory_mode(args, ctx)
 
     # Log AI budget summary if any calls were made
     if ai_budget and ai_budget.calls_made > 0:
