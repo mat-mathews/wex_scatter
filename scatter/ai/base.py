@@ -4,6 +4,7 @@ import logging
 import re
 from dataclasses import dataclass
 from enum import Enum
+from fnmatch import fnmatch
 from typing import List, Optional, Protocol, Set, Tuple, runtime_checkable
 
 logger = logging.getLogger(__name__)
@@ -58,8 +59,6 @@ def classify_file_type(file_path: str) -> str:
     or ``test/`` directory is labeled as test code even if the filename
     itself doesn't contain a test marker (e.g., ``tests/helpers/Seeder.cs``).
     """
-    from fnmatch import fnmatch
-
     # Check path segments for test directories
     path_lower = file_path.replace("\\", "/").lower()
     for segment in ("/test/", "/tests/", "/testing/"):
