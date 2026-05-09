@@ -77,5 +77,5 @@ You never pass a flag for this. You never configure it. It just happens.
 ## Where to go from here
 
 - **Try it** -- [Getting Started](getting-started.md) with Python/uv, or [Docker](usage/docker.md) if you don't have Python
-- **See what it can do** -- [Quick Tour](quick-tour.md) walks through all six modes with real output
+- **See what it can do** -- [Quick Tour](quick-tour.md) walks through all seven modes with real output
 - **Run it in CI** -- [Docker](usage/docker.md) for containerized runs, [GitHub Action](reference/github-action.md) for PR comments

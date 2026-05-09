@@ -83,7 +83,7 @@ Scatter uses layered matching (exact → case-insensitive → suffix-stripped �
 
 ---
 
-## Six ways in
+## Seven ways in
 
 | Mode | The question it answers |
 |------|------------------------|
@@ -93,6 +93,7 @@ Scatter uses layered matching (exact → case-insensitive → suffix-stripped �
 | `--sow` / `--sow-file` | What's the blast radius of this work request? (plain English in, risk-rated tree out) |
 | `--graph` | What's the health of this codebase? (coupling, cycles, domain clusters) |
 | `--pr-risk` | How risky is this PR? (GREEN/YELLOW/RED across 7 dimensions) |
+| `--sproc-inventory` | What stored procedures exist and who calls them? (definitions vs references, coverage metric) |
 
 Stored procedures are the invisible coupling that project references don't show. Scatter traces sproc callers through string literals in `.cs` files:
 
@@ -162,7 +163,7 @@ uv run --with-requirements docs_site/requirements-docs.txt \
 
 Then open [http://localhost:8000](http://localhost:8000). Or browse the raw markdown:
 
-- [Quick Tour](docs_site/docs/quick-tour.md) — guided walkthrough of all six modes
+- [Quick Tour](docs_site/docs/quick-tour.md) — guided walkthrough of all seven modes
 - [CLI Reference](docs_site/docs/cli-reference.md) — every flag and option
 - [Configuration](docs_site/docs/configuration.md) — YAML config, env vars, pipeline mapping
 - [Architecture](docs_site/docs/reference/architecture.md) — system design and data flow

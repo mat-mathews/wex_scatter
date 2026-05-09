@@ -26,10 +26,12 @@ scatter/
 │   ├── msbuild_import_scanner.py # Directory.Build.props/.targets detection, ancestor walk
 │   ├── type_scanner.py           # C# type declaration extraction
 │   ├── sproc_scanner.py          # Stored procedure reference detection
-│   └── db_scanner.py             # Database dependency scanning, comment stripping
+│   ├── db_scanner.py             # Database dependency scanning, comment stripping
+│   └── sql_catalog_scanner.py    # .sql file sproc definitions, EF migration scanning
 │
 ├── analyzers/         # Consumer, git, graph builder, impact, coupling, domain, health, risk
 │   ├── consumer_analyzer.py  # 5-stage filter pipeline
+│   ├── sproc_catalog.py      # Sproc inventory aggregation (SprocCatalog, build_sproc_catalog)
 │   ├── git_analyzer.py       # Branch diff analysis
 │   ├── graph_builder.py      # Single-pass O(P+F) graph construction
 │   ├── graph_enrichment.py   # Graph context loading, result enrichment
@@ -238,7 +240,7 @@ Each `ai/tasks/` module contains prompt templates and response parsing for a spe
 
 ### Providers
 
-**GeminiProvider** (`ai/providers/gemini_provider.py`) — the current default. Wraps the `google-generativeai` SDK. Supports all eight task types. Model defaults to `gemini-2.0-flash`, configurable via `ai.gemini_model` in config or `--gemini-model` CLI flag.
+**GeminiProvider** (`ai/providers/gemini_provider.py`) — the current default. Wraps the `google-generativeai` SDK. Supports all eight task types. Model defaults to `gemini-2.5-flash`, configurable via `ai.gemini_model` in config or `--gemini-model` CLI flag.
 
 **WexProvider** (`ai/providers/wex_provider.py`) — stubbed for the WEX AI Platform, the company's centralized AI gateway. Instantiation succeeds (validates API key), but analysis calls raise `NotImplementedError` until the API contract is finalized. Will become the default provider once integrated. Configurable via `WEX_AI_API_KEY` env var or `--wex-api-key` CLI flag.
 

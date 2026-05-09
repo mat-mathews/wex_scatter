@@ -16,6 +16,7 @@ These are mutually exclusive. Pick exactly one.
 | `--sow DESCRIPTION` | Impact Analysis | Natural language work request -- AI parses it, traces transitive blast radius, rates risk |
 | `--sow-file FILE` | Impact Analysis (from file) | Same as `--sow` but reads the work request from a file |
 | `--graph` | Dependency Graph Analysis | Build full graph, compute coupling metrics, detect cycles, identify domain clusters |
+| `--sproc-inventory` | Sproc Inventory | Scan .sql files for CREATE/ALTER PROCEDURE definitions, cross-reference against C# code references, output coverage metrics |
 
 ## Common Options
 
@@ -73,7 +74,7 @@ AI features require a provider API key. Currently Gemini is the default; the WEX
 |------|---------|-------------|
 | `--summarize-consumers` | false | Send each relevant consumer `.cs` file to the AI provider for a 2-3 sentence summary |
 | `--google-api-key KEY` | None / env var | Google API key for Gemini |
-| `--gemini-model MODEL` | `gemini-2.0-flash` | Which Gemini model to use |
+| `--gemini-model MODEL` | `gemini-2.5-flash` | Which Gemini model to use |
 | `--wex-api-key KEY` | None / env var | WEX AI Platform API key (stubbed — not yet operational) |
 | `--wex-model MODEL` | None | WEX AI Platform model override |
 

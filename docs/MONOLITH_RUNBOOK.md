@@ -42,7 +42,7 @@ Verify it works:
 docker run scatter --help
 ```
 
-You should see six analysis modes listed.
+You should see seven analysis modes listed.
 
 ### Set up volume mounts
 
@@ -341,6 +341,37 @@ Record:
 
 ---
 
+## Step 8: Stored procedure inventory
+
+Build a complete catalog of every sproc defined in `.sql` files and referenced in C# code. Shows which sprocs have definitions, which are referenced but undefined, and coverage metrics.
+
+```bash
+MSYS_NO_PATHCONV=1 docker run \
+  -v "//c/repos/monolith:/workspace" \
+  -v scatter-cache:/workspace/.scatter \
+  scatter \
+    --sproc-inventory \
+    --search-scope /workspace
+```
+
+**What to look for:**
+- Coverage percentage — what fraction of referenced sprocs have a `.sql` definition in the repo?
+- "no .sql definition in repo" entries — these are sprocs called from C# but with no `.sql` source file. They may be defined directly in the database or in a separate repo.
+- Shared sprocs — referenced by 2+ projects. These are the hidden coupling hotspots.
+
+**Save to JSON:**
+
+```bash
+MSYS_NO_PATHCONV=1 docker run \
+  -v "//c/repos/monolith:/workspace" \
+  -v scatter-cache:/workspace/.scatter \
+  -v "//c/scatter-output:/output" \
+  scatter --sproc-inventory --search-scope /workspace \
+    --output-format json --output-file /output/sproc_inventory.json
+```
+
+---
+
 ## Interactive session
 
 If you want to poke around inside the container:
@@ -427,6 +458,9 @@ MSYS_NO_PATHCONV=1 docker run -e GOOGLE_API_KEY="key" -v "//c/repos/monolith:/wo
 
 # AI analysis report (any consumer mode)
 MSYS_NO_PATHCONV=1 docker run -e GOOGLE_API_KEY="key" -v "//c/repos/monolith:/workspace" -v scatter-cache:/workspace/.scatter scatter --target-project /workspace/src/Project/Project.csproj --search-scope /workspace --ai-summary
+
+# Sproc inventory
+MSYS_NO_PATHCONV=1 docker run -v "//c/repos/monolith:/workspace" -v scatter-cache:/workspace/.scatter scatter --sproc-inventory --search-scope /workspace
 
 # Save JSON output
 MSYS_NO_PATHCONV=1 docker run -v "//c/repos/monolith:/workspace" -v scatter-cache:/workspace/.scatter -v "//c/scatter-output:/output" scatter --graph --search-scope /workspace --output-format json --output-file /output/report.json

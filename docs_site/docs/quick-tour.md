@@ -78,7 +78,7 @@ uv run scatter \
 
 Returns a multi-section report: executive summary for your manager, technical risk analysis with consumer categorization and coupling outliers, and 3-4 specific recommendations. No source code is sent — just project names and coupling metrics. See [AI Features](ai-features.md#report-level-ai-summary).
 
-## All six modes
+## All seven modes
 
 | Mode | What it does | Needs AI? |
 |------|-------------|-----------|
@@ -88,6 +88,7 @@ Returns a multi-section report: executive summary for your manager, technical ri
 | `--sow` / `--sow-file` | Natural language → blast radius | Yes |
 | `--graph` | Full dependency graph with health metrics | No |
 | `--pr-risk` | Score a branch across coupling, blast radius, and DB dimensions | No |
+| `--sproc-inventory` | Catalog all sprocs: .sql definitions vs C# references, coverage metric | No |
 
 ## Try it on your code
 

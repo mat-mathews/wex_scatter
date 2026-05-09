@@ -96,7 +96,7 @@ To switch providers: set `ai.default_provider: wex` in your config or `export SC
 # AI provider settings
 ai:
   default_provider: gemini              # "gemini" (current) or "wex" (coming soon)
-  gemini_model: gemini-2.0-flash        # Gemini model name
+  gemini_model: gemini-2.5-flash        # Gemini model name
   wex_model: default                    # WEX AI Platform model name
   task_overrides:                       # Route specific AI tasks to different providers
     risk_assessment: gemini             # e.g., keep risk assessment on Gemini
