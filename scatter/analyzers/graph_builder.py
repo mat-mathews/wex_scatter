@@ -119,6 +119,7 @@ def build_dependency_graph(
             + discovered_files.get(".rdlc", [])
             + discovered_files.get(".rds", [])
         )
+        sql_files = discovered_files.get(".sql", [])
         logging.info(
             f"Using pre-discovered files: {len(dotnet_project_files)} .csproj/.vbproj/.fsproj, "
             f"{len(rptproj_files)} .rptproj, {len(cs_files)} .cs"
@@ -139,6 +140,7 @@ def build_dependency_graph(
                 ".rdl",
                 ".rdlc",
                 ".rds",
+                ".sql",
             },
             exclude_dirs,
         )
@@ -155,6 +157,7 @@ def build_dependency_graph(
         rdl_files = (
             discovered.get(".rdl", []) + discovered.get(".rdlc", []) + discovered.get(".rds", [])
         )
+        sql_files = discovered.get(".sql", [])
 
     t0a = time.monotonic()
     rptproj_count_msg = f", {len(rptproj_files)} .rptproj" if rptproj_files else ""
@@ -490,6 +493,41 @@ def build_dependency_graph(
     t6 = time.monotonic()
     if include_db_dependencies:
         logging.info(f"Graph build step 6 (DB scanner): {t6 - t5:.1f}s")
+
+    # Step 6a (optional): SQL catalog scanner → sproc definitions from .sql files
+    # and EF migration files. Runs before sproc_to_projects is built so that
+    # .sql-defined sprocs are included in the map for downstream scanners.
+    if sql_files or include_db_dependencies:
+        try:
+            from scatter.scanners.sql_catalog_scanner import scan_ef_migrations, scan_sql_catalog
+
+            if sql_files:
+                sql_deps = scan_sql_catalog(sql_files, project_dir_index, search_scope)
+                for dep in sql_deps:
+                    if dep.source_project in graph._nodes:
+                        node = graph._nodes[dep.source_project]
+                        if dep.db_object_name not in set(node.sproc_references):
+                            node.sproc_references.append(dep.db_object_name)
+                            node.sproc_references.sort()
+
+            if include_db_dependencies:
+                migration_deps = scan_ef_migrations(
+                    cs_files, dict(project_cs_files), content_by_path=None
+                )
+                for dep in migration_deps:
+                    if dep.source_project in graph._nodes:
+                        node = graph._nodes[dep.source_project]
+                        if dep.db_object_name not in set(node.sproc_references):
+                            node.sproc_references.append(dep.db_object_name)
+                            node.sproc_references.sort()
+        except Exception:
+            logging.exception(
+                "SQL catalog/migration scanner failed — continuing with existing graph."
+            )
+
+    t6a = time.monotonic()
+    if sql_files:
+        logging.info(f"Graph build step 6a (SQL catalog): {t6a - t6:.1f}s")
 
     # Build sproc-to-project map from graph nodes (used by Steps 6b+)
     sproc_to_projects: Dict[str, Set[str]] = defaultdict(set)
