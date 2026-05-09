@@ -40,7 +40,7 @@ class TestScatterConfig:
         """Defaults are sensible."""
         config = ScatterConfig()
         assert config.ai.default_provider == "gemini"
-        assert config.ai.gemini_model == "gemini-2.0-flash"
+        assert config.ai.gemini_model == "gemini-2.5-flash"
         assert config.max_depth == 2
         assert config.disable_multiprocessing is False
         assert config.max_workers is None
@@ -58,14 +58,14 @@ class TestScatterConfig:
         yaml_content = (
             "ai:\n"
             "  default_provider: openai\n"
-            "  gemini_model: gemini-2.0-flash\n"
+            "  gemini_model: gemini-2.5-flash\n"
             "search:\n"
             "  max_depth: 5\n"
         )
         (tmp_path / ".scatter.yaml").write_text(yaml_content)
         config = load_config(repo_root=tmp_path)
         assert config.ai.default_provider == "openai"
-        assert config.ai.gemini_model == "gemini-2.0-flash"
+        assert config.ai.gemini_model == "gemini-2.5-flash"
         assert config.max_depth == 5
 
     def test_load_user_config(self, tmp_path):
@@ -147,7 +147,7 @@ class TestScatterConfig:
         (tmp_path / ".scatter.yaml").write_text("ai:\n  default_provider: anthropic\n")
         config = load_config(repo_root=tmp_path)
         assert config.ai.default_provider == "anthropic"
-        assert config.ai.gemini_model == "gemini-2.0-flash"
+        assert config.ai.gemini_model == "gemini-2.5-flash"
         assert config.max_depth == 2
 
     def test_exclude_patterns_from_config(self, tmp_path):
@@ -235,12 +235,12 @@ class TestBuildCliOverrides:
 
         args = Namespace(
             google_api_key=None,
-            gemini_model="gemini-2.0-flash",  # same as config default
+            gemini_model="gemini-2.5-flash",  # same as config default
             disable_multiprocessing=False,
             max_depth=2,  # same as config default
         )
         overrides = _build_cli_overrides(args)
-        assert overrides["ai.gemini_model"] == "gemini-2.0-flash"
+        assert overrides["ai.gemini_model"] == "gemini-2.5-flash"
         assert overrides["search.max_depth"] == 2
 
     def test_all_flags_populated(self):
@@ -249,14 +249,14 @@ class TestBuildCliOverrides:
 
         args = Namespace(
             google_api_key="my-key",
-            gemini_model="gemini-2.0-flash",
+            gemini_model="gemini-2.5-flash",
             disable_multiprocessing=True,
             max_depth=5,
         )
         overrides = _build_cli_overrides(args)
         assert overrides == {
             "ai.credentials.gemini.api_key": "my-key",
-            "ai.gemini_model": "gemini-2.0-flash",
+            "ai.gemini_model": "gemini-2.5-flash",
             "multiprocessing.disabled": True,
             "search.max_depth": 5,
         }

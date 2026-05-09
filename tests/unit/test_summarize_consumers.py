@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 
 from scatter.analysis import _summarize_consumer_files
-from scatter.ai.base import AITaskType, AnalysisResult
+from scatter.ai.base import AITaskType, AnalysisResult, classify_file_type
 from scatter.core.models import ConsumerResult
 
 
@@ -196,3 +196,147 @@ class TestSummarizeConsumerFiles:
 
         assert results[0].consumer_file_summaries["A.cs"] == "A summary"
         assert results[1].consumer_file_summaries["B.cs"] == "B summary"
+
+
+class TestMethodFocusedSummarization:
+    """Tests for method-focused prompt path (Phase 1 of METHOD_LEVEL_ANALYSIS_PLAN)."""
+
+    def test_method_prompt_used_when_both_names_provided(self, tmp_path):
+        """When class_name and method_name are set, prompt contains the method name."""
+        cs_file = tmp_path / "Controller.cs"
+        cs_file.write_text("public class Controller { void Save() { } }")
+
+        consumers = [_make_consumer("ConsumerA", [cs_file], base=tmp_path)]
+        results = [_make_result("ConsumerA", search_scope=tmp_path)]
+        provider = _mock_provider(response='{"caller_methods": ["Save"], "risk": "Medium"}')
+
+        _summarize_consumer_files(
+            consumers,
+            results,
+            provider,
+            tmp_path,
+            0,
+            class_name="PortalDataService",
+            method_name="StorePortalConfigurationAsync",
+        )
+
+        # Verify the prompt sent to the AI contains the method name
+        prompt_sent = provider.analyze.call_args[0][0]
+        assert "StorePortalConfigurationAsync" in prompt_sent
+        assert "PortalDataService.StorePortalConfigurationAsync" in prompt_sent
+        assert "Return ONLY the JSON object" in prompt_sent
+
+    def test_generic_prompt_when_method_name_missing(self, tmp_path):
+        """Without method_name, the generic summarization prompt is used."""
+        cs_file = tmp_path / "Service.cs"
+        cs_file.write_text("public class Service { }")
+
+        consumers = [_make_consumer("ConsumerA", [cs_file], base=tmp_path)]
+        results = [_make_result("ConsumerA", search_scope=tmp_path)]
+        provider = _mock_provider(response="Service does things.")
+
+        _summarize_consumer_files(
+            consumers,
+            results,
+            provider,
+            tmp_path,
+            0,
+            class_name="PortalDataService",
+            method_name=None,
+        )
+
+        prompt_sent = provider.analyze.call_args[0][0]
+        assert "Return ONLY the JSON object" not in prompt_sent
+        assert "primary purpose" in prompt_sent
+
+    def test_generic_prompt_when_class_name_missing(self, tmp_path):
+        """Without class_name, falls back to generic even if method_name is set."""
+        cs_file = tmp_path / "Service.cs"
+        cs_file.write_text("public class Service { }")
+
+        consumers = [_make_consumer("ConsumerA", [cs_file], base=tmp_path)]
+        results = [_make_result("ConsumerA", search_scope=tmp_path)]
+        provider = _mock_provider(response="Service does things.")
+
+        _summarize_consumer_files(
+            consumers,
+            results,
+            provider,
+            tmp_path,
+            0,
+            class_name=None,
+            method_name="DoStuff",
+        )
+
+        prompt_sent = provider.analyze.call_args[0][0]
+        assert "Return ONLY the JSON object" not in prompt_sent
+
+    def test_test_file_labeled_correctly(self, tmp_path):
+        """Files with test markers get labeled as 'test' in the prompt."""
+        test_file = tmp_path / "ServiceTest.cs"
+        test_file.write_text("public class ServiceTest { }")
+
+        consumers = [_make_consumer("ConsumerA", [test_file], base=tmp_path)]
+        results = [_make_result("ConsumerA", search_scope=tmp_path)]
+        provider = _mock_provider(response='{"risk": "Low"}')
+
+        _summarize_consumer_files(
+            consumers,
+            results,
+            provider,
+            tmp_path,
+            0,
+            class_name="Service",
+            method_name="DoWork",
+        )
+
+        prompt_sent = provider.analyze.call_args[0][0]
+        assert "test code" in prompt_sent
+
+    def test_production_file_labeled_correctly(self, tmp_path):
+        """Files without test markers get labeled as 'production' in the prompt."""
+        prod_file = tmp_path / "OrderController.cs"
+        prod_file.write_text("public class OrderController { }")
+
+        consumers = [_make_consumer("ConsumerA", [prod_file], base=tmp_path)]
+        results = [_make_result("ConsumerA", search_scope=tmp_path)]
+        provider = _mock_provider(response='{"risk": "High"}')
+
+        _summarize_consumer_files(
+            consumers,
+            results,
+            provider,
+            tmp_path,
+            0,
+            class_name="Service",
+            method_name="DoWork",
+        )
+
+        prompt_sent = provider.analyze.call_args[0][0]
+        assert "production code" in prompt_sent
+
+
+class TestClassifyFileType:
+    """Tests for the file type classifier."""
+
+    def test_test_filename(self):
+        assert classify_file_type("ServiceTest.cs") == "test"
+
+    def test_mock_filename(self):
+        assert classify_file_type("MockRepository.cs") == "test"
+
+    def test_fixture_filename(self):
+        assert classify_file_type("DataFixture.cs") == "test"
+
+    def test_production_filename(self):
+        assert classify_file_type("OrderController.cs") == "production"
+
+    def test_test_directory_production_filename(self):
+        """Files under test directories are labeled as test even without markers."""
+        assert classify_file_type("src/tests/helpers/DatabaseSeeder.cs") == "test"
+
+    def test_nested_test_directory(self):
+        assert classify_file_type("Dev/Source/Code/Test/Helper.cs") == "test"
+
+    def test_production_directory(self):
+        assert classify_file_type("src/Services/OrderService.cs") == "production"
