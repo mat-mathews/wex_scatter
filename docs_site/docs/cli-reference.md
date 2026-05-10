@@ -10,7 +10,7 @@ These are mutually exclusive. Pick exactly one.
 
 | Flag | Mode | What it does |
 |------|------|-------------|
-| `--branch-name NAME` | Git Branch Analysis | Extract type declarations from changed files on a feature branch, find consuming projects |
+| `--branch-name REF` | Git Branch Analysis | Extract type declarations from changed files on a branch, tag, or SHA — find consuming projects |
 | `--target-project PATH` | Target Project Analysis | Find all projects that reference and use a specific `.csproj` |
 | `--stored-procedure NAME` | Stored Procedure Analysis | Find C# projects referencing a sproc, then trace their consumers |
 | `--sow DESCRIPTION` | Impact Analysis | Natural language work request -- AI parses it, traces transitive blast radius, rates risk |
@@ -52,9 +52,9 @@ Only relevant with `--branch-name`.
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-r`, `--repo-path PATH` | `.` (current directory) | Path to the Git repository |
-| `-b`, `--base-branch NAME` | `main` | Base branch to compare against for diff extraction |
+| `-b`, `--base-branch REF` | `main` | Base ref to compare against for diff extraction. Accepts any git ref (branch, tag, SHA). |
 | `--enable-hybrid-git` | false | Use AI-enhanced diff analysis for more precise symbol extraction. Only flags types whose body/signature actually changed, not every type in the file. Requires a Gemini API key. |
-| `--pr-risk` | false | Output PR risk analysis instead of consumer table. Scores changes across 6 dimensions, outputs GREEN/YELLOW/RED with composite score. Supports `console`, `json`, and `markdown` output formats. |
+| `--pr-risk` | false | Output PR risk analysis instead of consumer table. Scores changes across 7 dimensions, outputs GREEN/YELLOW/RED with composite score. Supports `console`, `json`, and `markdown` output formats. |
 | `--collapsible` | false | Wrap detail sections in collapsible `<details>` tags. Only affects `--pr-risk --output-format markdown`. Ideal for PR comments where you want a compact summary with expandable details. |
 | `--no-prediction-log` | false | Disable writing prediction records to `.scatter/predictions.jsonl` after `--pr-risk` analysis. |
 

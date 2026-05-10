@@ -50,10 +50,16 @@ def resolve_branch_shas(repo_path: str, feature_branch: str, base_branch: str) -
     repo_id = repo_path
     try:
         repo = git.Repo(repo_path, search_parent_directories=True)
-        if feature_branch in repo.heads:
-            head_sha = repo.heads[feature_branch].commit.hexsha
-        if base_branch in repo.heads:
-            base_sha = repo.heads[base_branch].commit.hexsha
+        try:
+            head_sha = repo.commit(feature_branch).hexsha
+            logging.debug(f"Resolved feature ref '{feature_branch}' → {head_sha[:7]}")
+        except Exception:
+            logging.debug(f"Could not resolve feature ref '{feature_branch}' for prediction log")
+        try:
+            base_sha = repo.commit(base_branch).hexsha
+            logging.debug(f"Resolved base ref '{base_branch}' → {base_sha[:7]}")
+        except Exception:
+            logging.debug(f"Could not resolve base ref '{base_branch}' for prediction log")
         try:
             repo_id = repo.remotes.origin.url
         except (AttributeError, ValueError):
@@ -215,15 +221,26 @@ def analyze_branch_changes(
         repo = git.Repo(repo_path, search_parent_directories=True)
         logging.info(f"Opened repository: {repo.working_tree_dir}")
 
-        if base_branch_name not in repo.heads:
-            raise ValueError(f"Base branch '{base_branch_name}' not found in repository.")
-        if feature_branch_name not in repo.heads:
-            raise ValueError(f"Feature branch '{feature_branch_name}' not found in repository.")
+        # Accept any git revspec: local branch, remote-tracking ref (origin/...),
+        # tag, SHA, or relative ref (HEAD~3). repo.commit() resolves them all.
+        # Catch bad-ref errors specifically; let permissions/corruption propagate.
+        try:
+            base_commit = repo.commit(base_branch_name)
+        except (git.BadName, git.GitCommandError, ValueError) as e:
+            raise ValueError(
+                f"Cannot resolve base ref '{base_branch_name}' in repository "
+                f"at {repo_path}. Accepts local branches, remote-tracking refs "
+                f"(origin/...), tags, and SHAs."
+            ) from e
+        logging.info(f"Base ref ({base_branch_name}) commit: {base_commit.hexsha[:7]}")
 
-        base_commit = repo.heads[base_branch_name].commit
-        logging.info(f"Base branch ({base_branch_name}) commit: {base_commit.hexsha[:7]}")
-        feature_commit = repo.heads[feature_branch_name].commit
-        logging.info(f"Feature branch ({feature_branch_name}) commit: {feature_commit.hexsha[:7]}")
+        try:
+            feature_commit = repo.commit(feature_branch_name)
+        except (git.BadName, git.GitCommandError, ValueError) as e:
+            raise ValueError(
+                f"Cannot resolve feature ref '{feature_branch_name}' in repository at {repo_path}."
+            ) from e
+        logging.info(f"Feature ref ({feature_branch_name}) commit: {feature_commit.hexsha[:7]}")
 
         merge_bases = repo.merge_base(base_commit, feature_commit)
         if not merge_bases:
@@ -401,17 +418,23 @@ def extract_pr_changed_types(
     except (git.InvalidGitRepositoryError, git.NoSuchPathError) as e:
         raise ValueError(f"Not a valid Git repository: {repo_path}") from e
 
-    # Resolve branches
+    # Accept any git revspec: local branch, remote-tracking ref, tag, SHA.
+    # Catch bad-ref errors specifically; let permissions/corruption propagate.
     try:
-        if base_branch not in repo.heads:
-            raise ValueError(f"Branch '{base_branch}' not found in repository.")
-        if feature_branch not in repo.heads:
-            raise ValueError(f"Branch '{feature_branch}' not found in repository.")
-    except ValueError:
-        raise
+        base_commit = repo.commit(base_branch)
+    except (git.BadName, git.GitCommandError, ValueError) as e:
+        raise ValueError(
+            f"Cannot resolve base ref '{base_branch}' in repository "
+            f"at {repo_path}. Accepts local branches, remote-tracking refs "
+            f"(origin/...), tags, and SHAs."
+        ) from e
 
-    base_commit = repo.heads[base_branch].commit
-    feature_commit = repo.heads[feature_branch].commit
+    try:
+        feature_commit = repo.commit(feature_branch)
+    except (git.BadName, git.GitCommandError, ValueError) as e:
+        raise ValueError(
+            f"Cannot resolve feature ref '{feature_branch}' in repository at {repo_path}."
+        ) from e
 
     # Find merge base
     merge_bases = repo.merge_base(base_commit, feature_commit)
