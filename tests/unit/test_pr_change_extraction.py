@@ -196,8 +196,36 @@ class TestExtractPrChangedTypes:
     def test_branch_not_found_raises_value_error(self, repo_path):
         _init_repo(repo_path)
 
-        with pytest.raises(ValueError, match="not found in repository"):
+        with pytest.raises(ValueError, match="Cannot resolve"):
             extract_pr_changed_types(str(repo_path), "nonexistent-branch", "main")
+
+    def test_tag_accepted_as_feature_ref(self, repo_path):
+        """Tags should be accepted as valid refs."""
+        repo = _init_repo(repo_path)
+        _create_feature_branch(repo)
+        cs_file = repo_path / "MyProject" / "Tagged.cs"
+        cs_file.write_text("public class Tagged { }\n")
+        repo.index.add([str(cs_file)])
+        repo.index.commit("add tagged class")
+        repo.create_tag("v1.0.0")
+        repo.heads.main.checkout()
+
+        result = extract_pr_changed_types(str(repo_path), "v1.0.0", "main")
+        assert any(ct.name == "Tagged" for ct in result)
+
+    def test_sha_accepted_as_feature_ref(self, repo_path):
+        """Full SHA should be accepted as a valid ref."""
+        repo = _init_repo(repo_path)
+        _create_feature_branch(repo)
+        cs_file = repo_path / "MyProject" / "BySha.cs"
+        cs_file.write_text("public class BySha { }\n")
+        repo.index.add([str(cs_file)])
+        commit = repo.index.commit("add sha class")
+        sha = commit.hexsha
+        repo.heads.main.checkout()
+
+        result = extract_pr_changed_types(str(repo_path), sha, "main")
+        assert any(ct.name == "BySha" for ct in result)
 
     def test_no_merge_base_raises_value_error(self, repo_path):
         """Two branches with no common ancestor should raise ValueError."""

@@ -211,19 +211,9 @@ The pipeline CSV must be inside the mounted volume — Docker can't see files ou
 
 ## Step 4: PR risk scoring
 
-Score the risk of a feature branch before merge.
+Score the risk of a feature branch before merge. Scatter accepts any git ref — local branch, remote-tracking ref (`origin/...`), tag, or SHA. No need to check out or create a local branch. If `git rev-parse <ref>` resolves it, scatter can diff it.
 
-> **Branch must exist as a *local* branch in the host clone.** Scatter reads diffs directly from git's object store (not the working tree), so the branch does **not** need to be the currently checked-out HEAD and your working-tree files don't have to match it — but it must appear in `git branch --list` (i.e., `repo.heads` in GitPython terms). Remote-tracking refs (`origin/<name>`) are **not** accepted, even though `git rev-parse` resolves them. If you pass an `origin/...` name, scatter exits with `Branch '<name>' not found in repository.`
->
-> Quick check: `git -C C:\_\health-cdh-ondemand branch --list <branch-name>` — if it prints the name, scatter can see it. If empty, materialize a local branch first:
->
-> ```bash
-> git -C C:\_\health-cdh-ondemand branch <branch-name> origin/<branch-name>
-> ```
->
-> This creates a local ref pointing at the same commit as the remote-tracking ref. It does not touch your working tree, doesn't switch HEAD, and is fully reversible with `git branch -d <branch-name>`.
-
-The example below uses a real CDH branch (`Stingrays/dleal/CDH-27013-fix-assembly-error`). If you've only fetched it (no local branch yet), run the `git branch` command above first, then:
+The example below uses a real CDH branch (`Stingrays/dleal/CDH-27013-fix-assembly-error`). You can pass it as a local branch or as `origin/Stingrays/dleal/CDH-27013-fix-assembly-error` — both work:
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \

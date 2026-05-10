@@ -2,7 +2,7 @@
 
 You're about to merge a feature branch and want to know what you might break. Someone asks "what's the blast radius?" and you'd rather answer with data than a shrug.
 
-Give Scatter a branch name. It diffs against the base, extracts the type declarations from changed `.cs` files (classes, structs, interfaces, enums, records, delegates), and runs consumer detection for each one. The result: a list of every project affected by the types you touched.
+Give Scatter any git ref — a local branch, a remote-tracking ref (`origin/feature-x`), a tag, or even a raw SHA. It diffs against the base, extracts the type declarations from changed `.cs` files (classes, structs, interfaces, enums, records, delegates), and runs consumer detection for each one. The result: a list of every project affected by the types you touched.
 
 ## Basic Example
 
@@ -121,13 +121,13 @@ scatter \
   Cycle entanglement       0.80  critical
 ```
 
-Add `--graph-metrics` for full 6-dimension scoring (blast radius, coupling, instability, domain boundaries). Add `--collapsible` with `--output-format markdown` for compact PR comments with expandable `<details>` sections.
+All 7 risk dimensions are computed automatically from the dependency graph — no extra flags needed. Add `--collapsible` with `--output-format markdown` for compact PR comments with expandable `<details>` sections.
 
 ```bash
 # Markdown for PR comments
 scatter --branch-name feature/refactor-data --pr-risk \
   --repo-path . --search-scope . \
-  --graph-metrics --collapsible \
+  --collapsible \
   --output-format markdown | pbcopy
 ```
 
@@ -138,10 +138,12 @@ The [GitHub Action template](../reference/github-action.md) automates this on ev
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-r`, `--repo-path` | `.` | Path to the git repository |
-| `-b`, `--base-branch` | `main` | Branch to compare against |
+| `-b`, `--base-branch` | `main` | Base ref to compare against. Any git ref works: branch, tag, SHA. |
 | `--enable-hybrid-git` | off | Use Gemini for precise type extraction |
 | `--pr-risk` | off | Output risk analysis instead of consumer table |
 | `--collapsible` | off | Wrap detail sections in `<details>` tags (markdown only) |
+
+`--branch-name` accepts any git ref: local branches, remote-tracking refs (`origin/feature-x`), tags (`v1.2.3`), or full/abbreviated SHAs. You don't need to check out a branch or create a local ref — if `git rev-parse <ref>` resolves it, scatter can diff it.
 
 When `--search-scope` is omitted, the repo path doubles as the search scope. Specify `--search-scope` separately when you want to analyze changes in one repo but search for consumers across a broader directory.
 

@@ -16,10 +16,14 @@ def run_sproc_inventory_mode(args, ctx) -> None:
     enabled. Scans .sql files for CREATE/ALTER PROCEDURE definitions, then
     cross-references against C# sproc references from the graph.
     """
+    from scatter.analysis import _ensure_graph_context
     from scatter.analyzers.sproc_catalog import build_sproc_catalog
     from scatter.scanners.sql_catalog_scanner import scan_sql_catalog
 
     t0 = time.monotonic()
+
+    # Build graph on first run if no cache exists (same as other modes)
+    _ensure_graph_context(ctx)
 
     if not ctx.graph_ctx or not ctx.graph_ctx.graph:
         logging.error("Sproc inventory requires a dependency graph. Run without --no-graph.")

@@ -156,7 +156,7 @@ class TestAnalyzePrRisk:
     def test_branch_not_found_raises(self, repo_path):
         _init_repo(repo_path)
 
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(ValueError, match="Cannot resolve"):
             analyze_pr_risk(repo_path, "nonexistent", "main")
 
     def test_graph_path_populates_consumers(self, repo_path):

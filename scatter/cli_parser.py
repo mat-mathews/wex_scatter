@@ -58,7 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     mode_group.add_argument(
         "--branch-name",
-        help="MODE: Git Branch Analysis. Name of the feature branch to analyze changes on.",
+        help="MODE: Git Branch Analysis. Any git ref to analyze: local branch, remote-tracking ref (origin/...), tag, or SHA.",
     )
 
     mode_group.add_argument(
