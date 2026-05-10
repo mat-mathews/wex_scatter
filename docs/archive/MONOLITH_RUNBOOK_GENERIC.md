@@ -13,7 +13,7 @@ Read this before running anything. Git Bash on Windows has path-rewriting behavi
 **The `MSYS_NO_PATHCONV=1` prefix is mandatory.** Without it, Git Bash rewrites `/workspace` to `C:/Program Files/Git/workspace` before Docker sees it. Every `docker run` command in this doc includes it. Don't remove it.
 
 **Path rules:**
-- Host paths use forward slashes: `//c/_/health-cdh-ondemand` (not `C:\_\health-cdh-ondemand`)
+- Host paths use forward slashes: `//c/Users/you/repos/monolith` (not `C:\Users\...`)
 - The `//c/` prefix is Git Bash's way of saying `C:\` — the double slash prevents path rewriting
 - Container paths always start with `/workspace` — that's the mount point inside the container
 - Never use `$(pwd)` with spaces in the path — quote it: `"$(pwd)"`
@@ -50,12 +50,12 @@ You'll mount two things into the container:
 - **The monolith repo** at `/workspace` — so Scatter can read the code
 - **A cache volume** at `/workspace/.scatter` — so the graph cache persists between runs
 
-The monolith path in all examples below is `//c/_/health-cdh-ondemand` (i.e. `C:\_\health-cdh-ondemand` on the host).
+The monolith path in all examples below is `//c/repos/monolith`. Replace it with your actual path.
 
 ### Set up an output directory
 
 ```bash
-mkdir -p //c/_/scatter-output
+mkdir -p //c/scatter-output
 ```
 
 Reports will be written here so they survive after the container exits.
@@ -68,7 +68,7 @@ This is the foundation. Every other mode benefits from the cached graph.
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter --graph --search-scope /workspace
 ```
@@ -91,27 +91,27 @@ MSYS_NO_PATHCONV=1 docker run \
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
-  -v "//c/_/scatter-output:/output" \
+  -v "//c/scatter-output:/output" \
   scatter --graph --search-scope /workspace \
     --output-format json --output-file /output/graph_report.json
 ```
 
-The report lands at `C:\_\scatter-output\graph_report.json` on your host.
+The report lands at `C:\scatter-output\graph_report.json` on your host.
 
 ---
 
 ## Step 2: Target project analysis
 
-Pick a project you know well and check who consumes it. The example below uses `Lighthouse1.Platform.WCF.Services` — substitute any other `.csproj` path inside the monolith.
+Pick a project you know well and check who consumes it. Replace `src/SomeProject/SomeProject.csproj` with the actual relative path inside the monolith.
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter \
-    --target-project /workspace/Dev/src/Lighthouse1/Platform/WCF/Services/Lighthouse1.Platform.WCF.Services.csproj \
+    --target-project /workspace/src/SomeProject/SomeProject.csproj \
     --search-scope /workspace
 ```
 
@@ -124,12 +124,12 @@ MSYS_NO_PATHCONV=1 docker run \
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter \
-    --target-project /workspace/Dev/src/Lighthouse1/Platform/WCF/Services/Lighthouse1.Platform.WCF.Services.csproj \
+    --target-project /workspace/src/SomeProject/SomeProject.csproj \
     --search-scope /workspace \
-    --class-name IClaimService
+    --class-name SomeImportantService
 ```
 
 **Get an AI-generated analysis report:**
@@ -139,10 +139,10 @@ Add `--ai-summary` to any consumer analysis command. It makes one Gemini API cal
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
   -e GOOGLE_API_KEY="your-gemini-api-key" \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter \
-    --target-project /workspace/Dev/src/Lighthouse1/Platform/WCF/Services/Lighthouse1.Platform.WCF.Services.csproj \
+    --target-project /workspace/src/SomeProject/SomeProject.csproj \
     --search-scope /workspace \
     --ai-summary
 ```
@@ -157,17 +157,17 @@ Works with any mode: `--target-project`, `--stored-procedure`, `--branch-name`. 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
   -e GOOGLE_API_KEY="your-gemini-api-key" \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
-  -v "//c/_/scatter-output:/output" \
+  -v "//c/scatter-output:/output" \
   scatter \
-    --target-project /workspace/Dev/src/Lighthouse1/Platform/WCF/Services/Lighthouse1.Platform.WCF.Services.csproj \
+    --target-project /workspace/src/SomeProject/SomeProject.csproj \
     --search-scope /workspace \
     --ai-summary \
     --output-format markdown --output-file /output/analysis_report.md
 ```
 
-The report lands at `C:\_\scatter-output\analysis_report.md` — ready to paste into Confluence, a PR description, or a Slack message.
+The report lands at `C:\scatter-output\analysis_report.md` — ready to paste into Confluence, a PR description, or a Slack message.
 
 > **What gets sent to the AI:** Project names, coupling scores, fan-in/fan-out metrics, instability indices, and solution membership. No source code or file contents leave the network.
 
@@ -175,14 +175,14 @@ The report lands at `C:\_\scatter-output\analysis_report.md` — ready to paste 
 
 ## Step 3: Stored procedure tracing
 
-The example below uses `usp_SelectAdministratorByAlias` — a known coupling hotspot in this monolith. A live run on 2026-05-08 (see `perf_run1.txt`) found **10 C# callers across 8 projects**, with downstream consumer counts of 15, 11, and 1 for the top three triggering types. Substitute any sproc the DBA team is asking about.
+Pick a sproc the DBA team has been asking about.
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter \
-    --stored-procedure "usp_SelectAdministratorByAlias" \
+    --stored-procedure "dbo.sp_YourStoredProcedure" \
     --search-scope /workspace
 ```
 
@@ -191,16 +191,14 @@ MSYS_NO_PATHCONV=1 docker run \
 - The consumer chain: sproc → class → project → consumers of that project
 - If SSRS reports (`.rdl` files) reference this sproc, the graph has `rdl_sproc` edges — visible in graph mode output but not yet in sproc mode (follow-up enhancement tracked)
 
-> **Reporting-heavy alternative:** `usp_ReportCheck` appears in **328 `.rdl/.rdlc` files** in this monolith (filesystem string match) — the highest-fan-in sproc by SSRS surface. The `rdl_sproc` edge count in graph mode will be slightly lower because the scanner only counts bare-sproc `<CommandText>` blocks (not embedded SELECTs); expect ~300+. Useful for demonstrating the rdl_sproc edge weight.
-
 **With pipeline mapping:**
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter \
-    --stored-procedure "usp_SelectAdministratorByAlias" \
+    --stored-procedure "dbo.sp_YourStoredProcedure" \
     --search-scope /workspace \
     --pipeline-csv /workspace/path/to/pipeline_to_app_mapping.csv
 ```
@@ -211,32 +209,18 @@ The pipeline CSV must be inside the mounted volume — Docker can't see files ou
 
 ## Step 4: PR risk scoring
 
-Score the risk of a feature branch before merge.
-
-> **Branch must exist as a *local* branch in the host clone.** Scatter reads diffs directly from git's object store (not the working tree), so the branch does **not** need to be the currently checked-out HEAD and your working-tree files don't have to match it — but it must appear in `git branch --list` (i.e., `repo.heads` in GitPython terms). Remote-tracking refs (`origin/<name>`) are **not** accepted, even though `git rev-parse` resolves them. If you pass an `origin/...` name, scatter exits with `Branch '<name>' not found in repository.`
->
-> Quick check: `git -C C:\_\health-cdh-ondemand branch --list <branch-name>` — if it prints the name, scatter can see it. If empty, materialize a local branch first:
->
-> ```bash
-> git -C C:\_\health-cdh-ondemand branch <branch-name> origin/<branch-name>
-> ```
->
-> This creates a local ref pointing at the same commit as the remote-tracking ref. It does not touch your working tree, doesn't switch HEAD, and is fully reversible with `git branch -d <branch-name>`.
-
-The example below uses a real CDH branch (`Stingrays/dleal/CDH-27013-fix-assembly-error`). If you've only fetched it (no local branch yet), run the `git branch` command above first, then:
+Score the risk of a feature branch before merge. The branch must exist in the mounted repo.
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter \
-    --branch-name Stingrays/dleal/CDH-27013-fix-assembly-error \
+    --branch-name feature/your-branch \
     --pr-risk \
     --repo-path /workspace \
     --search-scope /workspace
 ```
-
-Verified diff size: ~215 changed `.cs` files vs `main`. If your monolith's mainline is not `main`, append `--base-branch <name>` (e.g. `--base-branch master`). On `C:\_\health-cdh-ondemand` the default of `main` is correct.
 
 **What to look for:**
 - Risk level: GREEN (< 0.4), YELLOW (0.4-0.7), RED (>= 0.7)
@@ -248,11 +232,11 @@ Verified diff size: ~215 changed `.cs` files vs `main`. If your monolith's mainl
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
-  -v "//c/_/scatter-output:/output" \
+  -v "//c/scatter-output:/output" \
   scatter \
-    --branch-name Stingrays/dleal/CDH-27013-fix-assembly-error \
+    --branch-name feature/your-branch \
     --pr-risk \
     --repo-path /workspace \
     --search-scope /workspace \
@@ -260,7 +244,7 @@ MSYS_NO_PATHCONV=1 docker run \
     --output-file /output/pr_risk.md
 ```
 
-Open `C:\_\scatter-output\pr_risk.md` and paste into the PR description.
+Open `C:\scatter-output\pr_risk.md` and paste into the PR description.
 
 ---
 
@@ -271,7 +255,7 @@ Analyze a work request in plain English. Pass the Gemini API key via `-e`.
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
   -e GOOGLE_API_KEY="your-gemini-api-key" \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter \
     --sow "Add tenant isolation to the portal configuration system" \
@@ -290,7 +274,7 @@ Put the SOW file inside the monolith repo (or another mounted volume) so Docker 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
   -e GOOGLE_API_KEY="your-gemini-api-key" \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter \
     --sow-file /workspace/docs/my_sow.md \
@@ -302,7 +286,7 @@ MSYS_NO_PATHCONV=1 docker run \
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
   -e GOOGLE_API_KEY="your-gemini-api-key" \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter \
     --sow "Your work request here" \
@@ -316,15 +300,12 @@ MSYS_NO_PATHCONV=1 docker run \
 
 Check whether the config DI and RDL scanners found anything in the monolith.
 
-> **Important:** the JSON exporter omits the raw `nodes`/`edges` arrays by default to reduce file size. To grep for edge types you **must** add `--include-graph-topology`. Without it, `graph.json` will contain `summary`, `top_coupled`, `metrics`, and `cycles` only — and `grep -c '"config_di"'` will return 0 even when the scanners found thousands of edges.
-
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
-  -v "//c/_/scatter-output:/output" \
+  -v "//c/scatter-output:/output" \
   scatter --graph --search-scope /workspace \
-    --include-graph-topology \
     --output-format json --output-file /output/graph.json
 ```
 
@@ -332,27 +313,16 @@ Then on your host:
 
 ```bash
 # Count config_di edges
-grep -c '"config_di"' //c/_/scatter-output/graph.json
+grep -c '"config_di"' //c/scatter-output/graph.json
 
 # Count rdl_sproc edges
-grep -c '"rdl_sproc"' //c/_/scatter-output/graph.json
+grep -c '"rdl_sproc"' //c/scatter-output/graph.json
 ```
 
-**Expected order of magnitude on this monolith (verified 2026-04):**
-- 1,180 `.rdl/.rdlc` files exist in the tree; ~990 carry `<CommandText>` sproc references
-- `rdl_sproc` edge count should be in the **thousands** (one per RDL → sproc → owning-project link)
-- Top RDL-referenced sprocs (filesystem string match): `usp_ReportCheck` (328 files), `usp_ReportPtpCheck` (~135), `usp_ReportHSACheck` (~114). The `rdl_sproc` edge count is bounded above by these numbers. A concrete RDL example: `Dev/Source/Code/Database.NavSuite Operational/Execution Logs - Administrator Stats.rdl` binds to `dbo.usp_GetExecutionLogs_AdministratorStats`.
-
-**Independent verification from the build log** (works even without `--include-graph-topology`): both scanners emit summary log lines during the graph build. Look for:
-- `Config DI scanner: found N type reference(s) across M .config file(s)` followed by `Added K config_di edge(s) to graph`
-- `RDL scanner: found N sproc reference(s) across M RDL file(s)` followed by `Added K rdl_sproc edge(s) to graph`
-
-If those log lines show non-zero counts, the scanners worked. If `grep -c '"config_di"'` returns 0 anyway, you forgot `--include-graph-topology`.
-
-**If the log lines themselves show zero:**
+**If you see zero for either:**
+- Check the build log for "Config DI scanner" and "RDL scanner" lines — they report file counts and match counts
 - Add `-v` for verbose: append `-v` before `--search-scope`
 - Make sure the monolith root is mounted — `.config` and `.rdl` files in subdirectories are scanned recursively
-- Force a fresh build to re-run the scanners: `docker volume rm scatter-cache` then re-run Step 1
 
 ---
 
@@ -377,7 +347,7 @@ Build a complete catalog of every sproc defined in `.sql` files and referenced i
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter \
     --sproc-inventory \
@@ -387,20 +357,18 @@ MSYS_NO_PATHCONV=1 docker run \
 **What to look for:**
 - Coverage percentage — what fraction of referenced sprocs have a `.sql` definition in the repo?
 - "no .sql definition in repo" entries — these are sprocs called from C# but with no `.sql` source file. They may be defined directly in the database or in a separate repo.
-- Shared sprocs — referenced by 2+ projects. These are the hidden coupling hotspots (e.g. `usp_SelectAdministratorByAlias` shows up across 4 projects in this monolith).
+- Shared sprocs — referenced by 2+ projects. These are the hidden coupling hotspots.
 
 **Save to JSON:**
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
-  -v "//c/_/scatter-output:/output" \
+  -v "//c/scatter-output:/output" \
   scatter --sproc-inventory --search-scope /workspace \
     --output-format json --output-file /output/sproc_inventory.json
 ```
-
-> **Note:** `--sproc-inventory` always scans `.sql` files fresh; it does not depend on the cached graph from Step 1. First run on this monolith reads ~all `.sql` files under `/workspace` plus all C# string-literal sproc references (the same ~45,000 `.cs` files Step 1 walked).
 
 ---
 
@@ -410,7 +378,7 @@ If you want to poke around inside the container:
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run -it --entrypoint /bin/bash \
-  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v "//c/repos/monolith:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter
 ```
@@ -419,7 +387,7 @@ Inside the container, run Scatter commands directly (no `docker run`, no `MSYS_N
 
 ```bash
 scatter --graph --search-scope /workspace
-scatter --target-project /workspace/Dev/src/Lighthouse1/Platform/WCF/Services/Lighthouse1.Platform.WCF.Services.csproj --search-scope /workspace
+scatter --target-project /workspace/src/SomeProject/SomeProject.csproj --search-scope /workspace
 ```
 
 ---
@@ -427,7 +395,7 @@ scatter --target-project /workspace/Dev/src/Lighthouse1/Platform/WCF/Services/Li
 ## Troubleshooting
 
 **"No projects found" or empty output**
-- Check that `/workspace` contains `.csproj` files: `docker run -v "//c/_/health-cdh-ondemand:/workspace" scatter ls /workspace`
+- Check that `/workspace` contains `.csproj` files: `docker run -v "//c/repos/monolith:/workspace" scatter ls /workspace`
 - If the repo is nested (e.g., `monolith/src/`), adjust `--search-scope /workspace/src`
 
 **"Error: repository not found" on branch analysis**
@@ -457,16 +425,16 @@ scatter --target-project /workspace/Dev/src/Lighthouse1/Platform/WCF/Services/Li
 - If your reports use a non-standard RDL XML structure, file an issue with an example `.rdl` file
 
 **"Permission denied" on output files**
-- Docker may create output files as root. Fix: `chmod 644 //c/_/scatter-output/*`
-- Or run the output mount with `:rw` flag (default, but explicit): `-v "//c/_/scatter-output:/output:rw"`
+- Docker may create output files as root. Fix: `chmod 644 //c/scatter-output/*`
+- Or run the output mount with `:rw` flag (default, but explicit): `-v "//c/scatter-output:/output:rw"`
 
 ---
 
 ## Quick reference
 
 All commands assume:
-- Monolith at `//c/_/health-cdh-ondemand` (i.e. `C:\_\health-cdh-ondemand`)
-- Output at `//c/_/scatter-output` (i.e. `C:\_\scatter-output`)
+- Monolith at `//c/repos/monolith`
+- Output at `//c/scatter-output`
 - Cache in `scatter-cache` named volume
 
 ```bash
@@ -474,26 +442,26 @@ All commands assume:
 docker build -t scatter .
 
 # Graph
-MSYS_NO_PATHCONV=1 docker run -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --graph --search-scope /workspace
+MSYS_NO_PATHCONV=1 docker run -v "//c/repos/monolith:/workspace" -v scatter-cache:/workspace/.scatter scatter --graph --search-scope /workspace
 
 # Target project
-MSYS_NO_PATHCONV=1 docker run -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --target-project /workspace/Dev/src/Lighthouse1/Platform/WCF/Services/Lighthouse1.Platform.WCF.Services.csproj --search-scope /workspace
+MSYS_NO_PATHCONV=1 docker run -v "//c/repos/monolith:/workspace" -v scatter-cache:/workspace/.scatter scatter --target-project /workspace/src/Project/Project.csproj --search-scope /workspace
 
 # Stored procedure
-MSYS_NO_PATHCONV=1 docker run -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --stored-procedure "usp_SelectAdministratorByAlias" --search-scope /workspace
+MSYS_NO_PATHCONV=1 docker run -v "//c/repos/monolith:/workspace" -v scatter-cache:/workspace/.scatter scatter --stored-procedure "dbo.sp_Name" --search-scope /workspace
 
-# Sproc inventory
-MSYS_NO_PATHCONV=1 docker run -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --sproc-inventory --search-scope /workspace
-
-# PR risk (branch must exist as a LOCAL branch — see Step 4 for git branch one-liner if you've only fetched)
-MSYS_NO_PATHCONV=1 docker run -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --branch-name Stingrays/dleal/CDH-27013-fix-assembly-error --pr-risk --repo-path /workspace --search-scope /workspace
+# PR risk
+MSYS_NO_PATHCONV=1 docker run -v "//c/repos/monolith:/workspace" -v scatter-cache:/workspace/.scatter scatter --branch-name feature/x --pr-risk --repo-path /workspace --search-scope /workspace
 
 # Impact analysis
-MSYS_NO_PATHCONV=1 docker run -e GOOGLE_API_KEY="key" -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --sow "description" --search-scope /workspace
+MSYS_NO_PATHCONV=1 docker run -e GOOGLE_API_KEY="key" -v "//c/repos/monolith:/workspace" -v scatter-cache:/workspace/.scatter scatter --sow "description" --search-scope /workspace
 
 # AI analysis report (any consumer mode)
-MSYS_NO_PATHCONV=1 docker run -e GOOGLE_API_KEY="key" -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --target-project /workspace/Dev/src/Lighthouse1/Platform/WCF/Services/Lighthouse1.Platform.WCF.Services.csproj --search-scope /workspace --ai-summary
+MSYS_NO_PATHCONV=1 docker run -e GOOGLE_API_KEY="key" -v "//c/repos/monolith:/workspace" -v scatter-cache:/workspace/.scatter scatter --target-project /workspace/src/Project/Project.csproj --search-scope /workspace --ai-summary
+
+# Sproc inventory
+MSYS_NO_PATHCONV=1 docker run -v "//c/repos/monolith:/workspace" -v scatter-cache:/workspace/.scatter scatter --sproc-inventory --search-scope /workspace
 
 # Save JSON output
-MSYS_NO_PATHCONV=1 docker run -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter -v "//c/_/scatter-output:/output" scatter --graph --search-scope /workspace --output-format json --output-file /output/report.json
+MSYS_NO_PATHCONV=1 docker run -v "//c/repos/monolith:/workspace" -v scatter-cache:/workspace/.scatter -v "//c/scatter-output:/output" scatter --graph --search-scope /workspace --output-format json --output-file /output/report.json
 ```
