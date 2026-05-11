@@ -19,11 +19,11 @@ import yaml
 
 @dataclass
 class AIConfig:
-    default_provider: str = "gemini"
+    default_provider: str = "wex"
     task_overrides: Dict[str, str] = field(default_factory=dict)
     credentials: Dict[str, Dict[str, str]] = field(default_factory=dict)
     gemini_model: str = "gemini-2.5-flash"
-    wex_model: str = "default"
+    wex_model: str = "gemini-2.5-flash"
     max_ai_calls: Optional[int] = None
 
 
