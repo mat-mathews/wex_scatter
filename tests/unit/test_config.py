@@ -39,8 +39,9 @@ class TestScatterConfig:
     def test_default_config(self):
         """Defaults are sensible."""
         config = ScatterConfig()
-        assert config.ai.default_provider == "gemini"
+        assert config.ai.default_provider == "wex"
         assert config.ai.gemini_model == "gemini-2.5-flash"
+        assert config.ai.wex_model == "gemini-2.5-flash"
         assert config.max_depth == 2
         assert config.disable_multiprocessing is False
         assert config.max_workers is None
@@ -50,7 +51,7 @@ class TestScatterConfig:
     def test_load_empty_directory(self, tmp_path):
         """No yaml files -> defaults."""
         config = load_config(repo_root=tmp_path, cli_overrides=None)
-        assert config.ai.default_provider == "gemini"
+        assert config.ai.default_provider == "wex"
         assert config.max_depth == 2
 
     def test_load_repo_config(self, tmp_path):
@@ -132,14 +133,14 @@ class TestScatterConfig:
     def test_missing_yaml_files_ignored(self, tmp_path):
         """No errors for missing files."""
         config = load_config(repo_root=tmp_path / "nonexistent")
-        assert config.ai.default_provider == "gemini"
+        assert config.ai.default_provider == "wex"
 
     def test_malformed_yaml_ignored(self, tmp_path, caplog):
         """Invalid YAML logs warning, uses defaults."""
         (tmp_path / ".scatter.yaml").write_text(": : : invalid yaml [[[")
         with caplog.at_level(logging.WARNING):
             config = load_config(repo_root=tmp_path)
-        assert config.ai.default_provider == "gemini"
+        assert config.ai.default_provider == "wex"
         assert any("Could not parse" in r.message for r in caplog.records)
 
     def test_partial_config(self, tmp_path):
@@ -272,6 +273,7 @@ class TestAIRouter:
 
     def _make_config(self, api_key="test-key", **kwargs):
         """Helper to build a ScatterConfig with gemini credentials."""
+        kwargs.setdefault("default_provider", "gemini")
         ai = AIConfig(**kwargs)
         if api_key:
             ai.credentials = {"gemini": {"api_key": api_key}}
@@ -376,16 +378,14 @@ class TestAIRouter:
         provider = router.get_provider()
         assert provider is None
 
-    def test_wex_provider_stub_raises(self):
-        """WEX provider methods raise NotImplementedError."""
+    def test_wex_provider_init(self):
+        """WEX provider initializes with expected properties."""
         from scatter.ai.providers.wex_provider import WexProvider
 
         provider = WexProvider(api_key="test-key")
-        assert provider.name == "wex:default"
+        assert provider.name == "wex:gemini-2.5-flash"
+        assert provider.model_name == "gemini-2.5-flash"
         assert provider.supports(AITaskType.SUMMARIZATION)
-
-        with pytest.raises(NotImplementedError, match="not yet implemented"):
-            provider.analyze("prompt", "context", AITaskType.SUMMARIZATION)
-
-        with pytest.raises(NotImplementedError, match="not yet implemented"):
-            provider.extract_affected_symbols("content", "diff", "file.cs")
+        assert provider.supports(AITaskType.RISK_ASSESSMENT)
+        assert provider.max_context_size == 1_000_000
+        assert provider.model is not None

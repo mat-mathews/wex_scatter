@@ -265,12 +265,12 @@ def build_parser() -> argparse.ArgumentParser:
     ai_group.add_argument(
         "--wex-api-key",
         default=None,
-        help="WEX AI Platform API key. If not provided, uses the WEX_AI_API_KEY environment variable.",
+        help="WEX AI Gateway API key. If not provided, uses the WEX_AI_API_KEY environment variable.",
     )
     ai_group.add_argument(
         "--wex-model",
         default=None,
-        help="The WEX AI Platform model to use (default: default).",
+        help="The model to use via WEX AI Gateway (default: gemini-2.5-flash).",
     )
     ai_group.add_argument(
         "--max-ai-calls",
