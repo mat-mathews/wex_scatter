@@ -138,7 +138,7 @@ Add `--ai-summary` to any consumer analysis command. It makes one Gemini API cal
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -e GOOGLE_API_KEY="your-gemini-api-key" \
+  -e WEX_AI_API_KEY="your-api-key" \
   -v "//c/_/health-cdh-ondemand:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter \
@@ -156,7 +156,7 @@ Works with any mode: `--target-project`, `--stored-procedure`, `--branch-name`. 
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -e GOOGLE_API_KEY="your-gemini-api-key" \
+  -e WEX_AI_API_KEY="your-api-key" \
   -v "//c/_/health-cdh-ondemand:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   -v "//c/_/scatter-output:/output" \
@@ -256,11 +256,11 @@ Open `C:\_\scatter-output\pr_risk.md` and paste into the PR description.
 
 ## Step 5: Impact analysis (requires API key)
 
-Analyze a work request in plain English. Pass the Gemini API key via `-e`.
+Analyze a work request in plain English. Pass the WEX AI Gateway API key via `-e`.
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -e GOOGLE_API_KEY="your-gemini-api-key" \
+  -e WEX_AI_API_KEY="your-api-key" \
   -v "//c/_/health-cdh-ondemand:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter \
@@ -279,7 +279,7 @@ Put the SOW file inside the monolith repo (or another mounted volume) so Docker 
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -e GOOGLE_API_KEY="your-gemini-api-key" \
+  -e WEX_AI_API_KEY="your-api-key" \
   -v "//c/_/health-cdh-ondemand:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter \
@@ -291,7 +291,7 @@ MSYS_NO_PATHCONV=1 docker run \
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -e GOOGLE_API_KEY="your-gemini-api-key" \
+  -e WEX_AI_API_KEY="your-api-key" \
   -v "//c/_/health-cdh-ondemand:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter \
@@ -442,7 +442,7 @@ With compression wired in, `--sow` mode logs each reduction step. Add `-v` for v
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run \
-  -e GOOGLE_API_KEY="your-gemini-api-key" \
+  -e WEX_AI_API_KEY="your-api-key" \
   -v "//c/_/health-cdh-ondemand:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   scatter \
@@ -486,7 +486,7 @@ The point of compression is to not break anything. Run the same SOW with and wit
 ```bash
 # Full index (no compression)
 MSYS_NO_PATHCONV=1 docker run \
-  -e GOOGLE_API_KEY="your-gemini-api-key" \
+  -e WEX_AI_API_KEY="your-api-key" \
   -v "//c/_/health-cdh-ondemand:/workspace" \
   -v scatter-cache:/workspace/.scatter \
   -v "//c/_/scatter-output:/output" \
@@ -593,13 +593,13 @@ MSYS_NO_PATHCONV=1 docker run -v "//c/_/health-cdh-ondemand:/workspace" -v scatt
 MSYS_NO_PATHCONV=1 docker run -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --branch-name Stingrays/dleal/CDH-27013-fix-assembly-error --pr-risk --repo-path /workspace --search-scope /workspace
 
 # Impact analysis (compression activates automatically when index > budget)
-MSYS_NO_PATHCONV=1 docker run -e GOOGLE_API_KEY="key" -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --sow "description" --search-scope /workspace
+MSYS_NO_PATHCONV=1 docker run -e WEX_AI_API_KEY="key" -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --sow "description" --search-scope /workspace
 
 # Dump index (measure baseline size — add -v for verbose)
 MSYS_NO_PATHCONV=1 docker run -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --dump-index --search-scope /workspace
 
 # AI analysis report (any consumer mode)
-MSYS_NO_PATHCONV=1 docker run -e GOOGLE_API_KEY="key" -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --target-project /workspace/Dev/src/Lighthouse1/Platform/WCF/Services/Lighthouse1.Platform.WCF.Services.csproj --search-scope /workspace --ai-summary
+MSYS_NO_PATHCONV=1 docker run -e WEX_AI_API_KEY="key" -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --target-project /workspace/Dev/src/Lighthouse1/Platform/WCF/Services/Lighthouse1.Platform.WCF.Services.csproj --search-scope /workspace --ai-summary
 
 # Save JSON output
 MSYS_NO_PATHCONV=1 docker run -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter -v "//c/_/scatter-output:/output" scatter --graph --search-scope /workspace --output-format json --output-file /output/report.json

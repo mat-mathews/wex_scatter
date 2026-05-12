@@ -25,6 +25,7 @@ class AIConfig:
     gemini_model: str = "gemini-2.5-flash"
     wex_model: str = "gemini-2.5-flash"
     max_ai_calls: Optional[int] = None
+    index_max_bytes: Optional[int] = None
 
 
 @dataclass
@@ -107,6 +108,8 @@ def _merge_ai_config(target: AIConfig, source: Dict[str, Any]) -> None:
                 target.credentials.setdefault(provider_name, {}).update(creds)
     if "max_ai_calls" in source and source["max_ai_calls"] is not None:
         target.max_ai_calls = int(source["max_ai_calls"])
+    if "index_max_bytes" in source and source["index_max_bytes"] is not None:
+        target.index_max_bytes = int(source["index_max_bytes"])
 
 
 def _apply_yaml(config: ScatterConfig, data: Dict[str, Any]) -> None:

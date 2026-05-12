@@ -50,6 +50,7 @@ def run_impact_mode(args, ctx: ModeContext, start_time: float) -> None:
         min_confidence=args.sow_min_confidence,
         solution_index=ctx.solution_index,
         analysis_config=ctx.config.analysis,
+        index_max_bytes=ctx.config.ai.index_max_bytes,
     )
 
     # Enrich consumers with graph metrics if available

@@ -209,6 +209,23 @@ class TestScatterConfig:
         assert config.max_workers == 4
         assert config.chunk_size == 100
 
+    def test_index_max_bytes_default_is_none(self):
+        """Default index_max_bytes is None (use hardcoded default in caller)."""
+        config = ScatterConfig()
+        assert config.ai.index_max_bytes is None
+
+    def test_index_max_bytes_from_yaml(self, tmp_path):
+        """ai.index_max_bytes loaded from YAML config."""
+        (tmp_path / ".scatter.yaml").write_text("ai:\n  index_max_bytes: 500000\n")
+        config = load_config(repo_root=tmp_path)
+        assert config.ai.index_max_bytes == 500000
+
+    def test_index_max_bytes_none_in_yaml_keeps_default(self, tmp_path):
+        """Explicit null in YAML preserves None default."""
+        (tmp_path / ".scatter.yaml").write_text("ai:\n  index_max_bytes: null\n")
+        config = load_config(repo_root=tmp_path)
+        assert config.ai.index_max_bytes is None
+
 
 # ---------------------------------------------------------------------------
 # TestBuildCliOverrides

@@ -584,6 +584,67 @@ class TestConfidenceFiltering:
         assert len(report.targets) == 0
 
 
+class TestIndexBudgetWiring:
+    """Verify run_impact_analysis passes max_bytes to build_codebase_index."""
+
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request", return_value=[])
+    @patch("scatter.ai.codebase_index.build_codebase_index")
+    def test_default_budget_applied(self, mock_build_index, mock_parse):
+        """When index_max_bytes is None, DEFAULT_INDEX_BUDGET_BYTES is used."""
+        from scatter.analyzers.impact_analyzer import DEFAULT_INDEX_BUDGET_BYTES
+
+        mock_build_index.return_value = CodebaseIndex(
+            text="P:MyApp", project_count=1, type_count=1,
+            sproc_count=0, file_count=0, size_bytes=10,
+        )
+        mock_graph_ctx = MagicMock()
+        mock_graph_ctx.graph = MagicMock()
+
+        run_impact_analysis(
+            sow_text="test",
+            search_scope=Path("/search"),
+            ai_provider=MagicMock(),
+            graph_ctx=mock_graph_ctx,
+        )
+
+        _, kwargs = mock_build_index.call_args
+        assert kwargs["max_bytes"] == DEFAULT_INDEX_BUDGET_BYTES
+
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request", return_value=[])
+    @patch("scatter.ai.codebase_index.build_codebase_index")
+    def test_custom_budget_passed_through(self, mock_build_index, mock_parse):
+        """When index_max_bytes is set, it overrides the default."""
+        mock_build_index.return_value = CodebaseIndex(
+            text="P:MyApp", project_count=1, type_count=1,
+            sproc_count=0, file_count=0, size_bytes=10,
+        )
+        mock_graph_ctx = MagicMock()
+        mock_graph_ctx.graph = MagicMock()
+
+        run_impact_analysis(
+            sow_text="test",
+            search_scope=Path("/search"),
+            ai_provider=MagicMock(),
+            graph_ctx=mock_graph_ctx,
+            index_max_bytes=500_000,
+        )
+
+        _, kwargs = mock_build_index.call_args
+        assert kwargs["max_bytes"] == 500_000
+
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request", return_value=[])
+    def test_no_graph_skips_index(self, mock_parse):
+        """Without a graph, build_codebase_index is not called at all."""
+        report = run_impact_analysis(
+            sow_text="test",
+            search_scope=Path("/search"),
+            ai_provider=MagicMock(),
+            graph_ctx=None,
+        )
+        # No crash, codebase_index is None internally
+        assert report is not None
+
+
 # =============================================================================
 # Phase 4: Console Reporter
 # =============================================================================

@@ -31,6 +31,8 @@ from scatter.pipeline.resolver import PipelineResolver
 from scatter.scanners.project_scanner import derive_namespace
 from scatter.compat.v1_bridge import find_solutions_for_project
 
+DEFAULT_INDEX_BUDGET_BYTES = 800_000  # ~800KB index, leaves ~200KB for prompt + SOW
+
 # Risk level ordering for AI escalation logic (Decision #16).
 # Graph-derived risk tops out at "High"; only AI can escalate to "Critical".
 RISK_ORDER = {"Low": 0, "Medium": 1, "High": 2, "Critical": 3}
@@ -96,6 +98,7 @@ def run_impact_analysis(
     min_confidence: float = 0.3,
     solution_index=None,
     analysis_config: Optional["AnalysisConfig"] = None,
+    index_max_bytes: Optional[int] = None,
 ) -> ImpactReport:
     """Orchestrate the full impact analysis pipeline.
 
@@ -122,7 +125,8 @@ def run_impact_analysis(
     if graph is not None:
         from scatter.ai.codebase_index import build_codebase_index
 
-        codebase_index = build_codebase_index(graph, search_scope)
+        budget = index_max_bytes if index_max_bytes is not None else DEFAULT_INDEX_BUDGET_BYTES
+        codebase_index = build_codebase_index(graph, search_scope, max_bytes=budget)
         logging.info(
             f"Built codebase index: {codebase_index.project_count} projects, "
             f"{codebase_index.type_count} types, {codebase_index.sproc_count} sprocs, "
