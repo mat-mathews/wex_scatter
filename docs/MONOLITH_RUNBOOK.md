@@ -394,6 +394,120 @@ MSYS_NO_PATHCONV=1 docker run \
 
 ---
 
+## Step 9: Index compression validation
+
+The codebase index is embedded in `--sow` prompts so the AI can match domain language to project/type/sproc names. On this monolith the full index is ~1.64 MB — over the gateway's ~1 MB request limit. Index compression applies progressive reductions (drop shared sproc section, filter stoplist types, cap types per project, drop empty projects) to bring it under budget.
+
+This step validates that the compression works and that compressed output still produces usable `--sow` results.
+
+### Baseline: measure the uncompressed index
+
+Before testing compression, know your starting point.
+
+```bash
+MSYS_NO_PATHCONV=1 docker run \
+  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v scatter-cache:/workspace/.scatter \
+  scatter --dump-index --search-scope /workspace
+```
+
+**What to record:**
+- Total projects, types, sprocs, files (shown at the bottom)
+- Index size in bytes — if this is under 800,000, compression won't activate and there's nothing to test
+- Approximate token count (~size / 4)
+
+Save the full index for diff later:
+
+```bash
+MSYS_NO_PATHCONV=1 docker run \
+  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v scatter-cache:/workspace/.scatter \
+  scatter --dump-index --search-scope /workspace \
+  > //c/_/scatter-output/index_full.txt
+```
+
+The diagnostics tool gives richer detail (type coverage, empty-project count):
+
+```bash
+python tools/dump_index_check.py //c/_/health-cdh-ondemand -o //c/_/scatter-output/index_full.txt
+```
+
+**Expected on this monolith (measured 2026-05):**
+- ~1,591 projects, ~54,811 types, ~5,978 sprocs
+- ~1,716,923 bytes (1.64 MB) — well over the 800 KB budget
+
+### Run `--sow` and check the compression logs
+
+With compression wired in, `--sow` mode logs each reduction step. Add `-v` for verbose output:
+
+```bash
+MSYS_NO_PATHCONV=1 docker run \
+  -e GOOGLE_API_KEY="your-gemini-api-key" \
+  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v scatter-cache:/workspace/.scatter \
+  scatter \
+    --sow "Add tenant isolation to the portal configuration system" \
+    --search-scope /workspace \
+    -v
+```
+
+**What to look for in the logs:**
+
+| Log line | Meaning |
+|----------|---------|
+| `Index exceeds budget (X > Y bytes)` | Compression triggered |
+| `Step 1 (drop shared sprocs): N bytes` | Shared sproc cross-reference removed |
+| `Step 2 (stoplist filter): N bytes` | Low-signal types (Program, Startup, Constants, etc.) removed |
+| `Step 3 (cap=15): N bytes` | Types per project capped at 15 |
+| `Step 3 (cap=10): N bytes` | Cap tightened to 10 (only if cap=15 wasn't enough) |
+| `Step 3 (cap=5): N bytes` | Cap tightened to 5 (only if cap=10 wasn't enough) |
+| `Step 4 (drop zero-signal): N bytes` | Projects with no types and no sprocs after filtering removed |
+| `Index reduced to N bytes (X% reduction via ...)` | Final result and summary of steps applied |
+
+If you see the warning `still exceeds budget` after all steps, the budget is tighter than the compression can handle. This shouldn't happen on the monolith at the default 800 KB budget, but would on a significantly larger repo.
+
+### Unit tests
+
+Run the compression-specific tests locally (no Docker, no API key needed):
+
+```bash
+uv run python -m pytest tests/unit/test_codebase_index.py -v -k "Budget or FilterTypes or ApplyTypeCap"
+```
+
+These cover:
+- **TestFilterTypes** — stoplist entries, single-char names, project-name duplicates removed; order preserved
+- **TestApplyTypeCap** — longest names kept, `...` sentinel appended, no truncation when under cap
+- **TestBudgetAwareIndex** — each compression step fires in order, shared sprocs dropped before types, type cap produces `...`, zero-signal projects dropped last, logs emitted at each step, best-effort return when all steps exhausted, `_extract_index_names` round-trips on compressed output, compressed metrics match the actual output
+
+### Spot-check: does the compressed index still find the right targets?
+
+The point of compression is to not break anything. Run the same SOW with and without a budget and compare:
+
+```bash
+# Full index (no compression)
+MSYS_NO_PATHCONV=1 docker run \
+  -e GOOGLE_API_KEY="your-gemini-api-key" \
+  -v "//c/_/health-cdh-ondemand:/workspace" \
+  -v scatter-cache:/workspace/.scatter \
+  -v "//c/_/scatter-output:/output" \
+  scatter \
+    --sow "Add tenant isolation to the portal configuration system" \
+    --search-scope /workspace \
+    --output-format json --output-file /output/sow_full.json
+
+# Compressed index (default budget)
+# (same command — compression activates automatically when index > budget)
+```
+
+Compare the JSON reports:
+1. Are the same top-confidence targets identified?
+2. Is target quality (clear/moderate/vague) the same or worse?
+3. Did any high-signal project disappear from the compressed results?
+
+If a previously clear SOW becomes vague after compression, the stoplist may be too aggressive or the budget too tight. Check whether the missing project's types were all stoplist entries.
+
+---
+
 ## Interactive session
 
 If you want to poke around inside the container:
@@ -478,8 +592,11 @@ MSYS_NO_PATHCONV=1 docker run -v "//c/_/health-cdh-ondemand:/workspace" -v scatt
 # PR risk (branch must exist as a LOCAL branch — see Step 4 for git branch one-liner if you've only fetched)
 MSYS_NO_PATHCONV=1 docker run -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --branch-name Stingrays/dleal/CDH-27013-fix-assembly-error --pr-risk --repo-path /workspace --search-scope /workspace
 
-# Impact analysis
+# Impact analysis (compression activates automatically when index > budget)
 MSYS_NO_PATHCONV=1 docker run -e GOOGLE_API_KEY="key" -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --sow "description" --search-scope /workspace
+
+# Dump index (measure baseline size — add -v for verbose)
+MSYS_NO_PATHCONV=1 docker run -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --dump-index --search-scope /workspace
 
 # AI analysis report (any consumer mode)
 MSYS_NO_PATHCONV=1 docker run -e GOOGLE_API_KEY="key" -v "//c/_/health-cdh-ondemand:/workspace" -v scatter-cache:/workspace/.scatter scatter --target-project /workspace/Dev/src/Lighthouse1/Platform/WCF/Services/Lighthouse1.Platform.WCF.Services.csproj --search-scope /workspace --ai-summary

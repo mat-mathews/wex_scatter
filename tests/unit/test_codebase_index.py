@@ -1,6 +1,7 @@
 """Tests for Initiative 10: Codebase Index for SOW mode."""
 
 import json
+import logging
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -10,6 +11,8 @@ from scatter.core.graph import DependencyGraph, ProjectNode
 from scatter.ai.codebase_index import (
     CodebaseIndex,
     build_codebase_index,
+    _filter_types,
+    _apply_type_cap,
 )
 from scatter.ai.tasks.parse_work_request import (
     parse_work_request_with_model,
@@ -693,3 +696,229 @@ class TestJsonReporterIndex:
         assert data["avg_target_confidence"] == 0.8
         target_data = data["targets"][0]["target"]
         assert target_data["match_evidence"] == "Contains portal classes"
+
+
+# =============================================================================
+# Budget-Aware Index Compression
+# =============================================================================
+
+
+class TestFilterTypes:
+    def test_removes_stoplist_entries(self):
+        types = ["Program", "PortalDataService", "Startup", "IDataService"]
+        result = _filter_types(types, "MyApp")
+        assert result == ["PortalDataService", "IDataService"]
+
+    def test_removes_single_char_names(self):
+        types = ["T", "I", "PortalDataService", "C"]
+        result = _filter_types(types, "MyApp")
+        assert result == ["PortalDataService"]
+
+    def test_removes_project_name_duplicate(self):
+        types = ["Foo", "PortalDataService"]
+        result = _filter_types(types, "Foo")
+        assert result == ["PortalDataService"]
+
+    def test_preserves_order(self):
+        types = ["Zebra", "Alpha", "Beta"]
+        result = _filter_types(types, "MyApp")
+        assert result == ["Zebra", "Alpha", "Beta"]
+
+    def test_empty_input(self):
+        assert _filter_types([], "MyApp") == []
+
+    def test_all_filtered_returns_empty(self):
+        types = ["Program", "Startup", "T"]
+        assert _filter_types(types, "MyApp") == []
+
+
+class TestApplyTypeCap:
+    def test_no_truncation_under_cap(self):
+        types = ["Alpha", "Beta"]
+        assert _apply_type_cap(types, 5) == ["Alpha", "Beta"]
+
+    def test_exact_cap_no_truncation(self):
+        types = ["Alpha", "Beta", "Gamma"]
+        assert _apply_type_cap(types, 3) == ["Alpha", "Beta", "Gamma"]
+
+    def test_keeps_longest_names(self):
+        types = ["Ax", "BetaService", "Cy", "AlphaController"]
+        result = _apply_type_cap(types, 2)
+        assert "AlphaController" in result
+        assert "BetaService" in result
+        assert "..." in result
+        assert len(result) == 3
+
+    def test_appends_ellipsis_when_truncated(self):
+        types = ["Aa", "Bb", "Cc", "Dd"]
+        result = _apply_type_cap(types, 2)
+        assert result[-1] == "..."
+
+    def test_preserves_original_order(self):
+        types = ["BetaService", "AlphaController", "Tiny"]
+        result = _apply_type_cap(types, 2)
+        assert result == ["BetaService", "AlphaController", "..."]
+
+
+class TestBudgetAwareIndex:
+    def test_under_budget_returns_full_index(self):
+        graph = _make_graph_with_projects([
+            ("MyApp", "MyApp", ["Service", "Controller"], ["dbo.sp_Get"]),
+        ])
+        index = build_codebase_index(graph, max_bytes=100_000)
+        assert "Service" in index.text
+        assert "Controller" in index.text
+        assert "..." not in index.text
+
+    def test_no_max_bytes_returns_full_index(self):
+        """max_bytes=None means no compression regardless of size."""
+        projects = [
+            (f"P{i}", f"P{i}", [f"LongTypeName{j}ForTesting" for j in range(50)], [])
+            for i in range(100)
+        ]
+        graph = _make_graph_with_projects(projects)
+        index = build_codebase_index(graph, max_bytes=None)
+        assert index.project_count == 100
+        assert index.type_count == 5000
+        assert "..." not in index.text
+
+    def test_shared_sproc_section_dropped_first(self):
+        """Step 1: shared sproc cross-reference is removed before touching types."""
+        projects = [
+            (f"Project{i}", f"Project{i}", [f"Type{j}" for j in range(5)], ["dbo.sp_Shared"])
+            for i in range(20)
+        ]
+        graph = _make_graph_with_projects(projects)
+        full = build_codebase_index(graph)
+        assert "=== Shared Stored Procedures ===" in full.text
+
+        compressed = build_codebase_index(graph, max_bytes=full.size_bytes - 1)
+        assert "=== Shared Stored Procedures ===" not in compressed.text
+        # All types still present
+        for j in range(5):
+            assert f"Type{j}" in compressed.text
+
+    def test_stoplist_removes_common_names(self):
+        """Step 2: stoplist entries filtered when step 1 isn't enough."""
+        projects = [
+            (f"P{i}", f"P{i}",
+             ["Program", "Startup", "Constants"] + [f"RealType{i}Service"],
+             [])
+            for i in range(50)
+        ]
+        graph = _make_graph_with_projects(projects)
+        full = build_codebase_index(graph)
+
+        # No shared sprocs, so step 1 saves nothing. Step 2 must do the work.
+        target = full.size_bytes - 500
+        compressed = build_codebase_index(graph, max_bytes=target)
+        assert "Program" not in compressed.text
+        assert "Startup" not in compressed.text
+        assert "Constants" not in compressed.text
+        assert "RealType0Service" in compressed.text
+
+    def test_single_char_types_filtered(self):
+        """Single-character type names removed by stoplist filter."""
+        graph = _make_graph_with_projects([
+            ("MyApp", "MyApp", ["T", "I", "PortalDataService", "C"], []),
+        ])
+        # Force compression with a tight budget
+        compressed = build_codebase_index(graph, max_bytes=1)
+        assert "PortalDataService" in compressed.text
+        assert "T:" not in compressed.text or "T:PortalDataService" in compressed.text
+
+    def test_type_cap_applied_when_over_budget(self):
+        """Step 3: types capped per project, longest names kept."""
+        projects = [
+            (f"P{i}", f"P{i}",
+             [f"Type{j:03d}WithLongishName" for j in range(30)],
+             [])
+            for i in range(100)
+        ]
+        graph = _make_graph_with_projects(projects)
+        full = build_codebase_index(graph)
+
+        compressed = build_codebase_index(graph, max_bytes=full.size_bytes // 2)
+        assert "..." in compressed.text
+
+    def test_type_cap_appends_ellipsis(self):
+        """Truncated type lists end with '...' for parser compat."""
+        projects = [
+            (f"P{i}", f"P{i}",
+             [f"TypeName{j}" for j in range(30)],
+             [])
+            for i in range(50)
+        ]
+        graph = _make_graph_with_projects(projects)
+        compressed = build_codebase_index(graph, max_bytes=1)
+        assert "..." in compressed.text
+
+    def test_zero_signal_projects_dropped_last(self):
+        """Step 4: projects with no types and no sprocs after filtering are removed."""
+        projects = [
+            ("HasTypes", "HasTypes", ["PortalDataService", "IDataService"], []),
+            ("OnlyStoplist", "OnlyStoplist", ["Program", "Startup"], []),
+            ("HasSprocs", "HasSprocs", ["Program"], ["dbo.sp_Get"]),
+        ]
+        graph = _make_graph_with_projects(projects)
+        compressed = build_codebase_index(graph, max_bytes=1)
+        assert "P:HasTypes" in compressed.text
+        assert "P:HasSprocs" in compressed.text
+        assert "P:OnlyStoplist" not in compressed.text
+
+    def test_progressive_reduction_logs_steps(self, caplog):
+        """Each reduction step logs what it did."""
+        projects = [
+            (f"P{i}", f"P{i}", [f"Type{j}" for j in range(20)], [])
+            for i in range(50)
+        ]
+        graph = _make_graph_with_projects(projects)
+
+        with caplog.at_level(logging.INFO, logger="scatter.ai.codebase_index"):
+            build_codebase_index(graph, max_bytes=1)
+
+        assert "exceeds budget" in caplog.text
+        assert "Step 1" in caplog.text
+
+    def test_still_over_budget_returns_best_effort(self, caplog):
+        """If all reductions applied and still over, returns anyway with warning."""
+        projects = [
+            ("MyApp", "MyApp", ["PortalDataService"], ["dbo.sp_Get"]),
+        ]
+        graph = _make_graph_with_projects(projects)
+
+        with caplog.at_level(logging.WARNING, logger="scatter.ai.codebase_index"):
+            index = build_codebase_index(graph, max_bytes=1)
+
+        assert index.text != ""
+        assert index.size_bytes > 1
+        assert "still exceeds budget" in caplog.text
+
+    def test_extract_index_names_works_after_truncation(self):
+        """_extract_index_names round-trips correctly on a budget-reduced index."""
+        projects = [
+            (f"P{i}", f"P{i}",
+             [f"Type{j:03d}WithName" for j in range(30)],
+             ["dbo.sp_Get"])
+            for i in range(10)
+        ]
+        graph = _make_graph_with_projects(projects)
+        index = build_codebase_index(graph, max_bytes=1)
+
+        names = _extract_index_names(index.text)
+        assert "P0" in names
+        assert "dbo.sp_Get" in names
+        assert "..." not in names
+
+    def test_compressed_metrics_reflect_reduced_state(self):
+        """project_count and type_count match the compressed output."""
+        projects = [
+            ("HasTypes", "HasTypes", ["PortalDataService"], []),
+            ("OnlyStoplist", "OnlyStoplist", ["Program", "Startup"], []),
+        ]
+        graph = _make_graph_with_projects(projects)
+        compressed = build_codebase_index(graph, max_bytes=1)
+        # OnlyStoplist is dropped (zero-signal), so project_count = 1
+        assert compressed.project_count == 1
+        # Only PortalDataService survives
+        assert compressed.type_count == 1
