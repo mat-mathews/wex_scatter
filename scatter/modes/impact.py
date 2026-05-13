@@ -36,11 +36,18 @@ def run_impact_mode(args, ctx: ModeContext, start_time: float) -> None:
 
     is_dry_run = getattr(args, "sow_dry_run", False)
 
+    # SOW mode defaults to depth 1 (depth 2 causes massive fan-out on large repos).
+    # User can override with --max-depth 2 if they want deeper tracing.
+    sow_depth = ctx.config.max_depth
+    if getattr(args, "max_depth", None) is None and sow_depth > 1:
+        sow_depth = 1
+        logging.info("SOW mode: defaulting to --max-depth 1 (use --max-depth 2 for deeper tracing)")
+
     impact_report = run_impact_analysis(
         sow_text=sow_text,
         search_scope=ctx.search_scope,
         ai_provider=ctx.ai_provider,
-        max_depth=ctx.config.max_depth,
+        max_depth=sow_depth,
         pipeline_map=ctx.pipeline_map,
         solution_file_cache=ctx.solution_file_cache,
         max_workers=ctx.max_workers,
