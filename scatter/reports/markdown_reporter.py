@@ -372,6 +372,20 @@ def build_impact_markdown(
                     parts.extend(tree_lines)
                     parts.append("```\n")
 
+                # Change surface table (per-target, before consumer detail)
+                if ti.change_surface and ti.change_surface.get("changes"):
+                    parts.append("#### Change Surface\n")
+                    cs_headers = ["Component", "Change", "Complexity"]
+                    cs_rows = [
+                        [c["component"], c["change"], c.get("complexity", "")]
+                        for c in ti.change_surface["changes"]
+                    ]
+                    parts.append(_md_table(cs_headers, cs_rows))
+                    if ti.change_surface.get("notes"):
+                        for note in ti.change_surface["notes"]:
+                            parts.append(f"- {note}")
+                        parts.append("")
+
                 # Flat consumer detail table
                 parts.append("#### Affected Projects\n")
                 has_pipelines = any(c.pipeline_name for c in ti.consumers)

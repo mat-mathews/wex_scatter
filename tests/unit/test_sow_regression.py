@@ -145,6 +145,7 @@ class TestSOWJsonRegression:
             "total_direct",
             "total_transitive",
             "max_depth_reached",
+            "change_surface",
         }
         assert set(ti.keys()) == expected_keys
 

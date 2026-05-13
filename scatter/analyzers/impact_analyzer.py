@@ -245,6 +245,7 @@ def run_impact_analysis(
     from scatter.ai.budget import BudgetExhaustedError
     from scatter.ai.tasks.risk_assess import assess_risk_with_model
     from scatter.ai.tasks.coupling_narrative import explain_coupling_with_model
+    from scatter.ai.tasks.change_surface import assess_change_surface_with_model
 
     risk_profiles = []
 
@@ -281,6 +282,7 @@ def run_impact_analysis(
     # coupling_work: (target_index, consumer_index, target, consumer, file_contexts)
     risk_work: list = []
     coupling_work: list = []
+    surface_work: list = []
 
     if ai_provider is not None:
         for ti_idx, target_impact in enumerate(report.targets):
@@ -303,19 +305,30 @@ def run_impact_analysis(
                             (ti_idx, c_idx, target_impact.target, consumer, file_contexts)
                         )
 
-    total_ai_work = len(risk_work) + len(coupling_work)
+            # Change surface: all project targets with types or sprocs (no file I/O)
+            t = target_impact.target
+            if t.csproj_path and t.target_type == "project":
+                node = graph.get_node(t.name) if graph else None
+                types = node.type_declarations if node else []
+                sprocs = node.sproc_references if node else []
+                if types or sprocs:
+                    surface_work.append((ti_idx, t, types, sprocs, len(target_impact.consumers)))
+
+    total_ai_work = len(risk_work) + len(coupling_work) + len(surface_work)
 
     if total_ai_work > 0:
         t_enrich = time.monotonic()
         workers = min(total_ai_work, _DEFAULT_AI_WORKERS)
         logging.info(
             f"\nSteps 3-4: AI enrichment — dispatching {len(risk_work)} risk + "
-            f"{len(coupling_work)} coupling calls across {workers} workers"
+            f"{len(coupling_work)} coupling + {len(surface_work)} surface calls "
+            f"across {workers} workers"
         )
 
         # Tag results so the apply phase knows which is which
         _TAG_RISK = "risk"
         _TAG_COUPLING = "coupling"
+        _TAG_SURFACE = "surface"
         model = ai_provider.model
 
         if disable_multiprocessing or total_ai_work < 2:
@@ -328,9 +341,19 @@ def run_impact_analysis(
                 (ti_idx, c_idx, explain_coupling_with_model(model, target, consumer, fctx))
                 for ti_idx, c_idx, target, consumer, fctx in coupling_work
             ]
+            surface_results = [
+                (
+                    ti_idx,
+                    assess_change_surface_with_model(
+                        model, target, types, sprocs, sow_text, ccount
+                    ),
+                )
+                for ti_idx, target, types, sprocs, ccount in surface_work
+            ]
         else:
             risk_results = []
             coupling_results = []
+            surface_results = []
             try:
                 with ThreadPoolExecutor(max_workers=workers) as executor:
                     futures: dict = {}
@@ -344,6 +367,18 @@ def run_impact_analysis(
                             explain_coupling_with_model, model, target, consumer, fctx
                         )
                         futures[fut] = (_TAG_COUPLING, ti_idx, c_idx)
+                    for item in surface_work:
+                        ti_idx, target, types, sprocs, ccount = item
+                        fut = executor.submit(
+                            assess_change_surface_with_model,
+                            model,
+                            target,
+                            types,
+                            sprocs,
+                            sow_text,
+                            ccount,
+                        )
+                        futures[fut] = (_TAG_SURFACE, ti_idx)
 
                     budget_exhausted = False
                     for future in as_completed(futures):
@@ -364,8 +399,10 @@ def run_impact_analysis(
 
                         if tag_info[0] == _TAG_RISK:
                             risk_results.append((tag_info[1], result))
-                        else:
+                        elif tag_info[0] == _TAG_COUPLING:
                             coupling_results.append((tag_info[1], tag_info[2], result))
+                        elif tag_info[0] == _TAG_SURFACE:
+                            surface_results.append((tag_info[1], result))
             except Exception as e:
                 logging.warning(f"Parallel AI enrichment failed: {e}. Falling back to sequential.")
                 risk_results = [
@@ -375,6 +412,15 @@ def run_impact_analysis(
                 coupling_results = [
                     (ti_idx, c_idx, explain_coupling_with_model(model, target, consumer, fctx))
                     for ti_idx, c_idx, target, consumer, fctx in coupling_work
+                ]
+                surface_results = [
+                    (
+                        ti_idx,
+                        assess_change_surface_with_model(
+                            model, target, types, sprocs, sow_text, ccount
+                        ),
+                    )
+                    for ti_idx, target, types, sprocs, ccount in surface_work
                 ]
 
         # Apply risk results (main thread) — escalation logic
@@ -406,6 +452,11 @@ def run_impact_analysis(
                 consumer = report.targets[ti_idx].consumers[c_idx]
                 consumer.coupling_narrative = coupling_result.get("narrative")
                 consumer.coupling_vectors = coupling_result.get("vectors")
+
+        # Apply change surface results (main thread)
+        for ti_idx, surface_result in surface_results:
+            if surface_result:
+                report.targets[ti_idx].change_surface = surface_result
 
         elapsed = time.monotonic() - t_enrich
         logging.info(

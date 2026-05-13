@@ -260,6 +260,15 @@ def print_impact_report(report: ImpactReport) -> None:
             print(f"Evidence: {ti.target.match_evidence}")
         print(f"Direct Consumers: {ti.total_direct} | Transitive: {ti.total_transitive}")
 
+        if ti.change_surface and ti.change_surface.get("changes"):
+            changes = ti.change_surface["changes"]
+            summary = ", ".join(
+                f"{c['component']} ({c.get('complexity', '?')})" for c in changes[:6]
+            )
+            if len(changes) > 6:
+                summary += f", +{len(changes) - 6} more"
+            print(f"Change Surface: {summary}")
+
         if ti.consumers:
             tree_lines = render_tree(ti.consumers)
             for line in tree_lines:

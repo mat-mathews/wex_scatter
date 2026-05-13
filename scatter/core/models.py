@@ -6,7 +6,7 @@ import re
 import multiprocessing
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Literal, Optional, TypedDict
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, TypedDict
 
 if TYPE_CHECKING:
     from scatter.core.risk_models import AggregateRisk, RiskProfile
@@ -154,6 +154,7 @@ class TargetImpact:
     total_direct: int = 0
     total_transitive: int = 0
     max_depth_reached: int = 0
+    change_surface: Optional[Dict[str, Any]] = None
 
 
 @dataclass
