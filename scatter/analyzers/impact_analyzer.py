@@ -32,6 +32,8 @@ from scatter.scanners.project_scanner import derive_namespace
 from scatter.compat.v1_bridge import find_solutions_for_project
 
 DEFAULT_INDEX_BUDGET_BYTES = 800_000  # ~800KB index, leaves ~200KB for prompt + SOW
+MAX_SOW_TARGETS = 25  # safety cap — prompt asks for 15-20, this is the server-side limit
+_HIGH_FAN_OUT_THRESHOLD = 50  # targets with more direct consumers get reduced depth
 
 # Risk level ordering for AI escalation logic (Decision #16).
 # Graph-derived risk tops out at "High"; only AI can escalate to "Critical".
@@ -192,6 +194,19 @@ def run_impact_analysis(
 
     targets = filtered_targets
 
+    # Cap target count — if the AI returned too many, keep the highest-confidence
+    if len(targets) > MAX_SOW_TARGETS:
+        targets.sort(key=lambda t: t.confidence, reverse=True)
+        dropped_count = len(targets) - MAX_SOW_TARGETS
+        targets = targets[:MAX_SOW_TARGETS]
+        logging.warning(
+            f"Capped targets to {MAX_SOW_TARGETS} "
+            f"(dropped {dropped_count} lowest-confidence, cutoff: {targets[-1].confidence:.2f})"
+        )
+
+    # Consumer cache — shared across targets to avoid rescanning the same csproj
+    consumer_cache: Dict[Path, tuple] = {}
+
     # Step 2: For each target, find consumers and trace transitively
     for target in targets:
         logging.info(f"\n--- Analyzing target: {target.name} (type: {target.target_type}) ---")
@@ -210,6 +225,7 @@ def run_impact_analysis(
             solution_index=solution_index,
             analysis_config=analysis_config,
             pipeline_resolver=resolver,
+            consumer_cache=consumer_cache,
         )
         report.targets.append(target_impact)
 
@@ -436,6 +452,7 @@ def _analyze_single_target(
     solution_index=None,
     analysis_config: Optional["AnalysisConfig"] = None,
     pipeline_resolver: Optional[PipelineResolver] = None,
+    consumer_cache: Optional[Dict[Path, tuple]] = None,
 ) -> TargetImpact:
     """Analyze a single target: find direct consumers, trace transitively."""
     impact = TargetImpact(target=target)
@@ -450,21 +467,29 @@ def _analyze_single_target(
         logging.warning(f"Could not derive namespace for {target.name}.")
         namespace = f"NAMESPACE_ERROR_{target.name}"
 
-    # Find direct consumers
-    direct_consumers_data, _pipeline = find_consumers(
-        target_csproj_path=target.csproj_path,
-        search_scope_path=search_scope,
-        target_namespace=namespace,
-        class_name=target.class_name,
-        method_name=target.method_name,
-        max_workers=max_workers,
-        chunk_size=chunk_size,
-        disable_multiprocessing=disable_multiprocessing,
-        cs_analysis_chunk_size=cs_analysis_chunk_size,
-        csproj_analysis_chunk_size=csproj_analysis_chunk_size,
-        graph=graph,
-        analysis_config=analysis_config,
-    )
+    # Find direct consumers (check cache first — only cacheable without class/method filters)
+    cache_key = target.csproj_path
+    can_cache = target.class_name is None and target.method_name is None
+    if can_cache and consumer_cache is not None and cache_key in consumer_cache:
+        logging.debug(f"Consumer cache hit for {cache_key.stem}")
+        direct_consumers_data, _pipeline = consumer_cache[cache_key]
+    else:
+        direct_consumers_data, _pipeline = find_consumers(
+            target_csproj_path=target.csproj_path,
+            search_scope_path=search_scope,
+            target_namespace=namespace,
+            class_name=target.class_name,
+            method_name=target.method_name,
+            max_workers=max_workers,
+            chunk_size=chunk_size,
+            disable_multiprocessing=disable_multiprocessing,
+            cs_analysis_chunk_size=cs_analysis_chunk_size,
+            csproj_analysis_chunk_size=csproj_analysis_chunk_size,
+            graph=graph,
+            analysis_config=analysis_config,
+        )
+        if can_cache and consumer_cache is not None:
+            consumer_cache[cache_key] = (direct_consumers_data, _pipeline)
 
     if not direct_consumers_data:
         logging.info(f"No direct consumers found for {target.name}.")
@@ -472,11 +497,20 @@ def _analyze_single_target(
 
     logging.info(f"Found {len(direct_consumers_data)} direct consumer(s) for {target.name}.")
 
+    # Adaptive depth — reduce for high-fan-out targets
+    effective_depth = max_depth
+    if len(direct_consumers_data) > _HIGH_FAN_OUT_THRESHOLD:
+        effective_depth = min(max_depth, 1)
+        logging.info(
+            f"Target {target.name} has {len(direct_consumers_data)} direct consumers "
+            f"— limiting transitive depth to {effective_depth}"
+        )
+
     # Trace transitively
     all_consumers = trace_transitive_impact(
         direct_consumers=direct_consumers_data,
         search_scope=search_scope,
-        max_depth=max_depth,
+        max_depth=effective_depth,
         pipeline_map=pipeline_map,
         solution_file_cache=solution_file_cache,
         max_workers=max_workers,
@@ -488,6 +522,7 @@ def _analyze_single_target(
         solution_index=solution_index,
         analysis_config=analysis_config,
         pipeline_resolver=pipeline_resolver,
+        consumer_cache=consumer_cache,
     )
 
     impact.consumers = all_consumers
@@ -513,6 +548,7 @@ def trace_transitive_impact(
     solution_index=None,
     analysis_config: Optional["AnalysisConfig"] = None,
     pipeline_resolver: Optional[PipelineResolver] = None,
+    consumer_cache: Optional[Dict[Path, tuple]] = None,
 ) -> List[EnrichedConsumer]:
     """BFS transitive tracing with confidence decay and cycle detection.
 
@@ -584,20 +620,25 @@ def trace_transitive_impact(
             if depth < max_depth and consumer_path.is_file():
                 ns = derive_namespace(consumer_path)
                 if ns:
-                    transitive_data, _t_pipeline = find_consumers(
-                        target_csproj_path=consumer_path,
-                        search_scope_path=search_scope,
-                        target_namespace=ns,
-                        class_name=None,
-                        method_name=None,
-                        max_workers=max_workers,
-                        chunk_size=chunk_size,
-                        disable_multiprocessing=disable_multiprocessing,
-                        cs_analysis_chunk_size=cs_analysis_chunk_size,
-                        csproj_analysis_chunk_size=csproj_analysis_chunk_size,
-                        graph=graph,
-                        analysis_config=analysis_config,
-                    )
+                    if consumer_cache is not None and consumer_path in consumer_cache:
+                        transitive_data, _t_pipeline = consumer_cache[consumer_path]
+                    else:
+                        transitive_data, _t_pipeline = find_consumers(
+                            target_csproj_path=consumer_path,
+                            search_scope_path=search_scope,
+                            target_namespace=ns,
+                            class_name=None,
+                            method_name=None,
+                            max_workers=max_workers,
+                            chunk_size=chunk_size,
+                            disable_multiprocessing=disable_multiprocessing,
+                            cs_analysis_chunk_size=cs_analysis_chunk_size,
+                            csproj_analysis_chunk_size=csproj_analysis_chunk_size,
+                            graph=graph,
+                            analysis_config=analysis_config,
+                        )
+                        if consumer_cache is not None:
+                            consumer_cache[consumer_path] = (transitive_data, _t_pipeline)
                     for td in transitive_data:
                         td_path = td["consumer_path"]
                         if td_path not in visited and td_path not in parent_map:

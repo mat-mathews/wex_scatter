@@ -48,13 +48,10 @@ def parse_work_request(
         if not name:
             continue
 
-        # Validate name against index — halve confidence for names not found
+        # Validate name against index — drop targets not found
         if index_names is not None and name not in index_names:
-            logging.warning(
-                f"Target '{name}' not found in codebase index — "
-                f"confidence reduced from {confidence:.2f} to {confidence * 0.5:.2f}"
-            )
-            confidence *= 0.5
+            logging.info(f"Dropping target '{name}' — not found in codebase index")
+            continue
 
         csproj_path = None
         namespace = None
@@ -123,23 +120,24 @@ language in the work request to actual project/class/sproc names from the index.
     else:
         logging.warning("No codebase index available — target identification will be less accurate")
 
-    prompt = f"""Analyze the following work request / statement of work and extract the .NET projects,
-classes, stored procedures, or components that will be modified or affected.
+    prompt = f"""Analyze the following work request / statement of work and identify the .NET projects
+and stored procedures that will be modified or affected.
 {index_section}
 Return a JSON array of objects. Each object should have:
-- "type": one of "project", "sproc", or "class"
-- "name": the project name (e.g., "GalaxyWorks.Data"), stored procedure name (e.g., "dbo.sp_InsertPortalConfiguration"), or class name
+- "type": one of "project" or "sproc"
+- "name": the project name (e.g., "GalaxyWorks.Data") or stored procedure name (e.g., "dbo.sp_InsertPortalConfiguration")
 - "class_name": (optional) specific class being modified, if mentioned
 - "method_name": (optional) specific method being modified, if mentioned
 - "confidence": a number 0.0 to 1.0 indicating how confident you are this is a real target
 - "match_evidence": one sentence explaining why you identified this as a target
 
 Rules:
-- Extract ALL identifiable targets from the work request
-- For project names, use the .NET project name without the .csproj extension
-- For stored procedures, include the schema prefix (e.g., "dbo.") if present
-- If a class is mentioned in the context of a project, set type to "project" with the project as name and the class in "class_name"
+- Return ONLY targets whose names appear in the codebase index above
+- Strongly prefer "project" type targets — if a class belongs to a project, return the PROJECT name with the class in "class_name"
+- Do NOT return individual classes, DTOs, interfaces, or validators as standalone targets
+- For stored procedures, include the schema prefix (e.g., "dbo.")
 - Be conservative with confidence — only use 1.0 when the target is explicitly named
+- Focus on the 15-20 most important targets — do not exhaustively list every touched component
 - Return ONLY the JSON array, no other text
 
 Work request:

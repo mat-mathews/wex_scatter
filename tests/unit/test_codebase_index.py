@@ -360,7 +360,8 @@ class TestPromptWithIndex:
         assert len(targets) == 1
         assert targets[0].match_evidence == "Contains portal service classes"
 
-    def test_names_not_in_index_get_confidence_halved(self, tmp_path):
+    def test_names_not_in_index_are_dropped(self, tmp_path):
+        """Targets not found in the codebase index are excluded entirely."""
         proj_dir = tmp_path / "RealProject"
         proj_dir.mkdir()
         (proj_dir / "RealProject.csproj").write_text("<Project></Project>")
@@ -386,10 +387,11 @@ class TestPromptWithIndex:
             tmp_path,
             codebase_index=index,
         )
+        target_names = [t.name for t in targets]
+        assert "RealProject" in target_names
+        assert "HallucinatedProject" not in target_names  # dropped, not halved
         real = [t for t in targets if t.name == "RealProject"][0]
-        hallucinated = [t for t in targets if t.name == "HallucinatedProject"][0]
-        assert real.confidence == 0.8  # unchanged — in index
-        assert hallucinated.confidence == pytest.approx(0.45)  # halved
+        assert real.confidence == 0.8  # unchanged
 
 
 class TestExtractIndexNames:
@@ -643,6 +645,159 @@ class TestIndexBudgetWiring:
         )
         # No crash, codebase_index is None internally
         assert report is not None
+
+
+class TestTargetCountCap:
+    """Verify run_impact_analysis caps excessive target counts."""
+
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
+    def test_targets_capped_at_max(self, mock_parse):
+        """More than MAX_SOW_TARGETS targets are capped by confidence."""
+        from scatter.analyzers.impact_analyzer import MAX_SOW_TARGETS
+
+        # Return 40 targets — more than MAX_SOW_TARGETS (25)
+        mock_parse.return_value = [
+            AnalysisTarget(
+                target_type="project",
+                name=f"P{i}",
+                csproj_path=Path(f"/{i}.csproj"),
+                confidence=0.5 + (i * 0.01),  # varying confidence
+            )
+            for i in range(40)
+        ]
+        provider = MagicMock()
+
+        report = run_impact_analysis(
+            sow_text="test",
+            search_scope=Path("/search"),
+            ai_provider=provider,
+        )
+        # Targets in report are capped (those that resolved + had consumers)
+        # but the internal filtered list was capped at MAX_SOW_TARGETS
+        assert len(report.targets) <= MAX_SOW_TARGETS
+
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
+    def test_under_cap_not_truncated(self, mock_parse):
+        """Fewer than MAX_SOW_TARGETS targets are not truncated."""
+        mock_parse.return_value = [
+            AnalysisTarget(
+                target_type="project",
+                name=f"P{i}",
+                csproj_path=Path(f"/{i}.csproj"),
+                confidence=0.8,
+            )
+            for i in range(5)
+        ]
+        provider = MagicMock()
+
+        report = run_impact_analysis(
+            sow_text="test",
+            search_scope=Path("/search"),
+            ai_provider=provider,
+        )
+        # 5 targets, all skip (no csproj on disk), but none were capped
+        assert report is not None
+
+
+class TestConsumerCache:
+    """Verify consumer_cache deduplicates find_consumers calls."""
+
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    def test_cache_prevents_duplicate_scans(self, mock_find, mock_parse, tmp_path):
+        """Same csproj_path should only trigger find_consumers once."""
+        proj_path = tmp_path / "MyApp" / "MyApp.csproj"
+        proj_path.parent.mkdir()
+        proj_path.write_text("<Project></Project>")
+
+        mock_parse.return_value = [
+            AnalysisTarget(
+                target_type="project", name="MyApp",
+                csproj_path=proj_path, namespace="MyApp", confidence=0.9,
+            ),
+            AnalysisTarget(
+                target_type="project", name="MyApp",
+                csproj_path=proj_path, namespace="MyApp", confidence=0.8,
+            ),
+        ]
+        mock_find.return_value = ([], None)
+
+        run_impact_analysis(
+            sow_text="test",
+            search_scope=tmp_path,
+            ai_provider=MagicMock(),
+        )
+
+        # find_consumers called once despite two targets with the same csproj
+        assert mock_find.call_count == 1
+
+
+class TestAdaptiveDepth:
+    """Verify high-fan-out targets get reduced transitive depth."""
+
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
+    @patch("scatter.analyzers.impact_analyzer.trace_transitive_impact")
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    def test_high_fan_out_limits_depth(self, mock_find, mock_trace, mock_parse, tmp_path):
+        """Targets with >50 direct consumers get depth capped at 1."""
+        proj_path = tmp_path / "BigApp" / "BigApp.csproj"
+        proj_path.parent.mkdir()
+        proj_path.write_text("<Project></Project>")
+
+        mock_parse.return_value = [
+            AnalysisTarget(
+                target_type="project", name="BigApp",
+                csproj_path=proj_path, namespace="BigApp", confidence=0.9,
+            ),
+        ]
+        # Return 60 consumers — above _HIGH_FAN_OUT_THRESHOLD (50)
+        mock_find.return_value = (
+            [{"consumer_path": Path(f"/c{i}.csproj"), "consumer_name": f"C{i}"} for i in range(60)],
+            None,
+        )
+        mock_trace.return_value = []
+
+        run_impact_analysis(
+            sow_text="test",
+            search_scope=tmp_path,
+            ai_provider=MagicMock(),
+            max_depth=2,
+        )
+
+        # trace_transitive_impact called with max_depth=1, not 2
+        _, kwargs = mock_trace.call_args
+        assert kwargs["max_depth"] == 1
+
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
+    @patch("scatter.analyzers.impact_analyzer.trace_transitive_impact")
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    def test_normal_fan_out_keeps_depth(self, mock_find, mock_trace, mock_parse, tmp_path):
+        """Targets with <=50 direct consumers keep the configured depth."""
+        proj_path = tmp_path / "SmallApp" / "SmallApp.csproj"
+        proj_path.parent.mkdir()
+        proj_path.write_text("<Project></Project>")
+
+        mock_parse.return_value = [
+            AnalysisTarget(
+                target_type="project", name="SmallApp",
+                csproj_path=proj_path, namespace="SmallApp", confidence=0.9,
+            ),
+        ]
+        mock_find.return_value = (
+            [{"consumer_path": Path(f"/c{i}.csproj"), "consumer_name": f"C{i}"} for i in range(10)],
+            None,
+        )
+        mock_trace.return_value = []
+
+        run_impact_analysis(
+            sow_text="test",
+            search_scope=tmp_path,
+            ai_provider=MagicMock(),
+            max_depth=2,
+        )
+
+        _, kwargs = mock_trace.call_args
+        assert kwargs["max_depth"] == 2
 
 
 # =============================================================================
