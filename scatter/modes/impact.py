@@ -34,6 +34,8 @@ def run_impact_mode(args, ctx: ModeContext, start_time: float) -> None:
     from scatter.reports.json_reporter import write_impact_json_report
     from scatter.reports.csv_reporter import write_impact_csv_report
 
+    is_dry_run = getattr(args, "sow_dry_run", False)
+
     impact_report = run_impact_analysis(
         sow_text=sow_text,
         search_scope=ctx.search_scope,
@@ -51,7 +53,12 @@ def run_impact_mode(args, ctx: ModeContext, start_time: float) -> None:
         solution_index=ctx.solution_index,
         analysis_config=ctx.config.analysis,
         index_max_bytes=ctx.config.ai.index_max_bytes,
+        dry_run=is_dry_run,
     )
+
+    if is_dry_run:
+        _print_dry_run(impact_report)
+        return
 
     # Enrich consumers with graph metrics if available
     apply_impact_graph_enrichment(impact_report, ctx)
@@ -164,3 +171,39 @@ def _dispatch_scoping_output(scoping_report, args, ctx, start_time, graph_enrich
         f"\nScoping complete. {consumer_count} consumer(s) across {target_count} target(s). "
         f"Estimated {scoping_report.effort.total_min_days:.1f}-{scoping_report.effort.total_max_days:.1f} dev-days.\n"
     )
+
+
+def _print_dry_run(report) -> None:
+    """Print target list for dry-run mode and exit."""
+    targets = report.targets
+    print(f"\n{'=' * 70}")
+    print(f"SOW Dry Run: {len(targets)} target(s) identified")
+    print(
+        f"Target quality: {report.ambiguity_level} "
+        f"(avg confidence {report.avg_target_confidence:.2f})"
+    )
+    print(f"{'=' * 70}\n")
+
+    if not targets:
+        print("No targets identified. Check the SOW text and codebase index.")
+        return
+
+    # Header
+    print(f"  {'#':<4} {'Name':<55} {'Type':<8} {'Conf':<6} {'Resolved'}")
+    print(f"  {'─' * 4} {'─' * 55} {'─' * 8} {'─' * 6} {'─' * 8}")
+
+    for i, ti in enumerate(targets, 1):
+        t = ti.target
+        resolved = "yes" if t.csproj_path and t.csproj_path.is_file() else "no"
+        name = t.name[:55]
+        print(f"  {i:<4} {name:<55} {t.target_type:<8} {t.confidence:<6.2f} {resolved}")
+
+    # Evidence section
+    print("\n  Evidence:")
+    for i, ti in enumerate(targets, 1):
+        t = ti.target
+        evidence = t.match_evidence or "(none)"
+        print(f"  {i:<4} {evidence}")
+
+    print(f"\n{'─' * 70}")
+    print("To run full analysis, remove --sow-dry-run.\n")

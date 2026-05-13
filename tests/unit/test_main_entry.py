@@ -36,6 +36,7 @@ def _fake_args(**overrides):
         target_namespace=None,
         sproc_regex_pattern=None,
         sow_min_confidence=0.5,
+        sow_dry_run=False,
         include_graph_topology=False,
         full_type_scan=False,
         gemini_model=None,

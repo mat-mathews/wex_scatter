@@ -193,6 +193,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Minimum confidence threshold for SOW-extracted targets (default: 0.3).",
     )
     common_group.add_argument(
+        "--sow-dry-run",
+        action="store_true",
+        default=False,
+        help="Show identified targets and stop before running consumer analysis. Use to validate target quality.",
+    )
+    common_group.add_argument(
         "--scope-estimate",
         action="store_true",
         default=False,

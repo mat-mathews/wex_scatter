@@ -101,6 +101,7 @@ def run_impact_analysis(
     solution_index=None,
     analysis_config: Optional["AnalysisConfig"] = None,
     index_max_bytes: Optional[int] = None,
+    dry_run: bool = False,
 ) -> ImpactReport:
     """Orchestrate the full impact analysis pipeline.
 
@@ -203,6 +204,12 @@ def run_impact_analysis(
             f"Capped targets to {MAX_SOW_TARGETS} "
             f"(dropped {dropped_count} lowest-confidence, cutoff: {targets[-1].confidence:.2f})"
         )
+
+    # Dry run: populate report with targets (no consumers) and return early
+    if dry_run:
+        for target in targets:
+            report.targets.append(TargetImpact(target=target))
+        return report
 
     # Consumer cache — shared across targets to avoid rescanning the same csproj
     consumer_cache: Dict[Path, tuple] = {}
