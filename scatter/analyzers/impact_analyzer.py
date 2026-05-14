@@ -214,13 +214,18 @@ def run_impact_analysis(
     # Consumer cache — shared across targets to avoid rescanning the same csproj
     consumer_cache: Dict[Path, tuple] = {}
 
-    # Step 2: For each target, find consumers and trace transitively
+    # Step 2: For each target, find consumers and trace transitively.
+    # Root targets get full depth; affected targets get depth 0 (direct consumers only).
     for target in targets:
-        logging.info(f"\n--- Analyzing target: {target.name} (type: {target.target_type}) ---")
+        effective_depth = max_depth if target.target_role == "root" else 0
+        logging.info(
+            f"\n--- Analyzing target: {target.name} "
+            f"(type: {target.target_type}, role: {target.target_role}) ---"
+        )
         target_impact = _analyze_single_target(
             target=target,
             search_scope=search_scope,
-            max_depth=max_depth,
+            max_depth=effective_depth,
             pipeline_map=pipeline_map,
             solution_file_cache=solution_file_cache,
             max_workers=max_workers,
@@ -289,25 +294,27 @@ def run_impact_analysis(
             if target_impact.consumers:
                 risk_work.append((ti_idx, target_impact.target, target_impact.consumers))
 
-            for c_idx, consumer in enumerate(target_impact.consumers):
-                if consumer.depth == 0 and consumer.relevant_files:
-                    # Pre-read files on main thread (avoids concurrent WSL2 bridge I/O)
-                    file_contexts = []
-                    for f in consumer.relevant_files[:5]:
-                        try:
-                            if f.is_file():
-                                content = f.read_text(encoding="utf-8", errors="ignore")
-                                file_contexts.append(f"// File: {f.name}\n{content[:5000]}")
-                        except OSError:
-                            continue
-                    if file_contexts:
-                        coupling_work.append(
-                            (ti_idx, c_idx, target_impact.target, consumer, file_contexts)
-                        )
+            # Coupling + change surface: root targets only (big savings for affected)
+            if target_impact.target.target_role == "root":
+                for c_idx, consumer in enumerate(target_impact.consumers):
+                    if consumer.depth == 0 and consumer.relevant_files:
+                        # Pre-read files on main thread (avoids concurrent WSL2 bridge I/O)
+                        file_contexts = []
+                        for f in consumer.relevant_files[:5]:
+                            try:
+                                if f.is_file():
+                                    content = f.read_text(encoding="utf-8", errors="ignore")
+                                    file_contexts.append(f"// File: {f.name}\n{content[:5000]}")
+                            except OSError:
+                                continue
+                        if file_contexts:
+                            coupling_work.append(
+                                (ti_idx, c_idx, target_impact.target, consumer, file_contexts)
+                            )
 
-            # Change surface: all project targets with types or sprocs (no file I/O)
+            # Change surface: root project targets with types or sprocs (no file I/O)
             t = target_impact.target
-            if t.csproj_path and t.target_type == "project":
+            if t.csproj_path and t.target_type == "project" and t.target_role == "root":
                 node = graph.get_node(t.name) if graph else None
                 types = node.type_declarations if node else []
                 sprocs = node.sproc_references if node else []

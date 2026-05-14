@@ -800,6 +800,94 @@ class TestAdaptiveDepth:
         assert kwargs["max_depth"] == 2
 
 
+class TestTargetRoleTiering:
+    """Verify root vs affected target tiering controls analysis depth and enrichment."""
+
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
+    @patch("scatter.analyzers.impact_analyzer.trace_transitive_impact")
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    def test_affected_target_gets_depth_zero(self, mock_find, mock_trace, mock_parse, tmp_path):
+        """Affected targets get max_depth=0 (direct consumers only)."""
+        proj_path = tmp_path / "Peripheral" / "Peripheral.csproj"
+        proj_path.parent.mkdir()
+        proj_path.write_text("<Project></Project>")
+
+        mock_parse.return_value = [
+            AnalysisTarget(
+                target_type="project", name="Peripheral",
+                csproj_path=proj_path, namespace="Peripheral",
+                confidence=0.8, target_role="affected",
+            ),
+        ]
+        mock_find.return_value = (
+            [{"consumer_path": Path("/c.csproj"), "consumer_name": "C"}],
+            None,
+        )
+        mock_trace.return_value = []
+
+        run_impact_analysis(
+            sow_text="test",
+            search_scope=tmp_path,
+            ai_provider=MagicMock(),
+            max_depth=2,
+        )
+
+        _, kwargs = mock_trace.call_args
+        assert kwargs["max_depth"] == 0
+
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
+    @patch("scatter.analyzers.impact_analyzer.trace_transitive_impact")
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    def test_root_target_keeps_configured_depth(self, mock_find, mock_trace, mock_parse, tmp_path):
+        """Root targets keep the configured max_depth."""
+        proj_path = tmp_path / "Core" / "Core.csproj"
+        proj_path.parent.mkdir()
+        proj_path.write_text("<Project></Project>")
+
+        mock_parse.return_value = [
+            AnalysisTarget(
+                target_type="project", name="Core",
+                csproj_path=proj_path, namespace="Core",
+                confidence=0.9, target_role="root",
+            ),
+        ]
+        mock_find.return_value = (
+            [{"consumer_path": Path("/c.csproj"), "consumer_name": "C"}],
+            None,
+        )
+        mock_trace.return_value = []
+
+        run_impact_analysis(
+            sow_text="test",
+            search_scope=tmp_path,
+            ai_provider=MagicMock(),
+            max_depth=2,
+        )
+
+        _, kwargs = mock_trace.call_args
+        assert kwargs["max_depth"] == 2
+
+    def test_missing_role_defaults_to_root(self, tmp_path):
+        """If the AI omits the role field, target_role defaults to root."""
+        proj_dir = tmp_path / "MyApp"
+        proj_dir.mkdir()
+        (proj_dir / "MyApp.csproj").write_text("<Project></Project>")
+
+        index = CodebaseIndex(
+            text="P:MyApp T:Service\n",
+            project_count=1, type_count=1,
+            sproc_count=0, file_count=0, size_bytes=20,
+        )
+        # AI response WITHOUT a "role" field
+        response = json.dumps([
+            {"type": "project", "name": "MyApp", "confidence": 0.9},
+        ])
+        provider = _make_mock_provider(response)
+        targets = parse_work_request("test", provider, tmp_path, codebase_index=index)
+        assert len(targets) == 1
+        assert targets[0].target_role == "root"
+
+
 # =============================================================================
 # Phase 4: Console Reporter
 # =============================================================================

@@ -190,6 +190,7 @@ class TestSOWJsonRegression:
             "method_name",
             "confidence",
             "match_evidence",
+            "target_role",
         }
         assert set(target.keys()) == expected_keys
 
@@ -259,7 +260,7 @@ class TestSOWConsoleRegression:
         assert "Work Request:" in output
         assert "Overall Risk: High" in output
         assert "Complexity: Medium" in output
-        assert "--- Target: GalaxyWorks.Data ---" in output
+        assert "--- Target: GalaxyWorks.Data (root) ---" in output
         assert "Direct Consumers: 2" in output
         assert "Transitive: 1" in output
         assert "--- Complexity ---" in output

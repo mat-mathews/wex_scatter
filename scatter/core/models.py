@@ -116,6 +116,7 @@ class AnalysisTarget:
     method_name: Optional[str] = None
     confidence: float = CONFIDENCE_HIGH
     match_evidence: Optional[str] = None  # LLM explanation of why this target was identified
+    target_role: str = "root"  # "root" = code changes here, "affected" = downstream/peripheral
 
 
 @dataclass

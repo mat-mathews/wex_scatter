@@ -255,7 +255,7 @@ def print_impact_report(report: ImpactReport) -> None:
         return
 
     for ti in report.targets:
-        print(f"\n--- Target: {ti.target.name} ---")
+        print(f"\n--- Target: {ti.target.name} ({ti.target.target_role}) ---")
         if ti.target.match_evidence:
             print(f"Evidence: {ti.target.match_evidence}")
         print(f"Direct Consumers: {ti.total_direct} | Transitive: {ti.total_transitive}")

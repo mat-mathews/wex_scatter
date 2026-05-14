@@ -196,14 +196,17 @@ def _print_dry_run(report) -> None:
         return
 
     # Header
-    print(f"  {'#':<4} {'Name':<55} {'Type':<8} {'Conf':<6} {'Resolved'}")
-    print(f"  {'─' * 4} {'─' * 55} {'─' * 8} {'─' * 6} {'─' * 8}")
+    print(f"  {'#':<4} {'Name':<50} {'Type':<8} {'Role':<9} {'Conf':<6} {'Resolved'}")
+    print(f"  {'─' * 4} {'─' * 50} {'─' * 8} {'─' * 9} {'─' * 6} {'─' * 8}")
 
     for i, ti in enumerate(targets, 1):
         t = ti.target
         resolved = "yes" if t.csproj_path and t.csproj_path.is_file() else "no"
-        name = t.name[:55]
-        print(f"  {i:<4} {name:<55} {t.target_type:<8} {t.confidence:<6.2f} {resolved}")
+        name = t.name[:50]
+        print(
+            f"  {i:<4} {name:<50} {t.target_type:<8} {t.target_role:<9} "
+            f"{t.confidence:<6.2f} {resolved}"
+        )
 
     # Evidence section
     print("\n  Evidence:")

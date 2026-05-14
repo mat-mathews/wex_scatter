@@ -343,7 +343,7 @@ def build_impact_markdown(
         parts.append("## Targets\n")
 
         for ti in report.targets:
-            parts.append(f"### {ti.target.name}\n")
+            parts.append(f"### {ti.target.name} ({ti.target.target_role})\n")
 
             # Target confidence and evidence
             if ti.target.match_evidence:

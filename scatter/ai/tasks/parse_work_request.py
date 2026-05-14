@@ -44,6 +44,7 @@ def parse_work_request(
         method_name = item.get("method_name")
         confidence = float(item.get("confidence", CONFIDENCE_HIGH))
         match_evidence = item.get("match_evidence")
+        target_role = item.get("role", "root")
 
         if not name:
             continue
@@ -75,6 +76,7 @@ def parse_work_request(
                 method_name=method_name,
                 confidence=confidence,
                 match_evidence=match_evidence,
+                target_role=target_role if target_role in ("root", "affected") else "root",
             )
         )
 
@@ -126,6 +128,7 @@ and stored procedures that will be modified or affected.
 Return a JSON array of objects. Each object should have:
 - "type": one of "project" or "sproc"
 - "name": the project name (e.g., "GalaxyWorks.Data") or stored procedure name (e.g., "dbo.sp_InsertPortalConfiguration")
+- "role": one of "root" or "affected"
 - "class_name": (optional) specific class being modified, if mentioned
 - "method_name": (optional) specific method being modified, if mentioned
 - "confidence": a number 0.0 to 1.0 indicating how confident you are this is a real target
@@ -136,6 +139,8 @@ Rules:
 - Strongly prefer "project" type targets — if a class belongs to a project, return the PROJECT name with the class in "class_name"
 - Do NOT return individual classes, DTOs, interfaces, or validators as standalone targets
 - For stored procedures, include the schema prefix (e.g., "dbo.")
+- Mark targets as "root" when source code in that project will be WRITTEN or MODIFIED to implement this work request. Root targets are the epicenter — typically 3-8 projects
+- Mark targets as "affected" when the project may need testing or is downstream, but won't require direct code changes for this work request
 - Be conservative with confidence — only use 1.0 when the target is explicitly named
 - Focus on the 15-20 most important targets — do not exhaustively list every touched component
 - Return ONLY the JSON array, no other text
