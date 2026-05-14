@@ -888,6 +888,182 @@ class TestTargetRoleTiering:
         assert targets[0].target_role == "root"
 
 
+class TestGraphOnlyAffectedPath:
+    """Verify affected targets use graph.get_consumers() instead of find_consumers()."""
+
+    @staticmethod
+    def _make_graph_ctx(graph_mock):
+        """Wrap a mock graph in a GraphContext-shaped object."""
+        ctx = MagicMock()
+        ctx.graph = graph_mock
+        ctx.metrics = {}
+        ctx.cycles = []
+        ctx.cycle_members = set()
+        return ctx
+
+    @patch("scatter.ai.codebase_index.build_codebase_index")
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
+    @patch("scatter.analyzers.impact_analyzer.trace_transitive_impact")
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    def test_affected_with_graph_skips_find_consumers(
+        self, mock_find, mock_trace, mock_parse, mock_build_index, tmp_path
+    ):
+        """Affected target + graph available → graph fast path, find_consumers not called."""
+        proj_path = tmp_path / "Peripheral" / "Peripheral.csproj"
+        proj_path.parent.mkdir()
+        proj_path.write_text("<Project></Project>")
+
+        mock_parse.return_value = [
+            AnalysisTarget(
+                target_type="project", name="Peripheral",
+                csproj_path=proj_path, namespace="Peripheral",
+                confidence=0.8, target_role="affected",
+            ),
+        ]
+        mock_trace.return_value = []
+        mock_build_index.return_value = CodebaseIndex(
+            text="", project_count=0, type_count=0, sproc_count=0, file_count=0, size_bytes=0,
+        )
+
+        graph = MagicMock()
+        graph.get_consumers.return_value = [
+            ProjectNode(path=Path("/repo/Api/Api.csproj"), name="Api"),
+            ProjectNode(path=Path("/repo/Web/Web.csproj"), name="Web"),
+        ]
+        graph.get_node.return_value = None
+
+        run_impact_analysis(
+            sow_text="test",
+            search_scope=tmp_path,
+            ai_provider=MagicMock(),
+            max_depth=2,
+            graph_ctx=self._make_graph_ctx(graph),
+        )
+
+        mock_find.assert_not_called()
+        graph.get_consumers.assert_called_once_with("Peripheral")
+
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
+    @patch("scatter.analyzers.impact_analyzer.trace_transitive_impact")
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    def test_affected_without_graph_falls_back_to_find_consumers(
+        self, mock_find, mock_trace, mock_parse, tmp_path
+    ):
+        """Affected target + no graph → falls back to find_consumers."""
+        proj_path = tmp_path / "Peripheral" / "Peripheral.csproj"
+        proj_path.parent.mkdir()
+        proj_path.write_text("<Project></Project>")
+
+        mock_parse.return_value = [
+            AnalysisTarget(
+                target_type="project", name="Peripheral",
+                csproj_path=proj_path, namespace="Peripheral",
+                confidence=0.8, target_role="affected",
+            ),
+        ]
+        mock_find.return_value = (
+            [{"consumer_path": Path("/c.csproj"), "consumer_name": "C", "relevant_files": []}],
+            None,
+        )
+        mock_trace.return_value = []
+
+        run_impact_analysis(
+            sow_text="test",
+            search_scope=tmp_path,
+            ai_provider=MagicMock(),
+            max_depth=2,
+        )
+
+        mock_find.assert_called_once()
+
+    @patch("scatter.ai.codebase_index.build_codebase_index")
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
+    @patch("scatter.analyzers.impact_analyzer.trace_transitive_impact")
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    def test_root_with_graph_still_uses_find_consumers(
+        self, mock_find, mock_trace, mock_parse, mock_build_index, tmp_path
+    ):
+        """Root target + graph available → still uses find_consumers (not graph fast path)."""
+        proj_path = tmp_path / "Core" / "Core.csproj"
+        proj_path.parent.mkdir()
+        proj_path.write_text("<Project></Project>")
+
+        mock_parse.return_value = [
+            AnalysisTarget(
+                target_type="project", name="Core",
+                csproj_path=proj_path, namespace="Core",
+                confidence=0.9, target_role="root",
+            ),
+        ]
+        mock_find.return_value = (
+            [{"consumer_path": Path("/c.csproj"), "consumer_name": "C", "relevant_files": []}],
+            None,
+        )
+        mock_trace.return_value = []
+        mock_build_index.return_value = CodebaseIndex(
+            text="", project_count=0, type_count=0, sproc_count=0, file_count=0, size_bytes=0,
+        )
+
+        graph = MagicMock()
+        graph.get_node.return_value = None
+
+        run_impact_analysis(
+            sow_text="test",
+            search_scope=tmp_path,
+            ai_provider=MagicMock(),
+            max_depth=2,
+            graph_ctx=self._make_graph_ctx(graph),
+        )
+
+        mock_find.assert_called_once()
+        graph.get_consumers.assert_not_called()
+
+    @patch("scatter.ai.codebase_index.build_codebase_index")
+    @patch("scatter.ai.tasks.parse_work_request.parse_work_request")
+    @patch("scatter.analyzers.impact_analyzer.trace_transitive_impact")
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    def test_graph_fast_path_produces_correct_consumer_data(
+        self, mock_find, mock_trace, mock_parse, mock_build_index, tmp_path
+    ):
+        """Graph fast path feeds correct RawConsumerDict to trace_transitive_impact."""
+        proj_path = tmp_path / "Peripheral" / "Peripheral.csproj"
+        proj_path.parent.mkdir()
+        proj_path.write_text("<Project></Project>")
+
+        mock_parse.return_value = [
+            AnalysisTarget(
+                target_type="project", name="Peripheral",
+                csproj_path=proj_path, namespace="Peripheral",
+                confidence=0.8, target_role="affected",
+            ),
+        ]
+        mock_trace.return_value = []
+        mock_build_index.return_value = CodebaseIndex(
+            text="", project_count=0, type_count=0, sproc_count=0, file_count=0, size_bytes=0,
+        )
+
+        graph = MagicMock()
+        graph.get_consumers.return_value = [
+            ProjectNode(path=Path("/repo/Api/Api.csproj"), name="Api"),
+        ]
+        graph.get_node.return_value = None
+
+        run_impact_analysis(
+            sow_text="test",
+            search_scope=tmp_path,
+            ai_provider=MagicMock(),
+            max_depth=2,
+            graph_ctx=self._make_graph_ctx(graph),
+        )
+
+        args, kwargs = mock_trace.call_args
+        consumers = kwargs["direct_consumers"]
+        assert len(consumers) == 1
+        assert consumers[0]["consumer_name"] == "Api"
+        assert consumers[0]["consumer_path"] == Path("/repo/Api/Api.csproj")
+        assert consumers[0]["relevant_files"] == []
+
+
 # =============================================================================
 # Phase 4: Console Reporter
 # =============================================================================

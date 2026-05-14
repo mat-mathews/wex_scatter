@@ -532,35 +532,55 @@ def _analyze_single_target(
         logging.warning(f"Could not derive namespace for {target.name}.")
         namespace = f"NAMESPACE_ERROR_{target.name}"
 
-    # Find direct consumers (check cache first — only cacheable without class/method filters)
-    cache_key = target.csproj_path
-    can_cache = target.class_name is None and target.method_name is None
-    if can_cache and consumer_cache is not None and cache_key in consumer_cache:
-        logging.debug(f"Consumer cache hit for {cache_key.stem}")
-        direct_consumers_data, _pipeline = consumer_cache[cache_key]
-    else:
-        direct_consumers_data, _pipeline = find_consumers(
-            target_csproj_path=target.csproj_path,
-            search_scope_path=search_scope,
-            target_namespace=namespace,
-            class_name=target.class_name,
-            method_name=target.method_name,
-            max_workers=max_workers,
-            chunk_size=chunk_size,
-            disable_multiprocessing=disable_multiprocessing,
-            cs_analysis_chunk_size=cs_analysis_chunk_size,
-            csproj_analysis_chunk_size=csproj_analysis_chunk_size,
-            graph=graph,
-            analysis_config=analysis_config,
+    # Graph-only fast path for affected targets — O(1) reverse adjacency lookup
+    # instead of expensive filesystem scan via find_consumers().
+    if target.target_role == "affected" and graph is not None:
+        consumer_nodes = graph.get_consumers(target.name)
+        direct_consumers_data: List[RawConsumerDict] = [
+            RawConsumerDict(
+                consumer_path=node.path,
+                consumer_name=node.name,
+                relevant_files=[],
+            )
+            for node in consumer_nodes
+        ]
+        if not direct_consumers_data:
+            logging.info(f"No consumers in graph for affected target {target.name}.")
+            return impact
+        logging.info(
+            f"Graph fast path: {len(direct_consumers_data)} consumer(s) for "
+            f"affected target {target.name}"
         )
-        if can_cache and consumer_cache is not None:
-            consumer_cache[cache_key] = (direct_consumers_data, _pipeline)
+    else:
+        # Full filesystem scan — root targets and no-graph fallback
+        cache_key = target.csproj_path
+        can_cache = target.class_name is None and target.method_name is None
+        if can_cache and consumer_cache is not None and cache_key in consumer_cache:
+            logging.debug(f"Consumer cache hit for {cache_key.stem}")
+            direct_consumers_data, _pipeline = consumer_cache[cache_key]
+        else:
+            direct_consumers_data, _pipeline = find_consumers(
+                target_csproj_path=target.csproj_path,
+                search_scope_path=search_scope,
+                target_namespace=namespace,
+                class_name=target.class_name,
+                method_name=target.method_name,
+                max_workers=max_workers,
+                chunk_size=chunk_size,
+                disable_multiprocessing=disable_multiprocessing,
+                cs_analysis_chunk_size=cs_analysis_chunk_size,
+                csproj_analysis_chunk_size=csproj_analysis_chunk_size,
+                graph=graph,
+                analysis_config=analysis_config,
+            )
+            if can_cache and consumer_cache is not None:
+                consumer_cache[cache_key] = (direct_consumers_data, _pipeline)
 
-    if not direct_consumers_data:
-        logging.info(f"No direct consumers found for {target.name}.")
-        return impact
+        if not direct_consumers_data:
+            logging.info(f"No direct consumers found for {target.name}.")
+            return impact
 
-    logging.info(f"Found {len(direct_consumers_data)} direct consumer(s) for {target.name}.")
+        logging.info(f"Found {len(direct_consumers_data)} direct consumer(s) for {target.name}.")
 
     # Adaptive depth — reduce for high-fan-out targets
     effective_depth = max_depth
