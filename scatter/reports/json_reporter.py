@@ -3,6 +3,7 @@
 import json
 import logging
 from dataclasses import asdict
+from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -82,16 +83,18 @@ def write_json_report(
     try:
         output_file_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_file_path, "w", encoding="utf-8") as jsonfile:
-            json.dump(json_output, jsonfile, indent=4, default=_path_serializer)
+            json.dump(json_output, jsonfile, indent=4, default=_default_serializer)
         logging.info(f"Successfully wrote JSON report to: {output_file_path}")
     except Exception as e:
         logging.error(f"Failed to write output JSON file: {e}")
 
 
-def _path_serializer(obj):
-    """JSON serializer for Path objects."""
+def _default_serializer(obj):
+    """JSON fallback serializer for non-standard types."""
     if isinstance(obj, Path):
         return str(obj)
+    if isinstance(obj, Enum):
+        return obj.value
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 
@@ -170,7 +173,7 @@ def write_impact_json_report(
     try:
         output_file_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_file_path, "w", encoding="utf-8") as jsonfile:
-            json.dump(report_dict, jsonfile, indent=4, default=_path_serializer)
+            json.dump(report_dict, jsonfile, indent=4, default=_default_serializer)
         logging.info(f"Successfully wrote impact JSON report to: {output_file_path}")
     except Exception as e:
         logging.error(f"Failed to write impact JSON report: {e}")
@@ -258,7 +261,7 @@ def write_scoping_json_report(
     try:
         output_file_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_file_path, "w", encoding="utf-8") as jsonfile:
-            json.dump(report_dict, jsonfile, indent=4, default=_path_serializer)
+            json.dump(report_dict, jsonfile, indent=4, default=_default_serializer)
         logging.info(f"Successfully wrote scoping JSON report to: {output_file_path}")
     except Exception as e:
         logging.error(f"Failed to write scoping JSON report: {e}")
@@ -331,7 +334,7 @@ def write_pr_risk_json_report(
     try:
         output_file_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_file_path, "w", encoding="utf-8") as jsonfile:
-            json.dump(report_dict, jsonfile, indent=4, default=_path_serializer)
+            json.dump(report_dict, jsonfile, indent=4, default=_default_serializer)
         logging.info(f"Successfully wrote PR risk JSON report to: {output_file_path}")
     except Exception as e:
         logging.error(f"Failed to write PR risk JSON report: {e}")
