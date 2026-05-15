@@ -701,34 +701,49 @@ def trace_transitive_impact(
             )
             all_enriched.append(enriched)
 
-            # For next depth: find consumers of this consumer (project-reference only)
-            if depth < max_depth and consumer_path.is_file():
-                ns = derive_namespace(consumer_path)
-                if ns:
-                    if consumer_cache is not None and consumer_path in consumer_cache:
-                        transitive_data, _t_pipeline = consumer_cache[consumer_path]
-                    else:
-                        transitive_data, _t_pipeline = find_consumers(
-                            target_csproj_path=consumer_path,
-                            search_scope_path=search_scope,
-                            target_namespace=ns,
-                            class_name=None,
-                            method_name=None,
-                            max_workers=max_workers,
-                            chunk_size=chunk_size,
-                            disable_multiprocessing=disable_multiprocessing,
-                            cs_analysis_chunk_size=cs_analysis_chunk_size,
-                            csproj_analysis_chunk_size=csproj_analysis_chunk_size,
-                            graph=graph,
-                            analysis_config=analysis_config,
+            # For next depth: find consumers of this consumer
+            if depth < max_depth:
+                transitive_data: List[RawConsumerDict] = []
+                if graph is not None:
+                    transitive_nodes = graph.get_consumers(consumer_name)
+                    transitive_data = [
+                        RawConsumerDict(
+                            consumer_path=node.path,
+                            consumer_name=node.name,
+                            relevant_files=[],
                         )
-                        if consumer_cache is not None:
-                            consumer_cache[consumer_path] = (transitive_data, _t_pipeline)
-                    for td in transitive_data:
-                        td_path = td["consumer_path"]
-                        if td_path not in visited and td_path not in parent_map:
-                            parent_map[td_path] = consumer_name
-                    next_level_raw.extend(transitive_data)
+                        for node in transitive_nodes
+                    ]
+                elif consumer_path.is_file():
+                    ns = derive_namespace(consumer_path)
+                    if ns:
+                        if consumer_cache is not None and consumer_path in consumer_cache:
+                            transitive_data, _t_pipeline = consumer_cache[consumer_path]
+                        else:
+                            transitive_data, _t_pipeline = find_consumers(
+                                target_csproj_path=consumer_path,
+                                search_scope_path=search_scope,
+                                target_namespace=ns,
+                                class_name=None,
+                                method_name=None,
+                                max_workers=max_workers,
+                                chunk_size=chunk_size,
+                                disable_multiprocessing=disable_multiprocessing,
+                                cs_analysis_chunk_size=cs_analysis_chunk_size,
+                                csproj_analysis_chunk_size=csproj_analysis_chunk_size,
+                                graph=graph,
+                                analysis_config=analysis_config,
+                            )
+                            if consumer_cache is not None:
+                                consumer_cache[consumer_path] = (
+                                    transitive_data,
+                                    _t_pipeline,
+                                )
+                for td in transitive_data:
+                    td_path = td["consumer_path"]
+                    if td_path not in visited and td_path not in parent_map:
+                        parent_map[td_path] = consumer_name
+                next_level_raw.extend(transitive_data)
 
         depth += 1
         current_level = next_level_raw

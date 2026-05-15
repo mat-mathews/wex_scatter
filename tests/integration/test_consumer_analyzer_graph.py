@@ -1,7 +1,7 @@
 """Tests for Phase B: graph-accelerated consumer lookup in find_consumers()."""
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -267,19 +267,9 @@ class TestImpactAnalyzerGraph:
             )
         assert captured_kwargs.get("graph") is sentinel
 
-    def test_transitive_tracing_passes_graph(self):
-        """trace_transitive_impact passes graph through to find_consumers calls."""
+    def test_transitive_tracing_uses_graph_directly(self):
+        """trace_transitive_impact uses graph.get_consumers() for transitive layer."""
         from scatter.analyzers.impact_analyzer import trace_transitive_impact
-
-        captured_calls = []
-
-        def spy_find(*args, **kwargs):
-            captured_calls.append(kwargs)
-            from scatter.core.models import FilterPipeline
-
-            return [], FilterPipeline(
-                search_scope=".", total_projects_scanned=0, total_files_scanned=0
-            )
 
         consumer_data = [
             {
@@ -288,20 +278,21 @@ class TestImpactAnalyzerGraph:
                 "relevant_files": [],
             }
         ]
-        sentinel = object()
+        mock_graph = MagicMock()
+        mock_graph.get_consumers.return_value = []
 
-        with patch("scatter.analyzers.impact_analyzer.find_consumers", side_effect=spy_find):
+        with patch("scatter.analyzers.impact_analyzer.find_consumers") as mock_find:
             trace_transitive_impact(
                 direct_consumers=consumer_data,
                 search_scope=REPO_ROOT,
                 max_depth=1,
-                graph=sentinel,
+                graph=mock_graph,
                 disable_multiprocessing=True,
             )
 
-        # At least one transitive find_consumers call should have graph
-        graph_calls = [c for c in captured_calls if c.get("graph") is sentinel]
-        assert len(graph_calls) >= 1
+        # Graph used directly for transitive lookup — find_consumers not called
+        mock_graph.get_consumers.assert_called_once_with("MyDotNetApp")
+        mock_find.assert_not_called()
 
     def test_impact_without_graph_unchanged(self):
         """Without graph param, find_consumers is called with graph=None."""

@@ -22,6 +22,7 @@ from scatter.ai.tasks.parse_work_request import (
 from scatter.analyzers.impact_analyzer import (
     _compute_ambiguity_label,
     run_impact_analysis,
+    trace_transitive_impact,
 )
 from scatter.core.models import (
     AnalysisTarget,
@@ -1062,6 +1063,116 @@ class TestGraphOnlyAffectedPath:
         assert consumers[0]["consumer_name"] == "Api"
         assert consumers[0]["consumer_path"] == Path("/repo/Api/Api.csproj")
         assert consumers[0]["relevant_files"] == []
+
+
+class TestGraphTransitiveTracing:
+    """Verify transitive tracing uses graph lookups instead of find_consumers()."""
+
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    def test_transitive_uses_graph_when_available(self, mock_find):
+        """With graph, depth 1+ uses graph.get_consumers() — find_consumers not called."""
+        direct = [
+            {"consumer_path": Path("/repo/Api/Api.csproj"), "consumer_name": "Api", "relevant_files": []},
+        ]
+        graph = MagicMock()
+        graph.get_consumers.return_value = [
+            ProjectNode(path=Path("/repo/Web/Web.csproj"), name="Web"),
+        ]
+
+        result = trace_transitive_impact(
+            direct_consumers=direct,
+            search_scope=Path("/repo"),
+            max_depth=1,
+            graph=graph,
+        )
+
+        mock_find.assert_not_called()
+        graph.get_consumers.assert_called_once_with("Api")
+        names = [c.consumer_name for c in result]
+        assert "Api" in names
+        assert "Web" in names
+
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    def test_transitive_falls_back_without_graph(self, mock_find, tmp_path):
+        """Without graph, depth 1+ falls back to find_consumers()."""
+        consumer_csproj = tmp_path / "Api" / "Api.csproj"
+        consumer_csproj.parent.mkdir()
+        consumer_csproj.write_text("<Project><PropertyGroup><RootNamespace>Api</RootNamespace></PropertyGroup></Project>")
+
+        direct = [
+            {"consumer_path": consumer_csproj, "consumer_name": "Api", "relevant_files": []},
+        ]
+        mock_find.return_value = (
+            [{"consumer_path": Path("/repo/Web/Web.csproj"), "consumer_name": "Web", "relevant_files": []}],
+            None,
+        )
+
+        result = trace_transitive_impact(
+            direct_consumers=direct,
+            search_scope=tmp_path,
+            max_depth=1,
+            graph=None,
+        )
+
+        mock_find.assert_called_once()
+        names = [c.consumer_name for c in result]
+        assert "Api" in names
+        assert "Web" in names
+
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    def test_transitive_graph_propagation_parent(self, mock_find):
+        """Graph transitive consumers get correct propagation_parent."""
+        direct = [
+            {"consumer_path": Path("/repo/Api/Api.csproj"), "consumer_name": "Api", "relevant_files": []},
+        ]
+        graph = MagicMock()
+        graph.get_consumers.return_value = [
+            ProjectNode(path=Path("/repo/Web/Web.csproj"), name="Web"),
+            ProjectNode(path=Path("/repo/Batch/Batch.csproj"), name="Batch"),
+        ]
+
+        result = trace_transitive_impact(
+            direct_consumers=direct,
+            search_scope=Path("/repo"),
+            max_depth=1,
+            graph=graph,
+        )
+
+        transitive = [c for c in result if c.depth == 1]
+        assert len(transitive) == 2
+        for c in transitive:
+            assert c.propagation_parent == "Api"
+
+    @patch("scatter.analyzers.impact_analyzer.find_consumers")
+    def test_transitive_graph_no_duplicates(self, mock_find):
+        """Graph transitive tracing respects visited set — no duplicate consumers."""
+        direct = [
+            {"consumer_path": Path("/repo/Api/Api.csproj"), "consumer_name": "Api", "relevant_files": []},
+            {"consumer_path": Path("/repo/Web/Web.csproj"), "consumer_name": "Web", "relevant_files": []},
+        ]
+        graph = MagicMock()
+        # Both Api and Web claim Web and Shared as consumers — Web should not duplicate
+        graph.get_consumers.side_effect = lambda name: {
+            "Api": [
+                ProjectNode(path=Path("/repo/Web/Web.csproj"), name="Web"),
+                ProjectNode(path=Path("/repo/Shared/Shared.csproj"), name="Shared"),
+            ],
+            "Web": [
+                ProjectNode(path=Path("/repo/Shared/Shared.csproj"), name="Shared"),
+            ],
+        }.get(name, [])
+
+        result = trace_transitive_impact(
+            direct_consumers=direct,
+            search_scope=Path("/repo"),
+            max_depth=1,
+            graph=graph,
+        )
+
+        names = [c.consumer_name for c in result]
+        assert names.count("Shared") == 1
+        assert names.count("Web") == 1
+        assert names.count("Api") == 1
 
 
 # =============================================================================
