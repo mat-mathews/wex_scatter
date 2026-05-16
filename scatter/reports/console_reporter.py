@@ -254,6 +254,14 @@ def print_impact_report(report: ImpactReport) -> None:
         print("\nNo analysis targets were identified.")
         return
 
+    if report.key_consumers:
+        print("\nKey Consumers (likely to require changes):")
+        for kc in report.key_consumers:
+            detail = f"direct consumer of {kc.appearances} root(s)"
+            if kc.max_risk and kc.max_risk in ("High", "Critical"):
+                detail += f", {kc.max_risk} risk"
+            print(f"  {kc.consumer_name} — {detail}")
+
     for ti in report.targets:
         print(f"\n--- Target: {ti.target.name} ({ti.target.target_role}) ---")
         if ti.target.match_evidence:

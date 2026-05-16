@@ -336,6 +336,19 @@ def build_impact_markdown(
     parts.append(_md_table(["Metric", "Value"], stats_rows))
     parts.append("")
 
+    # --- Key consumers section ---
+    if report.key_consumers:
+        parts.append("## Key Consumers\n")
+        parts.append(
+            "Projects likely to require changes (direct consumers surfaced across multiple roots or at high risk):\n"
+        )
+        for kc in report.key_consumers:
+            detail = f"direct consumer of {kc.appearances} root(s)"
+            if kc.max_risk and kc.max_risk in ("High", "Critical"):
+                detail += f", {kc.max_risk} risk"
+            parts.append(f"- **{kc.consumer_name}** — {detail}")
+        parts.append("")
+
     # --- Targets section ---
     if not report.targets:
         parts.append("No analysis targets were identified.\n")

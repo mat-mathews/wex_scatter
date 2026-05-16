@@ -471,6 +471,17 @@ def run_impact_analysis(
             f"(would be {total_ai_work} serial calls without parallelism)"
         )
 
+    # Step 4b: Identify key consumers (zero-cost post-processing)
+    from scatter.analyzers.key_consumer_selector import select_key_consumers
+
+    report.key_consumers = select_key_consumers(report.targets)
+    if report.key_consumers:
+        logging.info(
+            "Identified %d key consumer(s): %s",
+            len(report.key_consumers),
+            ", ".join(kc.consumer_name for kc in report.key_consumers),
+        )
+
     # Step 5: AI complexity estimate
     logging.info("Step 5: Estimating complexity...")
     from scatter.ai.tasks.complexity_estimate import estimate_complexity
