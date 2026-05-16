@@ -269,6 +269,7 @@ MSYS_NO_PATHCONV=1 docker run \
 ```
 
 **What to look for:**
+- **Key Consumers** section (new) — projects surfaced as convergence points. These are depth-0 consumers appearing under multiple root targets or rated High/Critical risk. If this section appears, these are the projects a developer will most likely need to open. Capped at top 10.
 - Target quality: clear/moderate/vague — tells you how specific the SOW was
 - Blast radius tree: direct and transitive consumers with risk ratings
 - Complexity estimate and impact summary — paste directly into a ticket
