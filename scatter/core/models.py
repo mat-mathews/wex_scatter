@@ -159,11 +159,22 @@ class TargetImpact:
 
 
 @dataclass
+class KeyConsumer:
+    """Metadata identifying a consumer prominent enough to surface alongside root targets."""
+
+    consumer_name: str
+    appearances: int  # distinct root targets listing this as depth-0
+    root_targets: List[str] = field(default_factory=list)  # target_name values
+    max_risk: Optional[str] = None  # highest risk_rating across appearances
+
+
+@dataclass
 class ImpactReport:
     """Full impact analysis report."""
 
     sow_text: str
     targets: List[TargetImpact] = field(default_factory=list)
+    key_consumers: List[KeyConsumer] = field(default_factory=list)
     impact_narrative: Optional[str] = None  # Manager-friendly summary
     complexity_rating: Optional[str] = None  # "Low" | "Medium" | "High" | "Critical"
     complexity_justification: Optional[str] = None

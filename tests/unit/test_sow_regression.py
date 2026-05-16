@@ -122,6 +122,7 @@ class TestSOWJsonRegression:
         expected_keys = {
             "sow_text",
             "targets",
+            "key_consumers",
             "impact_narrative",
             "complexity_rating",
             "complexity_justification",
